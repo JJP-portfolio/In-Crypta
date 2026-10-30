@@ -967,18 +967,18 @@ class Juego:
             self.dibujar_corazon(716 + i * 23, 25, i < self.jugador.vidas)
 
         # Dash abajo-izq (barra con icono flecha).
-        dash_listo = self.joystick.dash_listo()
+        dash_listo = self.jugador.dash_listo()
         color_dash = HUD_VERDE if dash_listo else HUD_MUTED
         progreso_dash = 1.0 if dash_listo else 1.0 - min(
-            1.0, self.joystick.dash_cooldown / DASH_COOLDOWN
+            1.0, self.jugador.dash_cooldown / DASH_COOLDOWN
         )
         self.dibujar_barra_hud(710, 52, 88, progreso_dash, color_dash)
 
         # Golpe de pala abajo-der (solo cuando tenés pala).
-        if self.joystick.tiene_pala:
-            color_golpe = HUD_ORO if self.joystick.ataque_cooldown <= 0 else HUD_MUTED
+        if self.jugador.tiene_pala:
+            color_golpe = HUD_ORO if self.jugador.ataque_cooldown <= 0 else HUD_MUTED
             progreso_golpe = 1.0 - min(
-                1.0, self.joystick.ataque_cooldown / ATAQUE_COOLDOWN
+                1.0, self.jugador.ataque_cooldown / ATAQUE_COOLDOWN
             )
             self.dibujar_barra_hud(866, 52, 66, progreso_golpe, color_golpe)
         else:
