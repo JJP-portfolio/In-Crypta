@@ -1,14 +1,4 @@
-# Entorno y cache de Python
 .venv/
 __pycache__/
 *.pyc
-
-# Artefactos regenerables del export a GDevelop
-export/gdevelop_nativo/assets/
-export/gdevelop_nativo/build/
-export/gdevelop_nativo/*.autosave
-export/gdevelop_nativo/*.bak
-export/gdevelop/game_data.json
-
-# Capturas generadas
-capturas/
+.pytest_cache/
