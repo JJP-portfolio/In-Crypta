@@ -31,7 +31,10 @@ from config import (
     GRIS,
     HUD_ALMA,
     HUD_BORDE,
+    HUD_DASHTURQUESA,
     HUD_MUTED,
+    HUD_NEGRO,
+    HUD_NEGRO_X,
     HUD_ORO,
     HUD_PANEL,
     HUD_PANEL_ALTO,
@@ -63,7 +66,9 @@ from config import (
     VIDAS_INICIALES,
     VIDAS_MAXIMAS,
     VIOLETA,
+    HUD_ANGOSTO_ALTO,
 )
+from efectos import EfectoAnimacion, ease_out_back, ease_out_cubic, ease_in_out_cubic
 from entidades import Jugador, OndaCustodio, EnemigoMelee, TotemProyectil
 from nivel import Nivel
 from niveles import NIVELES, SALAS_PRUEBA
@@ -83,6 +88,7 @@ class Juego:
         self.vineta = self.crear_vineta(90)
 
         self.particulas = SistemaParticulas()
+        self.efecto_hud = EfectoAnimacion()
         self.audio = Audio()
 
         self.nivel_indice = 0
@@ -929,17 +935,18 @@ class Juego:
 
     # --- Función dibujar_hud --- #
     def dibujar_hud(self):
-        self.dibujar_panel_hud(pygame.Rect(14, 12, 292, 70))
-        self.dibujar_panel_hud(pygame.Rect(318, 12, 324, 70))
-        self.dibujar_panel_hud(pygame.Rect(654, 12, 292, 70))
+        # Barra angosta de 36px (Fase 1)
+        self.dibujar_panel_hud(pygame.Rect(14, 12, 292, HUD_ANGOSTO_ALTO))
+        self.dibujar_panel_hud(pygame.Rect(318, 12, 324, HUD_ANGOSTO_ALTO))
+        self.dibujar_panel_hud(pygame.Rect(654, 12, 292, HUD_ANGOSTO_ALTO))
 
-        # Nivel y tiempo.
+        # Nivel y tiempo arriba-izq.
         etiqueta = "TEST ROOM" if self.sala_prueba else f"NIVEL {self.nivel_indice + 1}/{len(NIVELES)}"
         self.dibujar_texto(etiqueta, 28, 20, 13, HUD_ORO)
         self.dibujar_texto(self.nivel.nombre.upper(), 28, 35, 19, HUD_TEXTO)
         self.dibujar_texto(f"TIEMPO {self.tiempo_nivel:04.1f}s", 28, 59, 12, HUD_MUTED)
 
-        # Almas y progreso de vida extra.
+        # Almas y progreso de vida extra (arriba-der).
         self.dibujar_icono_alma(348, 38)
         self.dibujar_texto(
             f"ALMAS {self.jugador.almas}/{self.nivel.total_almas}",
@@ -955,34 +962,29 @@ class Juego:
             HUD_ORO, segmentos=ALMAS_POR_VIDA,
         )
 
-        # Vidas, dash y golpe.
-        self.dibujar_texto("VIDAS", 668, 19, 12, HUD_MUTED)
+        # Vidas arriba-der (iconos, no texto).
         for i in range(VIDAS_MAXIMAS):
             self.dibujar_corazon(716 + i * 23, 25, i < self.jugador.vidas)
-        if self.jugador.vidas <= 1:
-            pulso = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() / 130)
-            color = (255, int(120 + pulso * 80), int(60 + pulso * 40))
-            self.dibujar_texto("¡ÚLTIMA!", 846, 19, 12, color)
 
+        # Dash abajo-izq (barra con icono flecha).
         dash_listo = self.jugador.dash_listo()
         color_dash = HUD_VERDE if dash_listo else HUD_MUTED
-        self.dibujar_texto("DASH", 668, 48, 11, color_dash)
         progreso_dash = 1.0 if dash_listo else 1.0 - min(
             1.0, self.jugador.dash_cooldown / DASH_COOLDOWN
         )
         self.dibujar_barra_hud(710, 52, 88, progreso_dash, color_dash)
 
+        # Golpe de pala abajo-der (solo cuando tenés pala).
         if self.jugador.tiene_pala:
             color_golpe = HUD_ORO if self.jugador.ataque_cooldown <= 0 else HUD_MUTED
-            self.dibujar_texto("J GOLPE", 812, 48, 11, color_golpe)
             progreso_golpe = 1.0 - min(
                 1.0, self.jugador.ataque_cooldown / ATAQUE_COOLDOWN
             )
             self.dibujar_barra_hud(866, 52, 66, progreso_golpe, color_golpe)
         else:
-            self.dibujar_texto("SIN PALA", 812, 48, 11, HUD_MUTED)
             self.dibujar_barra_hud(866, 52, 66, 0.0, HUD_MUTED)
 
+        # Barra de jefe (solo en Nivel 3).
         if self.jefe is not None and self.jefe.vivo:
             self.dibujar_barra_jefe()
 

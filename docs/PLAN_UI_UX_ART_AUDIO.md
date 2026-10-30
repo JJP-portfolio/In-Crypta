@@ -148,13 +148,79 @@ Cada punto es una fila de la tabla §8 del GDD, convertida en código:
 
 **Arranca de lo que ya existe** (`audio.py`, sin numpy, sin assets) y lo lleva a un sintetizador con capas.
 
-1. **Motor de síntesis** (`audio_sintetizador.py`): ADSR, barrido exponencial, FM, ruido con filtro de un polo, mezcla con normalización y clip-free. **numpy es opcional**: si está, se usa (BSD-3, sin fricción); si no, el fallback con `array` mantiene el juego funcionando. Decisión: agregar `numpy` a `requirements.txt` **con fallback obligatorio**.
+0. **Decisión de dependencia: `numpy` SÍ, con fallback obligatorio** (ver §4.1 para el detalle y los números).
+
+1. **Motor de síntesis** (`audio_sintetiser.py`): ADSR, barrido exponencial, FM, ruido con filtro de un polo, mezcla con normalización y clip-free. Dos renderizadores para **la misma ficha de sonido**:
+   - con numpy → `pygame.sndarray.make_sound()` (API oficial, matemática vectorizada);
+   - sin numpy → `Sound(buffer=array.tobytes())` (el camino que ya funciona hoy).
+   El juego **nunca** deja de sonar por falta de numpy.
 2. **Banco nuevo (18–20 SFX)**: salto, **doble salto**, **aterrizaje**, dash, pala, **impacto**, **muerte de enemigo**, alma, vida extra, daño, **checkpoint**, portón, rugido del jefe, **click / confirm / deny de UI**, **paso**, **recogida**.
 3. **Capas**: cada sonido = 2–3 capas (p. ej. salto = barrido sinusoidal + chispa de ruido filtrado) → deja de sonar a "bip".
 4. **Variación**: detune aleatorio ±5% por reproducción + pool de 2–3 variantes → nada suena dos veces igual.
 5. **Mezcla**: `set_num_channels(16)`, `set_reserved(2)` para UI y sonidos críticos, chequear `play() is None`, volumen por canal.
 6. **Paridad entre builds**: **exportar el banco a WAV** con el módulo `wave` de la stdlib y hacer que el export GDevelop use esos mismos WAV (hoy el nativo genera sus propios WAV aparte) → los dos builds suenan igual.
 7. **Capa ambiental**: un drone de 2 osciladores + ruido filtrado en loop de 8 s (canal dedicado) → el silencio absoluto hoy resta la atmósfera gótica.
+
+---
+
+## 4.1 La decisión de `numpy` (Fase 4) — explicada
+
+### Qué es
+`numpy` es la librería estándar de facto para matemática con vectores en Python: en vez de
+recorrer muestra por muestra con un `for`, hacés la operación sobre **toda la onda de golpe**
+(`onda * envolvente`, `np.clip`, `np.column_stack`...). No es un motor de audio ni un motor
+de juego: solo hace que construir sonidos sea matemática en vez de bucles.
+
+### Por qué la propuse (medido en este proyecto, con `pygame-ce 2.5.8` + `numpy 2.5.4`)
+
+| | Sin numpy (stdlib `array`) | Con numpy (`pygame.sndarray`) |
+|---|---|---|
+| ¿Existe la API oficial `pygame.sndarray.make_sound()`? | **No**: sin numpy el módulo es un `MissingModule` → `NotImplementedError` | Sí |
+| Costo de generar 1 sonido de 3 capas con filtro | 16,5 ms | 11,3 ms |
+| Costo de generar el banco completo (20 sonidos) | **0,33 s** al arrancar | **0,23 s** al arrancar |
+| Capas, mezcla, envolvente, normalización | un `for` por muestra y por capa: ~150 líneas y muchos índices | una operación por capa: ~40 líneas |
+| Riesgo de error de índice / saturación | alto (se corta el audio) | bajo (`np.clip` normaliza) |
+
+Medido en el venv del proyecto (`.venv`, Python 3.14.8):
+- `pip install numpy` → instala **numpy 2.5.4** y `pygame.sndarray` funciona con `pygame-ce 2.5.8` ✓.
+- `requirements.txt` hoy tiene una sola línea (`pygame-ce>=2.5,<3`); pasa a tener dos.
+
+### Lo que NO cambia
+El **diseño** del sonido no depende de numpy: la ficha de cada SFX (frecuencia, duración,
+capas, envolvente, volumen) se escribe una sola vez en datos. Lo único que cambia es el
+**renderizador** que la convierte en `pygame.mixer.Sound`.
+
+### El fallback (por qué no es riesgo)
+`audio_sintetizador.py` hace:
+
+```python
+try:
+    import numpy as np
+    HAY_NUMPY = True
+except ImportError:
+    HAY_NUMPY = False
+
+def renderizar(ficha) -> pygame.mixer.Sound:
+    if HAY_NUMPY:
+        return _render_numpy(ficha)   # pygame.sndarray.make_sound (oficial)
+    return _render_puro(ficha)        # Sound(buffer=array.tobytes()) (el de hoy)
+```
+
+Consecuencia: si en la máquina del aula no hay numpy o no hay internet para instalarlo,
+**el juego arranca igual y suena igual** (con el renderizador puro, un poco más lento al
+arrancar). numpy es una **optimización y una vía a la API oficial**, no un requisito.
+
+### Costo real
+- Una línea más en `requirements.txt`: `numpy>=2`.
+- Licencia **BSD-3-Clause** (uso libre, incluso comercial; solo hay que conservar el aviso
+  de copyright al redistribuir). `pygame` es LGPL-2.1: el proyecto ya lo usa igual.
+- Instalación: `pip install numpy` (wheel oficial, ~15 MB instalado).
+
+### Veredicto
+**Sí a numpy, con fallback obligatorio.** Se agrega a `requirements.txt` para que la
+instalación en cualquier máquina quede completa de una vez (`pip install -r requirements.txt`),
+y el sintetizador no lo da por hecho: si falta, suena igual con el camino puro.
+
 
 ### Fase 5 — Verificación y documentación (2 h)
 
@@ -165,22 +231,28 @@ Cada punto es una fila de la tabla §8 del GDD, convertida en código:
 
 ---
 
-## 5. Orden, dependencias y qué recortar si falta tiempo
+## 5. Orden de ejecución
+
+**Decisión del usuario: se hacen TODAS las fases, en orden secuencial (0 → 1 → 2 → 3 → 4 → 5).**
+No hay recortes: el plan está completo y cada fase se entrega testeada antes de pasar a la
+siguiente. El orden no es arbitrario:
 
 ```
-Fase 0 (bugs)  ──►  Fase 1 (HUD)  ──┐
-                     Fase 2 (sprites) ├─►  Fase 3 (efectos)  ──►  Fase 4 (audio)  ──►  Fase 5 (verificar)
-                     Fase 4 (audio)  ─┘
+Fase 0 (bugs)  ──►  Fase 1 (HUD)  ──►  Fase 2 (sprites)  ──►  Fase 3 (efectos)  ──►  Fase 4 (audio)  ──►  Fase 5 (verificar)
 ```
 
-- **Fase 0 bloquea a todas**: sin el fix de formato el audio no se puede evaluar; sin los assets separados cada export rompe al anterior.
-- **1 y 2 son independientes** → se pueden hacer en paralelo.
-- **Fase 3 depende de 2** (los efectos acoplan con las poses nuevas).
-- **Fase 4 es independiente** de lo visual.
+- **Fase 0 bloquea a todas**: sin el fix de formato el audio no se puede evaluar; sin los assets separados cada export rompe al anterior; sin `git init` no hay red de seguridad para las 5 fases siguientes.
+- **Fase 1 antes que 2**: el HUD es lo que el jugador ve en todo momento; si el arte cambia después, el HUD no se toca de nuevo.
+- **Fase 3 después de 2**: los efectos acoplan con las poses nuevas (hitstop, squash, flash de frame necesitan las poses ya existentes).
+- **Fase 4 al final**: el banco de audio se reescribe una sola vez, con el juego ya estable, y se exporta a WAV para que el build nativo use el mismo banco.
+- **Fase 5 cierra**: tests, capturas, GDD actualizado y el video de presentación.
 
-**Si hay poco tiempo, el orden de retorno por hora es:**
-`0.2 (audio mal) → 0.1 (assets) → 3.1 hitstop + 3.2 flash de frame → 1.2 iconos → 4.2/4.3 banco con capas y variación → 2.3 tell de enemigos`.
-Es decir: primero lo que está **roto**, después lo que más **se siente**, después lo que más **se ve**.
+**Regla de cada fase**: termina con `tests/test_logica.py` + `node tests/test_runtime_gdevelop.js`
+en verde, el export regenerado y una captura antes/después. Si una fase rompe algo, se
+arregla antes de seguir.
+
+*(Nota: la sección "retorno por hora" que había abajo queda como referencia histórica de
+qué es lo más urgente si en algún momento hay que reordenar; el plan vigente es el lineal.)*
 
 ---
 
