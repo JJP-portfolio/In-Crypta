@@ -109,14 +109,15 @@ El juego está compuesto por 3 niveles extensos y diseñados meticulosamente en 
   4. *Acto IV (La Galería de los Sepulcros y Combate Aéreo):* Pilares estrechos sobre un lecho de pinchos donde se encadena pisotón y palazo para reiniciar el dash en el aire.
   5. *Acto V (La Gran Pared y el Santuario Interior):* Salto desde la atalaya (col 163), dash rasante a través de la ventana alta de la pared monolítica (cols 170–171) hacia el santuario final con cáliz (`c`), sepulcro (`s`) y portón (`G`) hacia El Osario.
 
-### 4.3 Nivel 3: El Osario y El Custodio (160 columnas × 12 filas)
+### 4.3 Nivel 3: El Osario y El Custodio (220 columnas × 12 filas)
 - **Tema:** Catacumbas profundas de hueso y cráneos, atmósfera rojiza y fuego fatuo.
+- **Enseñanza:** Maestría definitiva. Consagración de la Guadaña Mística (`X`, rango 72 px), sincronización de plataformas móviles `M` y `V` sobre lechos de pinchos, encadenamiento de golpes aéreos para restaurar el dash, y el duelo climácico en dos fases contra El Custodio.
 - **Estructura en 5 Actos:**
-  1. *Acto I (El Despertar del Osario):* Plataformas de hueso estrechas y enemigos melee que custodian los pasillos.
-  2. *Acto II (El Altar de la Guadaña Mística):* En una cámara ceremonial, el sepulturero consagra su pala, transformándola en la **Guadaña Púrpura** (rango de ataque expandido a 72 px y estela mística).
-  3. *Acto III (Prueba de Corte):* Sala de combate diseñada para probar el alcance de la guadaña contra enjambres de arañas y proyectiles de tótems.
-  4. *Acto IV (El Guardián Menor):* Mini-jefe rápido con ataque de embestida que enseña el rebote por pisotón aéreo.
-  5. *Acto V (La Gran Arena del Custodio):* Cámara monolítica cerrada donde aguarda el jefe final.
+  1. *Acto I (El Descenso al Fuego Fatuo):* Entrada al osario, foso inicial con plataforma móvil horizontal `MMMM` y primeros moradores sobre lápidas óseas.
+  2. *Acto II (La Capilla Ósea y la Guadaña Mística):* Foso con plataforma móvil vertical (`V`) hacia el pedestal donde reposa **La Guadaña Mística (`X`)**, seguido de una pasarela de combate cerrado contra dos Guardias Melee (`L`) para dominar el nuevo rango de 72 px.
+  3. *Acto III (El Desfiladero de Cadenas y Plataformas Mixtas):* Fosos dobles con plataformas horizontales y verticales sobre un lecho continuo de pinchos (`^^^^`), con sepulcro de guardado (`s`) en col 128.
+  4. *Acto IV (El Guantelete de los Guardias de Élite):* Pilares escalonados de hueso sobre un mar de pinchos donde golpear a los guardias en el aire resetea el dash para alcanzar el siguiente apoyo.
+  5. *Acto V (La Gran Arena del Custodio):* Checkpoint (`s`) en col 178, cámara monumental de 33 baldosas con cornisas tácticas elevadas para esquivar las ondas de choque del Custodio (`B`, col 196) y lanzarse en pisotón (stomp) en la Fase 2, culminando en la Cámara de la Victoria con el Cáliz (`c`) y el Portón Final (`G`, col 216).
 
 ---
 

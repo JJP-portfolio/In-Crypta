@@ -637,10 +637,10 @@ def probar_mapa_final():
     assert not any("B" in fila for fila in filas_2)
 
     filas_3 = NIVEL_3.strip("\n").splitlines()
-    assert len(filas_3) == 12 and len(filas_3[0]) == 160
+    assert len(filas_3) == 12 and len(filas_3[0]) == 220
     fila_jefe = next(fila for fila in filas_3 if "B" in fila)
-    assert fila_jefe.index("B") == 138
-    assert next(fila for fila in filas_3 if "G" in fila).index("G") == 155
+    assert fila_jefe.index("B") == 196
+    assert next(fila for fila in filas_3 if "G" in fila).index("G") == 216
 
     for datos in (NIVEL_2, NIVEL_3):
         filas = datos.strip("\n").splitlines()
