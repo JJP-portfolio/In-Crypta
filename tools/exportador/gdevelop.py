@@ -325,27 +325,6 @@ def escena(nombre: str, objetos: list[dict], instancias: list[dict], eventos: li
         "stopSoundsOnStartup": False,
         "title": "",
         "v": 8,
-        "use3d": False,
-        "layers": [capa_base(), capa_ui()],
-        "instances": instancias,
-        "objects": objetos,
-        "events": eventos,
-        "behaviors": [],
-    }
-
-
-def escena(nombre: str, objetos: list[dict], instancias: list[dict], eventos: list[dict]) -> dict:
-    return {
-        "b": 13,
-        "disableInputWhenNotFocused": True,
-        "mangledName": escena_mangled(nombre),
-        "name": nombre,
-        "r": 9,
-        "renderer3DWorldScale": 100,
-        "standardSortMethod": True,
-        "stopSoundsOnStartup": False,
-        "title": "",
-        "v": 8,
         "uiSettings": {
             "grid": False,
             "gridType": "rectangular",

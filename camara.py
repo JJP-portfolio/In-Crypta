@@ -29,6 +29,7 @@ class Camara:
         self.offset_y = 0.0
         self.sacudida_tiempo = 0.0
         self.sacudida_fuerza = 0.0
+        self.permitir_sacudida = True
 
     # --- Función actualizar --- #
     def actualizar(self, jugador, nivel, dt):
@@ -55,6 +56,10 @@ class Camara:
 
     # --- Función sacudir --- #
     def sacudir(self, fuerza=SACUDIDA_FUERZA, duracion=SACUDIDA_DURACION):
+        if not self.permitir_sacudida:
+            self.offset_x = 0.0
+            self.offset_y = 0.0
+            return
         self.sacudida_tiempo = max(self.sacudida_tiempo, duracion)
         self.sacudida_fuerza = max(self.sacudida_fuerza, fuerza)
 

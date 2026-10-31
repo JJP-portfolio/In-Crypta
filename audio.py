@@ -61,9 +61,16 @@ class Audio:
             self.sonidos = {
                 "salto": crear_tono(230, 0.14, 0.18, "seno", 140),
                 "alma": crear_tono(660, 0.22, 0.16, "seno", 220),
+                "alma_1": crear_tono(523, 0.18, 0.16, "seno", 140),
+                "alma_2": crear_tono(587, 0.18, 0.16, "seno", 160),
+                "alma_3": crear_tono(659, 0.19, 0.16, "seno", 180),
+                "alma_4": crear_tono(784, 0.20, 0.16, "seno", 220),
+                "alma_5": crear_tono(880, 0.22, 0.17, "seno", 250),
+                "alma_6": crear_tono(1046, 0.24, 0.18, "seno", 300),
                 "dash": crear_tono(150, 0.18, 0.16, "sierra", 380),
                 "ataque": crear_tono(280, 0.10, 0.16, "sierra", 520),
                 "pala": crear_tono(95, 0.20, 0.26, "ruido", -40),
+                "stomp": crear_tono(135, 0.18, 0.25, "ruido", -60),
                 "onda": crear_tono(70, 0.42, 0.24, "ruido", 90),
                 "jefe_aviso": crear_tono(190, 0.28, 0.15, "cuadrada", -55),
                 "jefe_fase": crear_tono(110, 0.55, 0.22, "cuadrada", -35),
@@ -71,6 +78,7 @@ class Audio:
                 "vida_extra": crear_tono(740, 0.42, 0.18, "seno", 520),
                 "ui": crear_tono(420, 0.06, 0.10, "cuadrada", -40),
                 "daño": crear_tono(160, 0.26, 0.22, "cuadrada", -90),
+                "muerte": crear_tono(75, 0.65, 0.26, "cuadrada", -40),
                 "meta": crear_tono(220, 0.55, 0.20, "seno", 260),
             }
             self.activo = True

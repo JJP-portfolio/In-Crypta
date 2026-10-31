@@ -358,8 +358,12 @@ def guardar_puerta() -> None:
 
 
 def guardar_solido() -> None:
+    # La textura del sólido debe ser opaca: GDevelop calcula la máscara de
+    # colisión del comportamiento Platform a partir del alfa de la textura.
+    # Si queda casi transparente (alfa 1), la máscara se pierde y el jugador
+    # atraviesa el suelo ("cosas pisadas" / colisiones rotas).
     surface = pygame.Surface((TILE, TILE), pygame.SRCALPHA)
-    surface.fill((0, 0, 0, 1))
+    surface.fill((68, 62, 70, 255))
     pygame.image.save(surface, ASSETS / "solido.png")
 
 

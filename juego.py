@@ -130,6 +130,11 @@ class Juego:
         self.sala_prueba = False
         self.sala_prueba_indice = None
         self.es_tutorial = False
+        self.reducir_movimiento = False
+        self.muertes_totales = 0
+        self.causa_muerte = ""
+        self.almas_combo_count = 0
+        self.almas_combo_timer = 0.0
         self.test_opcion = 0
         self.menu_opcion = 0
         self.nivel_seleccionado = 0
@@ -167,6 +172,7 @@ class Juego:
         self.jugador = Jugador(*self.nivel.spawn, vidas=vidas_iniciales)
         self.jugador.tiene_pala = tiene_pala
         self.camara = Camara()
+        self.camara.permitir_sacudida = not self.reducir_movimiento
         self.camara.actualizar(self.jugador, self.nivel, 1.0)
         self.estado = "jugando"
         self.tiempo_nivel = 0.0
@@ -203,6 +209,7 @@ class Juego:
         self.jugador = Jugador(*self.nivel.spawn, vidas=vidas_iniciales)
         self.jugador.tiene_pala = False
         self.camara = Camara()
+        self.camara.permitir_sacudida = not self.reducir_movimiento
         self.camara.actualizar(self.jugador, self.nivel, 1.0)
         self.estado = "jugando"
         self.tiempo_nivel = 0.0
@@ -353,6 +360,14 @@ class Juego:
                 elif evento.key == pygame.K_m:
                     self.audio.alternar()
 
+                elif evento.key == pygame.K_F1:
+                    self.reducir_movimiento = not self.reducir_movimiento
+                    self.camara.permitir_sacudida = not self.reducir_movimiento
+                    self.hud.reducir_movimiento = self.reducir_movimiento
+                    estado_str = "ACTIVADA" if self.reducir_movimiento else "DESACTIVADA"
+                    self.hud.mostrar_mensaje(f"ACCESIBILIDAD: REDUCIR MOVIMIENTO {estado_str}", 3, 2.5)
+                    self.audio.reproducir("ui")
+
                 elif evento.key == pygame.K_r and self.estado not in ("titulo", "menu", "seleccion_nivel", "creditos"):
                     if self.sala_prueba:
                         self.cargar_sala_prueba(self.sala_prueba_indice)
@@ -400,7 +415,10 @@ class Juego:
                         self.cargar_sala_prueba(self.sala_prueba_indice)
                     elif self.estado == "derrota" and self.es_tutorial:
                         self.iniciar_tutorial()
-                    elif self.estado in ("derrota", "victoria"):
+                    elif self.estado == "derrota":
+                        self.cargar_nivel(self.nivel_indice, vidas=VIDAS_INICIALES)
+                        self.estado = "jugando"
+                    elif self.estado == "victoria":
                         self.abrir_menu()
 
             elif evento.type == pygame.KEYUP:
@@ -430,6 +448,11 @@ class Juego:
         self.tiempo_nivel += dt
         self.tiempo_total += dt
 
+        if self.almas_combo_timer > 0:
+            self.almas_combo_timer = max(0.0, self.almas_combo_timer - dt)
+            if self.almas_combo_timer <= 0:
+                self.almas_combo_count = 0
+
         self.actualizar_plataformas(dt)
         teclas = pygame.key.get_pressed()
         self.jugador.actualizar(dt, teclas, self.nivel.solidos_actuales())
@@ -441,7 +464,7 @@ class Juego:
             return
 
         if self.jugador.rect.top > self.nivel.alto + 120:
-            self.perder_vida(ignorar_invulnerabilidad=True)
+            self.perder_vida(ignorar_invulnerabilidad=True, causa="Caída al abismo de la cripta")
             return
 
         if self.actualizar_peligros():
@@ -673,7 +696,7 @@ class Juego:
                 and self.jugador.invulnerable <= 0
                 and onda.rect.colliderect(self.jugador.rect)
             ):
-                self.perder_vida()
+                self.perder_vida(causa="Onda de choque del Custodio")
                 return True
         self.ondas_jefe = [onda for onda in self.ondas_jefe if onda.viva]
 
@@ -694,7 +717,7 @@ class Juego:
                 self.jugador.invulnerable = 0.40
                 self.dañar_jefe_pisaton()
             elif self.jugador.invulnerable <= 0:
-                self.perder_vida()
+                self.perder_vida(causa="Poder abrumador del Custodio")
                 return True
 
         if self.punto_reintento is None:
@@ -743,7 +766,9 @@ class Juego:
         """Pisotón: siempre funciona en ambas fases."""
         if not self.jefe.recibir_pisaton():
             return False
-        return self._aplicar_golpe_jefe()
+        res = self._aplicar_golpe_jefe()
+        self.audio.reproducir("stomp")
+        return res
 
     # --- Función _aplicar_golpe_jefe (efectos comunes) --- #
     def _aplicar_golpe_jefe(self):
@@ -786,7 +811,7 @@ class Juego:
             return False
         for peligro in self.nivel.peligros:
             if self.jugador.rect.colliderect(peligro):
-                self.perder_vida()
+                self.perder_vida(causa="Pinchos ancestrales del camposanto")
                 return True
         return False
 
@@ -807,11 +832,11 @@ class Juego:
                 self.jugador.en_suelo = False
                 self.jugador.dash_usos_aire = DASH_USOS_AIRE
                 self.jugador.dash_cooldown = 0.0
-                self.audio.reproducir("pala")
+                self.audio.reproducir("stomp")
                 self.particulas.pala(enemigo.rect.centerx, enemigo.rect.centery)
                 self.camara.sacudir(6.0, 0.14)
             else:
-                self.perder_vida()
+                self.perder_vida(causa="Contacto con un Morador de la cripta")
                 return
 
         for enemigo_melee in self.nivel.enemigos_melee:
@@ -831,11 +856,11 @@ class Juego:
                     self.jugador.en_suelo = False
                     self.jugador.dash_usos_aire = DASH_USOS_AIRE
                     self.jugador.dash_cooldown = 0.0
-                    self.audio.reproducir("pala")
+                    self.audio.reproducir("stomp")
                     self.particulas.pala(enemigo_melee.rect.centerx, enemigo_melee.rect.centery)
                     self.camara.sacudir(6.0, 0.14)
                 else:
-                    self.perder_vida()
+                    self.perder_vida(causa="Embestida del Guardia de la cripta")
                     return
 
         for totem in self.nivel.totems:
@@ -849,7 +874,7 @@ class Juego:
                 and self.jugador.invulnerable <= 0
                 and self.jugador.rect.colliderect(cuervo.rect)
             ):
-                self.perder_vida()
+                self.perder_vida(causa="Ataque aéreo de Cuervo espectral")
                 return
 
         # Polillas: vuelo zigzag, daño por contacto.
@@ -860,7 +885,7 @@ class Juego:
                 and self.jugador.invulnerable <= 0
                 and self.jugador.rect.colliderect(polilla.rect)
             ):
-                self.perder_vida()
+                self.perder_vida(causa="Polvo letal de Polilla sombría")
                 return
 
         # Arañas: patrullaje horizontal, daño por contacto.
@@ -871,14 +896,21 @@ class Juego:
                 and self.jugador.invulnerable <= 0
                 and self.jugador.rect.colliderect(araña.rect)
             ):
-                self.perder_vida()
+                self.perder_vida(causa="Picadura de Araña espectral")
                 return
 
     # --- Función actualizar_almas --- #
     def actualizar_almas(self):
         for alma in self.nivel.almas:
             if alma.actualizar(self.jugador):
-                self.audio.reproducir("alma")
+                self.almas_combo_timer = 1.3
+                self.almas_combo_count = min(6, self.almas_combo_count + 1)
+                sonido_alma = (
+                    f"alma_{self.almas_combo_count}"
+                    if f"alma_{self.almas_combo_count}" in self.audio.sonidos
+                    else "alma"
+                )
+                self.audio.reproducir(sonido_alma)
                 self.particulas.alma(alma.rect.centerx, alma.rect.centery)
                 self.jugador.almas_para_vida += 1
                 if self.jugador.almas_para_vida >= ALMAS_POR_VIDA:
@@ -924,7 +956,7 @@ class Juego:
                 self.hud.mostrar_mensaje("¡GUADAÑA MÍSTICA! · Alcance espectral de 72px · Pisotón en el Custodio", 3, 4.0)
 
     # --- Función perder_vida --- #
-    def perder_vida(self, ignorar_invulnerabilidad=False):
+    def perder_vida(self, ignorar_invulnerabilidad=False, causa="Peligros de la cripta"):
         if self.jugador.invulnerable > 0 and not ignorar_invulnerabilidad:
             return
 
@@ -934,9 +966,14 @@ class Juego:
         self.camara.sacudir(9.0, 0.22)
         self.flash = 0.16
         self.flash_color = ROJO
+        self.almas_combo_count = 0
+        self.almas_combo_timer = 0.0
 
         if self.jugador.vidas <= 0:
+            self.muertes_totales += 1
+            self.causa_muerte = causa
             self.estado = "derrota"
+            self.audio.reproducir("muerte")
             return
 
         self.jugador.almas = 0
@@ -1493,7 +1530,7 @@ class Juego:
         if self.estado == "pausa":
             self.dibujar_overlay(
                 "PAUSA",
-                "P continuar · R reiniciar nivel · ESC volver al menú principal",
+                "P continuar · R reiniciar nivel · F1 reducir movimiento · ESC volver al menú principal",
             )
         elif self.estado == "nivel_completado":
             self.dibujar_overlay("LA CRIPTA SE ABRE", "ENTER para descender")
@@ -1508,10 +1545,7 @@ class Juego:
                 "El sepulturero ha aprendido su oficio · ENTER para volver al menú",
             )
         elif self.estado == "derrota":
-            self.dibujar_overlay(
-                "LA OSCURIDAD TE RECLAMA",
-                "ENTER para reintentar · ESC volver al menú",
-            )
+            self.dibujar_derrota()
         elif self.estado == "victoria":
             self.dibujar_victoria()
 
@@ -1858,7 +1892,7 @@ class Juego:
         y_stat = py + 114
         for etiqueta, valor, color in stats:
             self.dibujar_texto(etiqueta, px + 50, y_stat, 14, HUD_MUTED)
-            self.dibujar_texto(valor, px + pw - 50, y_stat, 20, color, sombra=True)
+            self.dibujar_texto(valor, px + pw - 50, y_stat, 20, color, sombra=True, derecha=True)
             pygame.draw.line(self.pantalla, (*HUD_BORDE, 90),
                              (px + 30, y_stat + 26), (px + pw - 30, y_stat + 26), 1)
             y_stat += 52
@@ -1884,8 +1918,69 @@ class Juego:
         self.dibujar_texto("ENTER · Volver al menú principal · ESC · Salir",
                            0, py + ph - 30, 13, HUD_MUTED, centrado=True)
 
+    # --- Función dibujar_derrota --- #
+    def dibujar_derrota(self):
+        """Pantalla de derrota estilizada con panel gótico, causas y estadísticas."""
+        # Oscurecer fondo con velo fúnebre carmesí
+        velo = pygame.Surface((ANCHO, ALTO), pygame.SRCALPHA)
+        velo.fill((10, 4, 6, 225))
+        self.pantalla.blit(velo, (0, 0))
+
+        # Panel central heráldico
+        pw, ph = 680, 440
+        px = (ANCHO - pw) // 2
+        py = (ALTO - ph) // 2
+
+        panel = pygame.Surface((pw, ph), pygame.SRCALPHA)
+        pygame.draw.rect(panel, (18, 10, 14, 245), (0, 0, pw, ph), border_radius=14)
+        pygame.draw.rect(panel, (160, 40, 50, 220), (0, 0, pw, ph), 2, border_radius=14)
+        pygame.draw.line(panel, (*HUD_ORO, 120), (20, 1), (pw - 20, 1), 1)
+        pygame.draw.line(panel, (*HUD_ORO, 120), (20, ph - 1), (pw - 20, ph - 1), 1)
+
+        # Ornamentos en esquinas
+        for cx_, cy_, dx_, dy_ in ((0, 0, 1, 1), (pw, 0, -1, 1), (0, ph, 1, -1), (pw, ph, -1, -1)):
+            pygame.draw.line(panel, HUD_ORO, (cx_ + 8 * dx_, cy_), (cx_ + 26 * dx_, cy_), 1)
+            pygame.draw.line(panel, HUD_ORO, (cx_, cy_ + 8 * dy_), (cx_, cy_ + 26 * dy_), 1)
+        self.pantalla.blit(panel, (px, py))
+
+        # Título fúnebre
+        self.dibujar_texto("LA OSCURIDAD TE RECLAMA", 0, py + 24, 34, HUD_ROJO, centrado=True, sombra=True)
+        causa = getattr(self, "causa_muerte", "") or "Peligros de la cripta"
+        self.dibujar_texto(f"CAUSA: {causa.upper()}", 0, py + 68, 14, CREMA, centrado=True)
+        pygame.draw.line(self.pantalla, (160, 40, 50, 180),
+                         (px + 30, py + 94), (px + pw - 30, py + 94), 1)
+
+        # Estadísticas del intento
+        tiempo_min = int(self.tiempo_total) // 60
+        tiempo_seg = int(self.tiempo_total) % 60
+        tiempo_dec = int((self.tiempo_total - int(self.tiempo_total)) * 10)
+
+        nombre_nivel = "RITUAL DEL SEPULTURERO" if self.es_tutorial else (
+            f"NIVEL {self.nivel_indice + 1} — {self.nivel.nombre.upper()}" if self.nivel and hasattr(self.nivel, "nombre") else "DESAFÍO"
+        )
+        stats = [
+            ("LUGAR DE CAÍDA", nombre_nivel, HUD_ORO),
+            ("TIEMPO SOBREVIVIDO", f"{tiempo_min:02d}:{tiempo_seg:02d}.{tiempo_dec}", CREMA),
+            ("ALMAS TOTALES COSECHADAS", f"{self.almas_totales}", HUD_ORO),
+            ("CAÍDAS TOTALES", f"{self.muertes_totales}", HUD_ROJO),
+        ]
+
+        y_stat = py + 114
+        for etiqueta, valor, color in stats:
+            self.dibujar_texto(etiqueta, px + 50, y_stat, 14, HUD_MUTED)
+            self.dibujar_texto(valor, px + pw - 50, y_stat, 18, color, sombra=True, derecha=True)
+            pygame.draw.line(self.pantalla, (80, 25, 35, 120),
+                             (px + 30, y_stat + 28), (px + pw - 30, y_stat + 28), 1)
+            y_stat += 52
+
+        # Separador inferior y llamada a la acción
+        pygame.draw.line(self.pantalla, (160, 40, 50, 160),
+                         (px + 30, py + 372), (px + pw - 30, py + 372), 1)
+        self.dibujar_texto("ENTER: REINTENTAR · ESC: VOLVER AL MENÚ",
+                           0, py + 396, 16, HUD_ORO, centrado=True, sombra=True)
+
     # --- Función dibujar_texto --- #
-    def dibujar_texto(self, texto, x, y, tamano=24, color=BLANCO, centrado=False, sombra=False):
+    def dibujar_texto(self, texto, x, y, tamano=24, color=BLANCO, centrado=False, sombra=False, derecha=False):
         if tamano not in self.fuentes:
             try:
                 self.fuentes[tamano] = pygame.font.Font(self._ruta_fuente_gotica, tamano)
@@ -1897,6 +1992,8 @@ class Juego:
             rect_sombra = imagen_sombra.get_rect()
             if centrado:
                 rect_sombra.center = (ANCHO // 2 + 3, y + 3)
+            elif derecha:
+                rect_sombra.topright = (x + 3, y + 3)
             else:
                 rect_sombra.topleft = (x + 3, y + 3)
             self.pantalla.blit(imagen_sombra, rect_sombra)
@@ -1905,6 +2002,8 @@ class Juego:
         rect = imagen.get_rect()
         if centrado:
             rect.center = (ANCHO // 2, y)
+        elif derecha:
+            rect.topright = (x, y)
         else:
             rect.topleft = (x, y)
         self.pantalla.blit(imagen, rect)

@@ -33,6 +33,7 @@ from config import (
     VIRTUAL_ANCHO,
     JUGADOR_ANCHO,
     TILE,
+    VIDAS_INICIALES,
     VIDAS_MAXIMAS,
 )
 from entidades import Alma, Enemigo, Jugador
@@ -818,6 +819,86 @@ def probar_transicion_almas_vidas():
     print("transición de almas y vidas: OK")
 
 
+# --- Prueba: feedback de derrota, causas de muerte y reintento con ENTER --- #
+def probar_feedback_derrota_y_reintento():
+    juego = Juego()
+    juego.iniciar_partida()
+    assert juego.muertes_totales == 0
+
+    # Caída al vacío causa derrota al agotar vidas
+    juego.jugador.vidas = 1
+    juego.jugador.invulnerable = 0
+    juego.jugador.rect.y = juego.nivel.alto + 200
+    juego.jugador.y = float(juego.jugador.rect.y)
+    juego.actualizar(1 / 60)
+
+    assert juego.estado == "derrota"
+    assert juego.muertes_totales == 1
+    assert "abismo" in juego.causa_muerte.lower() or "caída" in juego.causa_muerte.lower()
+
+    # Dibujar la pantalla de derrota sin excepciones
+    juego.dibujar_derrota()
+
+    # Presionar ENTER en derrota reintenta el nivel con vidas iniciales
+    evento_enter = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_RETURN)
+    pygame.event.post(evento_enter)
+    juego.procesar_eventos()
+    assert juego.estado == "jugando"
+    assert juego.jugador.vidas == VIDAS_INICIALES
+    print("feedback derrota y reintento: OK")
+
+
+# --- Prueba: accesibilidad reducción de movimiento (F1) --- #
+def probar_accesibilidad():
+    juego = Juego()
+    juego.iniciar_partida()
+    assert not juego.reducir_movimiento
+    assert juego.camara.permitir_sacudida
+
+    # Toggle con F1
+    evento_f1 = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_F1)
+    pygame.event.post(evento_f1)
+    juego.procesar_eventos()
+    assert juego.reducir_movimiento
+    assert not juego.camara.permitir_sacudida
+    assert juego.hud.reducir_movimiento
+
+    # Con sacudida desactivada, no hay offset
+    juego.camara.sacudir(20.0, 1.0)
+    juego.camara.actualizar_sacudida(0.1)
+    assert juego.camara.offset_x == 0.0
+    assert juego.camara.offset_y == 0.0
+
+    # Toggle de vuelta con F1
+    pygame.event.post(evento_f1)
+    juego.procesar_eventos()
+    assert not juego.reducir_movimiento
+    assert juego.camara.permitir_sacudida
+    print("accesibilidad reducir movimiento: OK")
+
+
+# --- Prueba: combo musical de recolección de almas --- #
+def probar_combo_almas():
+    juego = Juego()
+    juego.iniciar_partida()
+    assert juego.almas_combo_count == 0
+    assert juego.almas_combo_timer == 0.0
+
+    # Si hay un alma en el nivel, simular recolección
+    if juego.nivel.almas:
+        alma = juego.nivel.almas[0]
+        juego.jugador.rect.center = alma.rect.center
+        juego.actualizar_almas()
+        assert juego.almas_combo_count == 1
+        assert juego.almas_combo_timer > 0.0
+
+        # Paso de tiempo agota el timer y resetea el combo
+        juego.actualizar(2.0)
+        assert juego.almas_combo_count == 0
+        assert juego.almas_combo_timer == 0.0
+    print("combo almas: OK")
+
+
 # --- Ejecución --- #
 if __name__ == "__main__":
     probar_niveles()
@@ -848,6 +929,9 @@ if __name__ == "__main__":
     probar_menu_principal_y_navegacion()
     probar_tutorial()
     probar_transicion_almas_vidas()
+    probar_feedback_derrota_y_reintento()
+    probar_accesibilidad()
+    probar_combo_almas()
     probar_pinchos()
     probar_juego_headless()
     print("\nTESTS_INCRYPTA_OK")
