@@ -914,17 +914,7 @@ class Juego:
             )
             pygame.draw.line(fondo, color, (0, y), (w, y))
 
-        if tema == "camposanto":
-            estrellas = [
-                (70, 55, 2), (140, 120, 1), (230, 45, 2), (310, 150, 1),
-                (390, 70, 1), (470, 30, 2), (560, 130, 1), (640, 58, 2),
-                (720, 170, 1), (880, 40, 2), (930, 140, 1), (180, 210, 1),
-                (520, 200, 1), (840, 220, 1),
-            ]
-            for sx, sy, tamano in estrellas:
-                if sx < w and sy < h:
-                    pygame.draw.circle(fondo, (190, 200, 190), (sx, sy), tamano)
-        elif tema == "cripta":
+        if tema == "cripta":
             vx = int(w * 0.68)
             pygame.draw.rect(fondo, (16, 15, 22), (vx, 40, 150, 230))
             pygame.draw.arc(fondo, (52, 50, 60), (vx - 10, 10, 170, 110), 0, math.pi, 8)
@@ -933,7 +923,7 @@ class Juego:
                 pygame.draw.line(fondo, (20, 25, 30), (x, 80), (x, 248), 3)
             pygame.draw.line(fondo, (20, 25, 30), (vx + 16, 166), (vx + 134, 166), 3)
             pygame.draw.arc(fondo, (42, 58, 62), (vx + 10, 48, 130, 70), 0, math.pi, 4)
-        else:
+        elif tema == "osario":
             cx = int(w * 0.76)
             pygame.draw.circle(fondo, (52, 16, 22), (cx, 120), 80)
             pygame.draw.circle(fondo, (94, 26, 32), (cx, 120), 54)
@@ -986,9 +976,8 @@ class Juego:
         if destino is None:
             destino = self.pantalla
         w, h = destino.get_width(), destino.get_height()
-        desplazamiento = int(self.camara.x * 0.16)
 
-        # Luna llena con halo — posicionada a 0.68w para no tapar el HUD derecho
+        # Luna llena con halo — paralaje lejano suave (0.04)
         luna_x = int(w * 0.68) - int(self.camara.x * 0.04)
         luna_y = 72
         halo_luna = pygame.Surface((120, 120), pygame.SRCALPHA)
@@ -998,39 +987,46 @@ class Juego:
         pygame.draw.circle(destino, (236, 230, 196), (luna_x, luna_y), 26)
         pygame.draw.circle(destino, (218, 210, 174), (luna_x + 6, luna_y - 4), 8)
 
-        # Estrellas fijas
+        # Bóveda celeste con estrellas en paralaje continuo (0.06)
         estrellas = [
-            (88, 42), (142, 18), (240, 56), (310, 28), (418, 44),
-            (520, 15), (620, 38), (730, 22), (840, 50), (1100, 32),
-            (1160, 18), (1220, 44), (60, 70), (380, 62), (700, 55),
+            (60, 42), (140, 20), (220, 56), (310, 28), (410, 44),
+            (500, 16), (590, 38), (680, 22), (770, 50), (860, 32),
+            (940, 18), (1010, 44), (90, 70), (270, 62), (460, 55),
+            (640, 75), (820, 65), (980, 80),
         ]
-        ox = int(self.camara.x * 0.04) % w
+        ox = int(self.camara.x * 0.06) % w
         for sx, sy in estrellas:
             px = (sx - ox) % w
-            if sy < h:
-                pygame.draw.circle(destino, (220, 218, 200), (px, sy), 1)
+            pygame.draw.circle(destino, (220, 218, 200), (px, sy), 1)
 
-        # Colinas traseras (armonizadas con el azul noche del cielo)
-        for i in range(-2, 10):
-            x = i * 260 - desplazamiento
+        # Colinas góticas continuas en bucle modular infinito (paralaje 0.18)
+        hill_w = 300
+        offset_h = int(self.camara.x * 0.18) % hill_w
+        for i in range(-1, int(w / hill_w) + 2):
+            bx = i * hill_w - offset_h
             pygame.draw.polygon(
                 destino,
                 (22, 34, 52),
-                [(x, h), (x + 180, int(h * 0.52) + 32), (x + 360, h)],
+                [(bx, h), (bx + 150, int(h * 0.52) + 32), (bx + 300, h)],
             )
             pygame.draw.polygon(
                 destino,
                 (28, 42, 62),
-                [(x + 90, h), (x + 230, int(h * 0.58) + 32), (x + 380, h)],
+                [(bx + 75, h), (bx + 195, int(h * 0.58) + 32), (bx + 320, h)],
             )
 
-        for base_x, escala in ((140, 1.15), (560, 0.9), (980, 1.25), (1320, 0.8)):
-            x = (base_x - self.camara.x * 0.28) % (w + 420) - 180
-            self.dibujar_arbol_muerto(destino, x, h - 60, escala)
-
-        for i in range(-2, 18):
-            x = i * 92 - int(self.camara.x * 0.48)
-            self.dibujar_tumba_lejana(destino, x, h - 44, 0.8 + (i % 3) * 0.12)
+        # Árboles marchitos y lápidas continuas a lo largo de todo el nivel (paralaje 0.38)
+        elem_w = 190
+        offset_e = int(self.camara.x * 0.38) % elem_w
+        for i in range(-1, int(w / elem_w) + 2):
+            ex = i * elem_w - offset_e
+            idx_mundo = int((self.camara.x * 0.38 + ex) // elem_w)
+            if idx_mundo % 2 == 0:
+                escala = 0.95 + ((idx_mundo * 7) % 3) * 0.15
+                self.dibujar_arbol_muerto(destino, ex + 40, h - 60, escala)
+            else:
+                escala = 0.85 + ((idx_mundo * 5) % 3) * 0.12
+                self.dibujar_tumba_lejana(destino, ex + 60, h - 44, escala)
 
     def dibujar_arbol_muerto(self, destino, x, base_y, escala):
         alto = int(150 * escala)
@@ -1075,9 +1071,12 @@ class Juego:
         if destino is None:
             destino = self.pantalla
         w, h = destino.get_width(), destino.get_height()
-        desplazamiento = int(self.camara.x * 0.25)
-        for i in range(-2, 8):
-            x = i * 230 - desplazamiento
+        
+        # Columnas de piedra gótica en bucle continuo (paralaje 0.28)
+        col_w = 230
+        offset_c = int(self.camara.x * 0.28) % col_w
+        for i in range(-1, int(w / col_w) + 2):
+            x = i * col_w - offset_c
             pygame.draw.rect(destino, (22, 20, 32), (x, 162, 54, h - 162))
             pygame.draw.rect(destino, (34, 33, 42), (x + 6, 168, 42, h - 168), 2)
             pygame.draw.rect(destino, (24, 23, 30), (x - 8, 152, 70, 14))
@@ -1085,15 +1084,21 @@ class Juego:
             for y in range(192, h, 48):
                 pygame.draw.line(destino, (28, 27, 34), (x + 8, y), (x + 46, y), 1)
 
-        # Cadenas colgantes
-        for base_x, largo in ((210, 110), (470, 150), (760, 90), (1050, 170)):
-            x = int(base_x - self.camara.x * 0.38) % (w + 240) - 120
+        # Cadenas colgantes continuas (paralaje 0.40)
+        chain_w = 280
+        offset_ch = int(self.camara.x * 0.40) % chain_w
+        for i in range(-1, int(w / chain_w) + 2):
+            x = i * chain_w - offset_ch + 60
+            largo = 100 + ((i * 37) % 60)
             for y in range(0, largo, 12):
                 pygame.draw.ellipse(destino, (42, 42, 50), (x - 3, y, 6, 12), 1)
 
-        # Resplandor de velas lejanas
-        for base_x, base_y in ((150, h - 158), (520, h - 188), (850, h - 138)):
-            x = base_x - int(self.camara.x * 0.5)
+        # Resplandor de velas lejanas (paralaje 0.48)
+        torch_w = 360
+        offset_t = int(self.camara.x * 0.48) % torch_w
+        for i in range(-1, int(w / torch_w) + 2):
+            x = i * torch_w - offset_t + 110
+            base_y = h - 160
             pygame.draw.circle(destino, (58, 42, 18), (x, base_y), 18)
             pygame.draw.circle(destino, (112, 74, 28), (x, base_y), 8)
 
@@ -1101,15 +1106,24 @@ class Juego:
         if destino is None:
             destino = self.pantalla
         w, h = destino.get_width(), destino.get_height()
-        desplazamiento = int(self.camara.x * 0.2)
-        for i in range(-2, 8):
-            x = i * 300 - desplazamiento
+        
+        # Arcos de huesos continuos (paralaje 0.22)
+        arc_w = 300
+        offset_a = int(self.camara.x * 0.22) % arc_w
+        for i in range(-1, int(w / arc_w) + 2):
+            x = i * arc_w - offset_a
             pygame.draw.arc(destino, (54, 34, 34), (x, 182, 280, 320), 3.14, 6.28, 9)
             pygame.draw.arc(destino, (42, 28, 30), (x + 40, 222, 220, 280), 3.14, 6.28, 5)
-        for base_x, largo in ((160, 130), (430, 190), (760, 120), (1010, 170)):
-            x = int(base_x - self.camara.x * 0.35) % (w + 240) - 120
+
+        # Cadenas de osario continuas (paralaje 0.38)
+        chain_w = 260
+        offset_ch = int(self.camara.x * 0.38) % chain_w
+        for i in range(-1, int(w / chain_w) + 2):
+            x = i * chain_w - offset_ch + 50
+            largo = 120 + ((i * 43) % 70)
             pygame.draw.line(destino, (40, 28, 30), (x, 0), (x + 8, largo), 5)
             pygame.draw.line(destino, (40, 28, 30), (x + 8, largo), (x - 12, largo + 24), 3)
+
         pygame.draw.ellipse(destino, (58, 16, 20), (w // 2 - 260, h - 68, 520, 120))
 
     def dibujar_niebla(self, destino=None, tema="camposanto"):
@@ -1461,178 +1475,188 @@ class Juego:
         if self.mostrar_ayuda > 0 and self.estado == "jugando":
             self.dibujar_pista()
 
-    # --- Módulo HUD: Relicario de Vidas (+10% tamaño) --- #
+    # --- Módulo HUD: Relicario de Vidas (+20% tamaño) --- #
     def dibujar_hud_relicario_vidas(self, x, y):
-        ancho, alto = 286, 56
+        ancho, alto = 344, 68
         panel = pygame.Surface((ancho, alto), pygame.SRCALPHA)
-        pygame.draw.rect(panel, (14, 11, 18, 220), (0, 0, ancho, alto), border_radius=9)
-        pygame.draw.rect(panel, (*HUD_BORDE, 185), (0, 0, ancho, alto), 1, border_radius=9)
-        pygame.draw.line(panel, (*HUD_ORO, 120), (10, 1), (ancho - 10, 1), 1)
+        pygame.draw.rect(panel, (14, 11, 18, 220), (0, 0, ancho, alto), border_radius=11)
+        pygame.draw.rect(panel, (*HUD_BORDE, 185), (0, 0, ancho, alto), 1, border_radius=11)
+        pygame.draw.line(panel, (*HUD_ORO, 120), (12, 1), (ancho - 12, 1), 1)
 
         # Vértices góticos
         for vx, vy, vdx, vdy in ((0, 0, 1, 1), (ancho, 0, -1, 1), (0, alto, 1, -1), (ancho, alto, -1, -1)):
-            pygame.draw.line(panel, HUD_ORO, (vx + 4 * vdx, vy), (vx + 14 * vdx, vy), 1)
-            pygame.draw.line(panel, HUD_ORO, (vx, vy + 4 * vdy), (vx, vy + 12 * vdy), 1)
+            pygame.draw.line(panel, HUD_ORO, (vx + 4 * vdx, vy), (vx + 16 * vdx, vy), 1)
+            pygame.draw.line(panel, HUD_ORO, (vx, vy + 4 * vdy), (vx, vy + 14 * vdy), 1)
         self.pantalla.blit(panel, (x, y))
 
-        # Rótulo de clase y nivel
-        self.dibujar_texto("SEPULTURERO", x + 16, y + 7, 12, HUD_ORO)
+        # Rótulo de clase y nivel (+20%)
+        self.dibujar_texto("SEPULTURERO", x + 18, y + 8, 14, HUD_ORO)
         nivel_nombre = self.nivel.nombre.upper() if self.nivel else "CAMPOSANTO"
-        self.dibujar_texto(nivel_nombre, x + 116, y + 7, 12, HUD_MUTED)
+        self.dibujar_texto(nivel_nombre, x + 140, y + 8, 13, HUD_MUTED)
 
-        # Corazones de sangre gótica (+10% radio y espaciado)
+        # Corazones de sangre gótica (+20% radio y espaciado)
         pulso_latido = int(math.sin(self.tiempo_nivel * 9) * 2) if self.jugador.vidas == 1 else 0
         for i in range(VIDAS_MAXIMAS):
-            cx = x + 24 + i * 30
-            cy = y + 33
+            cx = x + 30 + i * 36
+            cy = y + 42
             lleno = (i < self.jugador.vidas)
             desp_y = pulso_latido if (i == 0 and self.jugador.vidas == 1) else 0
 
             # Aura si está en última vida
             if lleno and self.jugador.vidas == 1:
-                aura = pygame.Surface((32, 32), pygame.SRCALPHA)
-                pygame.draw.circle(aura, (220, 30, 40, int(35 + pulso_latido * 15)), (16, 16), 14)
-                self.pantalla.blit(aura, (cx - 16, cy - 16 + desp_y), special_flags=pygame.BLEND_RGBA_ADD)
+                aura = pygame.Surface((38, 38), pygame.SRCALPHA)
+                pygame.draw.circle(aura, (220, 30, 40, int(35 + pulso_latido * 15)), (19, 19), 17)
+                self.pantalla.blit(aura, (cx - 19, cy - 19 + desp_y), special_flags=pygame.BLEND_RGBA_ADD)
 
             self.dibujar_corazon_gotico(cx, cy + desp_y, lleno)
 
-    # --- Módulo HUD: Corazón Gótico (+10% escala) --- #
+    # --- Módulo HUD: Corazón Gótico (+20% escala, silueta anatómica limpia) --- #
     def dibujar_corazon_gotico(self, cx, cy, lleno):
+        r = 7
+        top_y = cy - 4
+        tip_y = cy + 14
+
         if lleno:
-            color_base = (215, 30, 45)
-            color_sombra = (120, 16, 26)
-            color_brillo = (255, 95, 115)
+            color_base = (220, 28, 48)
+            color_sombra = (130, 14, 26)
+            color_brillo = (255, 110, 130)
             color_destello = (255, 235, 240)
+            color_borde = (180, 20, 36)
         else:
-            color_base = (38, 28, 38)
-            color_sombra = (22, 16, 24)
-            color_brillo = (50, 38, 50)
+            color_base = (34, 26, 36)
+            color_sombra = (18, 14, 20)
+            color_brillo = (48, 36, 50)
             color_destello = None
+            color_borde = (78, 62, 82)
 
-        # Sombra profunda
-        pygame.draw.circle(self.pantalla, color_sombra, (cx - 6, cy - 2), 7)
-        pygame.draw.circle(self.pantalla, color_sombra, (cx + 6, cy - 2), 7)
-        pygame.draw.polygon(self.pantalla, color_sombra, [(cx - 11, cy - 1), (cx + 11, cy - 1), (cx, cy + 13)])
+        # Sombra profunda envolvente
+        pygame.draw.circle(self.pantalla, color_sombra, (cx - 6, top_y + 1), r + 1)
+        pygame.draw.circle(self.pantalla, color_sombra, (cx + 6, top_y + 1), r + 1)
+        pygame.draw.polygon(self.pantalla, color_sombra, [(cx - 12, top_y + 1), (cx + 12, top_y + 1), (cx, tip_y + 1)])
 
-        # Cuerpo carmesí
-        pygame.draw.circle(self.pantalla, color_base, (cx - 6, cy - 3), 6)
-        pygame.draw.circle(self.pantalla, color_base, (cx + 6, cy - 3), 6)
-        pygame.draw.polygon(self.pantalla, color_base, [(cx - 10, cy - 2), (cx + 10, cy - 2), (cx, cy + 12)])
+        # Cuerpo del corazón
+        pygame.draw.circle(self.pantalla, color_base, (cx - 6, top_y), r)
+        pygame.draw.circle(self.pantalla, color_base, (cx + 6, top_y), r)
+        pygame.draw.polygon(self.pantalla, color_base, [(cx - 11, top_y), (cx + 11, top_y), (cx, tip_y)])
 
-        # Borde exterior de hierro
-        pygame.draw.polygon(self.pantalla, (*HUD_BORDE, 220), [(cx - 10, cy - 2), (cx + 10, cy - 2), (cx, cy + 12)], 1)
+        # Borde exterior integral (sigue todo el contorno del corazón, sin triángulos sueltos)
+        pygame.draw.line(self.pantalla, color_borde, (cx - 11, top_y), (cx, tip_y), 1)
+        pygame.draw.line(self.pantalla, color_borde, (cx + 11, top_y), (cx, tip_y), 1)
+        pygame.draw.arc(self.pantalla, color_borde, (cx - 6 - r, top_y - r, r * 2, r * 2), 0, 3.14, 1)
+        pygame.draw.arc(self.pantalla, color_borde, (cx + 6 - r, top_y - r, r * 2, r * 2), 0, 3.14, 1)
 
-        # Destello especular
+        # Destellos o hueco interno
         if lleno and color_destello:
-            pygame.draw.circle(self.pantalla, color_destello, (cx - 3, cy - 5), 2)
-            pygame.draw.circle(self.pantalla, color_brillo, (cx + 4, cy - 5), 1)
+            pygame.draw.circle(self.pantalla, color_destello, (cx - 3, top_y - 3), 2)
+            pygame.draw.circle(self.pantalla, color_brillo, (cx + 4, top_y - 2), 2)
+        else:
+            pygame.draw.circle(self.pantalla, (20, 16, 22), (cx - 5, top_y), 3)
+            pygame.draw.circle(self.pantalla, (20, 16, 22), (cx + 5, top_y), 3)
 
-    # --- Módulo HUD: Relicario Derecho (Almas + Rosario + Dash + Arma opcional) --- #
+    # --- Módulo HUD: Relicario Derecho (Almas + Rosario + Dash + Arma opcional) (+20%) --- #
     def dibujar_hud_relicario_derecho(self, y):
         tiene_arma = self.jugador.tiene_pala
-        ancho = 452 if tiene_arma else 336
-        alto = 56
+        ancho = 542 if tiene_arma else 404
+        alto = 68
         x = ANCHO - ancho - 24
 
         panel = pygame.Surface((ancho, alto), pygame.SRCALPHA)
-        pygame.draw.rect(panel, (14, 11, 18, 220), (0, 0, ancho, alto), border_radius=9)
-        pygame.draw.rect(panel, (*HUD_BORDE, 185), (0, 0, ancho, alto), 1, border_radius=9)
-        pygame.draw.line(panel, (*HUD_ORO, 120), (10, 1), (ancho - 10, 1), 1)
+        pygame.draw.rect(panel, (14, 11, 18, 220), (0, 0, ancho, alto), border_radius=11)
+        pygame.draw.rect(panel, (*HUD_BORDE, 185), (0, 0, ancho, alto), 1, border_radius=11)
+        pygame.draw.line(panel, (*HUD_ORO, 120), (12, 1), (ancho - 12, 1), 1)
 
         for vx, vy, vdx, vdy in ((0, 0, 1, 1), (ancho, 0, -1, 1), (0, alto, 1, -1), (ancho, alto, -1, -1)):
-            pygame.draw.line(panel, HUD_ORO, (vx + 4 * vdx, vy), (vx + 14 * vdx, vy), 1)
-            pygame.draw.line(panel, HUD_ORO, (vx, vy + 4 * vdy), (vx, vy + 12 * vdy), 1)
+            pygame.draw.line(panel, HUD_ORO, (vx + 4 * vdx, vy), (vx + 16 * vdx, vy), 1)
+            pygame.draw.line(panel, HUD_ORO, (vx, vy + 4 * vdy), (vx, vy + 14 * vdy), 1)
         self.pantalla.blit(panel, (x, y))
 
-        # Icono de alma espectral en rombo — dibujado directo sobre pantalla, sin BLEND_ADD
-        ix, iy = x + 18, y + 28
-        # Halo difuso pintado directamente en panel (ya tiene SRCALPHA)
-        panel_alma = pygame.Surface((36, 36), pygame.SRCALPHA)
-        pygame.draw.circle(panel_alma, (70, 230, 215, 55), (18, 18), 16)
-        self.pantalla.blit(panel_alma, (ix - 18, iy - 18))
-        pygame.draw.polygon(self.pantalla, HUD_ALMA, [(ix, iy - 11), (ix + 8, iy), (ix, iy + 11), (ix - 8, iy)])
-        pygame.draw.polygon(self.pantalla, (230, 255, 250), [(ix, iy - 5), (ix + 3, iy), (ix, iy + 5), (ix - 3, iy)])
+        # Icono de alma espectral en rombo (+20%)
+        ix, iy = x + 22, y + 34
+        panel_alma = pygame.Surface((44, 44), pygame.SRCALPHA)
+        pygame.draw.circle(panel_alma, (70, 230, 215, 55), (22, 22), 20)
+        self.pantalla.blit(panel_alma, (ix - 22, iy - 22))
+        pygame.draw.polygon(self.pantalla, HUD_ALMA, [(ix, iy - 13), (ix + 10, iy), (ix, iy + 13), (ix - 10, iy)])
+        pygame.draw.polygon(self.pantalla, (230, 255, 250), [(ix, iy - 6), (ix + 4, iy), (ix, iy + 6), (ix - 4, iy)])
 
-        # Contador de Almas
+        # Contador de Almas (+20%)
         total = self.nivel.total_almas if self.nivel else 24
-        self.dibujar_texto(f"ALMAS  {self.jugador.almas} / {total}", x + 36, y + 7, 13, HUD_ORO)
+        self.dibujar_texto(f"ALMAS  {self.jugador.almas} / {total}", x + 44, y + 8, 15, HUD_ORO)
 
-        # Rosario de 10 Cuentas de Ánima (Progreso a Vida Extra)
-        rx = x + 40
-        ry = y + 35
+        # Rosario de 10 Cuentas de Ánima (+20% espaciado y tamaño)
+        rx = x + 48
+        ry = y + 42
         pulso_resurreccion = 0.5 + 0.5 * math.sin(self.tiempo_nivel * 8)
         for i in range(ALMAS_POR_VIDA):
-            bx = rx + i * 16
+            bx = rx + i * 20
             by = ry
             llena = (i < self.jugador.almas_para_vida)
 
             if llena:
                 color_perla = (80, 235, 215)
-                radio = 4
+                radio = 5
                 if self.jugador.almas_para_vida >= 8:
-                    radio = 4 + int(pulso_resurreccion * 1.5)
+                    radio = 5 + int(pulso_resurreccion * 2)
                 pygame.draw.circle(self.pantalla, color_perla, (bx, by), radio)
                 pygame.draw.circle(self.pantalla, (230, 255, 250), (bx - 1, by - 1), max(1, radio - 2))
             else:
-                pygame.draw.circle(self.pantalla, (42, 34, 46), (bx, by), 3)
-                pygame.draw.circle(self.pantalla, (22, 18, 26), (bx, by), 3, 1)
+                pygame.draw.circle(self.pantalla, (42, 34, 46), (bx, by), 4)
+                pygame.draw.circle(self.pantalla, (22, 18, 26), (bx, by), 4, 1)
 
         # Divisoria vertical de hierro hacia Sello DASH
-        pygame.draw.line(self.pantalla, (*HUD_BORDE, 160), (x + 232, y + 8), (x + 232, y + alto - 8), 1)
+        pygame.draw.line(self.pantalla, (*HUD_BORDE, 160), (x + 280, y + 8), (x + 280, y + alto - 8), 1)
 
-        # SELLO DE DASH
-        dx_box = x + 242
+        # SELLO DE DASH (+20%)
+        dx_box = x + 292
         dash_listo = self.jugador.dash_listo()
         color_dash = HUD_DASHTURQUESA if dash_listo else HUD_MUTED
 
-        # Ala rúnica de dash — más grande y legible (28×20px)
-        pygame.draw.polygon(self.pantalla, color_dash, [(dx_box + 1, y + 36), (dx_box + 13, y + 18), (dx_box + 18, y + 24), (dx_box + 7, y + 40)])
-        pygame.draw.polygon(self.pantalla, color_dash, [(dx_box + 15, y + 27), (dx_box + 24, y + 16), (dx_box + 27, y + 22), (dx_box + 19, y + 34)])
+        # Ala rúnica de dash (+20%)
+        pygame.draw.polygon(self.pantalla, color_dash, [(dx_box + 2, y + 44), (dx_box + 16, y + 20), (dx_box + 22, y + 27), (dx_box + 9, y + 48)])
+        pygame.draw.polygon(self.pantalla, color_dash, [(dx_box + 18, y + 31), (dx_box + 29, y + 17), (dx_box + 33, y + 24), (dx_box + 23, y + 39)])
 
-        self.dibujar_texto("DASH", dx_box + 28, y + 8, 11, HUD_MUTED)
+        self.dibujar_texto("DASH", dx_box + 34, y + 8, 13, HUD_MUTED)
         estado_dash = "LISTO" if dash_listo else f"{1.0 - (self.jugador.dash_cooldown / DASH_COOLDOWN):.1f}"
-        self.dibujar_texto(estado_dash, dx_box + 28, y + 28, 13, color_dash)
+        self.dibujar_texto(estado_dash, dx_box + 34, y + 34, 15, color_dash)
 
-        # SELLO DE ARMA (Solo si tiene pala)
+        # SELLO DE ARMA (Solo si tiene pala) (+20%)
         if tiene_arma:
-            # Divisoria vertical hacia Sello de Arma
-            pygame.draw.line(self.pantalla, (*HUD_BORDE, 160), (x + 342, y + 8), (x + 342, y + alto - 8), 1)
-            ax_box = x + 352
+            pygame.draw.line(self.pantalla, (*HUD_BORDE, 160), (x + 412, y + 8), (x + 412, y + alto - 8), 1)
+            ax_box = x + 424
             es_guadaña = getattr(self.jugador, "rango_ataque_mejorado", False)
             color_arma = (215, 85, 255) if es_guadaña else HUD_ORO
             etiqueta = "GUADAÑA +" if es_guadaña else "PALA"
 
             if es_guadaña:
-                # Guadaña mística púrpura — más grande (28×28px, trazo 4)
-                pygame.draw.arc(self.pantalla, color_arma, (ax_box + 2, y + 13, 28, 28), 0, 3.14, 4)
-                pygame.draw.line(self.pantalla, (130, 50, 160), (ax_box + 16, y + 26), (ax_box + 6, y + 44), 3)
+                # Guadaña mística púrpura (+20%)
+                pygame.draw.arc(self.pantalla, color_arma, (ax_box + 2, y + 15, 34, 34), 0, 3.14, 4)
+                pygame.draw.line(self.pantalla, (130, 50, 160), (ax_box + 20, y + 30), (ax_box + 8, y + 52), 3)
             else:
-                # Pala plateada — hoja más grande
-                pygame.draw.line(self.pantalla, (160, 120, 60), (ax_box + 8, y + 42), (ax_box + 18, y + 20), 2)
-                pygame.draw.polygon(self.pantalla, (190, 190, 205), [(ax_box + 15, y + 18), (ax_box + 26, y + 14), (ax_box + 22, y + 28)])
+                # Pala plateada (+20%)
+                pygame.draw.line(self.pantalla, (160, 120, 60), (ax_box + 8, y + 50), (ax_box + 22, y + 22), 3)
+                pygame.draw.polygon(self.pantalla, (190, 190, 205), [(ax_box + 18, y + 20), (ax_box + 31, y + 15), (ax_box + 26, y + 32)])
 
-            self.dibujar_texto(etiqueta, ax_box + 28, y + 8, 11, color_arma)
+            self.dibujar_texto(etiqueta, ax_box + 34, y + 8, 13, color_arma)
             estado_ataque = "LISTO" if self.jugador.ataque_cooldown <= 0 else "..."
-            self.dibujar_texto(estado_ataque, ax_box + 28, y + 28, 13, HUD_VERDE if self.jugador.ataque_cooldown <= 0 else HUD_MUTED)
+            self.dibujar_texto(estado_ataque, ax_box + 34, y + 34, 15, HUD_VERDE if self.jugador.ataque_cooldown <= 0 else HUD_MUTED)
 
-    # --- Módulo HUD: Barra Imperial del Custodio (+10% escala) --- #
+    # --- Módulo HUD: Barra Imperial del Custodio (+20% escala) --- #
     def dibujar_barra_jefe(self):
-        ancho, alto = 550, 64
+        ancho, alto = 660, 76
         x = (ANCHO - ancho) // 2
         y = 16
 
         panel = pygame.Surface((ancho, alto), pygame.SRCALPHA)
-        pygame.draw.rect(panel, (16, 12, 20, 230), (0, 0, ancho, alto), border_radius=10)
+        pygame.draw.rect(panel, (16, 12, 20, 230), (0, 0, ancho, alto), border_radius=12)
         color_borde = (215, 45, 55) if self.jefe.fase >= 2 else (*HUD_BORDE, 200)
-        pygame.draw.rect(panel, color_borde, (0, 0, ancho, alto), 2 if self.jefe.fase >= 2 else 1, border_radius=10)
+        pygame.draw.rect(panel, color_borde, (0, 0, ancho, alto), 2 if self.jefe.fase >= 2 else 1, border_radius=12)
 
         # Corona de oro en el borde superior
-        pygame.draw.line(panel, HUD_ORO, (14, 1), (ancho - 14, 1), 1)
+        pygame.draw.line(panel, HUD_ORO, (16, 1), (ancho - 16, 1), 1)
         self.pantalla.blit(panel, (x, y))
 
-        # Nombre y fase
+        # Nombre y fase (+20%)
         nombre_color = HUD_ROJO if self.jefe.fase >= 2 else HUD_ORO
-        self.dibujar_texto("EL CUSTODIO DEL OSARIO", x + 18, y + 8, 15, nombre_color, sombra=True)
+        self.dibujar_texto("EL CUSTODIO DEL OSARIO", x + 22, y + 9, 17, nombre_color, sombra=True)
 
         if self.jefe.fase >= 2:
             fase_txt = "FASE II · ¡LA PALA REBOTA! SOLO PISOTÓN"
@@ -1640,52 +1664,52 @@ class Juego:
         else:
             fase_txt = "FASE I · VULNERABLE A PALA Y PISOTÓN"
             fase_color = HUD_MUTED
-        self.dibujar_texto(fase_txt, x + ancho - 280, y + 9, 11, fase_color)
+        self.dibujar_texto(fase_txt, x + ancho - 340, y + 11, 13, fase_color)
 
-        # 6 Celdas de Salud (Losas de Osario con Rubí)
-        ancho_celda = 82
-        alto_celda = 12
-        y_celdas = y + 36
+        # 6 Celdas de Salud (Losas de Osario con Rubí) (+20%)
+        ancho_celda = 98
+        alto_celda = 15
+        y_celdas = y + 44
         for i in range(6):
-            cx = x + 18 + i * (ancho_celda + 5)
+            cx = x + 22 + i * (ancho_celda + 6)
             rect_celda = pygame.Rect(cx, y_celdas, ancho_celda, alto_celda)
             llena = (i < self.jefe.vida)
 
             if llena:
                 color_rubi = (225, 38, 52)
-                pygame.draw.rect(self.pantalla, color_rubi, rect_celda, border_radius=3)
+                pygame.draw.rect(self.pantalla, color_rubi, rect_celda, border_radius=4)
                 pygame.draw.rect(self.pantalla, (255, 105, 120), (rect_celda.x + 2, rect_celda.y + 2, rect_celda.width - 4, 3), border_radius=2)
-                pygame.draw.rect(self.pantalla, (120, 18, 28), rect_celda, 1, border_radius=3)
+                pygame.draw.rect(self.pantalla, (120, 18, 28), rect_celda, 1, border_radius=4)
             else:
-                pygame.draw.rect(self.pantalla, (36, 26, 30), rect_celda, border_radius=3)
-                pygame.draw.rect(self.pantalla, (22, 16, 20), rect_celda, 1, border_radius=3)
+                pygame.draw.rect(self.pantalla, (36, 26, 30), rect_celda, border_radius=4)
+                pygame.draw.rect(self.pantalla, (22, 16, 20), rect_celda, 1, border_radius=4)
 
-    # --- Función dibujar_pista (Ubicación Superior Contextual) --- #
+    # --- Función dibujar_pista (Ubicación Superior Contextual) (+20%) --- #
     def dibujar_pista(self):
         texto = getattr(self, "texto_ayuda", None) or (self.nivel.pista if self.nivel else "")
         if not texto:
             return
 
         # Máximo 2 líneas visibles para no bloquear el área de juego
-        lineas_todas = textwrap.wrap(texto, width=60)
+        lineas_todas = textwrap.wrap(texto, width=64)
         lineas = lineas_todas[:2]
-        alto = 22 + 18 * len(lineas)
-        ancho = 580
+        alto = 26 + 20 * len(lineas)
+        ancho = 640
         x = (ANCHO - ancho) // 2
-        y = 88 if (self.jefe is not None and self.jefe.vivo) else 16
+        y = 98 if (self.jefe is not None and self.jefe.vivo) else 16
 
         # Fade suave al desaparecer
         alpha = int(225 * min(1.0, self.mostrar_ayuda / 0.8)) if self.mostrar_ayuda < 0.8 else 225
 
         caja = pygame.Surface((ancho, alto), pygame.SRCALPHA)
-        pygame.draw.rect(caja, (14, 11, 18, alpha), (0, 0, ancho, alto), border_radius=9)
-        pygame.draw.rect(caja, (*HUD_BORDE, min(200, alpha)), (0, 0, ancho, alto), 1, border_radius=9)
+        pygame.draw.rect(caja, (14, 11, 18, alpha), (0, 0, ancho, alto), border_radius=10)
+        pygame.draw.rect(caja, (*HUD_BORDE, min(200, alpha)), (0, 0, ancho, alto), 1, border_radius=10)
         pygame.draw.rect(caja, (*HUD_ORO, alpha), (0, 0, 4, alto), border_radius=2)
         self.pantalla.blit(caja, (x, y))
 
-        self.dibujar_texto("GUÍA DEL SEPULTURERO", x + 14, y + 4, 10, HUD_ORO)
+        self.dibujar_texto("GUÍA DEL SEPULTURERO", x + 16, y + 5, 11, HUD_ORO)
         for i, linea in enumerate(lineas):
-            self.dibujar_texto(linea, x + 14, y + 18 + i * 18, 12, HUD_TEXTO)
+            self.dibujar_texto(linea, x + 16, y + 21 + i * 20, 13, HUD_TEXTO)
 
     # --- Función dibujar_overlay --- #
     def dibujar_overlay(self, titulo, subtitulo):
