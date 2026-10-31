@@ -89,18 +89,32 @@ class SistemaParticulas:
             ))
 
     # --- Función ataque --- #
-    def ataque(self, x, y, direccion):
-        for _ in range(7):
-            self.particulas.append(Particula(
-                x + random.uniform(-5, 5),
-                y + random.uniform(-10, 10),
-                direccion * random.uniform(160, 330),
-                random.uniform(-90, 90),
-                random.uniform(0.12, 0.24),
-                random.choice((AMARILLO, (255, 224, 150), BLANCO)),
-                random.uniform(2, 4),
-                80,
-            ))
+    def ataque(self, x, y, direccion, mejorado=False):
+        if mejorado:
+            colores = ((215, 80, 255), (245, 170, 255), (170, 50, 240), BLANCO)
+            for _ in range(16):
+                self.particulas.append(Particula(
+                    x + random.uniform(-4, 4),
+                    y + random.uniform(-14, 14),
+                    direccion * random.uniform(260, 480),
+                    random.uniform(-110, 110),
+                    random.uniform(0.18, 0.32),
+                    random.choice(colores),
+                    random.uniform(3, 6),
+                    40,
+                ))
+        else:
+            for _ in range(7):
+                self.particulas.append(Particula(
+                    x + random.uniform(-5, 5),
+                    y + random.uniform(-10, 10),
+                    direccion * random.uniform(160, 330),
+                    random.uniform(-90, 90),
+                    random.uniform(0.12, 0.24),
+                    random.choice((AMARILLO, (255, 224, 150), BLANCO)),
+                    random.uniform(2, 4),
+                    80,
+                ))
 
     # --- Función pala --- #
     def pala(self, x, y):

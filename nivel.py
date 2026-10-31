@@ -510,85 +510,141 @@ class Nivel:
             if not camara.is_on_screen(plataforma.rect):
                 continue
             rect = camara.aplicar_rect(plataforma.rect)
-            pygame.draw.rect(surface, (63, 57, 68), rect, border_radius=3)
-            pygame.draw.rect(surface, (28, 24, 32), rect, 2, border_radius=3)
+
+            # Sombra suave proyectada
+            pygame.draw.rect(
+                surface,
+                (12, 10, 16),
+                (rect.x + 2, rect.bottom, rect.width - 4, 3),
+                border_radius=2,
+            )
+
+            # Losa principal de piedra gótica
+            pygame.draw.rect(surface, (54, 48, 60), rect, border_radius=3)
+            # Marco exterior de hierro/piedra oscura
+            pygame.draw.rect(surface, (24, 20, 28), rect, 2, border_radius=3)
+
+            # Superficie superior de paso (losa biselada clara)
             pygame.draw.line(
                 surface,
-                ORO,
-                (rect.x + 5, rect.y + 3),
-                (rect.right - 5, rect.y + 3),
+                (168, 160, 178),
+                (rect.x + 3, rect.y + 1),
+                (rect.right - 3, rect.y + 1),
                 2,
             )
-            pygame.draw.line(
-                surface,
-                (115, 105, 122),
-                (rect.x + 8, rect.bottom - 6),
-                (rect.right - 8, rect.bottom - 6),
-                1,
-            )
+
+            # Relieve central rúnico / dorado tenue
+            if rect.width >= 32:
+                pygame.draw.line(
+                    surface,
+                    ORO,
+                    (rect.x + 10, rect.y + 3),
+                    (rect.right - 10, rect.y + 3),
+                    1,
+                )
+
+            # Ménsulas de soporte en la base de la plataforma
+            for mx in range(rect.x + 8, rect.right - 10, 24):
+                pygame.draw.polygon(
+                    surface,
+                    (34, 28, 38),
+                    [
+                        (mx, rect.bottom - 4),
+                        (mx + 8, rect.bottom - 4),
+                        (mx + 4, rect.bottom - 1),
+                    ],
+                )
+
+            # Remaches de forja en esquinas
+            pygame.draw.circle(surface, (135, 128, 145), (rect.x + 4, rect.y + 5), 1)
+            pygame.draw.circle(surface, (135, 128, 145), (rect.right - 5, rect.y + 5), 1)
 
     # --- Función dibujar_solidos --- #
     def dibujar_solidos(self, surface, camara):
         if self.tema == "cripta":
-            color_piso = PIEDRA_FRIA
-            color_borde = (28, 30, 38)
-            color_arriba = MUSGO
+            color_piso = (48, 52, 62)
+            color_piso_profundo = (30, 32, 40)
+            color_borde = (20, 22, 28)
+            color_arriba = (55, 78, 68)
+            color_brizna = (82, 118, 102)
         elif self.tema == "osario":
             color_piso = (62, 45, 43)
-            color_borde = (32, 22, 24)
-            color_arriba = (96, 60, 54)
+            color_piso_profundo = (38, 26, 26)
+            color_borde = (26, 18, 20)
+            color_arriba = (96, 58, 52)
+            color_brizna = (136, 86, 78)
         else:
-            color_piso = MARRON
-            color_borde = MARRON_OSCURO
-            color_arriba = PASTO
+            color_piso = (68, 52, 42)
+            color_piso_profundo = (44, 32, 26)
+            color_borde = (28, 20, 16)
+            color_arriba = (48, 76, 44)
+            color_brizna = (76, 114, 68)
 
         for solido in self.solidos:
             if not camara.is_on_screen(solido):
                 continue
 
             rect = camara.aplicar_rect(solido)
+            fila = solido.y // TILE
+            columna = solido.x // TILE
             es_piso = solido.y >= (self.num_filas - 2) * TILE
+            tiene_arriba = (
+                fila > 0
+                and fila - 1 < len(self.filas)
+                and columna < len(self.filas[fila - 1])
+                and self.filas[fila - 1][columna] == "#"
+            )
 
             if es_piso:
-                pygame.draw.rect(surface, color_piso, rect)
-                pygame.draw.rect(surface, color_borde, rect, 2)
-                pygame.draw.rect(surface, color_arriba, (rect.x, rect.y, rect.width, 6))
-                pygame.draw.rect(
-                    surface,
-                    color_borde,
-                    (rect.x, rect.y + 8, rect.width, 2),
-                )
-                # Juntas de piedra.
-                for x in range(rect.x + TILE, rect.right, TILE):
-                    pygame.draw.line(
-                        surface,
-                        color_borde,
-                        (x, rect.y + 12),
-                        (x, rect.bottom - 1),
-                        1,
-                    )
-            else:
-                # Plataformas sólidas elevadas (opacas, nítidas y tematizadas según el nivel)
-                if self.tema == "osario":
-                    color_cuerpo = (72, 50, 48)
-                    color_marco = (38, 24, 26)
-                    color_borde_sup = (160, 135, 125)
-                elif self.tema == "cripta":
-                    color_cuerpo = PIEDRA_FRIA
-                    color_marco = (28, 30, 38)
-                    color_borde_sup = (110, 118, 135)
-                else:
-                    color_cuerpo = PIEDRA
-                    color_marco = PIEDRA_OSCURA
-                    color_borde_sup = (135, 140, 155)
+                if not tiene_arriba:
+                    # Suelo superficial expuesto: césped/musgo gótico y tierra fértil
+                    pygame.draw.rect(surface, color_piso, rect)
+                    pygame.draw.rect(surface, color_borde, rect, 1)
 
-                pygame.draw.rect(surface, color_cuerpo, rect)
-                pygame.draw.rect(surface, color_marco, rect, 2)
-                # Borde superior luminoso para indicar superficie sólida transitable
-                pygame.draw.rect(surface, color_borde_sup, (rect.x + 2, rect.y + 1, rect.width - 4, 4))
-                # Juntas verticales de mampostería
+                    # Capa de pasto/musgo superior
+                    pygame.draw.rect(surface, color_arriba, (rect.x, rect.y, rect.width, 5))
+                    # Bisel luminoso superior de luz lunar
+                    pygame.draw.line(surface, color_brizna, (rect.x, rect.y), (rect.right, rect.y), 1)
+
+                    # Briznas orgánicas de hierba gótica
+                    for bx in range(rect.x + 3, rect.right - 2, 7):
+                        alt = 2 + ((bx * 7) % 4)
+                        pygame.draw.line(surface, color_brizna, (bx, rect.y), (bx, rect.y - alt), 1)
+
+                    # Textura de tierra con gravilla y piedritas
+                    for gx in range(rect.x + 8, rect.right - 6, 16):
+                        gy = rect.y + 12 + ((gx * 5) % 10)
+                        pygame.draw.rect(surface, color_borde, (gx, gy, 3, 2))
+                else:
+                    # Suelo profundo (capa inferior): estrato continuo sin franja divisoria
+                    pygame.draw.rect(surface, color_piso_profundo, rect)
+                    pygame.draw.line(surface, color_borde, (rect.x, rect.y), (rect.x, rect.bottom), 1)
+                    pygame.draw.line(surface, color_borde, (rect.right - 1, rect.y), (rect.right - 1, rect.bottom), 1)
+                    # Textura de roca oscura
+                    for rx in range(rect.x + 14, rect.right - 12, 28):
+                        ry = rect.y + 6 + ((rx * 3) % 14)
+                        pygame.draw.line(surface, (20, 16, 22), (rx, ry), (rx + 6, ry + 4), 1)
+                        pygame.draw.rect(surface, (54, 42, 36), (rx + 10, ry + 2, 4, 3))
+            else:
+                # Plataformas sólidas elevadas (bloques de sillería de piedra gótica)
+                if self.tema == "osario":
+                    color_cuerpo = (74, 52, 50)
+                    color_marco = (36, 22, 24)
+                    color_borde_sup = (168, 140, 130)
+                elif self.tema == "cripta":
+                    color_cuerpo = (52, 56, 68)
+                    color_marco = (24, 26, 34)
+                    color_borde_sup = (120, 128, 146)
+                else:
+                    color_cuerpo = (64, 62, 70)
+                    color_marco = (26, 24, 30)
+                    color_borde_sup = (145, 148, 160)
+
+                pygame.draw.rect(surface, color_cuerpo, rect, border_radius=2)
+                pygame.draw.rect(surface, color_marco, rect, 2, border_radius=2)
+                pygame.draw.line(surface, color_borde_sup, (rect.x + 2, rect.y + 1), (rect.right - 2, rect.y + 1), 2)
                 for gx in range(rect.x + TILE, rect.right, TILE):
-                    pygame.draw.line(surface, color_marco, (gx, rect.y + 4), (gx, rect.bottom - 2), 1)
+                    pygame.draw.line(surface, color_marco, (gx, rect.y + 3), (gx, rect.bottom - 2), 1)
                 if rect.height >= TILE * 2:
                     pygame.draw.line(surface, color_marco, (rect.x + 3, rect.centery), (rect.right - 4, rect.centery), 1)
 

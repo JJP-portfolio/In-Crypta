@@ -162,16 +162,18 @@ class Jugador:
 
     # --- Función rect_ataque --- #
     def rect_ataque(self):
-        alcance = ATAQUE_ALCANCE_MEJORADO if self.rango_ataque_mejorado else ATAQUE_ALCANCE
+        es_guadaña = self.rango_ataque_mejorado
+        alcance = ATAQUE_ALCANCE_MEJORADO if es_guadaña else ATAQUE_ALCANCE
+        alto = (ATAQUE_ALTO + 16) if es_guadaña else ATAQUE_ALTO
         if self.direccion > 0:
-            x = self.rect.right - 2
+            x = self.rect.right - 4
         else:
-            x = self.rect.left - alcance + 2
+            x = self.rect.left - alcance + 4
         return pygame.Rect(
             x,
-            self.rect.y + 3,
+            self.rect.centery - alto // 2,
             alcance,
-            ATAQUE_ALTO,
+            alto,
         )
 
     # --- Función pose_actual --- #
@@ -394,51 +396,112 @@ class Jugador:
         if pose is None and self.en_suelo and abs(self.vx) > 1:
             movimiento = int(math.sin(self.tiempo_animacion * 14) * 4)
 
-        # Pala: al hombro, o extendida durante el golpe.
+        # Pala / Guadaña Mística: al hombro o extendida durante el golpe
         hombro_x = centro_x - self.direccion * 7
+        es_guadaña = getattr(self, "rango_ataque_mejorado", False)
+
         if atacando:
-            alcance = 15 if pose == "ataque2" else 12
+            alcance = (34 if es_guadaña else 15) if pose == "ataque2" else (26 if es_guadaña else 12)
             alto_pala = {
-                "ataque1": rect.y + 2,
+                "ataque1": rect.y - (6 if es_guadaña else -2),
                 "ataque2": rect.y + 12,
-                "ataque3": base_y - 1,
+                "ataque3": base_y + (4 if es_guadaña else -1),
             }[pose]
             punta_x = centro_x + self.direccion * alcance
+
+            color_mango = (45, 30, 48) if es_guadaña else MARRON
             pygame.draw.line(
                 surface,
-                MARRON,
+                color_mango,
                 (hombro_x, rect.y + 8),
                 (punta_x, alto_pala),
-                3,
+                4 if es_guadaña else 3,
             )
+
             if con_pala:
+                if es_guadaña:
+                    # Hoja curvada de Guadaña Mística Púrpura
+                    signo = self.direccion
+                    color_hoja = (215, 80, 255)
+                    color_filo = (255, 205, 255)
+                    puntos_hoja = [
+                        (punta_x, alto_pala - 8),
+                        (punta_x + signo * 20, alto_pala - 2),
+                        (punta_x + signo * 28, alto_pala + 14),
+                        (punta_x + signo * 18, alto_pala + 10),
+                        (punta_x + signo * 8, alto_pala + 4),
+                        (punta_x - signo * 2, alto_pala),
+                    ]
+                    pygame.draw.polygon(surface, color_hoja, puntos_hoja)
+                    pygame.draw.lines(surface, color_filo, False, puntos_hoja[:4], 2)
+
+                    # ARCO ESPECTRAL DE ENERGÍA (Gran efecto visual de 76 px de alcance)
+                    onda_x = centro_x if signo > 0 else centro_x - 76
+                    onda_y = rect.y - 12
+                    onda_surf = pygame.Surface((78, 50), pygame.SRCALPHA)
+                    pygame.draw.arc(
+                        onda_surf,
+                        (215, 80, 255, 200),
+                        (2, 2, 74, 46),
+                        0.0 if signo > 0 else 1.57,
+                        3.14 if signo > 0 else 4.71,
+                        5,
+                    )
+                    pygame.draw.arc(
+                        onda_surf,
+                        (255, 230, 255, 255),
+                        (4, 4, 70, 42),
+                        0.0 if signo > 0 else 1.57,
+                        3.14 if signo > 0 else 4.71,
+                        2,
+                    )
+                    surface.blit(onda_surf, (onda_x, onda_y))
+                else:
+                    pygame.draw.polygon(
+                        surface,
+                        GRIS,
+                        [
+                            (punta_x, alto_pala - 5),
+                            (punta_x + self.direccion * 8, alto_pala),
+                            (punta_x, alto_pala + 6),
+                            (punta_x - self.direccion * 2, alto_pala),
+                        ],
+                    )
+        elif con_pala:
+            if es_guadaña:
+                # Guadaña mística reposando en la espalda
+                pygame.draw.line(
+                    surface,
+                    (45, 30, 48),
+                    (hombro_x, rect.y + 4),
+                    (hombro_x - self.direccion * 8, base_y + 4),
+                    3,
+                )
+                pygame.draw.arc(
+                    surface,
+                    (215, 80, 255),
+                    (hombro_x - 6 if self.direccion > 0 else hombro_x - 14, rect.y - 10, 20, 22),
+                    0.0,
+                    3.14,
+                    3,
+                )
+            else:
+                pygame.draw.line(
+                    surface,
+                    MARRON,
+                    (hombro_x, rect.y + 7),
+                    (hombro_x - self.direccion * 4, base_y - 2),
+                    3,
+                )
                 pygame.draw.polygon(
                     surface,
                     GRIS,
                     [
-                        (punta_x, alto_pala - 5),
-                        (punta_x + self.direccion * 8, alto_pala),
-                        (punta_x, alto_pala + 6),
-                        (punta_x - self.direccion * 2, alto_pala),
+                        (hombro_x - self.direccion * 7, base_y - 4),
+                        (hombro_x - self.direccion * 1, base_y - 1),
+                        (hombro_x - self.direccion * 4, base_y + 4),
                     ],
                 )
-        elif con_pala:
-            pygame.draw.line(
-                surface,
-                MARRON,
-                (hombro_x, rect.y + 7),
-                (hombro_x - self.direccion * 4, base_y - 2),
-                3,
-            )
-            pygame.draw.polygon(
-                surface,
-                GRIS,
-                [
-                    (hombro_x - self.direccion * 7, base_y - 4),
-                    (hombro_x - self.direccion * 1, base_y - 1),
-                    (hombro_x - self.direccion * 4, base_y + 4),
-                ],
-            )
 
         # Piernas y botas.
         if en_aire:
@@ -1082,8 +1145,8 @@ class Custodio:
 
     # --- Función recibir_golpe_pala --- #
     def recibir_golpe_pala(self):
-        """Pala: solo funciona en Fase 1 (requiere vulnerable)."""
-        if not self.vivo or not self.vulnerable:
+        """Pala: funciona en Fase 1. En Fase 2 rebota (solo pisotón hace daño)."""
+        if not self.vivo:
             return False
         if self.fase >= 2:
             return False  # Pala rebota en Fase 2
@@ -1091,14 +1154,14 @@ class Custodio:
 
     # --- Función recibir_pisaton --- #
     def recibir_pisaton(self):
-        """Pisotón: funciona siempre en ambas fases, sin chequear vulnerable."""
+        """Pisotón: funciona siempre en ambas fases."""
         if not self.vivo:
             return False
         return self._aplicar_dano()
 
     # --- Función recibir_golpe (compatibilidad tests y golpe cuerpo a cuerpo) --- #
     def recibir_golpe(self):
-        """Alias de recibir_golpe_pala: requiere vulnerable y solo Fase 1."""
+        """Alias de recibir_golpe_pala."""
         return self.recibir_golpe_pala()
 
     # --- Función actualizar --- #
@@ -1162,21 +1225,29 @@ class Custodio:
                 self.estado = "carga"
                 self.carga_activa = True
                 self.direccion = 1 if jugador.rect.centerx > self.rect.centerx else -1
-                self.temporizador = 0.55
+                self.temporizador = 0.75
 
         elif self.estado == "carga":
-            # Corre rápido hacia el jugador
+            # Corre rápido a través de la arena hasta el límite
             self.x += self.direccion * JEFE_CARGA_VELOCIDAD * dt
-            self.x = max(self.minimo_x, min(self.maximo_x, self.x))
+            choco_muro = False
+            if self.x <= self.minimo_x:
+                self.x = float(self.minimo_x)
+                choco_muro = True
+            elif self.x >= self.maximo_x:
+                self.x = float(self.maximo_x)
+                choco_muro = True
             self.rect.x = round(self.x)
             self.temporizador -= dt
-            dist = abs(jugador.rect.centerx - self.rect.centerx)
-            if self.temporizador <= 0 or dist <= 20:
-                # Fin de carga → queda vulnerable brevemente (solo pisotón)
+
+            if self.temporizador <= 0 or choco_muro:
+                # Al chocar contra el muro o frenar: aturdido de rodillas (oportunidad de pisar)
                 self.carga_activa = False
                 self.estado = "recuperacion"
                 self.temporizador = JEFE_VULN_FASE2
                 self.vulnerable = True
+                if choco_muro:
+                    self.ondas_recien = True
 
     # --- Función dibujar --- #
     def dibujar(self, surface, camara, tiempo):

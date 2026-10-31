@@ -117,6 +117,7 @@ class Juego:
         self.tiempo_titulo = 0.0
         self.almas_totales = 0
         self.mostrar_ayuda = 0.0
+        self.texto_ayuda = ""
         self.flash = 0.0
         self.flash_color = (255, 255, 255)
         self.jefe = None
@@ -164,7 +165,8 @@ class Juego:
         self.camara.actualizar(self.jugador, self.nivel, 1.0)
         self.estado = "jugando"
         self.tiempo_nivel = 0.0
-        self.mostrar_ayuda = 5.0
+        self.mostrar_ayuda = 5.5
+        self.texto_ayuda = self.nivel.pista if self.nivel else ""
         self.flash = 0.0
         self.jefe = self.nivel.jefes[0] if self.nivel.jefes else None
         self.ondas_jefe = []
@@ -332,6 +334,7 @@ class Juego:
                             self.jugador.rect.centerx,
                             self.jugador.rect.centery,
                             self.jugador.direccion,
+                            mejorado=self.jugador.rango_ataque_mejorado,
                         )
 
                 elif evento.key == pygame.K_RETURN:
@@ -553,11 +556,11 @@ class Juego:
                 self.flash_color = AMARILLO
                 break
 
-        # Jefe — pala: solo daña en Fase 1 (y con vulnerable=True)
+        # Jefe — pala: daña en Fase 1, rebota con chispas en Fase 2.
         if (
             not self.jugador.ataque_golpeado
             and self.jefe is not None
-            and self.jefe.vulnerable
+            and self.jefe.vivo
             and self.jefe.rect.colliderect(golpe)
         ):
             self.jugador.ataque_golpeado = True
@@ -577,7 +580,8 @@ class Juego:
 
         if jefe.ondas_recien:
             velocidad = JEFE_ONDA_VELOCIDAD + (jefe.fase - 1) * 45
-            # Fase 2: triple onda (izq, der + central lenta)
+            # Fase 1: 2 ondas expansivas (izq, der)
+            # Fase 2: 2 ondas iniciales + 2 ondas rápidas (sin ondas estáticas)
             direcciones = (-1, 1)
             for direccion in direcciones:
                 self.ondas_jefe.append(OndaCustodio(
@@ -587,13 +591,13 @@ class Juego:
                     velocidad,
                 ))
             if jefe.fase >= 2:
-                # Tercera onda central (se expande despacio)
-                self.ondas_jefe.append(OndaCustodio(
-                    jefe.rect.centerx,
-                    jefe.rect.bottom,
-                    0,
-                    velocidad * 0.55,
-                ))
+                for direccion in direcciones:
+                    self.ondas_jefe.append(OndaCustodio(
+                        jefe.rect.centerx + direccion * 48,
+                        jefe.rect.bottom,
+                        direccion,
+                        velocidad * 1.35,
+                    ))
             self.audio.reproducir("onda")
             self.camara.sacudir(8.0, 0.20)
             self.particulas.emitir(
@@ -621,26 +625,18 @@ class Juego:
         if not jefe.vivo:
             return False
 
-        if (
-            jefe.vulnerable
-            and self.jugador.ataque_tiempo > 0
-            and not self.jugador.ataque_golpeado
-            and jefe.rect.colliderect(self.jugador.rect_ataque())
-        ):
-            self.jugador.ataque_golpeado = True
-            self.dañar_jefe_pala()
-            if not jefe.vivo:
-                return False
-
         if self.jugador.rect.colliderect(jefe.rect):
             viene_desde_arriba = (
                 self.jugador.vy > 0
-                and self.jugador.rect.bottom - jefe.rect.top <= 20
+                and self.jugador.rect.bottom <= jefe.rect.top + 32
             )
             if viene_desde_arriba:
-                # Pisotón: funciona siempre (Fase 1 y 2), sin chequear vulnerable
+                # Pisotón limpio: posicionar sobre la cabeza y dar invulnerabilidad temporal
+                self.jugador.rect.bottom = jefe.rect.top
+                self.jugador.y = float(self.jugador.rect.y)
                 self.jugador.vy = -REBOTE_ENEMIGO
                 self.jugador.en_suelo = False
+                self.jugador.invulnerable = 0.40
                 self.dañar_jefe_pisaton()
             elif self.jugador.invulnerable <= 0:
                 self.perder_vida()
@@ -650,26 +646,39 @@ class Juego:
             limite = jefe.minimo_x - 3 * TILE
             if self.jugador.rect.right > limite:
                 self.punto_reintento = (limite, self.nivel.spawn[1])
-                self.mostrar_ayuda = 3.5
+                self.texto_ayuda = "PUNTO DE CONTROL · LA ANTESALA DEL CUSTODIO"
+                self.mostrar_ayuda = 4.5
                 self.audio.reproducir("ui")
 
         return False
 
     # --- Función dañar_jefe --- #
     def dañar_jefe(self):
-        """Golpe de pala: requiere vulnerable y solo funciona en Fase 1."""
-        if not self.jefe.recibir_golpe():
-            return False
-        return self._aplicar_golpe_jefe()
+        """Golpe al jefe (usado por compatibilidad y tests)."""
+        return self.dañar_jefe_pala()
 
     # --- Función dañar_jefe_pala --- #
     def dañar_jefe_pala(self):
-        """Golpe de pala: requiere vulnerable y solo funciona en Fase 1."""
+        """Golpe de pala: daña en Fase 1; rebota físicamente en Fase 2."""
         if not self.jefe.recibir_golpe_pala():
-            # Fase 2: pala rebota — efecto visual de rechazo
-            self.camara.sacudir(3.0, 0.08)
-            self.flash = 0.05
-            self.flash_color = (180, 60, 60)
+            # Fase 2: pala rebota contra la armadura reforzada
+            self.jugador.vx = -self.jugador.direccion * 220
+            self.jugador.vy = -160
+            self.jugador.invulnerable = 0.25
+            self.camara.sacudir(5.0, 0.12)
+            self.flash = 0.08
+            self.flash_color = (200, 50, 50)
+            self.audio.reproducir("pala")
+            self.particulas.emitir(
+                self.jefe.rect.centerx - self.jugador.direccion * 16,
+                self.jefe.rect.centery,
+                14,
+                ((255, 80, 80), (255, 200, 100), BLANCO),
+                220,
+                0.35,
+                3,
+                180,
+            )
             return False
         return self._aplicar_golpe_jefe()
 
@@ -829,17 +838,29 @@ class Juego:
             if pala.actualizar(self.jugador):
                 self.audio.reproducir("pala_recoger")
                 self.particulas.alma(pala.rect.centerx, pala.rect.centery)
-                self.mostrar_ayuda = 2.5
+                self.texto_ayuda = "¡PALA DE SEPULTURERO OBTENIDA! · J / CLICK: EXORCIZAR MORADORES"
+                self.mostrar_ayuda = 5.5
 
     # --- Función actualizar_power_ups_rango --- #
     def actualizar_power_ups_rango(self):
         for power_up in self.nivel.power_ups_rango:
             if power_up.actualizar(self.jugador):
                 self.audio.reproducir("alma")
-                self.particulas.alma(
-                    power_up.rect.centerx, power_up.rect.centery
+                self.particulas.emitir(
+                    power_up.rect.centerx,
+                    power_up.rect.centery,
+                    28,
+                    ((215, 80, 255), (255, 200, 255), BLANCO, (160, 50, 220)),
+                    240,
+                    0.7,
+                    5,
+                    200,
                 )
-                self.mostrar_ayuda = 3.0
+                self.camara.sacudir(6.0, 0.16)
+                self.flash = 0.14
+                self.flash_color = (190, 60, 255)
+                self.texto_ayuda = "¡GUADAÑA MÍSTICA OBTENIDA! · ALCANCE ESPECTRAL Y PODER MEJORADO"
+                self.mostrar_ayuda = 5.5
 
     # --- Función perder_vida --- #
     def perder_vida(self, ignorar_invulnerabilidad=False):
@@ -861,8 +882,15 @@ class Juego:
         for alma in self.nivel.almas:
             alma.reiniciar()
 
-        reaparicion = self.punto_reintento or self.nivel.spawn
-        self.jugador.respawn(*reaparicion)
+        if self.punto_reintento is not None:
+            tenia_guadaña = self.jugador.rango_ataque_mejorado
+            self.jugador.respawn(*self.punto_reintento)
+            self.jugador.rango_ataque_mejorado = tenia_guadaña
+        else:
+            self.jugador.respawn(*self.nivel.spawn)
+            for pup in self.nivel.power_ups_rango:
+                pup.reiniciar()
+
         if self.jefe is not None and self.jefe.vivo:
             self.jefe.reiniciar()
             self.ondas_jefe = []
@@ -887,12 +915,6 @@ class Juego:
             pygame.draw.line(fondo, color, (0, y), (w, y))
 
         if tema == "camposanto":
-            luna_x = int(w * 0.78)
-            pygame.draw.circle(fondo, (120, 116, 96), (luna_x, 96), 55)
-            pygame.draw.circle(fondo, (188, 180, 148), (luna_x, 96), 44)
-            pygame.draw.circle(fondo, (222, 214, 182), (luna_x, 96), 33)
-            pygame.draw.circle(fondo, (198, 190, 160), (luna_x - 14, 88), 6)
-            pygame.draw.circle(fondo, (198, 190, 160), (luna_x + 14, 108), 4)
             estrellas = [
                 (70, 55, 2), (140, 120, 1), (230, 45, 2), (310, 150, 1),
                 (390, 70, 1), (470, 30, 2), (560, 130, 1), (640, 58, 2),
@@ -987,17 +1009,17 @@ class Juego:
             if sy < h:
                 pygame.draw.circle(destino, (220, 218, 200), (px, sy), 1)
 
-        # Colinas traseras
+        # Colinas traseras (armonizadas con el azul noche del cielo)
         for i in range(-2, 10):
             x = i * 260 - desplazamiento
             pygame.draw.polygon(
                 destino,
-                (18, 26, 34),
+                (16, 24, 36),
                 [(x, h), (x + 180, int(h * 0.52) + 32), (x + 360, h)],
             )
             pygame.draw.polygon(
                 destino,
-                (23, 34, 40),
+                (22, 32, 46),
                 [(x + 90, h), (x + 230, int(h * 0.58) + 32), (x + 380, h)],
             )
 
@@ -1011,7 +1033,7 @@ class Juego:
 
     def dibujar_arbol_muerto(self, destino, x, base_y, escala):
         alto = int(150 * escala)
-        color = (12, 14, 18)
+        color = (18, 22, 32)
         pygame.draw.polygon(
             destino,
             color,
@@ -1037,13 +1059,13 @@ class Juego:
         alto = int(32 * escala)
         pygame.draw.rect(
             destino,
-            (15, 19, 22),
+            (20, 26, 36),
             (x, base_y - alto, ancho, alto),
             border_radius=3,
         )
         pygame.draw.circle(
             destino,
-            (15, 19, 22),
+            (20, 26, 36),
             (x + ancho // 2, base_y - alto),
             ancho // 2,
         )
@@ -1093,13 +1115,13 @@ class Juego:
         if destino is None:
             destino = self.pantalla
         w, h = destino.get_width(), destino.get_height()
-        color = (92, 108, 116) if tema != "osario" else (72, 40, 42)
-        for i in range(4):
-            y = h - 68 + i * 22
-            alfa = 18 + i * 5
-            banda = pygame.Surface((w, 30), pygame.SRCALPHA)
-            banda.fill((*color, alfa))
-            destino.blit(banda, (0, y))
+        color = (55, 72, 82) if tema != "osario" else (56, 32, 34)
+        alto_niebla = 64
+        niebla = pygame.Surface((w, alto_niebla), pygame.SRCALPHA)
+        for i in range(alto_niebla):
+            alfa = int(22 * (i / alto_niebla))
+            pygame.draw.line(niebla, (*color, alfa), (0, i), (w, i))
+        destino.blit(niebla, (0, h - alto_niebla))
 
     # --- Función dibujar_titulo (Intro) --- #
     def dibujar_titulo(self):
@@ -1405,22 +1427,19 @@ class Juego:
                 f"Almas: {self.almas_totales} · Tiempo: {self.tiempo_total:04.1f}s · ENTER menú",
             )
 
-    # --- Función dibujar_hud (Rediseño Total Gótico) --- #
+    # --- Función dibujar_hud (Rediseño Total Gótico Diegético) --- #
     def dibujar_hud(self):
-        # 1. Medallón Izquierdo: Vidas del Sepulturero
-        self.dibujar_hud_relicario_vidas(24, 18)
+        # 1. Relicario Izquierdo: Vidas del Sepulturero (+10% tamaño)
+        self.dibujar_hud_relicario_vidas(24, 16)
 
-        # 2. Relicario Derecho: Almas y Rosario de Ascenso
-        self.dibujar_hud_relicario_almas(ANCHO - 308, 18)
+        # 2. Relicario Derecho: Almas + Rosario + Sello Dash (+ Arma solo si se posee)
+        self.dibujar_hud_relicario_derecho(16)
 
-        # 3. Sellos Tácticos de Habilidad: Dash y Pala/Guadaña
-        self.dibujar_hud_habilidades(ANCHO - 264, ALTO - 62)
-
-        # 4. Corona del Custodio (Solo Nivel 3 cuando el jefe está activo)
+        # 3. Corona del Custodio (Solo Nivel 3 cuando el jefe está activo)
         if self.jefe is not None and self.jefe.vivo:
             self.dibujar_barra_jefe()
 
-        # 5. Aviso Central del Combate
+        # 4. Aviso Central del Combate
         if self.aviso_jefe > 0:
             if not self.jefe.vivo:
                 texto = "EL CUSTODIO CAYÓ · LA SALIDA SE ABRIÓ"
@@ -1431,22 +1450,23 @@ class Juego:
             else:
                 texto = "LA SALIDA ESTÁ SELLADA"
                 color_aviso = HUD_ORO
+            y_aviso = 98 if self.jefe is not None and self.jefe.vivo else 82
             self.dibujar_texto(
-                texto, 0, 142 if self.jefe is not None and self.jefe.vivo else 124,
+                texto, 0, y_aviso,
                 16, color_aviso, centrado=True, sombra=True,
             )
 
-        # 6. Pistas de Orientación
+        # 5. Pistas y Avisos Contextuales en la Franja Superior
         if self.mostrar_ayuda > 0 and self.estado == "jugando":
             self.dibujar_pista()
 
-    # --- Módulo HUD: Relicario de Vidas --- #
+    # --- Módulo HUD: Relicario de Vidas (+10% tamaño) --- #
     def dibujar_hud_relicario_vidas(self, x, y):
-        ancho, alto = 260, 50
+        ancho, alto = 286, 56
         panel = pygame.Surface((ancho, alto), pygame.SRCALPHA)
-        pygame.draw.rect(panel, (14, 11, 18, 215), (0, 0, ancho, alto), border_radius=8)
-        pygame.draw.rect(panel, (*HUD_BORDE, 180), (0, 0, ancho, alto), 1, border_radius=8)
-        pygame.draw.line(panel, (*HUD_ORO, 110), (10, 1), (ancho - 10, 1), 1)
+        pygame.draw.rect(panel, (14, 11, 18, 220), (0, 0, ancho, alto), border_radius=9)
+        pygame.draw.rect(panel, (*HUD_BORDE, 185), (0, 0, ancho, alto), 1, border_radius=9)
+        pygame.draw.line(panel, (*HUD_ORO, 120), (10, 1), (ancho - 10, 1), 1)
 
         # Vértices góticos
         for vx, vy, vdx, vdy in ((0, 0, 1, 1), (ancho, 0, -1, 1), (0, alto, 1, -1), (ancho, alto, -1, -1)):
@@ -1455,27 +1475,27 @@ class Juego:
         self.pantalla.blit(panel, (x, y))
 
         # Rótulo de clase y nivel
-        self.dibujar_texto("SEPULTURERO", x + 14, y + 6, 11, HUD_ORO)
+        self.dibujar_texto("SEPULTURERO", x + 16, y + 7, 12, HUD_ORO)
         nivel_nombre = self.nivel.nombre.upper() if self.nivel else "CAMPOSANTO"
-        self.dibujar_texto(nivel_nombre, x + 104, y + 6, 11, HUD_MUTED)
+        self.dibujar_texto(nivel_nombre, x + 116, y + 7, 12, HUD_MUTED)
 
-        # Corazones de sangre gótica
+        # Corazones de sangre gótica (+10% radio y espaciado)
         pulso_latido = int(math.sin(self.tiempo_nivel * 9) * 2) if self.jugador.vidas == 1 else 0
         for i in range(VIDAS_MAXIMAS):
-            cx = x + 18 + i * 26
-            cy = y + 28
+            cx = x + 24 + i * 30
+            cy = y + 33
             lleno = (i < self.jugador.vidas)
             desp_y = pulso_latido if (i == 0 and self.jugador.vidas == 1) else 0
 
             # Aura si está en última vida
             if lleno and self.jugador.vidas == 1:
-                aura = pygame.Surface((28, 28), pygame.SRCALPHA)
-                pygame.draw.circle(aura, (220, 30, 40, int(35 + pulso_latido * 15)), (14, 14), 12)
-                self.pantalla.blit(aura, (cx - 14, cy - 14 + desp_y), special_flags=pygame.BLEND_RGBA_ADD)
+                aura = pygame.Surface((32, 32), pygame.SRCALPHA)
+                pygame.draw.circle(aura, (220, 30, 40, int(35 + pulso_latido * 15)), (16, 16), 14)
+                self.pantalla.blit(aura, (cx - 16, cy - 16 + desp_y), special_flags=pygame.BLEND_RGBA_ADD)
 
             self.dibujar_corazon_gotico(cx, cy + desp_y, lleno)
 
-    # --- Módulo HUD: Corazón Gótico --- #
+    # --- Módulo HUD: Corazón Gótico (+10% escala) --- #
     def dibujar_corazon_gotico(self, cx, cy, lleno):
         if lleno:
             color_base = (215, 30, 45)
@@ -1489,30 +1509,34 @@ class Juego:
             color_destello = None
 
         # Sombra profunda
-        pygame.draw.circle(self.pantalla, color_sombra, (cx - 5, cy - 2), 6)
-        pygame.draw.circle(self.pantalla, color_sombra, (cx + 5, cy - 2), 6)
-        pygame.draw.polygon(self.pantalla, color_sombra, [(cx - 10, cy - 1), (cx + 10, cy - 1), (cx, cy + 11)])
+        pygame.draw.circle(self.pantalla, color_sombra, (cx - 6, cy - 2), 7)
+        pygame.draw.circle(self.pantalla, color_sombra, (cx + 6, cy - 2), 7)
+        pygame.draw.polygon(self.pantalla, color_sombra, [(cx - 11, cy - 1), (cx + 11, cy - 1), (cx, cy + 13)])
 
         # Cuerpo carmesí
-        pygame.draw.circle(self.pantalla, color_base, (cx - 5, cy - 3), 5)
-        pygame.draw.circle(self.pantalla, color_base, (cx + 5, cy - 3), 5)
-        pygame.draw.polygon(self.pantalla, color_base, [(cx - 9, cy - 2), (cx + 9, cy - 2), (cx, cy + 10)])
+        pygame.draw.circle(self.pantalla, color_base, (cx - 6, cy - 3), 6)
+        pygame.draw.circle(self.pantalla, color_base, (cx + 6, cy - 3), 6)
+        pygame.draw.polygon(self.pantalla, color_base, [(cx - 10, cy - 2), (cx + 10, cy - 2), (cx, cy + 12)])
 
         # Borde exterior de hierro
-        pygame.draw.polygon(self.pantalla, (*HUD_BORDE, 220), [(cx - 9, cy - 2), (cx + 9, cy - 2), (cx, cy + 10)], 1)
+        pygame.draw.polygon(self.pantalla, (*HUD_BORDE, 220), [(cx - 10, cy - 2), (cx + 10, cy - 2), (cx, cy + 12)], 1)
 
         # Destello especular
         if lleno and color_destello:
-            pygame.draw.circle(self.pantalla, color_destello, (cx - 3, cy - 4), 2)
-            pygame.draw.circle(self.pantalla, color_brillo, (cx + 4, cy - 4), 1)
+            pygame.draw.circle(self.pantalla, color_destello, (cx - 3, cy - 5), 2)
+            pygame.draw.circle(self.pantalla, color_brillo, (cx + 4, cy - 5), 1)
 
-    # --- Módulo HUD: Relicario de Almas & Rosario de Ascensión --- #
-    def dibujar_hud_relicario_almas(self, x, y):
-        ancho, alto = 280, 50
+    # --- Módulo HUD: Relicario Derecho (Almas + Rosario + Dash + Arma opcional) --- #
+    def dibujar_hud_relicario_derecho(self, y):
+        tiene_arma = self.jugador.tiene_pala
+        ancho = 452 if tiene_arma else 336
+        alto = 56
+        x = ANCHO - ancho - 24
+
         panel = pygame.Surface((ancho, alto), pygame.SRCALPHA)
-        pygame.draw.rect(panel, (14, 11, 18, 215), (0, 0, ancho, alto), border_radius=8)
-        pygame.draw.rect(panel, (*HUD_BORDE, 180), (0, 0, ancho, alto), 1, border_radius=8)
-        pygame.draw.line(panel, (*HUD_ORO, 110), (10, 1), (ancho - 10, 1), 1)
+        pygame.draw.rect(panel, (14, 11, 18, 220), (0, 0, ancho, alto), border_radius=9)
+        pygame.draw.rect(panel, (*HUD_BORDE, 185), (0, 0, ancho, alto), 1, border_radius=9)
+        pygame.draw.line(panel, (*HUD_ORO, 120), (10, 1), (ancho - 10, 1), 1)
 
         for vx, vy, vdx, vdy in ((0, 0, 1, 1), (ancho, 0, -1, 1), (0, alto, 1, -1), (ancho, alto, -1, -1)):
             pygame.draw.line(panel, HUD_ORO, (vx + 4 * vdx, vy), (vx + 14 * vdx, vy), 1)
@@ -1520,28 +1544,27 @@ class Juego:
         self.pantalla.blit(panel, (x, y))
 
         # Icono de alma espectral en rombo
-        ix, iy = x + 18, y + 25
-        halo = pygame.Surface((34, 34), pygame.SRCALPHA)
-        pygame.draw.circle(halo, (70, 230, 215, 38), (17, 17), 15)
-        self.pantalla.blit(halo, (ix - 17, iy - 17), special_flags=pygame.BLEND_RGBA_ADD)
-        pygame.draw.polygon(self.pantalla, HUD_ALMA, [(ix, iy - 9), (ix + 6, iy), (ix, iy + 9), (ix - 6, iy)])
-        pygame.draw.polygon(self.pantalla, (230, 255, 250), [(ix, iy - 4), (ix + 2, iy), (ix, iy + 4), (ix - 2, iy)])
+        ix, iy = x + 18, y + 28
+        halo = pygame.Surface((36, 36), pygame.SRCALPHA)
+        pygame.draw.circle(halo, (70, 230, 215, 38), (18, 18), 16)
+        self.pantalla.blit(halo, (ix - 18, iy - 18), special_flags=pygame.BLEND_RGBA_ADD)
+        pygame.draw.polygon(self.pantalla, HUD_ALMA, [(ix, iy - 10), (ix + 7, iy), (ix, iy + 10), (ix - 7, iy)])
+        pygame.draw.polygon(self.pantalla, (230, 255, 250), [(ix, iy - 5), (ix + 3, iy), (ix, iy + 5), (ix - 3, iy)])
 
         # Contador de Almas
         total = self.nivel.total_almas if self.nivel else 24
-        self.dibujar_texto(f"ALMAS  {self.jugador.almas} / {total}", x + 34, y + 6, 13, HUD_ORO)
+        self.dibujar_texto(f"ALMAS  {self.jugador.almas} / {total}", x + 36, y + 7, 13, HUD_ORO)
 
         # Rosario de 10 Cuentas de Ánima (Progreso a Vida Extra)
-        rx = x + 38
-        ry = y + 31
+        rx = x + 40
+        ry = y + 35
         pulso_resurreccion = 0.5 + 0.5 * math.sin(self.tiempo_nivel * 8)
         for i in range(ALMAS_POR_VIDA):
-            bx = rx + i * 23
+            bx = rx + i * 18
             by = ry
             llena = (i < self.jugador.almas_para_vida)
 
             if llena:
-                # Perla espectral encendida
                 color_perla = (80, 235, 215)
                 radio = 4
                 if self.jugador.almas_para_vida >= 8:
@@ -1549,62 +1572,52 @@ class Juego:
                 pygame.draw.circle(self.pantalla, color_perla, (bx, by), radio)
                 pygame.draw.circle(self.pantalla, (230, 255, 250), (bx - 1, by - 1), max(1, radio - 2))
             else:
-                # Cuenta vacía de hierro
                 pygame.draw.circle(self.pantalla, (42, 34, 46), (bx, by), 3)
                 pygame.draw.circle(self.pantalla, (22, 18, 26), (bx, by), 3, 1)
 
-    # --- Módulo HUD: Sellos de Habilidad (Dash & Pala/Guadaña) --- #
-    def dibujar_hud_habilidades(self, x, y):
-        ancho, alto = 244, 46
-        panel = pygame.Surface((ancho, alto), pygame.SRCALPHA)
-        pygame.draw.rect(panel, (14, 11, 18, 210), (0, 0, ancho, alto), border_radius=8)
-        pygame.draw.rect(panel, (*HUD_BORDE, 170), (0, 0, ancho, alto), 1, border_radius=8)
-        self.pantalla.blit(panel, (x, y))
+        # Divisoria vertical de hierro hacia Sello DASH
+        pygame.draw.line(self.pantalla, (*HUD_BORDE, 160), (x + 232, y + 8), (x + 232, y + alto - 8), 1)
 
-        # SELLO 1: DASH (Sombra)
-        dx_box = x + 12
+        # SELLO DE DASH
+        dx_box = x + 242
         dash_listo = self.jugador.dash_listo()
         color_dash = HUD_DASHTURQUESA if dash_listo else HUD_MUTED
 
         # Ala rúnica de dash
-        pygame.draw.polygon(self.pantalla, color_dash, [(dx_box + 2, y + 28), (dx_box + 12, y + 16), (dx_box + 16, y + 22), (dx_box + 7, y + 31)])
-        pygame.draw.polygon(self.pantalla, color_dash, [(dx_box + 14, y + 23), (dx_box + 22, y + 14), (dx_box + 24, y + 20), (dx_box + 17, y + 27)])
+        pygame.draw.polygon(self.pantalla, color_dash, [(dx_box + 2, y + 34), (dx_box + 12, y + 20), (dx_box + 16, y + 26), (dx_box + 7, y + 38)])
+        pygame.draw.polygon(self.pantalla, color_dash, [(dx_box + 14, y + 28), (dx_box + 22, y + 18), (dx_box + 24, y + 24), (dx_box + 17, y + 33)])
 
         self.dibujar_texto("DASH", dx_box + 28, y + 8, 11, HUD_MUTED)
         estado_dash = "LISTO" if dash_listo else f"{1.0 - (self.jugador.dash_cooldown / DASH_COOLDOWN):.1f}"
-        self.dibujar_texto(estado_dash, dx_box + 28, y + 24, 13, color_dash)
+        self.dibujar_texto(estado_dash, dx_box + 28, y + 28, 13, color_dash)
 
-        # Línea divisoria central
-        pygame.draw.line(self.pantalla, (*HUD_BORDE, 150), (x + 115, y + 8), (x + 115, y + alto - 8), 1)
-
-        # SELLO 2: ARMA (Pala / Guadaña Imperial)
-        ax_box = x + 128
-        if not self.jugador.tiene_pala:
-            self.dibujar_texto("SIN ARMA", ax_box + 8, y + 16, 12, (55, 50, 62))
-        else:
+        # SELLO DE ARMA (Solo si tiene pala)
+        if tiene_arma:
+            # Divisoria vertical hacia Sello de Arma
+            pygame.draw.line(self.pantalla, (*HUD_BORDE, 160), (x + 342, y + 8), (x + 342, y + alto - 8), 1)
+            ax_box = x + 352
             es_guadaña = getattr(self.jugador, "rango_ataque_mejorado", False)
             color_arma = (215, 85, 255) if es_guadaña else HUD_ORO
             etiqueta = "GUADAÑA +" if es_guadaña else "PALA"
 
-            # Icono de arma
             if es_guadaña:
                 # Guadaña mística púrpura
-                pygame.draw.arc(self.pantalla, color_arma, (ax_box + 4, y + 12, 18, 20), 0, 3.14, 3)
-                pygame.draw.line(self.pantalla, (130, 50, 160), (ax_box + 13, y + 22), (ax_box + 6, y + 36), 2)
+                pygame.draw.arc(self.pantalla, color_arma, (ax_box + 4, y + 16, 20, 22), 0, 3.14, 3)
+                pygame.draw.line(self.pantalla, (130, 50, 160), (ax_box + 14, y + 27), (ax_box + 6, y + 42), 2)
             else:
                 # Pala plateada
-                pygame.draw.line(self.pantalla, (160, 120, 60), (ax_box + 8, y + 34), (ax_box + 16, y + 18), 2)
-                pygame.draw.polygon(self.pantalla, (190, 190, 205), [(ax_box + 14, y + 16), (ax_box + 22, y + 14), (ax_box + 18, y + 24)])
+                pygame.draw.line(self.pantalla, (160, 120, 60), (ax_box + 8, y + 40), (ax_box + 16, y + 22), 2)
+                pygame.draw.polygon(self.pantalla, (190, 190, 205), [(ax_box + 14, y + 20), (ax_box + 23, y + 17), (ax_box + 19, y + 28)])
 
             self.dibujar_texto(etiqueta, ax_box + 28, y + 8, 11, color_arma)
             estado_ataque = "LISTO" if self.jugador.ataque_cooldown <= 0 else "..."
-            self.dibujar_texto(estado_ataque, ax_box + 28, y + 24, 13, HUD_VERDE if self.jugador.ataque_cooldown <= 0 else HUD_MUTED)
+            self.dibujar_texto(estado_ataque, ax_box + 28, y + 28, 13, HUD_VERDE if self.jugador.ataque_cooldown <= 0 else HUD_MUTED)
 
-    # --- Módulo HUD: Barra Imperial del Custodio (Jefe Final) --- #
+    # --- Módulo HUD: Barra Imperial del Custodio (+10% escala) --- #
     def dibujar_barra_jefe(self):
-        ancho, alto = 500, 58
+        ancho, alto = 550, 64
         x = (ANCHO - ancho) // 2
-        y = 18
+        y = 16
 
         panel = pygame.Surface((ancho, alto), pygame.SRCALPHA)
         pygame.draw.rect(panel, (16, 12, 20, 230), (0, 0, ancho, alto), border_radius=10)
@@ -1617,53 +1630,58 @@ class Juego:
 
         # Nombre y fase
         nombre_color = HUD_ROJO if self.jefe.fase >= 2 else HUD_ORO
-        self.dibujar_texto("EL CUSTODIO DEL OSARIO", x + 16, y + 7, 14, nombre_color, sombra=True)
+        self.dibujar_texto("EL CUSTODIO DEL OSARIO", x + 18, y + 8, 15, nombre_color, sombra=True)
 
-        # Subtítulo dinámico según fase
         if self.jefe.fase >= 2:
             fase_txt = "FASE II · ¡LA PALA REBOTA! SOLO PISOTÓN"
             fase_color = (250, 65, 65)
         else:
             fase_txt = "FASE I · VULNERABLE A PALA Y PISOTÓN"
             fase_color = HUD_MUTED
-        self.dibujar_texto(fase_txt, x + ancho - 270, y + 8, 11, fase_color)
+        self.dibujar_texto(fase_txt, x + ancho - 280, y + 9, 11, fase_color)
 
         # 6 Celdas de Salud (Losas de Osario con Rubí)
-        ancho_celda = 74
-        alto_celda = 10
-        y_celdas = y + 32
+        ancho_celda = 82
+        alto_celda = 12
+        y_celdas = y + 36
         for i in range(6):
-            cx = x + 16 + i * (ancho_celda + 5)
+            cx = x + 18 + i * (ancho_celda + 5)
             rect_celda = pygame.Rect(cx, y_celdas, ancho_celda, alto_celda)
             llena = (i < self.jefe.vida)
 
             if llena:
-                # Rubí carmesí de salud
                 color_rubi = (225, 38, 52)
                 pygame.draw.rect(self.pantalla, color_rubi, rect_celda, border_radius=3)
                 pygame.draw.rect(self.pantalla, (255, 105, 120), (rect_celda.x + 2, rect_celda.y + 2, rect_celda.width - 4, 3), border_radius=2)
                 pygame.draw.rect(self.pantalla, (120, 18, 28), rect_celda, 1, border_radius=3)
             else:
-                # Cavidad agrietada gris piedra
                 pygame.draw.rect(self.pantalla, (36, 26, 30), rect_celda, border_radius=3)
                 pygame.draw.rect(self.pantalla, (22, 16, 20), rect_celda, 1, border_radius=3)
 
-    # --- Función dibujar_pista --- #
+    # --- Función dibujar_pista (Ubicación Superior Contextual) --- #
     def dibujar_pista(self):
-        if not self.nivel or not self.nivel.pista:
+        texto = getattr(self, "texto_ayuda", None) or (self.nivel.pista if self.nivel else "")
+        if not texto:
             return
-        lineas = textwrap.wrap(self.nivel.pista, width=82)
-        alto = 26 + 19 * len(lineas)
-        x = (ANCHO - 780) // 2
-        y = ALTO - alto - 16
-        caja = pygame.Surface((780, alto), pygame.SRCALPHA)
-        pygame.draw.rect(caja, (14, 11, 18, 220), (0, 0, 780, alto), border_radius=9)
-        pygame.draw.rect(caja, (*HUD_BORDE, 170), (0, 0, 780, alto), 1, border_radius=9)
-        pygame.draw.rect(caja, HUD_ORO, (0, 0, 4, alto), border_radius=2)
+
+        lineas = textwrap.wrap(texto, width=74)
+        alto = 28 + 20 * len(lineas)
+        ancho = 680
+        x = (ANCHO - ancho) // 2
+        y = 88 if (self.jefe is not None and self.jefe.vivo) else 16
+
+        # Fade suave al desaparecer
+        alpha = int(225 * min(1.0, self.mostrar_ayuda / 0.8)) if self.mostrar_ayuda < 0.8 else 225
+
+        caja = pygame.Surface((ancho, alto), pygame.SRCALPHA)
+        pygame.draw.rect(caja, (14, 11, 18, alpha), (0, 0, ancho, alto), border_radius=9)
+        pygame.draw.rect(caja, (*HUD_BORDE, min(200, alpha)), (0, 0, ancho, alto), 1, border_radius=9)
+        pygame.draw.rect(caja, (*HUD_ORO, alpha), (0, 0, 4, alto), border_radius=2)
         self.pantalla.blit(caja, (x, y))
-        self.dibujar_texto("PISTA", x + 18, y + 7, 14, HUD_ORO)
+
+        self.dibujar_texto("GUÍA DEL SEPULTURERO", x + 18, y + 6, 12, HUD_ORO)
         for i, linea in enumerate(lineas):
-            self.dibujar_texto(linea, x + 18, y + 26 + i * 19, 16, HUD_TEXTO)
+            self.dibujar_texto(linea, x + 18, y + 26 + i * 20, 14, HUD_TEXTO)
 
     # --- Función dibujar_overlay --- #
     def dibujar_overlay(self, titulo, subtitulo):
