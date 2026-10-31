@@ -34,8 +34,10 @@ from config import (
     INVULNERABILIDAD,
     JEFE_ALTO,
     JEFE_ANCHO,
+    JEFE_CARGA_VELOCIDAD,
     JEFE_VELOCIDAD,
     JEFE_VIDA,
+    JEFE_VULN_FASE2,
     JUMP_BUFFER,
     JUGADOR_ALTO,
     JUGADOR_ANCHO,
@@ -972,7 +974,11 @@ class OndaCustodio:
 
 # --- Clase Custodio --- #
 class Custodio:
-    """Jefe final: camina, golpea el piso y abre una ventana de castigo."""
+    """Jefe final: 2 fases.
+    Fase 1 (vida 6->3): pala+pistón lo dañan, 2 ondas por golpe.
+    Fase 2 (vida 3->0): SOLO pisotón lo daña (pala rebota), 3 ondas,
+    ventana vulnerable más corta, carga horizontal telegrafíada.
+    """
 
     def __init__(self, rect, minimo_x, maximo_x):
         self.rect = pygame.Rect(rect)
@@ -992,6 +998,7 @@ class Custodio:
         self.recien_golpeado = False
         self.ondas_recien = False
         self.aviso_recien = False
+        self.carga_activa = False
         self.tiempo_muerte = 0.0
 
     # --- Función reiniciar --- #
@@ -1010,17 +1017,17 @@ class Custodio:
         self.recien_golpeado = False
         self.ondas_recien = False
         self.aviso_recien = False
+        self.carga_activa = False
         self.tiempo_muerte = 0.0
 
-    # --- Función recibir_golpe --- #
-    def recibir_golpe(self):
-        if not self.vivo or not self.vulnerable:
-            return False
-
+    # --- Aplicar daño interno --- #
+    def _aplicar_dano(self):
+        """Descuenta 1 vida, maneja transición a Fase 2 y muerte."""
         self.vida -= 1
         self.golpes_fase += 1
         self.vulnerable = False
         self.recien_golpeado = True
+        self.carga_activa = False
 
         if self.vida <= 0:
             self.vivo = False
@@ -1028,15 +1035,38 @@ class Custodio:
             self.tiempo_muerte = 0.0
             return True
 
-        if self.golpes_fase >= 2 and self.fase < 3:
+        # Transición: 3 golpes acumulados en la fase → avanza a Fase 2
+        if self.golpes_fase >= 3 and self.fase < 2:
             self.fase += 1
             self.golpes_fase = 0
             self.estado = "cambio"
-            self.temporizador = 0.85
+            self.temporizador = 1.20
         else:
+            vuln_time = JEFE_VULN_FASE2 if self.fase >= 2 else 0.55
             self.estado = "recuperacion"
-            self.temporizador = 0.55
+            self.temporizador = vuln_time
         return True
+
+    # --- Función recibir_golpe_pala --- #
+    def recibir_golpe_pala(self):
+        """Pala: solo funciona en Fase 1 (requiere vulnerable)."""
+        if not self.vivo or not self.vulnerable:
+            return False
+        if self.fase >= 2:
+            return False  # Pala rebota en Fase 2
+        return self._aplicar_dano()
+
+    # --- Función recibir_pisaton --- #
+    def recibir_pisaton(self):
+        """Pisotón: funciona siempre en ambas fases, sin chequear vulnerable."""
+        if not self.vivo:
+            return False
+        return self._aplicar_dano()
+
+    # --- Función recibir_golpe (compatibilidad tests y golpe cuerpo a cuerpo) --- #
+    def recibir_golpe(self):
+        """Alias de recibir_golpe_pala: requiere vulnerable y solo Fase 1."""
+        return self.recibir_golpe_pala()
 
     # --- Función actualizar --- #
     def actualizar(self, dt, jugador):
@@ -1055,8 +1085,14 @@ class Custodio:
                 self.rect.x = round(self.x)
             self.temporizador -= dt
             if self.temporizador <= 0:
-                self.estado = "telegrafia"
-                self.temporizador = max(0.38, 0.78 - self.fase * 0.12)
+                # Fase 2: 40% de chance de carga en vez de pisotón
+                import random
+                if self.fase >= 2 and random.random() < 0.40:
+                    self.estado = "telegrafia_carga"
+                    self.temporizador = 0.45
+                else:
+                    self.estado = "telegrafia"
+                    self.temporizador = max(0.38, 0.78 - self.fase * 0.12)
                 self.aviso_recien = True
 
         elif self.estado == "telegrafia":
@@ -1070,7 +1106,8 @@ class Custodio:
             self.temporizador -= dt
             if self.temporizador <= 0:
                 self.estado = "recuperacion"
-                self.temporizador = max(0.75, 1.7 - self.fase * 0.25)
+                vuln_dur = JEFE_VULN_FASE2 if self.fase >= 2 else max(0.75, 1.7 - self.fase * 0.25)
+                self.temporizador = vuln_dur
                 self.vulnerable = True
 
         elif self.estado == "recuperacion":
@@ -1086,6 +1123,28 @@ class Custodio:
                 self.estado = "espera"
                 self.temporizador = max(0.55, 1.2 - self.fase * 0.18)
 
+        elif self.estado == "telegrafia_carga":
+            self.temporizador -= dt
+            if self.temporizador <= 0:
+                self.estado = "carga"
+                self.carga_activa = True
+                self.direccion = 1 if jugador.rect.centerx > self.rect.centerx else -1
+                self.temporizador = 0.55
+
+        elif self.estado == "carga":
+            # Corre rápido hacia el jugador
+            self.x += self.direccion * JEFE_CARGA_VELOCIDAD * dt
+            self.x = max(self.minimo_x, min(self.maximo_x, self.x))
+            self.rect.x = round(self.x)
+            self.temporizador -= dt
+            dist = abs(jugador.rect.centerx - self.rect.centerx)
+            if self.temporizador <= 0 or dist <= 20:
+                # Fin de carga → queda vulnerable brevemente (solo pisotón)
+                self.carga_activa = False
+                self.estado = "recuperacion"
+                self.temporizador = JEFE_VULN_FASE2
+                self.vulnerable = True
+
     # --- Función dibujar --- #
     def dibujar(self, surface, camara, tiempo):
         if not self.vivo:
@@ -1098,7 +1157,13 @@ class Custodio:
 
         pygame.draw.ellipse(surface, (7, 6, 10), (rect.x, base_y - 6, rect.width, 10))
 
-        if self.vulnerable:
+        # Aura: dorada si vulnerable en Fase 1, roja permanente en Fase 2
+        if self.fase >= 2:
+            aura_color = (200, 40, 40, int(18 + pulso * 22))
+            aura = pygame.Surface((rect.width + 22, rect.height + 20), pygame.SRCALPHA)
+            pygame.draw.ellipse(aura, aura_color, aura.get_rect())
+            surface.blit(aura, (rect.x - 11, rect.y - 10), special_flags=pygame.BLEND_RGBA_ADD)
+        elif self.vulnerable:
             aura = pygame.Surface((rect.width + 18, rect.height + 16), pygame.SRCALPHA)
             pygame.draw.ellipse(aura, (255, 205, 95, 30), aura.get_rect())
             pygame.draw.ellipse(
@@ -1110,11 +1175,12 @@ class Custodio:
                 special_flags=pygame.BLEND_RGBA_ADD,
             )
 
-        if self.estado == "telegrafia":
+        if self.estado in ("telegrafia", "telegrafia_carga"):
+            color_brillo = (220, 60, 60) if self.estado == "telegrafia_carga" else (170, 30, 38)
             brillo = pygame.Surface((rect.width + 50, rect.height + 40), pygame.SRCALPHA)
             pygame.draw.ellipse(
                 brillo,
-                (170, 30, 38, int(70 + pulso * 50)),
+                (*color_brillo, int(70 + pulso * 50)),
                 (10, 20, brillo.get_width() - 20, brillo.get_height() - 20),
             )
             surface.blit(
@@ -1123,10 +1189,11 @@ class Custodio:
                 special_flags=pygame.BLEND_RGBA_ADD,
             )
 
-        # Capa y joroba.
+        # Capa y joroba — roja en Fase 2
+        capa_color = (55, 18, 18) if self.fase >= 2 else (38, 31, 44)
         pygame.draw.polygon(
             surface,
-            (38, 31, 44),
+            capa_color,
             [
                 (centro_x - 24, base_y - 2),
                 (centro_x - 18, rect.y + 18),
@@ -1136,7 +1203,8 @@ class Custodio:
                 (centro_x + 27, base_y - 2),
             ],
         )
-        pygame.draw.rect(surface, (23, 20, 28), (centro_x - 21, rect.y + 12, 42, 44), border_radius=12)
+        cuerpo_color = (38, 12, 12) if self.fase >= 2 else (23, 20, 28)
+        pygame.draw.rect(surface, cuerpo_color, (centro_x - 21, rect.y + 12, 42, 44), border_radius=12)
         pygame.draw.line(
             surface,
             (78, 55, 52),
@@ -1153,17 +1221,21 @@ class Custodio:
                 1,
             )
 
-        # Cráneo y farol incrustado.
+        # Cráneo y farol incrustado
         pygame.draw.circle(surface, HUESO, (centro_x, rect.y + 16), 12)
         pygame.draw.circle(surface, NEGRO, (centro_x, rect.y + 16), 12, 1)
-        color_ojo = (235, 198, 92) if self.vulnerable else (178, 38, 42)
+        # Ojos: rojo fuego en Fase 2; dorado si vulnerable en Fase 1
+        if self.fase >= 2:
+            color_ojo = (200, 60, 40)
+        else:
+            color_ojo = (235, 198, 92) if self.vulnerable else (178, 38, 42)
         pygame.draw.circle(surface, color_ojo, (centro_x - 4, rect.y + 15), 2)
         pygame.draw.circle(surface, color_ojo, (centro_x + 4, rect.y + 15), 2)
         pygame.draw.rect(surface, NEGRO, (centro_x - 5, rect.y + 21, 10, 2))
         pygame.draw.circle(surface, (122, 82, 30), (centro_x, rect.y + 34), 7)
         pygame.draw.circle(surface, AMARILLO, (centro_x, rect.y + 34), 3)
 
-        # Pala rota.
+        # Pala rota
         pygame.draw.line(
             surface,
             MARRON,
@@ -1182,8 +1254,6 @@ class Custodio:
             ],
         )
 
-
-# --- Clase Cuervo (Raven) --- #
 class Cuervo:
     """Cuervo que vuela en patrón circular. Daño por contacto."""
 

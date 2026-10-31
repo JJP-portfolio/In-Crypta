@@ -464,7 +464,7 @@ class Juego:
                 self.flash_color = AMARILLO
                 break
 
-        # Jefe.
+        # Jefe — pala: solo daña en Fase 1 (y con vulnerable=True)
         if (
             not self.jugador.ataque_golpeado
             and self.jefe is not None
@@ -472,7 +472,7 @@ class Juego:
             and self.jefe.rect.colliderect(golpe)
         ):
             self.jugador.ataque_golpeado = True
-            self.dañar_jefe()
+            self.dañar_jefe_pala()
 
     # --- Función actualizar_jefe --- #
     def actualizar_jefe(self, dt):
@@ -488,12 +488,22 @@ class Juego:
 
         if jefe.ondas_recien:
             velocidad = JEFE_ONDA_VELOCIDAD + (jefe.fase - 1) * 45
-            for direccion in (-1, 1):
+            # Fase 2: triple onda (izq, der + central lenta)
+            direcciones = (-1, 1)
+            for direccion in direcciones:
                 self.ondas_jefe.append(OndaCustodio(
                     jefe.rect.centerx + direccion * 24,
                     jefe.rect.bottom,
                     direccion,
                     velocidad,
+                ))
+            if jefe.fase >= 2:
+                # Tercera onda central (se expande despacio)
+                self.ondas_jefe.append(OndaCustodio(
+                    jefe.rect.centerx,
+                    jefe.rect.bottom,
+                    0,
+                    velocidad * 0.55,
                 ))
             self.audio.reproducir("onda")
             self.camara.sacudir(8.0, 0.20)
@@ -529,7 +539,7 @@ class Juego:
             and jefe.rect.colliderect(self.jugador.rect_ataque())
         ):
             self.jugador.ataque_golpeado = True
-            self.dañar_jefe()
+            self.dañar_jefe_pala()
             if not jefe.vivo:
                 return False
 
@@ -538,11 +548,12 @@ class Juego:
                 self.jugador.vy > 0
                 and self.jugador.rect.bottom - jefe.rect.top <= 20
             )
-            if viene_desde_arriba and jefe.vulnerable:
+            if viene_desde_arriba:
+                # Pisotón: funciona siempre (Fase 1 y 2), sin chequear vulnerable
                 self.jugador.vy = -REBOTE_ENEMIGO
                 self.jugador.en_suelo = False
-                self.dañar_jefe()
-            elif not jefe.vulnerable and self.jugador.invulnerable <= 0:
+                self.dañar_jefe_pisaton()
+            elif self.jugador.invulnerable <= 0:
                 self.perder_vida()
                 return True
 
@@ -557,9 +568,31 @@ class Juego:
 
     # --- Función dañar_jefe --- #
     def dañar_jefe(self):
+        """Golpe de pala: requiere vulnerable y solo funciona en Fase 1."""
         if not self.jefe.recibir_golpe():
             return False
+        return self._aplicar_golpe_jefe()
 
+    # --- Función dañar_jefe_pala --- #
+    def dañar_jefe_pala(self):
+        """Golpe de pala: requiere vulnerable y solo funciona en Fase 1."""
+        if not self.jefe.recibir_golpe_pala():
+            # Fase 2: pala rebota — efecto visual de rechazo
+            self.camara.sacudir(3.0, 0.08)
+            self.flash = 0.05
+            self.flash_color = (180, 60, 60)
+            return False
+        return self._aplicar_golpe_jefe()
+
+    # --- Función dañar_jefe_pisaton --- #
+    def dañar_jefe_pisaton(self):
+        """Pisotón: siempre funciona en ambas fases."""
+        if not self.jefe.recibir_pisaton():
+            return False
+        return self._aplicar_golpe_jefe()
+
+    # --- Función _aplicar_golpe_jefe (efectos comunes) --- #
+    def _aplicar_golpe_jefe(self):
         self.jugador.dash_usos_aire = DASH_USOS_AIRE
         self.jugador.dash_cooldown = 0.0
         self.audio.reproducir("pala")
@@ -1099,9 +1132,11 @@ class Juego:
         color_progreso = HUD_ORO if self.jugador.almas_para_vida >= 8 else HUD_MUTED
         self.dibujar_barra_hud(510, 34, 240, progreso_almas, color_progreso, segmentos=ALMAS_POR_VIDA)
 
-        # Corazones: arriba-der del panel derecho (Y=16 centrado en el panel)
+        # Corazones: arriba-der del panel derecho (latido pulsante si queda 1 vida)
+        pulso_latido = int(math.sin(self.tiempo_nivel * 9) * 2) if self.jugador.vidas == 1 else 0
         for i in range(VIDAS_MAXIMAS):
-            self.dibujar_corazon(724 + i * 23, 30, i < self.jugador.vidas)
+            desp_y = pulso_latido if (i == 0 and self.jugador.vidas == 1) else 0
+            self.dibujar_corazon(724 + i * 23, 30 + desp_y, i < self.jugador.vidas)
 
         # Panel de cooldowns (abajo, centrado a la derecha)
         # Dash
@@ -1133,14 +1168,18 @@ class Juego:
             self.dibujar_barra_jefe()
 
         if self.aviso_jefe > 0:
-            texto = (
-                "LA SALIDA ESTÁ SELLADA"
-                if self.jefe is not None and self.jefe.vivo
-                else "EL CUSTODIO CAYÓ · LA SALIDA SE ABRIÓ"
-            )
+            if not self.jefe.vivo:
+                texto = "EL CUSTODIO CAYÓ · LA SALIDA SE ABRIÓ"
+                color_aviso = HUD_ORO
+            elif self.jefe.estado == "cambio" or self.jefe.fase >= 2:
+                texto = "¡FASE 2! LA PALA REBOTA — SOLO EL PISOTÓN LO DAÑA"
+                color_aviso = HUD_ROJO
+            else:
+                texto = "LA SALIDA ESTÁ SELLADA"
+                color_aviso = HUD_ORO
             self.dibujar_texto(
                 texto, 0, 142 if self.jefe is not None and self.jefe.vivo else 124,
-                16, HUD_ORO, centrado=True, sombra=True,
+                16, color_aviso, centrado=True, sombra=True,
             )
 
         if self.mostrar_ayuda > 0 and self.estado == "jugando":
@@ -1254,15 +1293,19 @@ class Juego:
         x = (ANCHO - ancho) // 2
         y = 90
         self.dibujar_panel_hud(pygame.Rect(x, y, ancho, 44))
-        self.dibujar_texto("EL CUSTODIO DEL OSARIO", x + 14, y + 7, 14, HUD_ORO)
-        self.dibujar_texto(
-            f"FASE {self.jefe.fase}/3",
-            x + ancho - 78, y + 7, 12, HUD_MUTED,
-        )
+        nombre_color = HUD_ROJO if self.jefe.fase >= 2 else HUD_ORO
+        self.dibujar_texto("EL CUSTODIO DEL OSARIO", x + 14, y + 7, 14, nombre_color)
+        fase_label = f"FASE {self.jefe.fase}/2"
+        fase_color = HUD_ROJO if self.jefe.fase >= 2 else HUD_MUTED
+        self.dibujar_texto(fase_label, x + ancho - 78, y + 7, 12, fase_color)
+        if self.jefe.fase >= 2:
+            # Subtítulo en Fase 2: recordatorio de mecánica
+            self.dibujar_texto("SOLO PISOTÓN", x + ancho - 96, y + 19, 10, HUD_ROJO)
         celda = 60
         for i in range(self.jefe.vida):
             rect = pygame.Rect(x + 14 + i * (celda + 5), y + 27, celda, 7)
-            pygame.draw.rect(self.pantalla, HUD_ROJO, rect, border_radius=3)
+            color_seg = HUD_ROJO if self.jefe.fase >= 2 else HUD_ROJO
+            pygame.draw.rect(self.pantalla, color_seg, rect, border_radius=3)
         for i in range(self.jefe.vida, 6):
             rect = pygame.Rect(x + 14 + i * (celda + 5), y + 27, celda, 7)
             pygame.draw.rect(self.pantalla, (45, 31, 36), rect, border_radius=3)

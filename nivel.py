@@ -568,21 +568,20 @@ class Nivel:
                         1,
                     )
             else:
-                pygame.draw.rect(surface, PIEDRA, rect)
-                pygame.draw.rect(surface, PIEDRA_OSCURA, rect, 2)
-                pygame.draw.rect(
-                    surface,
-                    (92, 95, 105),
-                    (rect.x + 2, rect.y + 2, rect.width - 4, 5),
-                )
-                if rect.width >= TILE:
-                    pygame.draw.line(
-                        surface,
-                        PIEDRA_OSCURA,
-                        (rect.x + 3, rect.bottom - 4),
-                        (rect.right - 4, rect.bottom - 4),
-                        1,
-                    )
+                # Tiles no-piso: semi-transparentes para que se vea el fondo parallax
+                w, h = rect.width, rect.height
+                tile_surf = pygame.Surface((w, h), pygame.SRCALPHA)
+                pygame.draw.rect(tile_surf, (*PIEDRA, 210), (0, 0, w, h))
+                pygame.draw.rect(tile_surf, (*PIEDRA_OSCURA, 255), (0, 0, w, h), 2)
+                # Highlight superior
+                pygame.draw.rect(tile_surf, (92, 95, 105, 180), (2, 2, w - 4, 5))
+                # Mortero vertical entre tiles
+                for gx in range(TILE, w, TILE):
+                    pygame.draw.line(tile_surf, (*PIEDRA_OSCURA, 160), (gx, 4), (gx, h - 4), 1)
+                # Línea horizontal de mortero central
+                if h >= TILE * 2:
+                    pygame.draw.line(tile_surf, (*PIEDRA_OSCURA, 120), (3, h // 2), (w - 4, h // 2), 1)
+                surface.blit(tile_surf, rect.topleft)
 
     # --- Función dibujar_decoraciones --- #
     def dibujar_decoraciones(self, surface, camara):

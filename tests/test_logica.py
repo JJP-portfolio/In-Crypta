@@ -562,14 +562,23 @@ def probar_jefe_final():
     juego.jefe.estado = "recuperacion"
     juego.jefe.vulnerable = True
     juego.dañar_jefe()
-    assert jefe.fase == 2
+    assert jefe.fase == 1  # 2do golpe: aún no cambia (necesita 3 para transición)
 
-    for _ in range(4):
-        jefe.estado = "recuperacion"
-        jefe.vulnerable = True
-        juego.dañar_jefe()
+    # Tercer golpe → transición a Fase 2
+    jefe.estado = "recuperacion"
+    jefe.vulnerable = True
+    juego.dañar_jefe()
+    assert jefe.fase == 2  # 3 golpes acumulados → Fase 2
+
+    # En Fase 2, la pala rebota y no lo daña
+    assert not juego.dañar_jefe()
+    assert jefe.vida == 3
+
+    # En Fase 2, solo el pisotón lo daña
+    for _ in range(3):
+        assert juego.dañar_jefe_pisaton()
     assert not jefe.vivo
-    assert jefe.fase == 3
+    assert jefe.fase == 2  # Muere en Fase 2
     assert not juego.ondas_jefe
 
     juego.jugador.rect.topleft = juego.nivel.meta.topleft
@@ -583,16 +592,16 @@ def probar_jefe_final():
 # --- Prueba: limpieza de gemas y arena del jefe --- #
 def probar_mapa_final():
     filas_2 = NIVEL_2.strip("\n").splitlines()
-    assert len(filas_2) == 12 and len(filas_2[0]) == 96
+    assert len(filas_2) == 12 and len(filas_2[0]) == 130
     assert any("W" in fila for fila in filas_2)
     assert any("#" in fila for fila in filas_2)
     assert not any("B" in fila for fila in filas_2)
 
     filas_3 = NIVEL_3.strip("\n").splitlines()
-    assert len(filas_3) == 12 and len(filas_3[0]) == 90
+    assert len(filas_3) == 12 and len(filas_3[0]) == 160
     fila_jefe = next(fila for fila in filas_3 if "B" in fila)
-    assert fila_jefe.index("B") == 67
-    assert next(fila for fila in filas_3 if "G" in fila).index("G") == 87
+    assert fila_jefe.index("B") == 138
+    assert next(fila for fila in filas_3 if "G" in fila).index("G") == 155
 
     for datos in (NIVEL_2, NIVEL_3):
         filas = datos.strip("\n").splitlines()
