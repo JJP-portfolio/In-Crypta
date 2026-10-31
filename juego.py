@@ -82,6 +82,7 @@ from entidades import (
     Polilla,
     TotemProyectil,
 )
+from hud import HudOrquestador
 from nivel import Nivel
 from niveles import NIVELES, SALAS_PRUEBA
 from particulas import SistemaParticulas
@@ -105,6 +106,7 @@ class Juego:
 
         self.particulas = SistemaParticulas()
         self.efecto_hud = EfectoAnimacion()
+        self.hud = HudOrquestador()
         self.audio = Audio()
 
         self.nivel_indice = 0
@@ -118,6 +120,7 @@ class Juego:
         self.almas_totales = 0
         self.mostrar_ayuda = 0.0
         self.texto_ayuda = ""
+        self.dt = 0.0
         self.flash = 0.0
         self.flash_color = (255, 255, 255)
         self.jefe = None
@@ -1411,7 +1414,7 @@ class Juego:
 
         # Viñeta gótica y HUD en resolución nativa
         self.pantalla.blit(self.vineta, (0, 0))
-        self.dibujar_hud()
+        self.hud.dibujar(self.pantalla, self, self.dt)
 
         if self.flash > 0:
             velo = pygame.Surface((ANCHO, ALTO), pygame.SRCALPHA)
@@ -1772,6 +1775,8 @@ class Juego:
             dt = min(self.reloj.tick(FPS) / 1000, MAX_DT)
             self.procesar_eventos()
             self.actualizar(dt)
+            self.dt = dt
+            self.hud.actualizar(dt)
             self.dibujar()
             pygame.display.flip()
 
