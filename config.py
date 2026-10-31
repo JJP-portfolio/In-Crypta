@@ -16,9 +16,12 @@ INTEGRANTES = (
 )
 REFERENCIAS = ("Blasphemous", "Castlevania", "Ender Lilies")
 
-# --- Ventana y tiempo ---
+# --- Ventana, Zoom y Viewport ---
 ANCHO = 1280
 ALTO = 720
+CAMARA_ZOOM = 1.25
+VIRTUAL_ANCHO = 1024  # 1280 / 1.25
+VIRTUAL_ALTO = 576    # 720 / 1.25
 FPS = 60
 MAX_DT = 1 / 30
 

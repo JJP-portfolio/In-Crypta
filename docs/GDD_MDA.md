@@ -1,512 +1,215 @@
 # IN CRYPTA
-## Documento de diseño (GDD) y matriz MDA
+## Documento de Diseño de Videojuego (GDD) y Matriz MDA — Versión Definitiva 1.0.0
 
 **Equipo 6:** Ovelar Alejandro Ezequiel · Joaquín Cardiel Gomez · Jonathan Javier Pietracci  
-**Materias:** Taller de Diseño Conceptual · Introducción a los Videojuegos  
-**Género:** plataformas 2D de precisión, con estética gótica  
-**Motor de prototipo:** Pygame (Python)  
-**Motor de presentación:** GDevelop 5 (proyecto nativo de objetos y eventos)  
-**Resolución:** diseño de 960 × 540 · build nativo de 1920 × 1080 · **Duración:** 8–12 minutos  
-**Público:** estudiantes y jugadores con poca experiencia en plataformas, que aceptan un desafío de precisión creciente.  
-**Tono:** gótico, nocturno, solitario y de escape.
+**Materias:** Taller de Diseño Conceptual · Introducción a los Videojuegos (UNAHUR)  
+**Género:** Plataformas 2D de precisión con combate táctico y estética gótica  
+**Motor de juego:** Python 3 + `pygame-ce` (Arquitectura procedimental vectorial, 60 FPS estables)  
+**Resolución y Cámara:** Viewport virtual de 1024 × 576 escalado con zoom 1.25× a 1280 × 720 (anclaje inferior de suelo sin vacío negro)  
+**Duración estimada:** 12–18 minutos  
+**Público objetivo:** Jugadores de plataformas que buscan precisión, atmósfera gótica envolvente y curvas de aprendizaje justas.  
+**Tono:** Gótico, opresivo, solitario, ritual y de escape penitente.
 
 ---
 
-## 1. High concept
+## 1. High Concept & Visión Creativa
 
-> **IN CRYPTA** es un plataformero gótico 2D. Un sepulturero baja a la cripta a cumplir su jornada; la puerta se cierra detrás de él y la oscuridad despierta. Con su pala, su farol y un dash de sombra, debe cruzar el camposanto, la cripta y el osario para alcanzar el portón y escapar.
+> **IN CRYPTA** es un plataformero gótico 2D de precisión. Un sepulturero queda sepultado en las profundidades de un camposanto profanado al sellarse las rejas tras de él. Armado únicamente con su pala de hierro —que luego consagrará como guadaña mística—, un farol mortuorio y un veloz dash de sombras, deberá atravesar las tumbas del Camposanto, escalar los arcos de La Cripta y superar los abismos del Osario para derrotar al Custodio ancestral y cruzar el portón hacia la redención.
 
-En una frase: **un plataformero de precisión donde un sepulturero escapa de su propia cripta usando salto, dash y pala.**
+### 1.1 En una frase
+*Un plataformero de precisión y combate ágil donde un sepulturero escapa de una necrópolis subterránea dominando el salto de altura variable, el dash espectral, el sablazo de pala y el rebote aéreo por pisotón.*
 
-### Pitch breve
-
-IN CRYPTA es un plataformero 2D de tres niveles hecho primero en Pygame y presentado en GDevelop. El jugador controla a un sepulturero atrapado entre la muerte y la oscuridad. Tiene tres acciones: salto de altura variable, dash de sombra y golpe descendente con la pala. Cada nivel enseña una combinación distinta y sube la dificultad en forma de sierra. La estética buscada es **Desafío** (dominio de la precisión) y **Sensación** (oscuridad, velocidad, partículas y sacudida de cámara). El prototipo está en Pygame; la versión de presentación es un proyecto nativo de GDevelop con objetos, eventos y comportamientos propios, renderizado a 1920 × 1080.
-
-### Referencias
-
-- **Blasphemous:** imaginería gótica, penitencia, pala como arma y mundo hostil.
-- **Castlevania:** plataformas de precisión, criptas, velas, esqueletos y portones.
-- **Ender Lilies:** atmósfera melancólica, siluetas oscuras, luz escasa y exploración lineal.
-
-No es un *metroidvania*: no hay mapa interconectado ni habilidades que desbloqueen zonas. Es un plataformero lineal de tres niveles que homenajea esa estética y concentra el diseño en el movimiento.
+### 1.2 Referencias artísticas y lúdicas
+- **Blasphemous (The Game Kitchen):** Imaginería religiosa gótica, penitencia, relicarios de hierro y oro, la pala/guadaña como herramienta litúrgica y combate contundente.
+- **Castlevania: Symphony of the Night / Aria of Sorrow (Konami):** Arquitectura de criptas de piedra tallada, arcos góticos, ventanales de rejas, portones con goznes forjados y combate contra jefes con lectura estricta de patrones.
+- **Ender Lilies: Quietus of the Knights / Celeste:** Atmósfera melancólica, partículas espectrales flotantes, zoom cinematográfico, coyote time, jump buffering y control ultra responsivo.
 
 ---
 
-## 2. Objetivos de diseño
+## 2. Pilares de Diseño
 
-1. Que el jugador **aprenda haciendo**, sin tutoriales largos.
-2. Que las mecánicas se presenten escalonadas: salto y dash en el nivel 1, recogida de pala y ataque en el nivel 2, y las tres combinadas en el nivel 3.
-3. Que fallar sea **legible y justo**: el jugador debe saber por qué perdió.
-4. Que la experiencia se sienta **rápida y responsive** (coyote time, buffer de salto, dash con cooldown corto).
-5. Que la oscuridad y la muerte se sientan **como una atmósfera**, no como una excusa para ocultar información.
-6. Que el juego sea **presentable y verificable**: GDD, matriz MDA, pruebas automatizadas y una versión jugable en GDevelop.
+1. **Aprender mediante la arquitectura (Diseño Invisible):** Los niveles introducen mecánicas orgánicamente a través de su geometría, sin tutoriales intrusivos ni pausas artificiales.
+2. **Control responsivo y benévolo:** Asistencias invisibles de entrada (100 ms de coyote time, 120 ms de jump buffer, corner nudge en bordes y caída flotante al cortar salto).
+3. **Mundo coherente y diegético:** Fondos multicapa con parallax (cielo nocturno, luna craterizada con halo, tumbas lejanas, arquerías góticas y cadenas oscilantes) anclados al suelo para eliminar espacios vacíos.
+4. **Legibilidad y justicia absoluta:** Ningún peligro aparece por sorpresa; cada ataque enemigo y del jefe posee al menos 500 ms de anticipación visual y sonora telegrafiada.
+5. **HUD gótico diegético:** Información presentada en relicarios heráldicos de hierro envejecido, filigrana de oro y rubíes carmesí, evitando barras genéricas escolares.
 
 ---
 
-## 3. Matriz MDA
+## 3. Matriz MDA (Mechanics, Dynamics, Aesthetics)
 
-MDA separa el juego en **Mecánicas** (reglas y acciones), **Dinámicas** (comportamiento que emerge al jugar) y **Estéticas** (respuestas emocionales). El diseñador trabaja de mecánicas hacia estéticas; el jugador vive el camino inverso.
+El marco MDA desglosa el sistema lúdico en tres capas interconectadas:
 
-### 3.1 Matriz principal: 3 mecánicas → 2 estéticas
+```
+   DISEÑADOR  ──►  [ MECÁNICAS ]  ──►  [ DINÁMICAS ]  ──►  [ ESTÉTICAS ]  ◄──  JUGADOR
+                     (Reglas)           (Sistemas)          (Emociones)
+```
 
-| Mecánica | Dinámica fomentada | Estética principal | Cómo se manifiesta |
+### 3.1 Mecánicas Fundamentales
+
+| Mecánica | Entrada | Propiedades del Sistema | Feedback Audiovisual |
 |---|---|---|---|
-| **Salto de precisión** | Medir distancias, elegir el momento, corregir en el aire. | **Desafío** | Pozos de 3 tiles, plataformas escalonadas y saltos con altura variable. |
-| **Dash de sombra** | Decidir cuándo gastar el impulso; cruzar pozos anchos; encadenar con el salto. | **Desafío + Sensación** | Estela turquesa, cooldown visible, sacudida leve y sonido de impulso en ambos builds. |
-| **Golpe de pala (pisotón)** | Convertir al morador en recurso: atacar, rebotar, recuperar el dash y encadenar. | **Sensación + Desafío** | La pala se recoge en el nivel 2; `A` activa el sablazo y el pisotón elimina al morador. Partículas, rebote y sonido de impacto. |
+| **Salto de Precisión** | `ESPACIO` / `W` / `↑` | Altura variable (impulso inicial -420 px/s; gravedad 980 px/s²; corte a 0.5× al soltar). Coyote time: 0.10 s; Jump buffer: 0.12 s. | Chispas de polvo blanquecino en los pies; tono sonoro ascendente. |
+| **Dash de Sombra** | `SHIFT` / `X` | Desplazamiento horizontal instantáneo a 520 px/s durante 0.16 s. Cooldown de 0.60 s. Un solo uso aéreo recargable al tocar suelo o pisar enemigo. | Estela espectral turquesa con clones residuales (`ghosting`), zumbido eólico y sacudida leve de cámara. |
+| **Golpe de Pala / Guadaña** | `Z` / `J` | Sablazo frontal (rango 46 px con pala; 72 px con Guadaña Mística en Nivel 3). Cooldown de 0.28 s. Destruye moradores melee, cuervos y arañas. | Arco cortante relampagueante (plateado o púrpura místico), chispas doradas/carmesí, sacudida media y sonido de impacto. |
+| **Pisotón Aéreo (Stomp)** | Caer sobre un enemigo | Al impactar la cabeza de un enemigo desde arriba mientras `vy > 0`, se elimina la entidad, se otorga rebote vertical ascendente (-360 px/s) y se restaura el dash aéreo. | Explosión radial de esquirlas, sacudida de pantalla y sonido de percusión ósea. |
+| **Relicario de Ánimas** | Recoger gemas celestes | Cada 10 almas espectrales se consagra un corazón extra de salud (máximo 5 vidas). Contador se reinicia al morir para evitar farmeo abusivo. | Destello lumínico celeste, partícula estelar y repique litúrgico ascendente. |
 
-### 3.2 Las tres mecánicas, en detalle
+### 3.2 Dinámicas Emergentes
+- **Encadenamiento Aéreo Pogo-Dash:** El jugador salta un abismo con pinchos, ejecuta un dash horizontal, cae con pisotón sobre un cuervo espectral, rebota ganando altura, recupera su dash aéreo y cruza un segundo abismo inalcanzable de otra forma.
+- **Riesgo vs. Recompensa en Rutas de Ánimas:** Rutas alternativas elevadas y angostas ofrecen almas para ganar vidas adicionales antes del combate del Custodio, desafiando al jugador experimentado a medir sus saltos.
+- **Castigo Telegrafiado en Combate:** En la fase 2 del Custodio, la pala rebota con chispas metálicas sin dañarlo; el jugador debe memorizar el patrón de carga furiosa, saltar la triple onda expansiva y caer en pisotón justo sobre su corona.
 
-#### Mecánica 1: salto de precisión
-
-- **Regla:** el jugador salta con `ESPACIO` en Pygame o `↑` en GDevelop. Si mantiene, sube más; si suelta, el salto se corta.
-- **Ayudas invisibles:** `coyote time` (0,10 s) para saltar justo después de dejar una plataforma y `jump buffer` (0,12 s) para registrar un salto pedido un poco antes de aterrizar.
-- **Propósito:** que el control se sienta justo y que el desafío esté en la lectura del espacio, no en pelear con el input.
-- **Qué aprende el jugador:** distancia, altura y ritmo.
-
-#### Mecánica 2: dash de sombra
-
-- **Regla:** `SHIFT` en GDevelop o `SHIFT` / `X` en Pygame impulsa al sepulturero en la dirección en la que mira. Tiene 0,16 s de duración y 0,60 s de cooldown.
-- **Regla adicional:** en el aire solo hay **un** dash disponible; se recupera al aterrizar o al golpear a un morador con la pala.
-- **Propósito:** introducir una decisión de recurso y permitir pozos que un salto normal no cruza.
-- **Qué aprende el jugador:** administrar el impulso y sincronizarlo con el salto.
-
-#### Mecánica 3: golpe de pala (pisotón)
-
-- **Regla:** la pala se recoge en una sala de La Cripta. Con la pala equipada, `A` ejecuta un sablazo; un pisotón desde arriba elimina al morador y recupera el dash aéreo (en Pygame además rebota). Sin pala, tocar a un morador hace daño y no hay pisotón.
-- **Propósito:** convertir un obstáculo en una herramienta de movimiento. El morador deja de ser solo “peligro” y pasa a ser “plataforma”.
-- **Qué aprende el jugador:** leer la altura, caer con intención y encadenar rebotes.
-
-#### Recurso secundario: almas
-
-- **Regla:** cada 10 almas otorgan **1 vida extra** (máximo 5). Al morir se reinician el contador y las almas del nivel; las vidas extra ya ganadas se conservan.
-- **Propósito:** dar valor a la exploración opcional y ofrecer una red de seguridad sin quitar el desafío.
-- **Qué aprende el jugador:** decidir si arriesga por una ruta con almas o si prioriza llegar al portón.
-
-### 3.3 Las dos estéticas elegidas
-
-| Estética | Definición de la cátedra | Cómo la construimos | Qué NO buscamos |
-|---|---|---|---|
-| **Desafío** | El jugador toma decisiones significativas para superar obstáculos y ganar maestría; los retos suben con el tiempo. | Niveles con pozos, plataformas, pinchos y moradores; dificultad en sierra; reinicio rápido. | Castigo arbitrario, muertes por información oculta. |
-| **Sensación** | Diversión derivada de los sentidos: respuesta visual, auditiva y táctil. | Partículas, estela de dash, sacudida de cámara, flash de daño, SFX en ambos builds y HUD claro. | Exceso de efectos que tape la lectura del nivel. |
-
-### 3.4 Las otras seis estéticas (cobertura conceptual)
-
-| Estética | Presencia en IN CRYPTA | Comentario |
-|---|---|---|
-| Compañerismo | Ausente | Es un juego single-player; la soledad es parte del tono. |
-| Fantasía | Secundaria | Hay un sepulturero, una cripta y moradores; la ficción sostiene la atmósfera, no una épica extensa. |
-| Narrativa | Secundaria | La historia se cuenta con el escenario, los nombres y el portón final; no hay diálogos. |
-| Descubrimiento | Secundaria | Almas opcionales en rutas altas y riesgosas; cada 10 se canjean por una vida extra. |
-| Expresión | Muy baja | No hay personalización; el jugador se expresa en cómo resuelve. |
-| Sumisión | Ausente | El juego pide atención y precisión; no es relajante. |
-
-La decisión de elegir **dos** estéticas principales es deliberada: un juego pequeño y coherente se diseña mejor con pocas emociones fuertes que con ocho emociones tibias.
-
-### 3.5 Dinámicas fomentadas e inesperadas
-
-**Fomentadas**
-- Saltar, dashar y golpear con la pala en una misma secuencia.
-- Arriesgar para agarrar almas sobre un pozo y canjear 10 por una vida extra.
-- Usar al morador como rebote para llegar a una plataforma alta.
-- Repetir un tramo para mejorar el tiempo.
-
-**Inesperadas posibles**
-- Usar el dash para “cancelar” la caída y llegar a lugares no previstos.
-- Encadenar golpes de pala para mantener el dash aéreo y saltar secciones.
-- Descubrir que el dash también sirve para cruzar un pozo sin saltar (si se toma impulso desde el borde).
+### 3.3 Estéticas Predominantes
+1. **Desafío (Challenge):** Satisfacción visceral al dominar saltos de precisión milimétrica, timing de esquivas y el combate del jefe final sin recibir daño.
+2. **Sensación (Sensation):** Placer multisensorial provisto por el arte procedural vectorizado, el contraste entre sombras oscuras y destellos carmesí/turquesa, la sacudida de cámara por impactos y el latido del corazón en salud crítica.
+3. **Fantasía (Fantasy) & Atmósfera:** El ritual sombrío de un sepulturero penitente abriéndose paso a través de criptas ancestrales iluminadas por antorchas parpadeantes.
 
 ---
 
-## 4. Bucle de juego
+## 4. Arquitectura de Niveles y Curva de Dificultad
+
+El juego está compuesto por 3 niveles extensos y diseñados meticulosamente en formato ASCII sobre grillas de baldosas de 32 × 32 px:
 
 ```
-Explorar → leer el obstáculo → saltar / dashar → golpear o recoger almas
-   ↑                                                    ↓
-   └────── feedback (partículas, sacudida, sonido) ←──────┘
-                          ↓
-                 llegar al portón → siguiente nivel
+ Dificultad
+     │                                                     [FASE II]
+     │                                                 ╱╲   Custodio
+     │                                   [VENTANA]    ╱  ╲  triple onda
+     │                     ╱╲           Pared vertical ╱    ╲
+     │        ╱╲          ╱  ╲             con pinchos
+     │       ╱  ╲        ╱    ╲          ╱╲
+     │      ╱    ╲  ╱╲  ╱      ╲        ╱  ╲
+     │     ╱      ╲╱  ╲╱        ╲  ╱╲  ╱    ╲
+     │    ╱                      ╲╱  ╲╱      ╲
+     └────────────────────────────────────────────── Progresión
+          NIVEL 1: CAMPOSANTO    NIVEL 2: LA CRIPTA    NIVEL 3: EL OSARIO
 ```
 
-**Bucle de 30 segundos:** saltar una lápida, cruzar un pozo, golpear a un morador y recoger un alma.  
-**Bucle de nivel:** aprender la mecánica nueva, practicarla segura, juntar 10 almas para una vida extra y llegar al portón.  
-**Bucle de juego:** tres niveles, dificultad en sierra, victoria al escapar de la cripta.
+### 4.1 Nivel 1: El Camposanto (160 columnas × 24 filas)
+- **Tema:** Exterior nocturno con luna llena, colinas oscuras, lápidas y árboles secos.
+- **Enseñanza:** Salto básico de altura variable y dash de sombras.
+- **Estructura en 4 zonas:**
+  1. *El Patio de Entrada:* Primeros saltos seguros sobre lápidas y pozos de 2-3 baldosas.
+  2. *El Gran Descenso:* Caída vertical controlada entre salientes rocosas y cuervos que enseñan la caída segura.
+  3. *Las Criptas Inferiores:* Pozos más profundos donde el dash es indispensable para cruzar hacia los altares.
+  4. *La Escalada al Portón:* Ascenso en zigzag entre arañas patrulleras hacia la reja del camposanto.
+
+### 4.2 Nivel 2: La Cripta (130 columnas × 12 filas)
+- **Tema:** Galería subterránea de piedra con arquerías de medio punto, cadenas colgantes y antorchas.
+- **Enseñanza:** Recogida de la pala, ataque frontal melee y plataformas móviles suspendidas.
+- **El Desafío Clímax Final (La Ventana Vertical):**
+  - Una pared vertical monolítica de piedra de 7 bloques de altura corta el paso.
+  - La pared posee un único orificio o "ventana" angosta a 4 bloques de altura.
+  - El foso anterior está sembrado de pinchos agudos.
+  - **Solución mecánica:** El jugador debe impulsarse desde una plataforma móvil, saltar hacia el vano y encadenar un dash aéreo rasante en el punto álgido del salto para atravesar la ventana limpiamente hacia el portón.
+
+### 4.3 Nivel 3: El Osario y El Custodio (160 columnas × 12 filas)
+- **Tema:** Catacumbas profundas de hueso y cráneos, atmósfera rojiza y fuego fatuo.
+- **Estructura en 5 Actos:**
+  1. *Acto I (El Despertar del Osario):* Plataformas de hueso estrechas y enemigos melee que custodian los pasillos.
+  2. *Acto II (El Altar de la Guadaña Mística):* En una cámara ceremonial, el sepulturero consagra su pala, transformándola en la **Guadaña Púrpura** (rango de ataque expandido a 72 px y estela mística).
+  3. *Acto III (Prueba de Corte):* Sala de combate diseñada para probar el alcance de la guadaña contra enjambres de arañas y proyectiles de tótems.
+  4. *Acto IV (El Guardián Menor):* Mini-jefe rápido con ataque de embestida que enseña el rebote por pisotón aéreo.
+  5. *Acto V (La Gran Arena del Custodio):* Cámara monolítica cerrada donde aguarda el jefe final.
 
 ---
 
-## 5. Niveles y curva de dificultad
+## 5. El Jefe Final: El Custodio del Osario
 
-| Nivel | Nombre | Mecánica que enseña | Reto principal | Enemigos | Almas | Pinchos | Estética dominante |
-|---|---|---|---|---|---|---|---|
-| 1 | **El Camposanto** | Salto y dash | Pozos cortos (3 tiles), pinchos y moradores; todavía no hay pala. | 3 | 17 | 4 | Desafío suave |
-| 2 | **La Cripta** | Dash + recogida de pala | Abismos anchos, primer ataque y plataformas móviles horizontales/verticales. | 5 | 18 | 4 | Desafío + Sensación |
-| 3 | **El Osario** | Combinación de las tres | Pozos, pinchos, plataformas móviles y moradores en el camino; la pala ya está equipada. | 11 | 25 | 5 | Desafío + Sensación |
+El Custodio es el guardián eterno de la cripta, una figura colosal de piedra, huesos y faroles votivos.
 
-Todos los niveles miden 18 filas de alto. El Camposanto mide 80 columnas; La Cripta, 100; El Osario, 184. La Cripta y El Osario refuerzan la sensación de encierro con arcos, muros y plataformas suspendidas.
+### 5.1 Especificaciones de Combate (6 Puntos de Vida)
+El enfrentamiento se divide en dos fases secuenciales de dificultad creciente:
 
-### 5.1 Curva en sierra
+#### FASE I: Ataque Mixto (Vidas 6 a 4)
+- **Comportamiento:** Patrulla la arena a 90 px/s. Al detenerse, levanta su maza-pala y azota el piso, generando **2 ondas de choque** terrestres que avanzan hacia los costados a 190 px/s.
+- **Vulnerabilidad:** Puede ser dañado tanto con sablazos de pala/guadaña como con pisotones aéreos en el cráneo.
+- **Ventana de castigo:** Queda aturdido de rodillas durante 1.2 segundos tras golpear el suelo.
+
+#### FASE II: Furia Ósea (Vidas 3 a 1)
+- **Transformación:** El Custodio ruge; se activa un aura carmesí ardiente en su cuerpo y sus ojos fulguran en rojo sangre.
+- **Inmunidad al sablazo:** **La pala y la guadaña rebotan inútilmente** contra su armadura reforzada (generando chispas y sonido metálico de rechazo). **Solo el pisotón aéreo puede infligir daño.**
+- **Ataque 1 (Triple Onda Expansiva):** Azota el suelo desatando 3 ondas de choque rápidas con separaciones variables que obligan a saltar y dashar en el aire con timing estricto.
+- **Ataque 2 (Embestida Furia):** Tras telegrafiar un agachamiento con temblor de cámara durante 0.7 segundos, carga velozmente a través de la arena a 220 px/s hacia el jugador, estrellándose contra los muros y quedando expuesto.
+
+---
+
+## 6. Sistema de Menús y Navegación
+
+El flujo de pantallas ha sido completamente depurado de consolas y pruebas temporales:
 
 ```
-Dificultad
-    │        ╱╲ nivel 2        ╱╲ nivel 3
-    │   ╱╲  ╱  ╲      ╱╲     ╱  ╲
-    │  ╱  ╲╱    ╲    ╱  ╲   ╱    ╲
-    │ ╱ nivel 1  ╲  ╱    ╲ ╱      ╲
-    │╱             ╲╱      ╲        ╲
-    └──────────────────────────────── Tiempo
-      presentar  practicar  exigir  combinar  dominio
+[ ARRANQUE ] ──► [ INTRO GÓTICA ] ──► [ MENÚ PRINCIPAL ]
+                                             │
+                       ┌─────────────────────┼─────────────────────┐
+                       ▼                     ▼                     ▼
+                   [ JUGAR ]       [ SELECCIÓN PANTALLA ]     [ CRÉDITOS ]
+                       │                     │                     │
+                       ▼                     ▼                     ▼
+                  (Campaña N1)         (Nivel 1, 2 ó 3)        (Equipo y
+                                                               Referencias)
 ```
 
-Cada nivel baja un poco la presión al presentar la mecánica nueva y después la sube. El nivel 2 enseña el dash con pozos anchos y una pista visible; el nivel 3 ya no explica: combina.
-
-### 5.2 Progresión de las cinco etapas
-
-| Etapa | Nivel 1 | Nivel 2 | Nivel 3 |
-|---|---|---|---|
-| Presentación | Salto y dash; sin pala. | Dash, recogida de pala y ataque. | Las tres mecánicas juntas; pala equipada. |
-| Práctica segura | Plataformas bajas, moradores aislados. | Primer abismo con pista y almas guía. | Tramos conocidos con más altura. |
-| Exigencia aislada | Pozos de 3 tiles. | Abismos anchos y plataformas móviles. | Pozos, pinchos y plataformas con moradores. |
-| Combinación | Salto + dash. | Dash + pala + plataformas. | Salto + dash + pala + plataformas. |
-| Dominio | Llegar al portón sin pala. | Recoger la pala y cruzar sin caer. | Escapar del osario. |
-
-### 5.3 Tipos de desafío
-
-| Tipo | Presencia | Ejemplo |
-|---|---|---|
-| **Mecánico** | Alta | Timing del salto y del dash; golpe de pala. |
-| **Cognitivo** | Media | Leer la altura de una plataforma y decidir si conviene el dash. |
-| **Estratégico** | Media | Gastar el único dash aéreo antes o después del salto. |
-| **Percepción** | Media | Ver la estela del dash, el HUD y la posición de los moradores. |
-
-### 5.4 Desafío justo vs. injusto
-
-| Justo en IN CRYPTA | Injusto (evitado) |
-|---|---|
-| El pozo se ve antes de saltar. | Enemigo que aparece sin aviso sobre el jugador. |
-| El dash tiene estela y barra de estado. | Cooldown invisible. |
-| El golpe de pala se puede intentar y fallar. | Muerte instantánea sin feedback. |
-| El jugador reaparece en el inicio del nivel; el contador y las almas se reinician, pero conserva las vidas extra ganadas. | Perder todo el progreso por un error. |
-| La dificultad sube combinando mecánicas. | Aumentar solo la velocidad o la vida de los enemigos. |
-| Los pinchos tienen una base y un brillo rojo. | Trampas invisibles o mimetizadas con el fondo. |
-
-### 5.5 Ajustes invisibles usados
-
-- **Coyote time:** 0,10 s.
-- **Jump buffer:** 0,12 s.
-- **Hitbox del jugador:** 24 × 30, más chica que la sensación visual.
-- **Pisotón:** en Pygame, rebote de 360 px/s; en GDevelop nativo, elimina al morador y restaura el dash aéreo.
-- **Dash:** 0,60 s de cooldown, pero se recupera al golpear con la pala.
-- **Reaparición:** reinicia el contador y las almas del nivel para evitar farmeo; las vidas extra ya ganadas se conservan.
-- **Invulnerabilidad:** breve ventana después del daño para evitar perder todas las vidas en un solo contacto.
+1. **Pantalla de Intro:** Título gótico animado con luna llena, colinas lejanas, subtítulo "La redención del sepulturero" y prompt palpitante "PRESIONA ESPACIO O ENTER".
+2. **Menú Principal Diegético:** Opciones navegables con cursor de cruz de hierro y sonido de campana de piedra:
+   - `JUGAR`: Inicia la odisea desde el Camposanto.
+   - `SELECCIÓN DE PANTALLA`: Selector de 3 niveles con preview de nombre, tema y descripción.
+   - `CRÉDITOS`: Detalle del Equipo 6, tecnología (pygame-ce) y homenajes (Blasphemous, Castlevania, Ender Lilies).
+3. **Flujo In-Game:** `ESC` pausa instantáneamente o regresa al Menú Principal con total solidez de estados.
 
 ---
 
-## 6. Juegos como sistemas
+## 7. Rediseño Diegético del HUD
 
-### 6.1 Componentes del sistema IN CRYPTA
-
-| Componente | En IN CRYPTA |
-|---|---|
-| **Objetos** | Sepulturero, moradores, almas, portón, bloques, pinchos, decoraciones. |
-| **Atributos** | Posición, velocidad, vidas, almas, almas para la próxima vida, cooldown de dash, altura, tiempo. |
-| **Relaciones** | Colisiones, golpe de pala, recolección, meta, daño, transición de nivel. |
-| **Entorno** | Tres mapas ASCII de 80 × 18, 100 × 18 y 184 × 18 tiles; temas camposanto, cripta y osario. |
-| **Reglas** | Física, salto, dash, pala, vidas, pinchos, transición de nivel. |
-| **Resultados** | Nivel completado, victoria, derrota, cantidad de almas, vidas extra ganadas, tiempo. |
-
-### 6.2 Feedback loops
-
-**Loop positivo (reforzante):**
+Abandonando los rectángulos genéricos no diegéticos, el nuevo HUD se integra armónicamente como reliquias de la liturgia del sepulturero:
 
 ```
-Golpe de pala → rebote → recupero el dash → cruzo un pozo → llego a un alma
-   ↑                                                              ↓
-   └────────────────────── más confianza y velocidad ←────────────┘
+┌──────────────────────────────────────┐  ┌──────────────────────────────┐
+│ ✠ SEPULTURERO · EL CAMPOSANTO        │  │ ❖ ÁNIMAS ESPECTRALES   07/10 │
+│  [♥]  [♥]  [♥]  [♡]  [♡]             │  │  ● ● ● ● ● ● ● ○ ○ ○         │
+└──────────────────────────────────────┘  └──────────────────────────────┘
+  (Relicario de Vidas: Corazones            (Relicario de Ánimas: Rosario
+   Góticos con latido de emergencia)         de 10 cuentas para Vida Extra)
+
+┌──────────────────────────────────────┐
+│ [ DASH: LISTO ]  │  [ GUADAÑA + ]    │
+└──────────────────────────────────────┘
+  (Sellos Tácticos de Habilidades)
 ```
 
-El jugador que domina la pala se vuelve más rápido y se anima a arriesgar más.
-
-**Loop negativo (regulador):**
-
-```
-Recibir daño → invulnerabilidad breve → retroceder al inicio
-   ↑                                           ↓
-   └────────── bajar la velocidad y volver a leer ←──┘
-```
-
-El daño no expulsa al jugador del juego: lo frena y lo obliga a releer el tramo. Al perder la última vida, el estado de derrota ofrece reiniciar.
-
-### 6.3 Meaningful play
-
-| Criterio | Cómo se cumple |
-|---|---|
-| **Discernible** | Cada acción tiene feedback inmediato: partículas, rebote, flash, cambio de HUD o sonido. |
-| **Integrado** | El dash cambia la posición, la pala elimina un morador y recupera el dash, y cada 10 almas convierten el riesgo en una vida extra. |
-
-Si el jugador aprieta dash y no pasa nada, no hay meaningful play. En IN CRYPTA el dash tiene estela, desplazamiento, estado en el HUD y sonido. El jugador ve que su decisión afectó al sistema.
+1. **Relicario de Vidas (Superior Izquierda):** Marco de hierro forjado con remaches de oro. Corazones carmesí con reflejos especulares de rubí. Si el jugador desciende a 1 vida, el corazón entra en **pulsación de emergencia por latido cardíaco**, generando advertencia visual limpia sin invadir la visión.
+2. **Relicario de Ánimas Espectrales (Superior Derecha):** Caja de marfil y obsidiana con 10 cuentas de rosario. Cada alma recogida ilumina una cuenta en fulgor turquesa. Al completar 10 cuentas, se produce una fanfarria y se añade un corazón al relicario de vidas.
+3. **Sellos de Habilidades (Inferior Izquierda):**
+   - *Sello de Dash:* Glifo turquesa que muestra barra de recarga en tiempo real o el estado "LISTO".
+   - *Sello de Arma:* Muestra la Pala de sepulturero plateada en Nivel 1 y 2, y conmuta automáticamente a la **Guadaña Imperial Púrpura** al recoger el artefacto en Nivel 3.
+4. **Corona Imperial del Custodio (Superior Centro, Solo Jefe):**
+   - Marco de 500 px de ancho con corona de oro.
+   - 6 celdas de salud con rubíes que se pulverizan al dañarlo.
+   - Indicador de estado dinámico: "FASE I: VULNERABLE A PALA Y PISOTÓN" conmuta a "FASE II: ¡LA PALA REBOTA! SOLO PISOTÓN" en rojo ardiente.
 
 ---
 
-## 7. UI/UX
+## 8. Feedback Audiovisual & Coherencia Multicanal
 
-### 7.1 Tipos de interfaz usados
+Para garantizar la estética de **Sensación**, cada interacción física produce retroalimentación cruzada en 4 canales simultáneos:
 
-| Tipo | En IN CRYPTA | Función |
-|---|---|---|
-| **No diegética** | HUD superior con nivel, almas, progreso a vida extra, vidas, tiempo y dash. | Información que solo ve el jugador. |
-| **Diegética** | El portón como meta visible; las velas y el farol del sepulturero. | El objetivo y la luz pertenecen a la ficción. |
-| **Espacial** | La estela del dash y las partículas están en el espacio del juego. | Informan sin menús. |
-| **Meta** | Flash rojo al recibir daño y sacudida de cámara. | Simulan la sensación del impacto. |
-
-### 7.2 Los cinco principios de UX aplicados
-
-| Principio | Aplicación |
-|---|---|
-| **Facilidad para encontrar lo importante** | El HUD está siempre arriba; el dash tiene barra propia; las almas se leen en dorado. |
-| **Rapidez para entender qué hacer** | La pista inicial aparece 5 segundos y desaparece; el nivel se lee solo; el portón brilla. |
-| **Comodidad según la plataforma** | GDevelop: flechas, `SHIFT`, `A` (tras recoger la pala), `ENTER`, `ESC`. Pygame: flechas/A-D, `ESPACIO`, `SHIFT`/`X`, `P`, `R`, `M`. |
-| **Consistencia** | Mismo HUD, mismos colores y mismos overlays en los tres niveles. |
-| **Fluidez** | Pausa inmediata con `ESC` en GDevelop o `P` en Pygame; menú de reinicio sin pasos profundos. |
-
-### 7.3 Decisiones de UI/UX
-
-- El HUD usa **barra superior semitransparente** para no tapar el juego.
-- La pista se muestra **arriba**, debajo del HUD, para no tapar al jugador.
-- El dash se comunica con **texto + barra**: “DASH LISTO” o “DASH…”.
-- Las vidas se muestran como **hasta cinco corazones**; las almas, como contador con progreso a vida extra cada 10.
-- Al quedar una sola vida, aparece un aviso pulsante de **última vida**; no bloquea la acción ni tapa el juego.
-- La pantalla de título presenta el nombre, el subtítulo, el equipo, las referencias y la acción principal.
-- Los overlays de pausa, derrota y victoria son claros y ofrecen una sola acción principal.
-- El estado de invulnerabilidad se comunica con parpadeo, no con texto.
+| Evento | Gráficos Procedurales | Sistema de Partículas | Cámara | Audio |
+|---|---|---|---|---|
+| **Salto** | Estiramiento vertical del sprite (1.15×) | Nube de polvo y hojas secas | Inerte | Tono tonal ascendente |
+| **Dash** | Silueta translúcida con cloning espectral | Estela de cometa turquesa | Sacudida leve (4 px) | Silbido de viento espectral |
+| **Pala / Guadaña** | Haz curvo luminoso (oro / violeta) | Chispas metálicas en cono | Sacudida media (7 px) | Impacto seco de metal y hueso |
+| **Pisotón Exitoso** | Compresión horizontal de impacto | Explosión radial de esquirlas | Sacudida media (8 px) | Percusión profunda de tumba |
+| **Daño Recibido** | Parpadeo de invulnerabilidad (1.2 s) | Salpicadura de sangre carmesí | Sacudida fuerte (14 px) + Flash rojo | Tono grave descendente |
+| **Fase 2 Jefe** | Ojos fulgurantes y silueta en llamas | Torbellino de humo rojo constante | Sacudida prolongada | Alarido ritual de ultratumba |
 
 ---
 
-## 8. Sensación y game feel
+## 9. Verificación y Suite de Calidad
 
-| Acción | Feedback visual | Feedback sonoro | Feedback de cámara |
-|---|---|---|---|
-| Salto | Polvo y chispas blancas | Tono ascendente | Ninguno |
-| Dash | Estela turquesa y fantasmas | Barrido cuadrado | Sacudida leve |
-| Golpe de pala | Explosión roja/amarilla | Golpe grave | Sacudida media |
-| Daño | Flash rojo y partículas | Tono descendente | Sacudida fuerte |
-| Alma | Destello dorado y estela | Tono agudo | Ninguno |
-| Recoger pala | Destello de la pala | Tono metálico ascendente | Ninguno |
-| Vida extra | Destello dorado y aviso en el HUD | Arpegio ascendente | Ninguno |
-| Pausa / UI | Cambio de overlay o menú | Click seco | Ninguno |
-| Portón | Explosión multicolor | Acorde ascendente | Ninguno |
-
-La estética **Sensación** no es decoración: cada efecto confirma una acción y ayuda a leer el estado del juego. Ambos builds suman sonido; el nativo usa SFX WAV y el prototipo Pygame, sonidos procedurales.
-
----
-
-## 9. Narrativa y fantasía
-
-El sepulturero baja a la cripta a cumplir su jornada. La puerta se cierra detrás de él; la oscuridad despierta y los moradores ocupan el camposanto. No hay diálogos ni cinemáticas: la historia se cuenta con el título, los nombres de los niveles, las lápidas, las velas, los huesos y el portón final. Es una **fantasía mínima** al servicio del desafío y la sensación.
-
-- **El Camposanto:** el mundo exterior, la luna y las tumbas; todavía hay cielo.
-- **La Cripta:** el encierro, las columnas, las velas y los primeros pinchos.
-- **El Osario:** el descenso final; huesos, costillas y la salida.
-
-El farol del sepulturero es el motivo visual de la luz que se resiste a apagarse. El portón es la promesa de escape.
-
----
-
-## 10. Público y accesibilidad
-
-- **Público primario:** estudiantes que están aprendiendo diseño y jugadores ocasionales.
-- **Público secundario:** jugadores de plataformas que buscan un reto corto y una atmósfera gótica.
-- **Accesibilidad:** controles simples, sin combinaciones de botones; pausa; reinicio desde el menú; feedback visual redundante y SFX. El prototipo Pygame permite silenciar el audio con `M`.
-- **Dificultad:** no hay selector. La curva está diseñada para que el nivel 1 sea accesible y el nivel 3 exija dominio. El objetivo es que cualquier persona pueda terminar el nivel 1 y que un jugador con experiencia disfrute el 3.
-- **Límites:** no hay remapeo de teclas ni opciones de contraste; la paleta oscura es parte de la propuesta. Son mejoras posibles, no promesas de esta entrega.
-
----
-
-## 11. Producción
-
-### 11.1 Alcance
-
-| Entregable | Estado |
-|---|---|
-| Prototipo Pygame de 3 niveles | Completo |
-| Documento GDD + MDA | Completo |
-| Proyecto GDevelop nativo (6 escenas) | Completo y validado headless; falta vista previa real |
-| Build HTML5 de 1920 × 1080 | Completo |
-| Runtime JavaScript y export JSON legados | Conservados como versión anterior |
-| Pruebas de lógica y runtime | 21 pruebas Python + validación headless con Chromium/CDP |
-| Capturas del título y de los 3 niveles | Completo |
-| Boss final (diseño) | Documentado en la sección 14; no implementado |
-
-### 11.2 Equipo y tareas (versión de cátedra)
-
-| Rol | Tarea |
-|---|---|
-| Diseño | MDA, niveles, curva, UI/UX, narrativa. |
-| Programación | Física, dash, pala, cámara, partículas, parser. |
-| Arte | Paleta gótica, siluetas, decoraciones, HUD, pantalla de título. |
-| Audio | Sonidos procedurales en Pygame y SFX WAV en el build nativo. |
-| QA | Pruebas headless, pruebas de pozo, pruebas de runtime. |
-| Producción | GDD, pitch, guion de presentación, instalador. |
-
-### 11.3 Riesgos y mitigaciones
-
-| Riesgo | Mitigación |
-|---|---|
-| El dash hace trivial el juego | Pozos anchos, cooldown y un solo uso aéreo. |
-| El jugador no entiende el dash | Pista, estela, barra y pozo de práctica. |
-| La oscuridad oculta obstáculos | Contraste, brillo en pinchos y portón, pista visible. |
-| Una instancia abierta de GDevelop exporta el proyecto viejo | Cerrar GDevelop antes de exportar por CLI y revisar `build/data.js`. |
-| El navegador bloquea o demora el audio | Los SFX se cargan on demand; el feedback visual sigue funcionando aunque falle el sonido. |
-| Pérdida de progreso por muerte | Al reaparecer se reinician el contador y las almas del nivel; las vidas extra ya ganadas se conservan y el farmeo no es posible. |
-
-### 11.4 Pruebas
-
-- `tests/test_logica.py`: **21 pruebas** de niveles, parser, gravedad, salto, dash, pozo de dash, primer salto de La Cripta, almas, vida extra, reset de almas, enemigos, cámara, estados, meta, pala, contacto, límites, plataformas, vidas, reinicio, título, pinchos y juego headless.
-- `tools/generar_proyecto_nativo.py`: regenera el proyecto GDevelop nativo, sus assets 2x y las seis escenas.
-- Build nativo validado con Chromium/CDP: título, los tres niveles, salto, dash, audio, recogida de pala, ataque, pisotón, daño sin pala, pozo, límites, plataformas móviles, game over y transiciones, a 1920 × 1080. También se verificaron el progreso a vida extra, el aviso de última vida y los SFX `SFX_PalaRecoger`, `SFX_Vida` y `SFX_UI`.
-- `tests/test_runtime_gdevelop.js`: prueba del runtime JavaScript legado; no corresponde al build nativo.
-- `tools/export_gdevelop.py --check`: valida el JSON y la reconstrucción de los tres niveles para la versión legada.
-- `tools/capturar.py`: genera `capturas/titulo.png` y las capturas de los tres niveles del prototipo.
-
-Comandos:
-
-```bash
-PYTHONPATH=. SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
-  .venv/bin/python tests/test_logica.py
-
-PYTHONPATH=. .venv/bin/python tools/generar_proyecto_nativo.py
-
-node tests/test_runtime_gdevelop.js
-```
-
----
-
-## 12. Mapa de conceptos — Taller de Diseño Conceptual
-
-| Concepto | Dónde aparece en IN CRYPTA |
-|---|---|
-| **UI** | HUD, barra de dash, corazones, overlays, pistas. |
-| **UX** | Pista breve, controles simples, feedback inmediato, reinicio rápido. |
-| **UI no diegética** | HUD superior. |
-| **UI diegética** | Portón como objeto del mundo; velas y farol. |
-| **UI espacial** | Estela y partículas en el espacio del nivel. |
-| **UI meta** | Flash de daño y sacudida de cámara. |
-| **Dificultad** | Relación entre lo que el nivel pide y lo que el jugador puede hacer. |
-| **Desafío mecánico** | Timing de salto, dash y pala. |
-| **Desafío cognitivo** | Leer la altura y elegir la secuencia. |
-| **Desafío estratégico** | Administrar el único dash aéreo. |
-| **Desafío de percepción** | Leer el HUD, la estela y los moradores. |
-| **Público objetivo** | Estudiantes y jugadores ocasionales. |
-| **Curva de dificultad** | Tres niveles con subidas y bajadas. |
-| **Sierra de dificultad** | Cada nivel presenta una mecánica y luego la exige. |
-| **Etapas de progresión** | Presentación, práctica, exigencia, combinación, dominio. |
-| **Desafío justo** | Pozos visibles, feedback, reaparición con almas reiniciadas y vidas extra conservadas. |
-| **Dificultad artificial vs. diseñada** | No se sube solo la velocidad; se combinan mecánicas. |
-| **Ajustes invisibles** | Coyote time, jump buffer, hitbox, rebote generoso. |
-| **Feedback audiovisual** | Partículas, sonidos, flash, sacudida, HUD. |
-| **MDA: mecánicas** | Salto, dash, pala. |
-| **MDA: dinámicas** | Encadenar, arriesgar, rebotar, optimizar. |
-| **MDA: estéticas** | Desafío y Sensación. |
-| **8 tipos de diversión** | Se eligen 2 principales y se justifican las otras 6. |
-| **Juegos como sistemas** | Objetos, atributos, relaciones, entorno, reglas, resultados. |
-| **Definiciones de juego** | IN CRYPTA cumple las definiciones de Huizinga, Crawford y Salen/Zimmerman. |
-| **Meaningful play** | Discernible e integrado en cada acción. |
-| **Feedback loops** | Pala → dash → alma; daño → invulnerabilidad → releer. |
-
----
-
-## 13. Mapa de conceptos — Introducción a los Videojuegos
-
-| Concepto | Dónde aparece en IN CRYPTA |
-|---|---|
-| **Definición de juego (RAE)** | Actividad recreativa con objetivo y reglas: escapar de la cripta. |
-| **David Jones** | Resolución de problemas con actitud lúdica: leer y resolver cada tramo. |
-| **Jesse Schell** | “Físicas del mundo real moldeadas y puestas en una caja”: física de plataformas. |
-| **Johan Huizinga** | Actividad libre, separada, incierta, no productiva, regulada y ficticia. |
-| **Roger Caillois** | IN CRYPTA entra en **agon** (competencia contra el obstáculo) e **ilinx** (vértigo del dash). |
-| **Paidia / ludus** | El juego es más **ludus** que paidia: reglas claras y desafío medido. |
-| **Categorías de juego** | Agon por el desafío; ilinx por la velocidad; poca presencia de alea y mimicry. |
-| **Género** | Plataformas 2D, subgénero de acción, con estética gótica. |
-| **Géneros principales** | Acción y plataformas; se toma la precisión y el avance por escenarios. |
-| **Géneros notables** | Se evitan RPG, estrategia, simulación y deportes para mantener el alcance. |
-| **Clasificación de géneros** | El juego se reconoce por sus mecánicas básicas: correr, saltar, dashar y llegar a la meta. |
-| **Historia: Brown Box / Odyssey** | La paleta y la simplicidad de controles homenajean los primeros videojuegos domésticos. |
-| **Spacewar / PDP-1** | El movimiento y el rebote recuerdan la física simple de los primeros arcades. |
-| **ARPANET / cultura open source** | El proyecto se distribuye como código y assets abiertos (Pygame, proyecto GDevelop). |
-| **Consolas y limitaciones** | La estética pixel art y la paleta reducida dialogan con las limitaciones técnicas de 8 bits. |
-| **Género y evolución** | El plataformero evoluciona al agregar dash y pala como mecánicas combinadas. |
-| **Proceso creativo** | Idea: “un sepulturero atrapado en su propia cripta”; inspiración en Blasphemous, Castlevania y Ender Lilies. |
-| **Concepto** | Se separó en gráficos, interfaz, historia, diseño de niveles, mecánicas y sonido. |
-| **High concept** | Un sepulturero cruza tres niveles de una cripta para escapar. |
-| **Pitch** | Este documento y el guion de presentación. |
-| **GDD** | Este documento. |
-| **Proceso de producción** | Lista de componentes, tareas, pruebas y entregables. |
-| **Motores gráficos** | Pygame para prototipo; GDevelop para presentación. |
-| **GDevelop** | Motor de presentación; proyecto nativo de objetos, eventos y comportamientos. |
-
----
-
-## 14. Boss final: El Custodio del Osario
-
-> **Diseño propuesto, no implementado en el build actual.** Se documenta como ampliación posible para cerrar la fantasía del juego sin agregar mecánicas nuevas.
-
-### 14.1 Concepto
-
-El **Custodio del Osario** es el primer sepulturero de la cripta: un cuerpo hueco con la pala rota y el farol incrustado entre las costillas. No ataca por maldad; se quedó cuidando una puerta que nunca se animó a cruzar. El jugador debe **enterrar su propio eco** para salir. El boss funciona como el examen final de las tres mecánicas: saltar, dashar y pisar.
-
-### 14.2 Arena y lectura
-
-- Una sola pantalla plana, sin pozos, para que la dificultad sea el patrón y no la caída.
-- Dos losas bajas en los extremos; el portón queda sellado detrás del jugador.
-- La luz de las velas se apaga por fases: el escenario se vuelve más oscuro, pero nunca ilegible.
-- Sin enemigos adicionales: el combate se lee completo en una pantalla.
-
-### 14.3 Fases y ataques
-
-| Fase | Nombre | Patrón | Ventana de castigo |
-|---|---|---|---|
-| 1 | **La campanada** | Camina lento, levanta la pala y golpea el suelo; una onda de huesos recorre el piso hacia ambos lados. | Tras el golpe queda de rodillas 1,3 s con el cráneo expuesto. |
-| 2 | **El cortejo** | Toca la campana, se abalanza dos veces de un extremo al otro y queda aturdido contra el muro. | Al frenar, 0,9 s: se puede saltar y pisar el cráneo. |
-| 3 | **La última palada** | El farol se apaga; da tres golpes cada vez más rápidos y uno final en el centro. | Queda de rodillas 1,8 s, con una luz dorada que señala el cráneo. |
-
-Cada fase se anuncia con una campanada grave, polvo y una pausa breve. **Todas las amenazas tienen al menos 0,5 s de anticipación** y se ven antes de golpear.
-
-### 14.4 Cómo se vence
-
-- **Pygame:** saltar o dashar sobre las ondas y caer con pisotón sobre el cráneo expuesto. No hace falta un ataque nuevo.
-- **GDevelop nativo:** el pisotón es la vía principal; el ataque con `A` permite un castigo más rápido, pero no es obligatorio.
-- El boss no tiene barra de vida convencional: tiene **tres segmentos de voluntad**, uno por fase. Cada fase pide dos o tres castigos limpios.
-- Si se implementa, la puerta del boss funciona como punto de reintento para no repetir todo El Osario.
-
-### 14.5 Feedback audiovisual
-
-- **Anticipación:** brillo rojo en la pala y sonido de arrastre.
-- **Impacto:** sacudida media, polvo de hueso y un golpe grave.
-- **Fase:** campanada descendente, el farol parpadea y el HUD cambia de segmento.
-- **Vulnerabilidad:** luz dorada en el cráneo y tono ascendente; el jugador sabe cuándo atacar sin leer texto.
-- **Derrota:** el Custodio se deshace en ceniza, el portón se abre y vuelve la luz del amanecer.
-
-### 14.6 Por qué encaja
-
-- **Castlevania:** el boss es un examen de movimiento; se puede vencer sin daño si se leen los patrones.
-- **Blasphemous:** la forma comunica la función; la pala, el farol y el cráneo dicen qué va a pasar.
-- **Ender Lilies:** la soledad y la melancolía sostienen el combate; no se resuelve con agregados ni con una nube de enemigos.
-- **Alcance:** una entidad, tres ataques, una arena y una barra de tres segmentos. No requiere mecánicas nuevas.
-
----
-
-## 15. Lo que queda afuera
-
-- Multijugador y compañerismo.
-- Narrativa extensa o diálogos.
-- Personalización y expresión.
-- Niveles generados proceduralmente.
-- Arte dibujado a mano: se usan formas geométricas y partículas.
-- Mapa interconectado tipo metroidvania.
-
-Estas ausencias son decisiones de alcance, no olvidos: permiten terminar un juego coherente y verificable en el marco de la cursada.
-
----
-
-## 16. Cierre
-
-IN CRYPTA demuestra que un plataformero pequeño puede cubrir MDA, UI/UX, curva de dificultad, sistemas, meaningful play, definiciones de juego, géneros, historia y producción. Las tres mecánicas son pocas, pero se combinan; las dos estéticas son claras, pero se refuerzan; la versión Pygame permite iterar y la versión GDevelop permite presentar. La oscuridad no oculta el diseño: lo vuelve el centro de la experiencia.
+El proyecto cuenta con una batería de pruebas de integración continua automatizadas en `tests/test_logica.py`:
+- `probar_niveles`: Integridad de los mapas de baldosa y dimensiones exactas.
+- `probar_salto_ventana_nivel_2`: Simulación física del salto, dash aéreo rasante y aterrizaje a través de la ventana alta sin tocar pinchos.
+- `probar_jefe_final`: Verificación de ambas fases del Custodio, absorción de daño, transición de furia e inmunidad a la pala en fase 2.
+- `probar_menu_principal_y_navegacion`: Transiciones libres de excepciones entre Intro, Menú Principal, Selección de Niveles, Créditos y Game Loop.
+- `probar_juego_headless`: Renderizado exhaustivo de frames y HUD sin dispositivos gráficos reales.

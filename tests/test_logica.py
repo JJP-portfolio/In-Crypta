@@ -29,6 +29,8 @@ from config import (
     ANCHO,
     DASH_USOS_AIRE,
     JUGADOR_ALTO,
+    VIRTUAL_ALTO,
+    VIRTUAL_ANCHO,
     JUGADOR_ANCHO,
     TILE,
     VIDAS_MAXIMAS,
@@ -308,13 +310,13 @@ def probar_camara():
     jugador = Jugador(100, 482)
     camara.actualizar(jugador, nivel, 1.0)
     assert camara.x == 0
-    # Si el nivel es mas bajo que la pantalla, la camara lo centra.
-    esperado_y = (nivel.alto - ALTO) / 2 if nivel.alto < ALTO else nivel.alto - ALTO
+    # Si el nivel es más bajo que la altura de vista, ancla el suelo abajo
+    esperado_y = nivel.alto - VIRTUAL_ALTO if nivel.alto <= VIRTUAL_ALTO else nivel.alto - VIRTUAL_ALTO
     assert camara.y == esperado_y
 
     jugador.rect.x = nivel.ancho - 50
     camara.actualizar(jugador, nivel, 1.0)
-    assert camara.x == nivel.ancho - ANCHO
+    assert camara.x == nivel.ancho - VIRTUAL_ANCHO
 
     assert camara.aplicar_x(0) == -camara.x
     assert camara.aplicar_rect(pygame.Rect(10, 20, 30, 40)).width == 30
@@ -688,6 +690,39 @@ def probar_salas_prueba():
     print("salas de prueba: OK")
 
 
+# --- Prueba: menú principal gótico y selector de niveles --- #
+def probar_menu_principal_y_navegacion():
+    juego = Juego()
+    assert juego.estado == "titulo"
+    juego.dibujar()
+
+    # Abrir menú principal
+    juego.abrir_menu()
+    assert juego.estado == "menu"
+    assert juego.menu_opcion == 0
+    juego.dibujar()
+
+    # Abrir selección de nivel
+    juego.abrir_seleccion_nivel()
+    assert juego.estado == "seleccion_nivel"
+    juego.dibujar()
+
+    # Abrir créditos
+    juego.abrir_creditos()
+    assert juego.estado == "creditos"
+    juego.dibujar()
+
+    # Seleccionar cada nivel
+    for n in range(3):
+        juego.seleccionar_nivel(n)
+        assert juego.estado == "jugando"
+        assert juego.nivel_indice == n
+        juego.actualizar(1 / 60)
+        juego.dibujar()
+
+    print("menú principal y selector de niveles: OK")
+
+
 # --- Prueba: las almas se reinician al cambiar de nivel, las vidas no --- #
 def probar_transicion_almas_vidas():
     juego = Juego()
@@ -730,6 +765,7 @@ if __name__ == "__main__":
     probar_mapa_final()
     probar_salto_ventana_nivel_2()
     probar_salas_prueba()
+    probar_menu_principal_y_navegacion()
     probar_transicion_almas_vidas()
     probar_pinchos()
     probar_juego_headless()
