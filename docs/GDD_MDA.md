@@ -90,6 +90,16 @@ El juego está compuesto por 3 niveles extensos y diseñados meticulosamente en 
           NIVEL 1: CAMPOSANTO    NIVEL 2: LA CRIPTA    NIVEL 3: EL OSARIO
 ```
 
+### 4.0 Prólogo: El Ritual del Sepulturero (70 columnas × 12 filas)
+- **Tema:** Santuario subterráneo ancestral de iniciación (tema Cripta).
+- **Propósito:** Aprendizaje guiado y orgánico de las mecánicas esenciales sin interrumpir la inmersión.
+- **Estructura en 5 Cámaras:**
+  1. *El Despertar (cols 0–14):* Movimiento bidireccional y salto de altura variable con escalón de piedra y ánimas sobre suelo llano.
+  2. *El Foso del Dash (cols 15–31):* Foso de 7 baldosas con arco parabólico de almas que exige saltar y ejecutar el Dash de Sombra (`SHIFT`) en el aire.
+  3. *El Altar de Hierro (cols 32–46):* Consagración de la Pala (`W`) y combate frontal con golpe de sablazo (`Z` / `J` / Click) contra morador patrullero.
+  4. *El Pisotón Aéreo (cols 47–59):* Cornisa elevada sobre morador; enseña el Pisotón (stomp) vertical que destruye al enemigo, genera rebote ascendente y **recarga el dash aéreo** para alcanzar la saliente superior sobre el foso de pinchos.
+  5. *El Umbral de Hierro (cols 60–69):* Cruce en plataforma móvil horizontal `MMMM` sobre pinchos hacia el Portón de Hierro (`G`), culminando el rito hacia la campaña principal.
+
 ### 4.1 Nivel 1: El Camposanto (160 columnas × 24 filas)
 - **Tema:** Exterior nocturno con luna llena, colinas oscuras, lápidas y árboles secos.
 - **Enseñanza:** Salto básico de altura variable y dash de sombras.
@@ -148,21 +158,23 @@ El flujo de pantallas ha sido completamente depurado de consolas y pruebas tempo
 ```
 [ ARRANQUE ] ──► [ INTRO GÓTICA ] ──► [ MENÚ PRINCIPAL ]
                                              │
-                       ┌─────────────────────┼─────────────────────┐
-                       ▼                     ▼                     ▼
-                   [ JUGAR ]       [ SELECCIÓN PANTALLA ]     [ CRÉDITOS ]
-                       │                     │                     │
-                       ▼                     ▼                     ▼
-                  (Campaña N1)         (Nivel 1, 2 ó 3)        (Equipo y
-                                                               Referencias)
+                       ┌─────────────────────┼─────────────────────┬─────────────────────┐
+                       ▼                     ▼                     ▼                     ▼
+                   [ JUGAR ]       [ SELECCIÓN PANTALLA ]     [ TUTORIAL ]          [ CRÉDITOS ]
+                       │                     │                     │                     │
+                       ▼                     ▼                     ▼                     ▼
+                  (Campaña N1)         (Nivel 1, 2 ó 3)       (Prólogo del          (Equipo y
+                                                               Sepulturero)          Referencias)
 ```
 
 1. **Pantalla de Intro:** Título gótico animado con luna llena, colinas lejanas, subtítulo "La redención del sepulturero" y prompt palpitante "PRESIONA ESPACIO O ENTER".
 2. **Menú Principal Diegético:** Opciones navegables con cursor de cruz de hierro y sonido de campana de piedra:
    - `JUGAR`: Inicia la odisea desde el Camposanto.
    - `SELECCIÓN DE PANTALLA`: Selector de 3 niveles con preview de nombre, tema y descripción.
+   - `TUTORIAL`: Acceso directo al Prólogo didáctico ("El Ritual del Sepulturero") con remates turquesa.
    - `CRÉDITOS`: Detalle del Equipo 6, tecnología (pygame-ce) y homenajes (Blasphemous, Castlevania, Ender Lilies).
 3. **Flujo In-Game:** `ESC` pausa instantáneamente o regresa al Menú Principal con total solidez de estados.
+4. **Pantalla de Victoria Litúrgica:** Al derrotar al Custodio y cruzar el portón final, se despliega el relicario ceremonial de victoria que computa almas totales consagradas, cronómetro de precisión, vidas residuales y calificación de rango litúrgico (`S`, `A`, `B` o `C`).
 
 ---
 
@@ -213,9 +225,11 @@ Para garantizar la estética de **Sensación**, cada interacción física produc
 
 ## 9. Verificación y Suite de Calidad
 
-El proyecto cuenta con una batería de pruebas de integración continua automatizadas en `tests/test_logica.py`:
+El proyecto cuenta con una batería de pruebas de integración continua automatizadas en `tests/test_logica.py` y `tests/test_hud.py` (56 tests unitarios en total):
 - `probar_niveles`: Integridad de los mapas de baldosa y dimensiones exactas.
 - `probar_salto_ventana_nivel_2`: Simulación física del salto, dash aéreo rasante y aterrizaje a través de la ventana alta sin tocar pinchos.
 - `probar_jefe_final`: Verificación de ambas fases del Custodio, absorción de daño, transición de furia e inmunidad a la pala en fase 2.
 - `probar_menu_principal_y_navegacion`: Transiciones libres de excepciones entre Intro, Menú Principal, Selección de Niveles, Créditos y Game Loop.
-- `probar_juego_headless`: Renderizado exhaustivo de frames y HUD sin dispositivos gráficos reales.
+- `probar_tutorial`: Integridad didáctica de "El Ritual del Sepulturero", etiquetas diegéticas del HUD y reinicio limpio.
+- `probar_juego_headless`: Renderizado exhaustivo de frames, overlays de victoria y HUD sin dispositivos gráficos reales.
+- `tests/test_hud.py`: Verificación de la arquitectura modular del HUD, renderizado 2x2 sin solapamiento, canal de mensajes con fade y formato dinámico de vidas/almas/cooldowns.

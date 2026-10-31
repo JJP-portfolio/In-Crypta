@@ -771,7 +771,7 @@ class HudRenderer:
         pygame.draw.rect(caja, (*self.tema.panel_border,
                                 min(self.tema.panel_border_alpha, alpha)),
                          caja.get_rect(), 1, border_radius=10)
-        pygame.draw.line(caja, (*self.tema.oro, min(180, alpha)), (0, 0, 4, m.h), border_radius=2)
+        pygame.draw.rect(caja, (*self.tema.oro, min(180, alpha)), (0, 0, 4, m.h), border_radius=2)
         # Icono pequeño según prioridad
         icono_x = m.x + 8
         icono_y = m.y + 4 + mensajes.offset_y()

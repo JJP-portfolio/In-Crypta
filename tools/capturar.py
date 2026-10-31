@@ -35,6 +35,27 @@ def main():
     pygame.image.save(juego_titulo.pantalla, str(ruta_titulo))
     print(f"CAPTURA_OK {ruta_titulo}")
 
+    # Menú con TUTORIAL seleccionado
+    juego_menu = Juego()
+    juego_menu.abrir_menu()
+    juego_menu.menu_opcion = 2  # TUTORIAL highlighted
+    for _ in range(5):
+        juego_menu.actualizar(1 / 60)
+    juego_menu.dibujar()
+    ruta_menu = destino / "menu_tutorial.png"
+    pygame.image.save(juego_menu.pantalla, str(ruta_menu))
+    print(f"CAPTURA_OK {ruta_menu}")
+
+    # Tutorial gameplay
+    juego_tut = Juego()
+    juego_tut.iniciar_tutorial()
+    for _ in range(30):
+        juego_tut.actualizar(1 / 60)
+    juego_tut.dibujar()
+    ruta_tut = destino / "tutorial.png"
+    pygame.image.save(juego_tut.pantalla, str(ruta_tut))
+    print(f"CAPTURA_OK {ruta_tut}")
+
     for indice in range(3):
         juego = Juego()
         juego.cargar_nivel(indice, vidas=3)

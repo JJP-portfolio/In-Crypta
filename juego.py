@@ -761,6 +761,7 @@ class Juego:
             self.ondas_jefe = []
             self.aviso_jefe = 3.2
             self.flash = 0.22
+            self.hud.mostrar_mensaje("¡EL CUSTODIO CAYÓ! · La cripta se abre…", 5, 4.0)
         elif self.jefe.estado == "cambio":
             self.audio.reproducir("jefe_fase")
             self.camara.sacudir(11.0, 0.26)
@@ -775,6 +776,7 @@ class Juego:
                 280,
             )
             self.aviso_jefe = 2.0
+            self.hud.mostrar_mensaje("¡FASE II! · Armadura impenetrable · Solo PISOTÓN desde las cornisas", 4, 4.5)
 
         return True
 
@@ -887,6 +889,7 @@ class Juego:
                         self.flash = 0.12
                         self.flash_color = AMARILLO
                         self.efecto_hud.iniciar("escala", 1.25, 0.2)
+                        self.hud.mostrar_mensaje("¡VIDA EXTRA · 10 ALMAS CONSAGRADAS!", 2, 3.0)
 
     # --- Función actualizar_palas --- #
     def actualizar_palas(self):
@@ -1510,10 +1513,7 @@ class Juego:
                 "ENTER para reintentar · ESC volver al menú",
             )
         elif self.estado == "victoria":
-            self.dibujar_overlay(
-                "¡ESCAPASTE DE LA CRIPTA!",
-                f"Almas: {self.almas_totales} · Tiempo: {self.tiempo_total:04.1f}s · ENTER menú",
-            )
+            self.dibujar_victoria()
 
     # --- Función dibujar_hud (Rediseño Total Gótico Diegético) --- #
     def dibujar_hud(self):
@@ -1800,6 +1800,89 @@ class Juego:
             centrado=True,
             interlineado=30,
         )
+
+    # --- Función dibujar_victoria --- #
+    def dibujar_victoria(self):
+        """Pantalla de victoria estilizada con panel gótico y estadísticas completas."""
+        import math as _math
+
+        # Oscurecer el fondo
+        overlay = pygame.Surface((ANCHO, ALTO), pygame.SRCALPHA)
+        overlay.fill((5, 4, 10, 215))
+        self.pantalla.blit(overlay, (0, 0))
+
+        # Partículas de estrellas doradas (estáticas pero rotadas con tiempo)
+        t = self.tiempo_total
+        for i in range(14):
+            ang = (i / 14) * _math.tau + t * 0.18
+            rx = ANCHO // 2 + int(_math.cos(ang) * 300)
+            ry = ALTO // 2 + int(_math.sin(ang) * 160)
+            radio = 3 if i % 3 == 0 else 2
+            alpha = int(120 + 80 * _math.sin(ang * 1.7 + t))
+            s = pygame.Surface((radio * 2 + 2, radio * 2 + 2), pygame.SRCALPHA)
+            pygame.draw.circle(s, (*ORO, alpha), (radio + 1, radio + 1), radio)
+            self.pantalla.blit(s, (rx - radio - 1, ry - radio - 1))
+
+        # Panel central
+        pw, ph = 680, 430
+        px = (ANCHO - pw) // 2
+        py = (ALTO - ph) // 2
+
+        panel = pygame.Surface((pw, ph), pygame.SRCALPHA)
+        pygame.draw.rect(panel, (12, 10, 16, 240), (0, 0, pw, ph), border_radius=14)
+        pygame.draw.rect(panel, (*ORO, 200), (0, 0, pw, ph), 2, border_radius=14)
+        pygame.draw.line(panel, (*ORO, 120), (20, 1), (pw - 20, 1), 1)
+        pygame.draw.line(panel, (*ORO, 120), (20, ph - 1), (pw - 20, ph - 1), 1)
+        # Remates de esquina
+        for cx_, cy_, dx_, dy_ in ((0, 0, 1, 1), (pw, 0, -1, 1), (0, ph, 1, -1), (pw, ph, -1, -1)):
+            pygame.draw.line(panel, ORO, (cx_ + 8 * dx_, cy_), (cx_ + 28 * dx_, cy_), 1)
+            pygame.draw.line(panel, ORO, (cx_, cy_ + 8 * dy_), (cx_, cy_ + 26 * dy_), 1)
+        self.pantalla.blit(panel, (px, py))
+
+        # Título
+        self.dibujar_texto("¡EL SEPULTURERO ESCAPÓ!", 0, py + 24, 38, ORO, centrado=True, sombra=True)
+        self.dibujar_texto("IN CRYPTA · COMPLETADO", 0, py + 68, 15, CREMA, centrado=True)
+        pygame.draw.line(self.pantalla, (*ORO, 140),
+                         (px + 30, py + 94), (px + pw - 30, py + 94), 1)
+
+        # Stats
+        tiempo_min = int(self.tiempo_total) // 60
+        tiempo_seg = int(self.tiempo_total) % 60
+        tiempo_dec = int((self.tiempo_total - int(self.tiempo_total)) * 10)
+        stats = [
+            ("ALMAS TOTALES",   f"{self.almas_totales}",                         HUD_ORO),
+            ("TIEMPO TOTAL",    f"{tiempo_min:02d}:{tiempo_seg:02d}.{tiempo_dec}", CREMA),
+            ("VIDAS RESTANTES", f"{self.jugador.vidas if self.jugador else 0}",    HUD_VERDE),
+        ]
+
+        y_stat = py + 114
+        for etiqueta, valor, color in stats:
+            self.dibujar_texto(etiqueta, px + 50, y_stat, 14, HUD_MUTED)
+            self.dibujar_texto(valor, px + pw - 50, y_stat, 20, color, sombra=True)
+            pygame.draw.line(self.pantalla, (*HUD_BORDE, 90),
+                             (px + 30, y_stat + 26), (px + pw - 30, y_stat + 26), 1)
+            y_stat += 52
+
+        # Calificación / rango (dorado, plata, hueso según tiempo)
+        if self.tiempo_total < 300:
+            rango, color_rango = "S · MAESTRO DEL OSARIO", ORO
+        elif self.tiempo_total < 540:
+            rango, color_rango = "A · SEPULTURERO EXPERTO", (192, 192, 192)
+        elif self.tiempo_total < 840:
+            rango, color_rango = "B · EXPLORADOR DE CRIPTAS", CREMA
+        else:
+            rango, color_rango = "C · EL OSARIO TE PUSO A PRUEBA", HUESO
+
+        y_rango = y_stat + 10
+        pygame.draw.rect(self.pantalla, (20, 16, 26),
+                         (px + 30, y_rango, pw - 60, 44), border_radius=8)
+        pygame.draw.rect(self.pantalla, (*color_rango, 180),
+                         (px + 30, y_rango, pw - 60, 44), 1, border_radius=8)
+        self.dibujar_texto(f"RANGO {rango}", 0, y_rango + 11, 17, color_rango, centrado=True, sombra=True)
+
+        # Pie
+        self.dibujar_texto("ENTER · Volver al menú principal · ESC · Salir",
+                           0, py + ph - 30, 13, HUD_MUTED, centrado=True)
 
     # --- Función dibujar_texto --- #
     def dibujar_texto(self, texto, x, y, tamano=24, color=BLANCO, centrado=False, sombra=False):
