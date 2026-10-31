@@ -165,7 +165,7 @@ class Juego:
         self.camara.actualizar(self.jugador, self.nivel, 1.0)
         self.estado = "jugando"
         self.tiempo_nivel = 0.0
-        self.mostrar_ayuda = 5.5
+        self.mostrar_ayuda = 4.0
         self.texto_ayuda = self.nivel.pista if self.nivel else ""
         self.flash = 0.0
         self.jefe = self.nivel.jefes[0] if self.nivel.jefes else None
@@ -839,7 +839,7 @@ class Juego:
                 self.audio.reproducir("pala_recoger")
                 self.particulas.alma(pala.rect.centerx, pala.rect.centery)
                 self.texto_ayuda = "¡PALA DE SEPULTURERO OBTENIDA! · J / CLICK: EXORCIZAR MORADORES"
-                self.mostrar_ayuda = 5.5
+                self.mostrar_ayuda = 4.0
 
     # --- Función actualizar_power_ups_rango --- #
     def actualizar_power_ups_rango(self):
@@ -860,7 +860,7 @@ class Juego:
                 self.flash = 0.14
                 self.flash_color = (190, 60, 255)
                 self.texto_ayuda = "¡GUADAÑA MÍSTICA OBTENIDA! · ALCANCE ESPECTRAL Y PODER MEJORADO"
-                self.mostrar_ayuda = 5.5
+                self.mostrar_ayuda = 4.0
 
     # --- Función perder_vida --- #
     def perder_vida(self, ignorar_invulnerabilidad=False):
@@ -987,8 +987,8 @@ class Juego:
         w, h = destino.get_width(), destino.get_height()
         desplazamiento = int(self.camara.x * 0.16)
 
-        # Luna llena con halo
-        luna_x = int(w * 0.78) - int(self.camara.x * 0.04)
+        # Luna llena con halo — posicionada a 0.68w para no tapar el HUD derecho
+        luna_x = int(w * 0.68) - int(self.camara.x * 0.04)
         luna_y = 72
         halo_luna = pygame.Surface((120, 120), pygame.SRCALPHA)
         pygame.draw.circle(halo_luna, (200, 200, 160, 18), (60, 60), 58)
@@ -1077,7 +1077,7 @@ class Juego:
         desplazamiento = int(self.camara.x * 0.25)
         for i in range(-2, 8):
             x = i * 230 - desplazamiento
-            pygame.draw.rect(destino, (15, 14, 20), (x, 162, 54, h - 162))
+            pygame.draw.rect(destino, (22, 20, 32), (x, 162, 54, h - 162))
             pygame.draw.rect(destino, (34, 33, 42), (x + 6, 168, 42, h - 168), 2)
             pygame.draw.rect(destino, (24, 23, 30), (x - 8, 152, 70, 14))
             pygame.draw.rect(destino, (24, 23, 30), (x - 4, 136, 62, 10))
@@ -1543,12 +1543,13 @@ class Juego:
             pygame.draw.line(panel, HUD_ORO, (vx, vy + 4 * vdy), (vx, vy + 12 * vdy), 1)
         self.pantalla.blit(panel, (x, y))
 
-        # Icono de alma espectral en rombo
+        # Icono de alma espectral en rombo — dibujado directo sobre pantalla, sin BLEND_ADD
         ix, iy = x + 18, y + 28
-        halo = pygame.Surface((36, 36), pygame.SRCALPHA)
-        pygame.draw.circle(halo, (70, 230, 215, 38), (18, 18), 16)
-        self.pantalla.blit(halo, (ix - 18, iy - 18), special_flags=pygame.BLEND_RGBA_ADD)
-        pygame.draw.polygon(self.pantalla, HUD_ALMA, [(ix, iy - 10), (ix + 7, iy), (ix, iy + 10), (ix - 7, iy)])
+        # Halo difuso pintado directamente en panel (ya tiene SRCALPHA)
+        panel_alma = pygame.Surface((36, 36), pygame.SRCALPHA)
+        pygame.draw.circle(panel_alma, (70, 230, 215, 55), (18, 18), 16)
+        self.pantalla.blit(panel_alma, (ix - 18, iy - 18))
+        pygame.draw.polygon(self.pantalla, HUD_ALMA, [(ix, iy - 11), (ix + 8, iy), (ix, iy + 11), (ix - 8, iy)])
         pygame.draw.polygon(self.pantalla, (230, 255, 250), [(ix, iy - 5), (ix + 3, iy), (ix, iy + 5), (ix - 3, iy)])
 
         # Contador de Almas
@@ -1560,7 +1561,7 @@ class Juego:
         ry = y + 35
         pulso_resurreccion = 0.5 + 0.5 * math.sin(self.tiempo_nivel * 8)
         for i in range(ALMAS_POR_VIDA):
-            bx = rx + i * 18
+            bx = rx + i * 16
             by = ry
             llena = (i < self.jugador.almas_para_vida)
 
@@ -1583,9 +1584,9 @@ class Juego:
         dash_listo = self.jugador.dash_listo()
         color_dash = HUD_DASHTURQUESA if dash_listo else HUD_MUTED
 
-        # Ala rúnica de dash
-        pygame.draw.polygon(self.pantalla, color_dash, [(dx_box + 2, y + 34), (dx_box + 12, y + 20), (dx_box + 16, y + 26), (dx_box + 7, y + 38)])
-        pygame.draw.polygon(self.pantalla, color_dash, [(dx_box + 14, y + 28), (dx_box + 22, y + 18), (dx_box + 24, y + 24), (dx_box + 17, y + 33)])
+        # Ala rúnica de dash — más grande y legible (28×20px)
+        pygame.draw.polygon(self.pantalla, color_dash, [(dx_box + 1, y + 36), (dx_box + 13, y + 18), (dx_box + 18, y + 24), (dx_box + 7, y + 40)])
+        pygame.draw.polygon(self.pantalla, color_dash, [(dx_box + 15, y + 27), (dx_box + 24, y + 16), (dx_box + 27, y + 22), (dx_box + 19, y + 34)])
 
         self.dibujar_texto("DASH", dx_box + 28, y + 8, 11, HUD_MUTED)
         estado_dash = "LISTO" if dash_listo else f"{1.0 - (self.jugador.dash_cooldown / DASH_COOLDOWN):.1f}"
@@ -1601,13 +1602,13 @@ class Juego:
             etiqueta = "GUADAÑA +" if es_guadaña else "PALA"
 
             if es_guadaña:
-                # Guadaña mística púrpura
-                pygame.draw.arc(self.pantalla, color_arma, (ax_box + 4, y + 16, 20, 22), 0, 3.14, 3)
-                pygame.draw.line(self.pantalla, (130, 50, 160), (ax_box + 14, y + 27), (ax_box + 6, y + 42), 2)
+                # Guadaña mística púrpura — más grande (28×28px, trazo 4)
+                pygame.draw.arc(self.pantalla, color_arma, (ax_box + 2, y + 13, 28, 28), 0, 3.14, 4)
+                pygame.draw.line(self.pantalla, (130, 50, 160), (ax_box + 16, y + 26), (ax_box + 6, y + 44), 3)
             else:
-                # Pala plateada
-                pygame.draw.line(self.pantalla, (160, 120, 60), (ax_box + 8, y + 40), (ax_box + 16, y + 22), 2)
-                pygame.draw.polygon(self.pantalla, (190, 190, 205), [(ax_box + 14, y + 20), (ax_box + 23, y + 17), (ax_box + 19, y + 28)])
+                # Pala plateada — hoja más grande
+                pygame.draw.line(self.pantalla, (160, 120, 60), (ax_box + 8, y + 42), (ax_box + 18, y + 20), 2)
+                pygame.draw.polygon(self.pantalla, (190, 190, 205), [(ax_box + 15, y + 18), (ax_box + 26, y + 14), (ax_box + 22, y + 28)])
 
             self.dibujar_texto(etiqueta, ax_box + 28, y + 8, 11, color_arma)
             estado_ataque = "LISTO" if self.jugador.ataque_cooldown <= 0 else "..."
@@ -1664,9 +1665,11 @@ class Juego:
         if not texto:
             return
 
-        lineas = textwrap.wrap(texto, width=74)
-        alto = 28 + 20 * len(lineas)
-        ancho = 680
+        # Máximo 2 líneas visibles para no bloquear el área de juego
+        lineas_todas = textwrap.wrap(texto, width=60)
+        lineas = lineas_todas[:2]
+        alto = 22 + 18 * len(lineas)
+        ancho = 580
         x = (ANCHO - ancho) // 2
         y = 88 if (self.jefe is not None and self.jefe.vivo) else 16
 
@@ -1679,9 +1682,9 @@ class Juego:
         pygame.draw.rect(caja, (*HUD_ORO, alpha), (0, 0, 4, alto), border_radius=2)
         self.pantalla.blit(caja, (x, y))
 
-        self.dibujar_texto("GUÍA DEL SEPULTURERO", x + 18, y + 6, 12, HUD_ORO)
+        self.dibujar_texto("GUÍA DEL SEPULTURERO", x + 14, y + 4, 10, HUD_ORO)
         for i, linea in enumerate(lineas):
-            self.dibujar_texto(linea, x + 18, y + 26 + i * 20, 14, HUD_TEXTO)
+            self.dibujar_texto(linea, x + 14, y + 18 + i * 18, 12, HUD_TEXTO)
 
     # --- Función dibujar_overlay --- #
     def dibujar_overlay(self, titulo, subtitulo):
