@@ -956,21 +956,21 @@ class Juego:
             pygame.draw.polygon(
                 destino,
                 (18, 26, 34),
-                [(x, h), (x + 180, int(h * 0.52)), (x + 360, h)],
+                [(x, h), (x + 180, int(h * 0.52) + 32), (x + 360, h)],
             )
             pygame.draw.polygon(
                 destino,
                 (23, 34, 40),
-                [(x + 90, h), (x + 230, int(h * 0.58)), (x + 380, h)],
+                [(x + 90, h), (x + 230, int(h * 0.58) + 32), (x + 380, h)],
             )
 
         for base_x, escala in ((140, 1.15), (560, 0.9), (980, 1.25), (1320, 0.8)):
             x = (base_x - self.camara.x * 0.28) % (w + 420) - 180
-            self.dibujar_arbol_muerto(destino, x, h - 92, escala)
+            self.dibujar_arbol_muerto(destino, x, h - 60, escala)
 
         for i in range(-2, 18):
             x = i * 92 - int(self.camara.x * 0.48)
-            self.dibujar_tumba_lejana(destino, x, h - 76, 0.8 + (i % 3) * 0.12)
+            self.dibujar_tumba_lejana(destino, x, h - 44, 0.8 + (i % 3) * 0.12)
 
     def dibujar_arbol_muerto(self, destino, x, base_y, escala):
         alto = int(150 * escala)
@@ -1018,11 +1018,11 @@ class Juego:
         desplazamiento = int(self.camara.x * 0.25)
         for i in range(-2, 8):
             x = i * 230 - desplazamiento
-            pygame.draw.rect(destino, (15, 14, 20), (x, 130, 54, h - 130))
-            pygame.draw.rect(destino, (34, 33, 42), (x + 6, 136, 42, h - 136), 2)
-            pygame.draw.rect(destino, (24, 23, 30), (x - 8, 120, 70, 14))
-            pygame.draw.rect(destino, (24, 23, 30), (x - 4, 104, 62, 10))
-            for y in range(160, h, 48):
+            pygame.draw.rect(destino, (15, 14, 20), (x, 162, 54, h - 162))
+            pygame.draw.rect(destino, (34, 33, 42), (x + 6, 168, 42, h - 168), 2)
+            pygame.draw.rect(destino, (24, 23, 30), (x - 8, 152, 70, 14))
+            pygame.draw.rect(destino, (24, 23, 30), (x - 4, 136, 62, 10))
+            for y in range(192, h, 48):
                 pygame.draw.line(destino, (28, 27, 34), (x + 8, y), (x + 46, y), 1)
 
         # Cadenas colgantes
@@ -1032,7 +1032,7 @@ class Juego:
                 pygame.draw.ellipse(destino, (42, 42, 50), (x - 3, y, 6, 12), 1)
 
         # Resplandor de velas lejanas
-        for base_x, base_y in ((150, h - 190), (520, h - 220), (850, h - 170)):
+        for base_x, base_y in ((150, h - 158), (520, h - 188), (850, h - 138)):
             x = base_x - int(self.camara.x * 0.5)
             pygame.draw.circle(destino, (58, 42, 18), (x, base_y), 18)
             pygame.draw.circle(destino, (112, 74, 28), (x, base_y), 8)
@@ -1044,13 +1044,13 @@ class Juego:
         desplazamiento = int(self.camara.x * 0.2)
         for i in range(-2, 8):
             x = i * 300 - desplazamiento
-            pygame.draw.arc(destino, (54, 34, 34), (x, 150, 280, 320), 3.14, 6.28, 9)
-            pygame.draw.arc(destino, (42, 28, 30), (x + 40, 190, 220, 280), 3.14, 6.28, 5)
+            pygame.draw.arc(destino, (54, 34, 34), (x, 182, 280, 320), 3.14, 6.28, 9)
+            pygame.draw.arc(destino, (42, 28, 30), (x + 40, 222, 220, 280), 3.14, 6.28, 5)
         for base_x, largo in ((160, 130), (430, 190), (760, 120), (1010, 170)):
             x = int(base_x - self.camara.x * 0.35) % (w + 240) - 120
             pygame.draw.line(destino, (40, 28, 30), (x, 0), (x + 8, largo), 5)
             pygame.draw.line(destino, (40, 28, 30), (x + 8, largo), (x - 12, largo + 24), 3)
-        pygame.draw.ellipse(destino, (58, 16, 20), (w // 2 - 260, h - 100, 520, 120))
+        pygame.draw.ellipse(destino, (58, 16, 20), (w // 2 - 260, h - 68, 520, 120))
 
     def dibujar_niebla(self, destino=None, tema="camposanto"):
         if destino is None:
@@ -1058,7 +1058,7 @@ class Juego:
         w, h = destino.get_width(), destino.get_height()
         color = (92, 108, 116) if tema != "osario" else (72, 40, 42)
         for i in range(4):
-            y = h - 100 + i * 22
+            y = h - 68 + i * 22
             alfa = 18 + i * 5
             banda = pygame.Surface((w, 30), pygame.SRCALPHA)
             banda.fill((*color, alfa))
