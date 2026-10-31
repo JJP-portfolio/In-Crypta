@@ -28,7 +28,7 @@ os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 import pygame  # noqa: E402
 
 from nivel import Nivel  # noqa: E402
-from niveles import NIVELES, SALAS_PRUEBA  # noqa: E402
+from niveles import NIVELES, NIVEL_TUTORIAL, SALAS_PRUEBA  # noqa: E402
 
 pygame.init()
 
@@ -87,7 +87,12 @@ def texto_textura(proyecto: dict, escena: dict, nombre_objeto: str) -> tuple[str
 # Escenas del juego que deben existir en el export
 # ------------------------------------------------------------
 def escenas_del_juego() -> list[tuple[str, Nivel]]:
-    escenas: list[tuple[str, Nivel]] = []
+    escenas: list[tuple[str, Nivel]] = [
+        (
+            "Tutorial",
+            Nivel(NIVEL_TUTORIAL, "Ritual del Sepulturero", "pista", "camposanto"),
+        )
+    ]
     for indice, datos in enumerate(NIVELES, start=1):
         escenas.append(
             (

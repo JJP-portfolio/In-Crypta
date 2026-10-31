@@ -64,7 +64,7 @@ from config import (
 from entidades import Alma, Custodio, Enemigo, Jugador, OndaCustodio, PalaRecogible
 from exportador import sprites as sprites_export
 from exportador.adaptadores import ADAPTADORES, adaptador, variables_instancia
-from exportador.manifiesto import escenas_campaña, escenas_salas
+from exportador.manifiesto import escena_tutorial, escenas_campaña, escenas_salas
 from exportador.modelo import Escena, leer_escena
 from exportador.pipeline import (
     KINDS_SIEMPRE,
@@ -137,7 +137,8 @@ GAME_ZOOM = RENDER_W / ANCHO
 
 # Sacudida de cámara: la intensidad cae linealmente durante la duración
 # (camara.py::Camara.actualizar_sacudida) y el offset es aleatorio.
-_INTENSIDAD = f"sacudida_f * max(0, sacudida_t) / {SACUDIDA_DURACION}"
+# Respeta la opción de accesibilidad F1 (reducir_movimiento = 1 suprime sacudida).
+_INTENSIDAD = f"(1 - GlobalVariable(reducir_movimiento)) * (sacudida_f * max(0, sacudida_t) / {SACUDIDA_DURACION})"
 SACUDIDA_EXPRESION_X = f"RandomInRange(-({_INTENSIDAD}), ({_INTENSIDAD}))"
 SACUDIDA_EXPRESION_Y = f"RandomInRange(-({_INTENSIDAD}), ({_INTENSIDAD}))"
 ASSET_SCALE = 2
@@ -493,6 +494,23 @@ def guardar_audio() -> None:
         meta.extend(_wav_muestras(frecuencia, frecuencia * 1.01, duracion, 0.20, "bell"))
     _guardar_wav("sfx_meta.wav", meta)
 
+    # --- Nuevos sonidos (paridad con audio.py commit 020b19c) ---
+    # Pisotón: golpe percusivo grave con ruido
+    _guardar_wav("sfx_stomp.wav", _wav_muestras(80, 30, 0.18, 0.28, "square", 0.30))
+    # Muerte/derrota: barrido descendente disonante
+    muerte = []
+    for frecuencia, duracion in ((340, 0.10), (240, 0.10), (160, 0.12), (90, 0.26)):
+        muerte.extend(_wav_muestras(frecuencia, frecuencia * 0.7, duracion, 0.28, "saw", 0.06))
+    _guardar_wav("sfx_muerte.wav", muerte)
+    # Combo de almas: 6 tonos ascendentes (cada recolección consecutiva sube un semitono)
+    # Frecuencias: Do5 → Re5 → Mi5 → Sol5 → La5 → Do6 (escala pentatónica)
+    _COMBO_FREQS = [523, 587, 659, 784, 880, 1046]
+    for i, freq in enumerate(_COMBO_FREQS, start=1):
+        _guardar_wav(
+            f"sfx_alma_{i}.wav",
+            _wav_muestras(freq, freq * 1.02, 0.18 + i * 0.01, 0.22, "bell"),
+        )
+
 
 def guardar_barras() -> None:
     barra = pygame.Surface((GAME_W, 52), pygame.SRCALPHA)
@@ -514,6 +532,20 @@ def generar_fondo_pausa() -> pygame.Surface:
     pygame.draw.rect(surface, ORO, (210, 88, 540, 364), 2)
     pygame.draw.line(surface, SANGRE, (290, 200), (670, 200), 1)
     pygame.draw.line(surface, SANGRE, (290, 444), (670, 444), 1)
+    return surface
+
+
+def generar_fondo_derrota() -> pygame.Surface:
+    surface = pygame.Surface((GAME_W, GAME_H))
+    _gradiente(surface, (10, 4, 6), (28, 10, 14))
+    _estrellas(surface, 666, 60, (70, 20, 25), 0.65)
+    pw, ph = 680, 440
+    px = (GAME_W - pw) // 2
+    py = (GAME_H - ph) // 2
+    pygame.draw.rect(surface, (18, 10, 14), (px, py, pw, ph), border_radius=14)
+    pygame.draw.rect(surface, (160, 40, 50), (px, py, pw, ph), 2, border_radius=14)
+    pygame.draw.line(surface, ORO, (px + 20, py + 1), (px + pw - 20, py + 1), 1)
+    pygame.draw.line(surface, ORO, (px + 20, py + ph - 1), (px + pw - 20, py + ph - 1), 1)
     return surface
 
 
@@ -567,6 +599,7 @@ def generar_assets(escenas: list[Escena]) -> None:
         )
     guardar_2x(generar_fondo_victoria(), "victoria.png")
     guardar_2x(generar_fondo_pausa(), "pausa.png")
+    guardar_2x(generar_fondo_derrota(), "derrota.png")
 
 
 # ------------------------------------------------------------
@@ -584,23 +617,29 @@ def acciones_sacudida(fuerza: float, duracion: float) -> list[dict]:
     ]
 
 
-def eventos_dano(alto: int, destino_muerte: str = "Titulo") -> list[dict]:
+def eventos_dano(alto: int, destino_muerte: str = "Derrota") -> list[dict]:
     subeventos = [
         evento(
             [cond("NumberVariable", ["vidas", ">", "0"])],
             [
                 accion("SetNumberVariable", ["almas", "=", "0"]),
                 accion("SetNumberVariable", ["almas_para_vida", "=", "0"]),
+                accion("SetNumberVariable", ["combo_almas", "=", "0"]),
+                accion("SetNumberVariable", ["combo_timer", "=", "0"]),
                 accion("Scene", ["CurrentSceneName()", "no"]),
             ],
         ),
         evento(
             [cond("NumberVariable", ["vidas", "<=", "0"])],
             [
+                accion("SetNumberVariable", ["muertes_totales", "+", "1"]),
                 accion("SetNumberVariable", ["vidas", "=", str(VIDAS_INICIALES)]),
                 accion("SetNumberVariable", ["almas", "=", "0"]),
                 accion("SetNumberVariable", ["almas_para_vida", "=", "0"]),
                 accion("SetNumberVariable", ["almas_totales", "=", "0"]),
+                accion("SetNumberVariable", ["combo_almas", "=", "0"]),
+                accion("SetNumberVariable", ["combo_timer", "=", "0"]),
+                accion_sonido("Muerte"),
                 accion("Scene", [f'"{destino_muerte}"', "no"]),
             ],
         ),
@@ -908,7 +947,7 @@ def eventos_nivel(
     siguiente: str | None = None,
     pala_inicial: bool | None = None,
     texto_dash_sin_pala: str | None = None,
-    destino_muerte: str = "Titulo",
+    destino_muerte: str = "Derrota",
     reiniciar_vidas: bool = False,
 ) -> list[dict]:
     # La cámara se controla por su centro. Si el nivel es más grande que la
@@ -981,12 +1020,15 @@ def eventos_nivel(
         evento(
             [cond("SceneJustBegins", [""])],
             [
+                accion("SetNumberVariable", ["nivel_actual", "=", str(indice)]),
                 accion(
                     "SetNumberObjectVariable",
                     ["Jugador", "tiene_pala", "=", "1" if pala_inicial else "0"],
                 ),
                 accion("SetNumberVariable", ["almas", "=", "0"]),
                 accion("SetNumberVariable", ["almas_para_vida", "=", "0"]),
+                accion("SetNumberVariable", ["combo_almas", "=", "0"]),
+                accion("SetNumberVariable", ["combo_timer", "=", "0"]),
                 *(
                     [accion("SetNumberVariable", ["vidas", "=", str(VIDAS_INICIALES)])]
                     if reiniciar_vidas
@@ -1006,6 +1048,18 @@ def eventos_nivel(
             ]
             if nivel.jefes
             else []
+        ),
+
+        # Accesibilidad F1: alternar reducir_movimiento (paridad con juego.py commit 020b19c).
+        evento(
+            [cond("KeyFromTextJustPressed", ['"F1"'])],
+            [
+                accion(
+                    "SetNumberVariable",
+                    ["reducir_movimiento", "=", "1 - GlobalVariable(reducir_movimiento)"],
+                ),
+                accion_sonido("UI"),
+            ],
         ),
 
         # Pausa.
@@ -1435,16 +1489,35 @@ def eventos_nivel(
             ],
         ),
 
-        # Almas.
+        # Almas con sistema de combo (paridad audio.py commit 020b19c).
+        # ventana_combo = 1.3 s; combo_almas se incrementa por cada alma
+        # consecutiva y selecciona sfx_alma_N (N de 1 a 6 toneado por semitono).
+        # Si pasa 1.3 s sin recoger otra alma, combo_almas se resetea a 0.
         evento(
             [cond("CollisionNP", ["Jugador", "Alma", "no"])],
             [
                 accion("Delete", ["Alma"]),
                 accion("SetNumberVariable", ["almas", "+", "1"]),
                 accion("SetNumberVariable", ["almas_para_vida", "+", "1"]),
-                accion_sonido("Alma"),
+                # Avanzar combo (capped en 6)
+                accion("SetNumberVariable", ["combo_almas", "+", "1"]),
+                accion("SetNumberVariable", ["combo_timer", "=", "1.3"]),
             ],
             [
+                # Capear combo en 6
+                evento(
+                    [cond("NumberVariable", ["combo_almas", ">", "6"])],
+                    [accion("SetNumberVariable", ["combo_almas", "=", "6"])],
+                ),
+                # Reproducir el tono del combo (alma_1 … alma_6)
+                *[
+                    evento(
+                        [cond("NumberVariable", ["combo_almas", "=", str(n)])],
+                        [accion_sonido(f"Alma{n}")],
+                    )
+                    for n in range(1, 7)
+                ],
+                # Vida extra si se acumularon ALMAS_POR_VIDA
                 evento(
                     [cond("NumberVariable", ["almas_para_vida", ">=", str(ALMAS_POR_VIDA)])],
                     [accion("SetNumberVariable", ["almas_para_vida", "=", "0"])],
@@ -1457,6 +1530,17 @@ def eventos_nivel(
                             ],
                         )
                     ],
+                ),
+            ],
+        ),
+        # Temporizador de combo: resetear combo_almas si pasa 1.3 s sin alma.
+        evento(
+            [cond("NumberVariable", ["combo_timer", ">", "0"])],
+            [accion("SetNumberVariable", ["combo_timer", "-", "TimeDelta()"])],
+            [
+                evento(
+                    [cond("NumberVariable", ["combo_timer", "<=", "0"])],
+                    [accion("SetNumberVariable", ["combo_almas", "=", "0"])],
                 )
             ],
         ),
@@ -1472,6 +1556,7 @@ def eventos_nivel(
         ),
 
         # Pisotón: el jugador viene desde arriba y ya tiene la pala.
+        # Paridad audio.py: reproduce sfx_stomp + sacudida 6/0.18 (commit 020b19c).
         evento(
             [
                 cond("CollisionNP", ["Jugador", "Enemy", "no"]),
@@ -1482,7 +1567,8 @@ def eventos_nivel(
                 accion("Delete", ["Enemy"]),
                 accion("SetNumberObjectVariable", ["Jugador", "dash_aire", "=", "1"]),
                 accion("SetNumberObjectVariable", ["Jugador", "dash_cd", "=", "0"]),
-                accion_sonido("Golpe"),
+                accion_sonido("Stomp"),
+                *acciones_sacudida(6.0, 0.18),
             ],
         ),
 
@@ -1504,8 +1590,14 @@ def eventos_nivel(
                 evento(
                     [cond("NumberVariable", ["vidas", "<=", "0"])],
                     [
+                        accion("SetNumberVariable", ["muertes_totales", "+", "1"]),
                         accion("SetNumberVariable", ["vidas", "=", str(VIDAS_INICIALES)]),
                         accion("SetNumberVariable", ["almas", "=", "0"]),
+                        accion("SetNumberVariable", ["almas_para_vida", "=", "0"]),
+                        accion("SetNumberVariable", ["almas_totales", "=", "0"]),
+                        accion("SetNumberVariable", ["combo_almas", "=", "0"]),
+                        accion("SetNumberVariable", ["combo_timer", "=", "0"]),
+                        accion_sonido("Muerte"),
                         accion("Scene", [f'"{destino_muerte}"', "no"]),
                     ],
                 ),
@@ -1669,8 +1761,20 @@ def instancias_hud() -> list[dict]:
 
 
 def escena_titulo() -> dict:
-    objetos = [objeto_sprite("FondoTitulo", "FondoTitulo")]
-    instancias = [instancia("FondoTitulo", 0, 0, 0, tam=(GAME_W, GAME_H))]
+    objetos = [
+        objeto_sprite("FondoTitulo", "FondoTitulo"),
+        objeto_texto(
+            "Titulo_Prompt",
+            "ENTER: JUGAR  ·  U: TUTORIAL  ·  T: SALAS DE PRUEBA",
+            17,
+            ORO,
+            "center",
+        ),
+    ]
+    instancias = [
+        instancia("FondoTitulo", 0, 0, 0, tam=(GAME_W, GAME_H)),
+        instancia("Titulo_Prompt", 0, GAME_H - 42, 2, "UI", tam=(GAME_W, 26)),
+    ]
     eventos = [
         evento(
             [cond("SceneJustBegins", [""])],
@@ -1687,6 +1791,13 @@ def escena_titulo() -> dict:
             [
                 accion_sonido("UI"),
                 accion("Scene", ['"Nivel 1"', "no"]),
+            ],
+        ),
+        evento(
+            [cond("KeyFromTextJustPressed", ['"u"'])],
+            [
+                accion_sonido("UI"),
+                accion("Scene", ['"Tutorial"', "no"]),
             ],
         ),
         evento(
@@ -1737,6 +1848,112 @@ def escena_victoria() -> dict:
         ),
     ]
     return escena("Victoria", objetos, instancias, eventos)
+
+
+def escena_derrota() -> dict:
+    pw, ph = 680, 440
+    px = (GAME_W - pw) // 2
+    py = (GAME_H - ph) // 2
+
+    objetos = [
+        objeto_sprite("FondoDerrota", "FondoDerrota"),
+        objeto_texto("Derrota_Titulo", "LA OSCURIDAD TE RECLAMA", 34, ROJO, "center"),
+        objeto_texto("Derrota_Causa", "LA CRIPTA COBRÓ SU TRIBUTO", 15, CREMA, "center"),
+        objeto_texto("Derrota_Stat1", "CAÍDAS TOTALES: 0", 20, ROJO, "center"),
+        objeto_texto("Derrota_Stat2", "ALMAS COSECHADAS: 0", 20, ORO, "center"),
+        objeto_texto(
+            "Derrota_Prompt",
+            "ENTER O ESPACIO: REINTENTAR  ·  ESC: MENÚ PRINCIPAL",
+            16,
+            ORO,
+            "center",
+        ),
+    ]
+    instancias = [
+        instancia("FondoDerrota", 0, 0, 0, tam=(GAME_W, GAME_H)),
+        instancia("Derrota_Titulo", 0, py + 26, 2, "UI", tam=(GAME_W, 44)),
+        instancia("Derrota_Causa", 0, py + 78, 2, "UI", tam=(GAME_W, 26)),
+        instancia("Derrota_Stat1", 0, py + 140, 2, "UI", tam=(GAME_W, 36)),
+        instancia("Derrota_Stat2", 0, py + 196, 2, "UI", tam=(GAME_W, 36)),
+        instancia("Derrota_Prompt", 0, py + 360, 2, "UI", tam=(GAME_W, 30)),
+    ]
+
+    reiniciar_partida = [
+        accion("SetNumberVariable", ["vidas", "=", str(VIDAS_INICIALES)]),
+        accion("SetNumberVariable", ["almas", "=", "0"]),
+        accion("SetNumberVariable", ["almas_para_vida", "=", "0"]),
+        accion("SetNumberVariable", ["combo_almas", "=", "0"]),
+        accion("SetNumberVariable", ["combo_timer", "=", "0"]),
+        accion_sonido("UI"),
+    ]
+
+    eventos = [
+        evento(
+            [cond("SceneJustBegins", [""])],
+            [
+                *acciones_camara_inicial(),
+                accion(
+                    "TextObject::String",
+                    ["Derrota_Stat1", "=", '"CAÍDAS TOTALES: " + ToString(GlobalVariable(muertes_totales))'],
+                ),
+                accion(
+                    "TextObject::String",
+                    ["Derrota_Stat2", "=", '"ALMAS COSECHADAS: " + ToString(GlobalVariable(almas_totales))'],
+                ),
+            ],
+        ),
+        evento(
+            [
+                cond_or(
+                    cond("KeyFromTextJustPressed", ['"Return"']),
+                    cond("KeyFromTextJustPressed", ['"Space"']),
+                )
+            ],
+            reiniciar_partida,
+            [
+                evento(
+                    [cond("NumberVariable", ["nivel_actual", "=", "1"])],
+                    [accion("Scene", ['"Nivel 1"', "no"])],
+                ),
+                evento(
+                    [cond("NumberVariable", ["nivel_actual", "=", "2"])],
+                    [accion("Scene", ['"Nivel 2"', "no"])],
+                ),
+                evento(
+                    [cond("NumberVariable", ["nivel_actual", "=", "3"])],
+                    [accion("Scene", ['"Nivel 3"', "no"])],
+                ),
+                evento(
+                    [cond("NumberVariable", ["nivel_actual", "=", "0"])],
+                    [accion("Scene", ['"Tutorial"', "no"])],
+                ),
+                evento(
+                    [cond("NumberVariable", ["nivel_actual", "=", "11"])],
+                    [accion("Scene", ['"Sala 1"', "no"])],
+                ),
+                evento(
+                    [cond("NumberVariable", ["nivel_actual", "=", "12"])],
+                    [accion("Scene", ['"Sala 2"', "no"])],
+                ),
+                evento(
+                    [cond("NumberVariable", ["nivel_actual", "=", "13"])],
+                    [accion("Scene", ['"Sala 3"', "no"])],
+                ),
+            ],
+        ),
+        evento(
+            [cond("KeyFromTextJustPressed", ['"Escape"'])],
+            [
+                accion("SetNumberVariable", ["vidas", "=", str(VIDAS_INICIALES)]),
+                accion("SetNumberVariable", ["almas", "=", "0"]),
+                accion("SetNumberVariable", ["almas_para_vida", "=", "0"]),
+                accion("SetNumberVariable", ["almas_totales", "=", "0"]),
+                accion_sonido("UI"),
+                accion("Scene", ['"Titulo"', "no"]),
+            ],
+        ),
+    ]
+    return escena("Derrota", objetos, instancias, eventos)
 
 
 def escena_pausa() -> dict:
@@ -2095,9 +2312,15 @@ def escena_sala(escena_modelo: Escena) -> dict:
     """Sala de prueba: se construye igual que un nivel y vuelve al menú."""
     spec = escena_modelo.spec
     objetos, instancias = objetos_y_instancias_escena(escena_modelo)
+    sala_num = 1
+    if "_" in spec.clave:
+        try:
+            sala_num = int(spec.clave.split("_")[-1])
+        except ValueError:
+            pass
     eventos = eventos_nivel(
         escena_modelo.nivel,
-        1,
+        10 + sala_num,
         1,
         siguiente=spec.siguiente,
         pala_inicial=spec.pala_inicial,
@@ -2118,6 +2341,7 @@ def construir_proyecto(escenas: list[Escena]) -> dict:
     recursos = [
         recurso_imagen("FondoTitulo", "assets/titulo.png"),
         recurso_imagen("FondoVictoria", "assets/victoria.png"),
+        recurso_imagen("FondoDerrota", "assets/derrota.png"),
         recurso_imagen("FondoPausa", "assets/pausa.png"),
         recurso_imagen("Jugador", "assets/jugador.png"),
         recurso_imagen("JugadorCaida1", "assets/jugador_caida_1.png"),
@@ -2161,6 +2385,10 @@ def construir_proyecto(escenas: list[Escena]) -> dict:
         recurso_audio("SFX_Meta", "assets/sfx_meta.wav"),
         recurso_audio("SFX_Vida", "assets/sfx_vida.wav"),
         recurso_audio("SFX_UI", "assets/sfx_ui.wav"),
+        # Nuevos (commit 020b19c): pisotón, muerte, combo de almas
+        recurso_audio("SFX_Stomp", "assets/sfx_stomp.wav"),
+        recurso_audio("SFX_Muerte", "assets/sfx_muerte.wav"),
+        *[recurso_audio(f"SFX_Alma{i}", f"assets/sfx_alma_{i}.wav") for i in range(1, 7)],
     ]
     ya_en_recursos = {r["name"] for r in recursos}
     for escena_modelo in escenas:
@@ -2222,6 +2450,11 @@ def construir_proyecto(escenas: list[Escena]) -> dict:
         {"name": "almas", "type": "number", "value": 0},
         {"name": "almas_totales", "type": "number", "value": 0},
         {"name": "almas_para_vida", "type": "number", "value": 0},
+        {"name": "combo_almas", "type": "number", "value": 0},
+        {"name": "combo_timer", "type": "number", "value": 0},
+        {"name": "muertes_totales", "type": "number", "value": 0},
+        {"name": "reducir_movimiento", "type": "number", "value": 0},
+        {"name": "nivel_actual", "type": "number", "value": 1},
         {"name": "reiniciar", "type": "number", "value": 0},
         {"name": "jefe_derrotado", "type": "number", "value": 0},
         {"name": "cam_x", "type": "number", "value": GAME_W // 2},
@@ -2229,13 +2462,36 @@ def construir_proyecto(escenas: list[Escena]) -> dict:
         {"name": "sacudida_f", "type": "number", "value": 0},
         {"name": "sacudida_t", "type": "number", "value": 0},
     ]
-    base["layouts"] = [escena_titulo(), escena_pausa(), escena_victoria(), escena_salas()]
-    total_campana = sum(1 for e in escenas if not e.spec.es_sala)
+    base["layouts"] = [
+        escena_titulo(),
+        escena_pausa(),
+        escena_derrota(),
+        escena_victoria(),
+        escena_salas(),
+    ]
+    total_campana = sum(
+        1 for e in escenas if not e.spec.es_sala and not getattr(e.spec, "es_tutorial", False)
+    )
     indice = 0
     for escena_modelo in escenas:
         spec = escena_modelo.spec
         if spec.es_sala:
             base["layouts"].append(escena_sala(escena_modelo))
+            continue
+        if getattr(spec, "es_tutorial", False):
+            objetos, instancias = objetos_y_instancias_escena(escena_modelo)
+            eventos = eventos_nivel(
+                escena_modelo.nivel,
+                0,
+                total_campana,
+                siguiente=spec.siguiente,
+                pala_inicial=spec.pala_inicial,
+                texto_dash_sin_pala=f'"{spec.hud_sin_pala}"',
+                destino_muerte=spec.destino_muerte,
+                reiniciar_vidas=spec.reiniciar_vidas,
+            )
+            eventos.extend(reglas_escena(escena_modelo))
+            base["layouts"].append(escena(spec.nombre, objetos, instancias, eventos))
             continue
         indice += 1
         objetos, instancias = objetos_y_instancias_escena(escena_modelo)
@@ -2262,6 +2518,14 @@ def construir_proyecto(escenas: list[Escena]) -> dict:
         {"name": "SFX_Meta"},
         {"name": "SFX_Vida"},
         {"name": "SFX_UI"},
+        {"name": "SFX_Stomp"},
+        {"name": "SFX_Muerte"},
+        {"name": "SFX_Alma1"},
+        {"name": "SFX_Alma2"},
+        {"name": "SFX_Alma3"},
+        {"name": "SFX_Alma4"},
+        {"name": "SFX_Alma5"},
+        {"name": "SFX_Alma6"},
     ]
     base["externalEvents"] = []
     base["externalLayouts"] = []
@@ -2290,7 +2554,7 @@ def limpiar_assets(proyecto: dict) -> list[str]:
 def main() -> int:
     pygame.init()
     OUT.mkdir(parents=True, exist_ok=True)
-    specs = escenas_campaña() + escenas_salas()
+    specs = [escena_tutorial()] + escenas_campaña() + escenas_salas()
     escenas = [leer_escena(spec) for spec in specs]
 
     generar_assets(escenas)

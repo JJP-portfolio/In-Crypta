@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 
-from niveles import NIVELES, SALAS_PRUEBA
+from niveles import NIVELES, NIVEL_TUTORIAL, SALAS_PRUEBA
 
 # Pistas adaptadas para la versión nativa (el juego original ya tiene su
 # propia pista en niveles.py; estas reemplazan la redacción por la del HUD
@@ -60,9 +60,10 @@ class EscenaSpec:
     fondo: str
     pala_inicial: bool = False
     siguiente: str | None = None
-    destino_muerte: str = "Titulo"
+    destino_muerte: str = "Derrota"
     reiniciar_vidas: bool = False
     es_sala: bool = False
+    es_tutorial: bool = False
 
 
 def _hud(con_pala: bool, indice: int) -> str:
@@ -130,5 +131,30 @@ def escenas_salas(cantidad: int = 3) -> list[EscenaSpec]:
     return specs
 
 
+def escena_tutorial() -> EscenaSpec:
+    """Escena de tutorial didáctico (Ritual del Sepulturero)."""
+    return EscenaSpec(
+        clave="tutorial",
+        nombre="Tutorial",
+        mapa=NIVEL_TUTORIAL,
+        nombre_juego="Ritual del Sepulturero",
+        pista=(
+            "FLECHAS: MOVER · ARRIBA: SALTAR · SHIFT: DASH EN EL AIRE. "
+            "EL FOSO DE 7 TILES EXIGE DASH EN EL AIRE. "
+            "RECOGÉ LA PALA EN EL ALTAR, APLASTÁ AL GUARDIA CON PISOTÓN Y CRUZÁ EL UMBRAL."
+        ),
+        tema="camposanto",
+        titulo="TUTORIAL - RITUAL DEL SEPULTURERO",
+        hud=_hud(False, 2),
+        hud_sin_pala=_hud(False, 2),
+        fondo="FondoTutorial",
+        pala_inicial=False,
+        siguiente="Titulo",
+        destino_muerte="Derrota",
+        reiniciar_vidas=True,
+        es_tutorial=True,
+    )
+
+
 def manifiesto_completo(cantidad_salas: int = 3) -> list[EscenaSpec]:
-    return escenas_campaña() + escenas_salas(cantidad_salas)
+    return [escena_tutorial()] + escenas_campaña() + escenas_salas(cantidad_salas)
