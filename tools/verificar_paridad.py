@@ -289,12 +289,12 @@ def comparar_escena(informe: Informe, proyecto: dict, nombre: str, nivel: Nivel)
 
     # Entidades que el juego tiene y el export no.
     faltantes = {
-        "enemigos melee (L)": (len(nivel.enemigos_melee), "EnemigoMelee"),
+        "enemigos melee (L)": (len(nivel.enemigos_melee), "EnemyMelee"),
         "tótems (O)": (len(nivel.totems), "Totem"),
         "cuervos (C)": (len(nivel.cuervos), "Cuervo"),
         "polillas (m)": (len(nivel.polillas), "Polilla"),
         "arañas (A)": (len(nivel.aranias), "Arana"),
-        "power-ups de rango (X)": (len(nivel.power_ups_rango), "RangoPowerUp"),
+        "power-ups de rango (X)": (len(nivel.power_ups_rango), "PowerUpRango"),
     }
     for etiqueta, (cantidad, objeto) in faltantes.items():
         if cantidad == 0:

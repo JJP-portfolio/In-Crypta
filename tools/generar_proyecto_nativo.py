@@ -27,6 +27,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "tools"))
 
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
@@ -556,9 +557,9 @@ def generar_assets(escenas: list[Escena]) -> None:
         sprites_export.guardar(kind, ancho, alto, ASSETS / f"{adapt.textura.lower()}.png")
 
     for escena_modelo in escenas:
-        guardar_2x(
+        pygame.image.save(
             generar_fondo_nivel(escena_modelo.nivel),
-            f"fondo_{escena_modelo.spec.clave}.png",
+            ASSETS / f"fondo_{escena_modelo.spec.clave}.png",
         )
     guardar_2x(generar_fondo_victoria(), "victoria.png")
     guardar_2x(generar_fondo_pausa(), "pausa.png")
