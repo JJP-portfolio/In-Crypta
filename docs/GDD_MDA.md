@@ -71,6 +71,10 @@ El marco MDA desglosa el sistema lúdico en tres capas interconectadas:
 
 El juego está compuesto por 3 niveles extensos y diseñados meticulosamente en formato ASCII sobre grillas de baldosas de 32 × 32 px:
 
+> [!IMPORTANT]
+> **Regla de Progresión de Longitud:** `Longitud(Nivel 1) < Longitud(Nivel 2) < Longitud(Nivel 3)`.  
+> El **Nivel 1 (El Camposanto)** marca la extensión y el estándar de escala de la experiencia. A partir de su cierre definitivo, cada nivel subsiguiente debe ser obligatoriamente más largo que el anterior (`Nivel 2` superará en longitud a `Nivel 1`, y `Nivel 3` superará a `Nivel 2`), acentuando la sensación de travesía descendente cada vez más profunda y desafiante.
+
 ```
  Dificultad
      │                                                     [FASE II]
