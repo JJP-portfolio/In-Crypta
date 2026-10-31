@@ -12,6 +12,7 @@ import pygame
 from config import (
     AMARILLO,
     ATAQUE_ALCANCE,
+    ATAQUE_ALCANCE_MEJORADO,
     ATAQUE_ALTO,
     ATAQUE_COOLDOWN,
     ATAQUE_DURACION,
@@ -28,6 +29,7 @@ from config import (
     ENEMIGO_ANCHO,
     GRAVEDAD,
     GRIS,
+    GRIS_OSCURO,
     HUESO,
     INVULNERABILIDAD,
     JEFE_ALTO,
@@ -100,6 +102,7 @@ class Jugador:
         self.almas = 0
         self.almas_para_vida = 0
         self.tiene_pala = False
+        self.rango_ataque_mejorado = False
 
     # --- Función pedir_salto --- #
     def pedir_salto(self):
@@ -157,14 +160,15 @@ class Jugador:
 
     # --- Función rect_ataque --- #
     def rect_ataque(self):
+        alcance = ATAQUE_ALCANCE_MEJORADO if self.rango_ataque_mejorado else ATAQUE_ALCANCE
         if self.direccion > 0:
             x = self.rect.right - 2
         else:
-            x = self.rect.left - ATAQUE_ALCANCE + 2
+            x = self.rect.left - alcance + 2
         return pygame.Rect(
             x,
             self.rect.y + 3,
-            ATAQUE_ALCANCE,
+            alcance,
             ATAQUE_ALTO,
         )
 
@@ -252,7 +256,7 @@ class Jugador:
 
     # --- Función actualizar_horizontal --- #
     def actualizar_horizontal(self, teclas):
-        izquierda = teclas[pygame.K_a] or teclas[pygame.K_LEFT]
+        izquierda = teclas[pygame.K_LEFT]
         derecha = teclas[pygame.K_d] or teclas[pygame.K_RIGHT]
 
         if izquierda and not derecha:
@@ -333,6 +337,7 @@ class Jugador:
         self.ataque_cooldown = 0.0
         self.ataque_golpeado = False
         self.almas_para_vida = 0
+        self.rango_ataque_mejorado = False
 
     # --- Función dibujar --- #
     def dibujar(self, surface, camara, tiempo, pose=None, con_pala=True):
@@ -545,17 +550,36 @@ class Enemigo:
         centro_x = rect.centerx
         base_y = rect.bottom + salto
 
+        # Sombra en el suelo
         pygame.draw.ellipse(
             surface,
             (7, 6, 10),
             (rect.x + 1, rect.bottom - 4, rect.width - 2, 7),
         )
 
-        # Cuerpo encorvado y harapos.
+        # Harapos exteriores (capa de profundidad oscura)
+        pygame.draw.ellipse(
+            surface,
+            (22, 32, 18),
+            (rect.x - 2, rect.y + 8 + salto, rect.width + 4, rect.height - 6),
+        )
+        # Cuerpo encorvado principal
         pygame.draw.ellipse(
             surface,
             VERDE_OSCURO,
             (rect.x, rect.y + 6 + salto, rect.width, rect.height - 6),
+        )
+
+        # Harapos laterales (polígonos superpuestos en distintos tonos)
+        pygame.draw.polygon(
+            surface,
+            (38, 30, 20),
+            [
+                (rect.x + 1, rect.y + 14 + salto),
+                (rect.x + 9, rect.y + 22 + salto),
+                (rect.x + 5, rect.y + 29 + salto),
+                (rect.x - 1, rect.y + 20 + salto),
+            ],
         )
         pygame.draw.polygon(
             surface,
@@ -563,8 +587,18 @@ class Enemigo:
             [
                 (rect.x + 3, rect.y + 17 + salto),
                 (rect.x + 10, rect.y + 23 + salto),
-                (rect.x + 7, rect.y + 27 + salto),
+                (rect.x + 7, rect.y + 28 + salto),
                 (rect.x + 1, rect.y + 21 + salto),
+            ],
+        )
+        pygame.draw.polygon(
+            surface,
+            (38, 30, 20),
+            [
+                (rect.right - 1, rect.y + 13 + salto),
+                (rect.right - 10, rect.y + 22 + salto),
+                (rect.right - 4, rect.y + 28 + salto),
+                (rect.right + 1, rect.y + 19 + salto),
             ],
         )
         pygame.draw.polygon(
@@ -578,32 +612,41 @@ class Enemigo:
             ],
         )
 
-        # Cráneo y ojos.
+        # Cráneo
         pygame.draw.circle(surface, HUESO, (centro_x, rect.y + 9 + salto), 8)
         pygame.draw.circle(surface, NEGRO, (centro_x, rect.y + 9 + salto), 8, 1)
-        pygame.draw.circle(surface, ROJO, (centro_x - 3, rect.y + 8 + salto), 2)
-        pygame.draw.circle(surface, ROJO, (centro_x + 3, rect.y + 8 + salto), 2)
+
+        # Ojos que "miran" según la dirección del morador
+        ojo_offset = self.direccion * 2
+        pygame.draw.circle(surface, ROJO, (centro_x - 3 + ojo_offset, rect.y + 8 + salto), 2)
+        pygame.draw.circle(surface, ROJO, (centro_x + 3 + ojo_offset, rect.y + 8 + salto), 2)
+        # Brillo en los ojos
+        pygame.draw.circle(surface, (255, 160, 160), (centro_x - 2 + ojo_offset, rect.y + 7 + salto), 1)
+        pygame.draw.circle(surface, (255, 160, 160), (centro_x + 4 + ojo_offset, rect.y + 7 + salto), 1)
+
+        # Mandíbula
         pygame.draw.rect(surface, NEGRO, (centro_x - 3, rect.y + 13 + salto, 6, 2))
 
-        # Costillas.
+        # Costillas visibles entre los harapos
         for i in range(3):
             pygame.draw.line(
                 surface,
                 MUSGO,
-                (rect.x + 7, rect.y + 17 + i * 3 + salto),
-                (rect.right - 7, rect.y + 17 + i * 3 + salto),
+                (rect.x + 8, rect.y + 17 + i * 4 + salto),
+                (rect.right - 8, rect.y + 17 + i * 4 + salto),
                 1,
             )
 
-        # Garras.
-        for lado in (4, rect.width - 5):
-            pygame.draw.line(
-                surface,
-                HUESO,
-                (rect.x + lado, base_y - 3),
-                (rect.x + lado - 2, base_y + 4),
-                2,
-            )
+        # Garras largas y afiladas (3 dedos por lado)
+        for lado, signo in ((4, -1), (rect.width - 5, 1)):
+            bx = rect.x + lado
+            for dedo_dx in (-2, 0, 2):
+                pygame.draw.line(
+                    surface, HUESO,
+                    (bx + dedo_dx, base_y - 3),
+                    (bx + dedo_dx + signo, base_y + 6),
+                    1,
+                )
 
 
 # --- Clase EnemigoMelee --- #
@@ -674,17 +717,36 @@ class EnemigoMelee:
         centro_x = rect.centerx
         base_y = rect.bottom + salto
 
+        # Sombra en el suelo
         pygame.draw.ellipse(
             surface,
             (7, 6, 10),
             (rect.x + 1, rect.bottom - 4, rect.width - 2, 7),
         )
 
-        # Cuerpo encorvado y harapos.
+        # Harapos exteriores (capa de profundidad oscura)
+        pygame.draw.ellipse(
+            surface,
+            (22, 32, 18),
+            (rect.x - 2, rect.y + 8 + salto, rect.width + 4, rect.height - 6),
+        )
+        # Cuerpo encorvado principal
         pygame.draw.ellipse(
             surface,
             VERDE_OSCURO,
             (rect.x, rect.y + 6 + salto, rect.width, rect.height - 6),
+        )
+
+        # Harapos laterales (polígonos superpuestos en distintos tonos)
+        pygame.draw.polygon(
+            surface,
+            (38, 30, 20),
+            [
+                (rect.x + 1, rect.y + 14 + salto),
+                (rect.x + 9, rect.y + 22 + salto),
+                (rect.x + 5, rect.y + 29 + salto),
+                (rect.x - 1, rect.y + 20 + salto),
+            ],
         )
         pygame.draw.polygon(
             surface,
@@ -692,8 +754,18 @@ class EnemigoMelee:
             [
                 (rect.x + 3, rect.y + 17 + salto),
                 (rect.x + 10, rect.y + 23 + salto),
-                (rect.x + 7, rect.y + 27 + salto),
+                (rect.x + 7, rect.y + 28 + salto),
                 (rect.x + 1, rect.y + 21 + salto),
+            ],
+        )
+        pygame.draw.polygon(
+            surface,
+            (38, 30, 20),
+            [
+                (rect.right - 1, rect.y + 13 + salto),
+                (rect.right - 10, rect.y + 22 + salto),
+                (rect.right - 4, rect.y + 28 + salto),
+                (rect.right + 1, rect.y + 19 + salto),
             ],
         )
         pygame.draw.polygon(
@@ -707,32 +779,41 @@ class EnemigoMelee:
             ],
         )
 
-        # Cráneo y ojos.
+        # Cráneo
         pygame.draw.circle(surface, HUESO, (centro_x, rect.y + 9 + salto), 8)
         pygame.draw.circle(surface, NEGRO, (centro_x, rect.y + 9 + salto), 8, 1)
-        pygame.draw.circle(surface, ROJO, (centro_x - 3, rect.y + 8 + salto), 2)
-        pygame.draw.circle(surface, ROJO, (centro_x + 3, rect.y + 8 + salto), 2)
+
+        # Ojos que "miran" según la dirección del morador
+        ojo_offset = self.direccion * 2
+        pygame.draw.circle(surface, ROJO, (centro_x - 3 + ojo_offset, rect.y + 8 + salto), 2)
+        pygame.draw.circle(surface, ROJO, (centro_x + 3 + ojo_offset, rect.y + 8 + salto), 2)
+        # Brillo en los ojos
+        pygame.draw.circle(surface, (255, 160, 160), (centro_x - 2 + ojo_offset, rect.y + 7 + salto), 1)
+        pygame.draw.circle(surface, (255, 160, 160), (centro_x + 4 + ojo_offset, rect.y + 7 + salto), 1)
+
+        # Mandíbula
         pygame.draw.rect(surface, NEGRO, (centro_x - 3, rect.y + 13 + salto, 6, 2))
 
-        # Costillas.
+        # Costillas visibles entre los harapos
         for i in range(3):
             pygame.draw.line(
                 surface,
                 MUSGO,
-                (rect.x + 7, rect.y + 17 + i * 3 + salto),
-                (rect.right - 7, rect.y + 17 + i * 3 + salto),
+                (rect.x + 8, rect.y + 17 + i * 4 + salto),
+                (rect.right - 8, rect.y + 17 + i * 4 + salto),
                 1,
             )
 
-        # Garras.
-        for lado in (4, rect.width - 5):
-            pygame.draw.line(
-                surface,
-                HUESO,
-                (rect.x + lado, base_y - 3),
-                (rect.x + lado - 2, base_y + 4),
-                2,
-            )
+        # Garras largas y afiladas (3 dedos por lado)
+        for lado, signo in ((4, -1), (rect.width - 5, 1)):
+            bx = rect.x + lado
+            for dedo_dx in (-2, 0, 2):
+                pygame.draw.line(
+                    surface, HUESO,
+                    (bx + dedo_dx, base_y - 3),
+                    (bx + dedo_dx + signo, base_y + 6),
+                    1,
+                )
 
         # Advertencia visual cuando está atacando
         if self.aviso_tiempo > 0:
@@ -1102,6 +1183,173 @@ class Custodio:
         )
 
 
+# --- Clase Cuervo (Raven) --- #
+class Cuervo:
+    """Cuervo que vuela en patrón circular. Daño por contacto."""
+
+    def __init__(self, rect, centro_x, centro_y, radio, velocidad):
+        self.rect = pygame.Rect(rect)
+        self.inicial_rect = pygame.Rect(rect)
+        self.x = float(self.rect.x)
+        self.y = float(self.rect.y)
+        self.centro_x = centro_x
+        self.centro_y = centro_y
+        self.radio = radio
+        self.velocidad = velocidad
+        self.angulo = 0.0
+        self.vivo = True
+
+    def reiniciar(self):
+        self.rect = pygame.Rect(self.inicial_rect)
+        self.x = float(self.rect.x)
+        self.y = float(self.rect.y)
+        self.angulo = 0.0
+        self.vivo = True
+
+    def actualizar(self, dt):
+        if not self.vivo:
+            return
+        self.angulo += self.velocidad * dt
+        self.x = self.centro_x + math.cos(self.angulo) * self.radio - self.rect.width // 2
+        self.y = self.centro_y + math.sin(self.angulo) * self.radio * 0.5 - self.rect.height // 2
+        self.rect.x = round(self.x)
+        self.rect.y = round(self.y)
+
+    def dibujar(self, surface, camara, tiempo):
+        if not self.vivo:
+            return
+        rect = camara.aplicar_rect(self.rect)
+        centro_x = rect.centerx
+        base_y = rect.bottom
+
+        pygame.draw.ellipse(surface, (7, 6, 10), (rect.x + 2, base_y - 4, rect.width - 4, 5))
+
+        # Cuerpo del cuervo (negro azabache).
+        pygame.draw.ellipse(surface, (18, 16, 22), (rect.x + 4, rect.y + 6, rect.width - 8, rect.height - 10))
+        # Alas extendidas.
+        pygame.draw.polygon(surface, (10, 8, 14), [(rect.x, rect.y + 10), (rect.centerx - 4, rect.y + 2), (rect.centerx, rect.y + 10)])
+        pygame.draw.polygon(surface, (10, 8, 14), [(rect.right, rect.y + 10), (rect.centerx + 4, rect.y + 2), (rect.centerx, rect.y + 10)])
+        # Pico.
+        pygame.draw.polygon(surface, NARANJA, [(rect.centerx, rect.y + 14), (rect.centerx + 5, rect.y + 16), (rect.centerx, rect.y + 18)])
+        # Ojos rojos.
+        pygame.draw.circle(surface, ROJO, (centro_x - 3, rect.y + 12), 1)
+        pygame.draw.circle(surface, ROJO, (centro_x + 3, rect.y + 12), 1)
+
+
+# --- Clase Polilla (Moth) --- #
+class Polilla:
+    """Polilla que vuela en zigzag lento. Daño por contacto."""
+
+    def __init__(self, rect, minimo_x, maximo_x):
+        self.rect = pygame.Rect(rect)
+        self.inicial_rect = pygame.Rect(rect)
+        self.x = float(self.rect.x)
+        self.y = float(self.rect.y)
+        self.direccion = 1
+        self.minimo_x = int(minimo_x)
+        self.maximo_x = int(maximo_x)
+        self.vivo = True
+        self.tiempo = 0.0
+
+    def reiniciar(self):
+        self.rect = pygame.Rect(self.inicial_rect)
+        self.x = float(self.rect.x)
+        self.y = float(self.rect.y)
+        self.direccion = 1
+        self.tiempo = 0.0
+        self.vivo = True
+
+    def actualizar(self, dt):
+        if not self.vivo:
+            return
+        self.tiempo += dt
+        self.x += self.direccion * (VELOCIDAD_ENEMIGO * 0.6) * dt
+        self.rect.x = round(self.x)
+        if self.rect.left <= self.minimo_x:
+            self.rect.left = self.minimo_x
+            self.x = float(self.rect.x)
+            self.direccion = 1
+        elif self.rect.right >= self.maximo_x:
+            self.rect.right = self.maximo_x
+            self.x = float(self.rect.x)
+            self.direccion = -1
+        # Movimiento vertical suave (zigzag).
+        self.rect.y = round(self.inicial_rect.y + math.sin(self.tiempo * 3) * 8)
+
+    def dibujar(self, surface, camara, tiempo):
+        if not self.vivo:
+            return
+        rect = camara.aplicar_rect(self.rect)
+        centro_x = rect.centerx
+        base_y = rect.bottom
+
+        pygame.draw.ellipse(surface, (7, 6, 10), (rect.x + 2, base_y - 4, rect.width - 4, 5))
+
+        # Cuerpo de polilla (gris pálido).
+        pygame.draw.ellipse(surface, VERDE_OSCURO, (rect.x + 4, rect.y + 4, rect.width - 8, rect.height - 8))
+        # Alas.
+        pygame.draw.ellipse(surface, GRIS_OSCURO, (rect.x, rect.y + 2, rect.width // 2, rect.height // 2))
+        pygame.draw.ellipse(surface, GRIS_OSCURO, (rect.x + rect.width // 2, rect.y + 2, rect.width // 2, rect.height // 2))
+        # Ojos.
+        pygame.draw.circle(surface, NEGRO, (centro_x - 2, rect.y + 8), 1)
+        pygame.draw.circle(surface, NEGRO, (centro_x + 2, rect.y + 8), 1)
+
+
+# --- Clase Araña (Spider) --- #
+class Araña:
+    """Araña que se mueve por el techo o suelo. Daño por contacto."""
+
+    def __init__(self, rect, minimo_x, maximo_x):
+        self.rect = pygame.Rect(rect)
+        self.inicial_rect = pygame.Rect(rect)
+        self.x = float(self.rect.x)
+        self.y = float(self.rect.y)
+        self.direccion = 1
+        self.minimo_x = int(minimo_x)
+        self.maximo_x = int(maximo_x)
+        self.vivo = True
+
+    def reiniciar(self):
+        self.rect = pygame.Rect(self.inicial_rect)
+        self.x = float(self.rect.x)
+        self.y = float(self.rect.y)
+        self.direccion = 1
+        self.vivo = True
+
+    def actualizar(self, dt):
+        if not self.vivo:
+            return
+        self.x += self.direccion * (VELOCIDAD_ENEMIGO * 0.5) * dt
+        self.rect.x = round(self.x)
+        if self.rect.left <= self.minimo_x:
+            self.rect.left = self.minimo_x
+            self.x = float(self.rect.x)
+            self.direccion = 1
+        elif self.rect.right >= self.maximo_x:
+            self.rect.right = self.maximo_x
+            self.x = float(self.rect.x)
+            self.direccion = -1
+
+    def dibujar(self, surface, camara, tiempo):
+        if not self.vivo:
+            return
+        rect = camara.aplicar_rect(self.rect)
+        centro_x = rect.centerx
+        base_y = rect.bottom
+
+        pygame.draw.ellipse(surface, (7, 6, 10), (rect.x + 2, base_y - 4, rect.width - 4, 5))
+
+        # Cuerpo de araña (negro).
+        pygame.draw.ellipse(surface, NEGRO, (rect.x + 4, rect.y + 6, rect.width - 8, rect.height - 10))
+        # Patas.
+        for i in range(3):
+            dx = (i - 1) * 5
+            pygame.draw.line(surface, NEGRO, (centro_x + dx, rect.y + 10), (rect.x + dx - 6, rect.y + 16), 2)
+            pygame.draw.line(surface, NEGRO, (centro_x + dx, rect.y + 10), (rect.right - dx + 6, rect.y + 16), 2)
+        # Ojos rojos.
+        pygame.draw.circle(surface, ROJO, (centro_x - 2, rect.y + 9), 1)
+        pygame.draw.circle(surface, ROJO, (centro_x + 2, rect.y + 9), 1)
+
 
 # --- Clase Alma --- #
 class Alma:
@@ -1232,3 +1480,60 @@ class PalaRecogible:
             (rect.x + 15, rect.y + 9),
             1,
         )
+
+
+# --- Clase RangoPowerUp --- #
+class RangoPowerUp:
+    """Power-up que mejora el alcance del ataque de pala."""
+
+    def __init__(self, rect):
+        self.rect = pygame.Rect(rect)
+        self.inicial_rect = pygame.Rect(rect)
+        self.recogida = False
+
+    def reiniciar(self):
+        self.rect = pygame.Rect(self.inicial_rect)
+        self.recogida = False
+
+    def actualizar(self, jugador):
+        if not self.recogida and self.rect.colliderect(jugador.rect):
+            self.recogida = True
+            jugador.rango_ataque_mejorado = True
+            return True
+        return False
+
+    def dibujar(self, surface, camara, tiempo):
+        if self.recogida:
+            return
+
+        rect = camara.aplicar_rect(self.rect)
+        flotacion = int(math.sin(tiempo * 4 + rect.x * 0.02) * 3)
+        rect.y += flotacion
+
+        pulso = 0.5 + 0.5 * math.sin(tiempo * 5 + rect.x * 0.03)
+        brillo = pygame.Surface((64, 64), pygame.SRCALPHA)
+        for radio, alfa in ((27, 24), (20, 42), (13, 72)):
+            pygame.draw.circle(
+                brillo,
+                (200, 100, 255, int(alfa * (0.75 + pulso * 0.25))),
+                (32, 32),
+                radio,
+            )
+        surface.blit(
+            brillo,
+            (rect.centerx - 32, rect.centery - 32),
+            special_flags=pygame.BLEND_RGBA_ADD,
+        )
+        pygame.draw.circle(
+            surface,
+            (230, 150, 255),
+            (rect.centerx, rect.centery),
+            14 + int(pulso * 2),
+            1,
+        )
+        # Dibujo de guadaña estilizada.
+        cx, cy = rect.centerx, rect.centery
+        pygame.draw.line(surface, (200, 100, 255), (cx - 6, cy - 6), (cx + 6, cy + 6), 2)
+        pygame.draw.line(surface, (200, 100, 255), (cx + 6, cy + 6), (cx + 10, cy + 2), 2)
+        pygame.draw.line(surface, (200, 100, 255), (cx - 6, cy - 6), (cx - 2, cy - 10), 2)
+

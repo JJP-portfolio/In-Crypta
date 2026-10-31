@@ -32,7 +32,18 @@ from config import (
     TILE,
     VERDE_OSCURO,
 )
-from entidades import Alma, Custodio, Enemigo, EnemigoMelee, PalaRecogible, TotemProyectil
+from entidades import (
+    Alma,
+    Araña,
+    Cuervo,
+    Custodio,
+    Enemigo,
+    EnemigoMelee,
+    PalaRecogible,
+    Polilla,
+    RangoPowerUp,
+    TotemProyectil,
+)
 
 
 DECORACIONES = {"t", "c", "r", "b", "s"}
@@ -103,8 +114,12 @@ class Nivel:
         self.decoraciones = self._crear_decoraciones()
         self.peligros = self._crear_peligros()
         self.palas = self._crear_palas()
+        self.power_ups_rango = self._crear_power_ups_rango()
         self.plataformas = self._crear_plataformas()
         self.jefes = self._crear_jefes()
+        self.cuervos = self._crear_cuervos()
+        self.polillas = self._crear_polillas()
+        self.aranias = self._crear_aranias()
         self.total_almas = len(self.almas)
 
         if self.spawn is None:
@@ -222,6 +237,77 @@ class Nivel:
                 )))
         return palas
 
+    # --- Función _crear_power_ups_rango --- #
+    def _crear_power_ups_rango(self):
+        power_ups = []
+        for fila, texto in enumerate(self.filas):
+            for columna, simbolo in enumerate(texto):
+                if simbolo != "X":
+                    continue
+                power_ups.append(RangoPowerUp(pygame.Rect(
+                    columna * TILE + 6,
+                    fila * TILE + 2,
+                    20,
+                    30,
+                )))
+        return power_ups
+
+    # --- Función _crear_cuervos --- #
+    def _crear_cuervos(self):
+        cuervos = []
+        for fila, texto in enumerate(self.filas):
+            for columna, simbolo in enumerate(texto):
+                if simbolo != "C":
+                    continue
+                rect = pygame.Rect(
+                    columna * TILE + 4,
+                    fila * TILE + 4,
+                    24,
+                    24,
+                )
+                cuervos.append(Cuervo(
+                    rect,
+                    centro_x=columna * TILE + TILE // 2,
+                    centro_y=fila * TILE + TILE // 2,
+                    radio=3 * TILE,
+                    velocidad=1.5,
+                ))
+        return cuervos
+
+    # --- Función _crear_polillas --- #
+    def _crear_polillas(self):
+        polillas = []
+        for fila, texto in enumerate(self.filas):
+            for columna, simbolo in enumerate(texto):
+                if simbolo != "m":
+                    continue
+                rect = pygame.Rect(
+                    columna * TILE + (TILE - ENEMIGO_ANCHO) // 2,
+                    fila * TILE + (TILE - ENEMIGO_ALTO),
+                    ENEMIGO_ANCHO,
+                    ENEMIGO_ALTO,
+                )
+                minimo_x, maximo_x = self._limites_patrulla(columna, fila)
+                polillas.append(Polilla(rect, minimo_x, maximo_x))
+        return polillas
+
+    # --- Función _crear_aranias --- #
+    def _crear_aranias(self):
+        aranias = []
+        for fila, texto in enumerate(self.filas):
+            for columna, simbolo in enumerate(texto):
+                if simbolo != "A":
+                    continue
+                rect = pygame.Rect(
+                    columna * TILE + (TILE - ENEMIGO_ANCHO) // 2,
+                    fila * TILE + (TILE - ENEMIGO_ALTO),
+                    ENEMIGO_ANCHO,
+                    ENEMIGO_ALTO,
+                )
+                minimo_x, maximo_x = self._limites_patrulla(columna, fila)
+                aranias.append(Araña(rect, minimo_x, maximo_x))
+        return aranias
+
     # --- Función _crear_jefes --- #
     def _crear_jefes(self):
         jefes = []
@@ -239,8 +325,6 @@ class Nivel:
                 maximo_x = min(self.ancho - JEFE_ANCHO, (columna + 20) * TILE)
                 jefes.append(Custodio(rect, minimo_x, maximo_x))
         return jefes
-
-    # --- Función _crear_plataformas --- #
     def _crear_plataformas(self):
         plataformas = []
         for fila, texto in enumerate(self.filas):
@@ -374,8 +458,20 @@ class Nivel:
             alma.reiniciar()
         for enemigo in self.enemigos:
             enemigo.reiniciar()
+        for enemigo_melee in self.enemigos_melee:
+            enemigo_melee.reiniciar()
+        for totem in self.totems:
+            totem.reiniciar()
         for pala in self.palas:
             pala.reiniciar()
+        for power_up in self.power_ups_rango:
+            power_up.reiniciar()
+        for cuervo in self.cuervos:
+            cuervo.reiniciar()
+        for polilla in self.polillas:
+            polilla.reiniciar()
+        for araña in self.aranias:
+            araña.reiniciar()
         for plataforma in self.plataformas:
             plataforma.reiniciar()
         for jefe in self.jefes:
@@ -393,10 +489,18 @@ class Nivel:
             alma.dibujar(surface, camara, tiempo)
         for pala in self.palas:
             pala.dibujar(surface, camara, tiempo)
+        for power_up in self.power_ups_rango:
+            power_up.dibujar(surface, camara, tiempo)
         for enemigo_melee in self.enemigos_melee:
             enemigo_melee.dibujar(surface, camara, tiempo)
         for totem in self.totems:
             totem.dibujar(surface, camara, tiempo)
+        for cuervo in self.cuervos:
+            cuervo.dibujar(surface, camara, tiempo)
+        for polilla in self.polillas:
+            polilla.dibujar(surface, camara, tiempo)
+        for araña in self.aranias:
+            araña.dibujar(surface, camara, tiempo)
 
         self.dibujar_meta(surface, camara)
 
@@ -574,23 +678,59 @@ class Nivel:
             rect = camara.aplicar_rect(peligro)
             cantidad = 3
             ancho = max(1, rect.width // cantidad)
+
+            # Base de piedra oscura
+            pygame.draw.rect(
+                surface,
+                (44, 38, 42),
+                (rect.x, rect.bottom - 5, rect.width, 5),
+                border_radius=2,
+            )
+            # Mancha de sangre al pie de cada grupo
+            pygame.draw.ellipse(
+                surface,
+                (*SANGRE, 140) if hasattr(SANGRE, '__len__') and len(SANGRE) == 3 else SANGRE,
+                (rect.x + rect.width // 2 - 7, rect.bottom - 3, 14, 4),
+            )
+
             for i in range(cantidad):
                 x = rect.x + i * ancho
+                cx = x + ancho // 2
+
+                # Puntas óseas: triángulo oscuro de base (sombra)
                 pygame.draw.polygon(
                     surface,
-                    (130, 125, 112),
+                    (80, 72, 68),
                     [
-                        (x, rect.bottom),
-                        (x + ancho // 2, rect.top),
-                        (x + ancho, rect.bottom),
+                        (x + 2, rect.bottom - 4),
+                        (cx + 1, rect.top + 2),
+                        (x + ancho - 1, rect.bottom - 4),
                     ],
                 )
+                # Triángulo principal (gris piedra)
+                pygame.draw.polygon(
+                    surface,
+                    (148, 140, 128),
+                    [
+                        (x + 1, rect.bottom - 4),
+                        (cx, rect.top + 1),
+                        (x + ancho - 2, rect.bottom - 4),
+                    ],
+                )
+                # Filo brillante (tono hueso)
                 pygame.draw.line(
                     surface,
-                    HUESO,
-                    (x + 2, rect.bottom - 2),
-                    (x + ancho // 2, rect.top + 2),
+                    (220, 210, 190),
+                    (cx, rect.top + 2),
+                    (cx - 1, rect.bottom - 6),
                     1,
+                )
+                # Mancha de sangre individual (pequeño círculo)
+                pygame.draw.circle(
+                    surface,
+                    SANGRE,
+                    (cx, rect.bottom - 5),
+                    2,
                 )
 
     # --- Función dibujar_meta --- #

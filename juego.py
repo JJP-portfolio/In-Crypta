@@ -26,12 +26,18 @@ from config import (
     CREMA,
     DASH_COOLDOWN,
     DASH_USOS_AIRE,
+    DASH_DASHTURQUESA,
+    DASH_VELOCIDAD,
     EQUIPO,
     FPS,
     GRIS,
+    GRIS_OSCURO,
     HUD_ALMA,
     HUD_BORDE,
+    HUD_DASHTURQUESA,
     HUD_MUTED,
+    HUD_NEGRO,
+    HUD_NEGRO_X,
     HUD_ORO,
     HUD_PANEL,
     HUD_PANEL_ALTO,
@@ -39,32 +45,41 @@ from config import (
     HUD_TEXTO,
     HUD_VERDE,
     HUESO,
+    HUD_GRIS_CLARO,
     INTEGRANTES,
     JEFE_ONDA_VELOCIDAD,
-    MAX_DT,
-    MARRON_OSCURO,
-    MUSGO,
-    NARANJA,
-    NEGRO,
-    NIEBLA,
     ORO,
-    PIEDRA,
-    PIEDRA_OSCURA,
-    REFERENCIAS,
     REBOTE_ENEMIGO,
-    ROJO,
-    SANGRE,
-    SOMBRA,
+    TITULO,
     SUBTITULO,
     TILE,
-    TITULO,
-    TURQUESA,
-    VERDE_OSCURO,
     VIDAS_INICIALES,
     VIDAS_MAXIMAS,
-    VIOLETA,
+    ROJO,
+    NEGRO,
+    SANGRE,
+    REFERENCIAS,
+    NIEBLA,
+    TURQUESA,
+    SOMBRA,
+    HUD_ANGOSTO_ALTO,
+    HUD_MAX_ANCHO,
+    HUD_ESQUINAS_X,
+    HUD_ESQUINAS_Y,
+    HUD_ESQUINAS_ANCHO,
+    HUD_ESQUINAS_ALTO,
+    MAX_DT,
 )
-from entidades import Jugador, OndaCustodio, EnemigoMelee, TotemProyectil
+from efectos import EfectoAnimacion, ease_out_back, ease_out_cubic, ease_in_out_cubic
+from entidades import (
+    Araña,
+    Cuervo,
+    EnemigoMelee,
+    Jugador,
+    OndaCustodio,
+    Polilla,
+    TotemProyectil,
+)
 from nivel import Nivel
 from niveles import NIVELES, SALAS_PRUEBA
 from particulas import SistemaParticulas
@@ -79,10 +94,15 @@ class Juego:
         self.reloj = pygame.time.Clock()
         self.corriendo = True
         self.fuentes = {}
+        try:
+            self._ruta_fuente_gotica = "export/gdevelop_nativo/assets/NotoSerifDisplay-Bold.ttf"
+        except Exception:
+            self._ruta_fuente_gotica = None
         self.fondos = {}
         self.vineta = self.crear_vineta(90)
 
         self.particulas = SistemaParticulas()
+        self.efecto_hud = EfectoAnimacion()
         self.audio = Audio()
 
         self.nivel_indice = 0
@@ -233,7 +253,7 @@ class Juego:
                     if self.estado == "jugando":
                         self.jugador.pedir_dash()
 
-                elif evento.key == pygame.K_j and self.estado == "jugando":
+                elif evento.key == pygame.K_a and self.estado == "jugando":
                     if self.jugador.pedir_ataque():
                         self.audio.reproducir("ataque")
                         self.particulas.ataque(
@@ -301,6 +321,7 @@ class Juego:
         self.actualizar_enemigos(dt)
         self.actualizar_almas()
         self.actualizar_palas()
+        self.actualizar_power_ups_rango()
         self.particulas.actualizar(dt)
         self.camara.actualizar(self.jugador, self.nivel, dt)
 
@@ -379,10 +400,11 @@ class Juego:
             return
 
         golpe = self.jugador.rect_ataque()
+
+        # Enemigos normales.
         for enemigo in self.nivel.enemigos:
             if not enemigo.vivo or not golpe.colliderect(enemigo.rect):
                 continue
-
             enemigo.vivo = False
             self.jugador.ataque_golpeado = True
             self.jugador.dash_usos_aire = DASH_USOS_AIRE
@@ -393,6 +415,64 @@ class Juego:
             self.flash = 0.06
             self.flash_color = AMARILLO
             break
+
+        # Cuervos.
+        if not self.jugador.ataque_golpeado:
+            for cuervo in self.nivel.cuervos:
+                if not cuervo.vivo or not golpe.colliderect(cuervo.rect):
+                    continue
+                cuervo.vivo = False
+                self.jugador.ataque_golpeado = True
+                self.jugador.dash_usos_aire = DASH_USOS_AIRE
+                self.jugador.dash_cooldown = 0.0
+                self.audio.reproducir("pala")
+                self.particulas.pala(cuervo.rect.centerx, cuervo.rect.centery)
+                self.camara.sacudir(5.0, 0.12)
+                self.flash = 0.06
+                self.flash_color = AMARILLO
+                break
+
+        # Polillas.
+        if not self.jugador.ataque_golpeado:
+            for polilla in self.nivel.polillas:
+                if not polilla.vivo or not golpe.colliderect(polilla.rect):
+                    continue
+                polilla.vivo = False
+                self.jugador.ataque_golpeado = True
+                self.jugador.dash_usos_aire = DASH_USOS_AIRE
+                self.jugador.dash_cooldown = 0.0
+                self.audio.reproducir("pala")
+                self.particulas.pala(polilla.rect.centerx, polilla.rect.centery)
+                self.camara.sacudir(5.0, 0.12)
+                self.flash = 0.06
+                self.flash_color = AMARILLO
+                break
+
+        # Arañas.
+        if not self.jugador.ataque_golpeado:
+            for araña in self.nivel.aranias:
+                if not araña.vivo or not golpe.colliderect(araña.rect):
+                    continue
+                araña.vivo = False
+                self.jugador.ataque_golpeado = True
+                self.jugador.dash_usos_aire = DASH_USOS_AIRE
+                self.jugador.dash_cooldown = 0.0
+                self.audio.reproducir("pala")
+                self.particulas.pala(araña.rect.centerx, araña.rect.centery)
+                self.camara.sacudir(5.0, 0.12)
+                self.flash = 0.06
+                self.flash_color = AMARILLO
+                break
+
+        # Jefe.
+        if (
+            not self.jugador.ataque_golpeado
+            and self.jefe is not None
+            and self.jefe.vulnerable
+            and self.jefe.rect.colliderect(golpe)
+        ):
+            self.jugador.ataque_golpeado = True
+            self.dañar_jefe()
 
     # --- Función actualizar_jefe --- #
     def actualizar_jefe(self, dt):
@@ -551,6 +631,39 @@ class Juego:
         for totem in self.nivel.totems:
             totem.actualizar(dt, self.jugador)
 
+        # Cuervos: vuelo circular, daño por contacto.
+        for cuervo in self.nivel.cuervos:
+            cuervo.actualizar(dt)
+            if (
+                cuervo.vivo
+                and self.jugador.invulnerable <= 0
+                and self.jugador.rect.colliderect(cuervo.rect)
+            ):
+                self.perder_vida()
+                return
+
+        # Polillas: vuelo zigzag, daño por contacto.
+        for polilla in self.nivel.polillas:
+            polilla.actualizar(dt)
+            if (
+                polilla.vivo
+                and self.jugador.invulnerable <= 0
+                and self.jugador.rect.colliderect(polilla.rect)
+            ):
+                self.perder_vida()
+                return
+
+        # Arañas: patrullaje horizontal, daño por contacto.
+        for araña in self.nivel.aranias:
+            araña.actualizar(dt)
+            if (
+                araña.vivo
+                and self.jugador.invulnerable <= 0
+                and self.jugador.rect.colliderect(araña.rect)
+            ):
+                self.perder_vida()
+                return
+
     # --- Función actualizar_almas --- #
     def actualizar_almas(self):
         for alma in self.nivel.almas:
@@ -565,6 +678,7 @@ class Juego:
                         self.audio.reproducir("vida_extra")
                         self.flash = 0.12
                         self.flash_color = AMARILLO
+                        self.efecto_hud.iniciar("escala", 1.25, 0.2)
 
     # --- Función actualizar_palas --- #
     def actualizar_palas(self):
@@ -573,6 +687,16 @@ class Juego:
                 self.audio.reproducir("pala_recoger")
                 self.particulas.alma(pala.rect.centerx, pala.rect.centery)
                 self.mostrar_ayuda = 2.5
+
+    # --- Función actualizar_power_ups_rango --- #
+    def actualizar_power_ups_rango(self):
+        for power_up in self.nivel.power_ups_rango:
+            if power_up.actualizar(self.jugador):
+                self.audio.reproducir("alma")
+                self.particulas.alma(
+                    power_up.rect.centerx, power_up.rect.centery
+                )
+                self.mostrar_ayuda = 3.0
 
     # --- Función perder_vida --- #
     def perder_vida(self, ignorar_invulnerabilidad=False):
@@ -686,6 +810,29 @@ class Juego:
     # --- Función dibujar_fondo_camposanto --- #
     def dibujar_fondo_camposanto(self):
         desplazamiento = int(self.camara.x * 0.16)
+
+        # Luna llena con halo
+        luna_x = 980 - int(self.camara.x * 0.04)
+        luna_y = 72
+        halo_luna = pygame.Surface((120, 120), pygame.SRCALPHA)
+        pygame.draw.circle(halo_luna, (200, 200, 160, 18), (60, 60), 58)
+        pygame.draw.circle(halo_luna, (220, 220, 180, 28), (60, 60), 42)
+        self.pantalla.blit(halo_luna, (luna_x - 60, luna_y - 60))
+        pygame.draw.circle(self.pantalla, (236, 230, 196), (luna_x, luna_y), 26)
+        pygame.draw.circle(self.pantalla, (218, 210, 174), (luna_x + 6, luna_y - 4), 8)
+
+        # Estrellas fijas (posiciones pseudo-aleatorias con seed fija)
+        estrellas = [
+            (88, 42), (142, 18), (240, 56), (310, 28), (418, 44),
+            (520, 15), (620, 38), (730, 22), (840, 50), (1100, 32),
+            (1160, 18), (1220, 44), (60, 70), (380, 62), (700, 55),
+        ]
+        ox = int(self.camara.x * 0.04) % 1280
+        for sx, sy in estrellas:
+            px = (sx - ox) % 1280
+            pygame.draw.circle(self.pantalla, (220, 218, 200), (px, sy), 1)
+
+        # Colinas traseras
         for i in range(-2, 8):
             x = i * 260 - desplazamiento
             pygame.draw.polygon(
@@ -929,60 +1076,59 @@ class Juego:
 
     # --- Función dibujar_hud --- #
     def dibujar_hud(self):
-        self.dibujar_panel_hud(pygame.Rect(14, 12, 292, 70))
-        self.dibujar_panel_hud(pygame.Rect(318, 12, 324, 70))
-        self.dibujar_panel_hud(pygame.Rect(654, 12, 292, 70))
+        # Paneles angostos (Fase 1 — 36px de alto)
+        self.dibujar_panel_hud(pygame.Rect(HUD_ESQUINAS_X[0], HUD_ESQUINAS_Y[0], HUD_ESQUINAS_ANCHO[0], HUD_ANGOSTO_ALTO))
+        self.dibujar_panel_hud(pygame.Rect(HUD_ESQUINAS_X[1], HUD_ESQUINAS_Y[1], HUD_ESQUINAS_ANCHO[1], HUD_ANGOSTO_ALTO))
 
-        # Nivel y tiempo.
+        # Panel inferior para barras de cooldown
+        panel_barras = pygame.Rect(680, 74, 300, 28)
+        self.dibujar_panel_hud(panel_barras)
+
+        # Arriba-izq: nivel y nombre (dentro del panel Y=12, alto=36)
         etiqueta = "TEST ROOM" if self.sala_prueba else f"NIVEL {self.nivel_indice + 1}/{len(NIVELES)}"
-        self.dibujar_texto(etiqueta, 28, 20, 13, HUD_ORO)
-        self.dibujar_texto(self.nivel.nombre.upper(), 28, 35, 19, HUD_TEXTO)
-        self.dibujar_texto(f"TIEMPO {self.tiempo_nivel:04.1f}s", 28, 59, 12, HUD_MUTED)
+        self.dibujar_texto(etiqueta, 28, 16, 12, HUD_ORO)
+        self.dibujar_texto(self.nivel.nombre.upper(), 28, 30, 16, HUD_TEXTO)
 
-        # Almas y progreso de vida extra.
-        self.dibujar_icono_alma(348, 38)
+        # Arriba-der: almas (dentro del panel Y=12, alto=36)
+        self.dibujar_icono_alma(492, 30)
         self.dibujar_texto(
             f"ALMAS {self.jugador.almas}/{self.nivel.total_almas}",
-            368, 21, 18, HUD_ORO,
+            510, 14, 16, HUD_ORO,
         )
+        progreso_almas = self.jugador.almas_para_vida / ALMAS_POR_VIDA
         color_progreso = HUD_ORO if self.jugador.almas_para_vida >= 8 else HUD_MUTED
-        self.dibujar_texto(
-            f"VIDA EXTRA {self.jugador.almas_para_vida}/{ALMAS_POR_VIDA}",
-            368, 43, 12, color_progreso,
-        )
-        self.dibujar_barra_hud(
-            368, 61, 258, self.jugador.almas_para_vida / ALMAS_POR_VIDA,
-            HUD_ORO, segmentos=ALMAS_POR_VIDA,
-        )
+        self.dibujar_barra_hud(510, 34, 240, progreso_almas, color_progreso, segmentos=ALMAS_POR_VIDA)
 
-        # Vidas, dash y golpe.
-        self.dibujar_texto("VIDAS", 668, 19, 12, HUD_MUTED)
+        # Corazones: arriba-der del panel derecho (Y=16 centrado en el panel)
         for i in range(VIDAS_MAXIMAS):
-            self.dibujar_corazon(716 + i * 23, 25, i < self.jugador.vidas)
-        if self.jugador.vidas <= 1:
-            pulso = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() / 130)
-            color = (255, int(120 + pulso * 80), int(60 + pulso * 40))
-            self.dibujar_texto("¡ÚLTIMA!", 846, 19, 12, color)
+            self.dibujar_corazon(724 + i * 23, 30, i < self.jugador.vidas)
 
+        # Panel de cooldowns (abajo, centrado a la derecha)
+        # Dash
         dash_listo = self.jugador.dash_listo()
         color_dash = HUD_VERDE if dash_listo else HUD_MUTED
-        self.dibujar_texto("DASH", 668, 48, 11, color_dash)
         progreso_dash = 1.0 if dash_listo else 1.0 - min(
             1.0, self.jugador.dash_cooldown / DASH_COOLDOWN
         )
-        self.dibujar_barra_hud(710, 52, 88, progreso_dash, color_dash)
+        self.dibujar_texto("DASH", 690, 80, 11, HUD_MUTED)
+        self.dibujar_barra_hud(720, 82, 88, progreso_dash, color_dash)
 
+        # Golpe de pala
         if self.jugador.tiene_pala:
             color_golpe = HUD_ORO if self.jugador.ataque_cooldown <= 0 else HUD_MUTED
-            self.dibujar_texto("J GOLPE", 812, 48, 11, color_golpe)
             progreso_golpe = 1.0 - min(
                 1.0, self.jugador.ataque_cooldown / ATAQUE_COOLDOWN
             )
-            self.dibujar_barra_hud(866, 52, 66, progreso_golpe, color_golpe)
+            self.dibujar_texto("PALA", 820, 80, 11, HUD_MUTED)
+            self.dibujar_barra_hud(852, 82, 80, progreso_golpe, color_golpe)
         else:
-            self.dibujar_texto("SIN PALA", 812, 48, 11, HUD_MUTED)
-            self.dibujar_barra_hud(866, 52, 66, 0.0, HUD_MUTED)
+            self.dibujar_texto("PALA", 820, 80, 11, (45, 40, 50))
+            self.dibujar_barra_hud(852, 82, 80, 0.0, (45, 40, 50))
 
+        # Tiempo en la esquina superior izquierda del panel izquierdo
+        self.dibujar_texto(f"{self.tiempo_nivel:04.1f}s", 268, 18, 11, HUD_MUTED)
+
+        # Barra de jefe (solo en Nivel 3)
         if self.jefe is not None and self.jefe.vivo:
             self.dibujar_barra_jefe()
 
@@ -1051,34 +1197,56 @@ class Juego:
 
     # --- Función dibujar_icono_alma --- #
     def dibujar_icono_alma(self, x, y):
-        pygame.draw.circle(self.pantalla, (46, 34, 62), (x, y), 13)
+        # Halo exterior difuso
+        halo = pygame.Surface((32, 32), pygame.SRCALPHA)
+        pygame.draw.circle(halo, (*HUD_ALMA, 40), (16, 16), 14)
+        self.pantalla.blit(halo, (x - 16, y - 16))
+        # Fondo oscuro
+        pygame.draw.circle(self.pantalla, (38, 26, 54), (x, y), 10)
+        # Rombo externo (alma)
         pygame.draw.polygon(
             self.pantalla,
             HUD_ALMA,
-            [(x, y - 10), (x + 6, y), (x, y + 10), (x - 6, y)],
+            [(x, y - 9), (x + 6, y), (x, y + 9), (x - 6, y)],
         )
+        # Rombo interno (brillo)
         pygame.draw.polygon(
             self.pantalla,
-            HUESO,
-            [(x, y - 5), (x + 3, y), (x, y + 5), (x - 3, y)],
+            (220, 200, 255),
+            [(x, y - 4), (x + 2, y), (x, y + 4), (x - 2, y)],
         )
 
     # --- Función dibujar_corazon --- #
     def dibujar_corazon(self, x, y, lleno):
-        color = HUD_ROJO if lleno else (48, 34, 40)
-        pygame.draw.circle(self.pantalla, color, (x - 4, y), 5)
-        pygame.draw.circle(self.pantalla, color, (x + 4, y), 5)
+        color_base = HUD_ROJO if lleno else (48, 34, 40)
+        color_brillo = (240, 110, 120) if lleno else (60, 42, 50)
+        color_sombra = (130, 28, 38) if lleno else (32, 22, 28)
+        # Mitades superiores (dos círculos)
+        pygame.draw.circle(self.pantalla, color_sombra, (x - 4, y + 1), 5)
+        pygame.draw.circle(self.pantalla, color_sombra, (x + 4, y + 1), 5)
+        pygame.draw.circle(self.pantalla, color_base, (x - 4, y), 5)
+        pygame.draw.circle(self.pantalla, color_base, (x + 4, y), 5)
+        # Triángulo inferior
         pygame.draw.polygon(
             self.pantalla,
-            color,
-            [(x - 9, y + 1), (x + 9, y + 1), (x, y + 12)],
+            color_sombra,
+            [(x - 9, y + 2), (x + 9, y + 2), (x, y + 13)],
         )
         pygame.draw.polygon(
             self.pantalla,
-            (*HUD_BORDE, 255),
+            color_base,
+            [(x - 9, y + 1), (x + 9, y + 1), (x, y + 12)],
+        )
+        # Borde oscuro
+        pygame.draw.polygon(
+            self.pantalla,
+            (*HUD_BORDE, 200),
             [(x - 9, y + 1), (x + 9, y + 1), (x, y + 12)],
             1,
         )
+        # Destello (solo lleno)
+        if lleno:
+            pygame.draw.circle(self.pantalla, color_brillo, (x - 2, y - 2), 2)
 
     # --- Función dibujar_barra_jefe --- #
     def dibujar_barra_jefe(self):
@@ -1176,7 +1344,10 @@ class Juego:
     # --- Función dibujar_texto --- #
     def dibujar_texto(self, texto, x, y, tamano=24, color=BLANCO, centrado=False, sombra=False):
         if tamano not in self.fuentes:
-            self.fuentes[tamano] = pygame.font.Font(None, tamano)
+            try:
+                self.fuentes[tamano] = pygame.font.Font(self._ruta_fuente_gotica, tamano)
+            except Exception:
+                self.fuentes[tamano] = pygame.font.Font(None, tamano)
 
         if sombra:
             imagen_sombra = self.fuentes[tamano].render(texto, True, NEGRO)
