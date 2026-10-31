@@ -28,6 +28,7 @@ from config import (
     ALMAS_POR_VIDA,
     ANCHO,
     DASH_USOS_AIRE,
+    JUGADOR_ALTO,
     JUGADOR_ANCHO,
     TILE,
     VIDAS_MAXIMAS,
@@ -613,6 +614,53 @@ def probar_mapa_final():
     print("mapa final: OK")
 
 
+# --- Prueba: salto y dash por la ventana de la pared vertical en Nivel 2 --- #
+def probar_salto_ventana_nivel_2():
+    juego = Juego()
+    juego.cargar_nivel(1)  # Nivel 2 (índice 1)
+    nivel = juego.nivel
+
+    # Verificar existencia de la pared vertical con ventana (cols 110-111)
+    filas = NIVEL_2.strip("\n").splitlines()
+    assert filas[2][110] == "#" and filas[2][111] == "#"  # Pared arriba
+    assert filas[6][110] != "#" and filas[6][111] != "#"  # Ventana abierta en fila 6
+    assert filas[7][110] != "#" and filas[7][111] != "#"  # Ventana abierta en fila 7
+    assert filas[9][110] == "#" and filas[9][111] == "#"  # Pared abajo
+
+    # Posicionar al jugador en la plataforma de lanzamiento (col 103, fila 8)
+    juego.jugador.x = 103 * TILE
+    juego.jugador.y = 8 * TILE - JUGADOR_ALTO
+    juego.jugador.rect.topleft = (round(juego.jugador.x), round(juego.jugador.y))
+    juego.jugador.en_suelo = True
+    juego.jugador.dash_usos_aire = 1
+
+    # Ejecutar salto hacia la derecha
+    teclas = {k: False for k in (pygame.K_a, pygame.K_d, pygame.K_LEFT, pygame.K_RIGHT)}
+    teclas[pygame.K_RIGHT] = True
+    juego.jugador.pedir_salto()
+
+    cruzo_ventana = False
+    alcanzo_meta = False
+
+    for _ in range(240):
+        # Dashear en el aire al aproximarse a la ventana
+        if juego.jugador.rect.x > 105 * TILE and juego.jugador.dash_usos_aire > 0:
+            juego.jugador.pedir_dash()
+
+        juego.jugador.actualizar(1 / 60, teclas, nivel.solidos)
+
+        if juego.jugador.rect.x > 112 * TILE:
+            cruzo_ventana = True
+
+        if juego.jugador.rect.colliderect(nivel.meta):
+            alcanzo_meta = True
+            break
+
+    assert cruzo_ventana, "El jugador no pudo atravesar la ventana de la pared vertical"
+    assert alcanzo_meta, "El jugador atravesó la ventana pero no pudo llegar a la meta (bloqueado)"
+    print("salto ventana nivel 2: OK")
+
+
 # --- Prueba: salas de prueba y selector --- #
 def probar_salas_prueba():
     assert len(SALAS_PRUEBA) == 6  # 3 originales + 3 rediseñadas
@@ -680,6 +728,7 @@ if __name__ == "__main__":
     probar_ataque_pala()
     probar_jefe_final()
     probar_mapa_final()
+    probar_salto_ventana_nivel_2()
     probar_salas_prueba()
     probar_transicion_almas_vidas()
     probar_pinchos()

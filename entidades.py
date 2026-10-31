@@ -283,16 +283,43 @@ class Jugador:
         self.x += dx
         self.rect.x = round(self.x)
 
+        colision = False
         for solido in solidos:
-            if not self.rect.colliderect(solido):
-                continue
-            if dx > 0:
-                self.rect.right = solido.left
-            elif dx < 0:
-                self.rect.left = solido.right
-            self.x = float(self.rect.x)
-            self.vx = 0.0
-            break
+            if self.rect.colliderect(solido):
+                colision = True
+                break
+
+        # Tolerancia de esquinas en dash (corner nudge estilo Celeste):
+        # Si durante un dash rozamos una esquina por hasta 6 px, deslizar suavemente hacia el hueco
+        if colision and self.dash_tiempo > 0:
+            tolerancia = 6
+            for dy in range(1, tolerancia + 1):
+                test_rect = self.rect.move(0, dy)
+                if not any(test_rect.colliderect(s) for s in solidos):
+                    self.y += dy
+                    self.rect.y = round(self.y)
+                    colision = False
+                    break
+            if colision:
+                for dy in range(1, tolerancia + 1):
+                    test_rect = self.rect.move(0, -dy)
+                    if not any(test_rect.colliderect(s) for s in solidos):
+                        self.y -= dy
+                        self.rect.y = round(self.y)
+                        colision = False
+                        break
+
+        if colision:
+            for solido in solidos:
+                if not self.rect.colliderect(solido):
+                    continue
+                if dx > 0:
+                    self.rect.right = solido.left
+                elif dx < 0:
+                    self.rect.left = solido.right
+                self.x = float(self.rect.x)
+                self.vx = 0.0
+                break
 
     # --- Función mover_y --- #
     def mover_y(self, dy, solidos):
