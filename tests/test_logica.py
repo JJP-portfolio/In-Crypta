@@ -302,6 +302,42 @@ def probar_enemigo():
     print("enemigo: OK")
 
 
+# --- Prueba: enemigo melee (comportamiento, dibujo, ataque y pisotón) --- #
+def probar_enemigo_melee():
+    juego = Juego()
+    juego.seleccionar_nivel(2)
+    assert len(juego.nivel.enemigos_melee) > 0
+
+    em = juego.nivel.enemigos_melee[0]
+    # Comprobar que aviso_tiempo no crashea al dibujar
+    em.aviso_tiempo = 0.5
+    em.dibujar(juego.superficie_mundo, juego.camara, 1.0)
+
+    # Comprobar que actualizar() decrementa aviso_tiempo
+    em.actualizar(0.1, juego.jugador)
+    assert round(em.aviso_tiempo, 2) == 0.4
+
+    # Golpe de pala / ataque
+    juego.jugador.rect.center = em.rect.center
+    juego.jugador.x = float(juego.jugador.rect.x - 20)
+    juego.jugador.rect.x = round(juego.jugador.x)
+    juego.jugador.direccion = 1
+    juego.jugador.pedir_ataque()
+    juego.actualizar_ataque()
+    assert not em.vivo
+
+    # Pisotón sobre segundo enemigo melee
+    em2 = juego.nivel.enemigos_melee[1]
+    juego.jugador.rect.bottom = em2.rect.top + 5
+    juego.jugador.rect.centerx = em2.rect.centerx
+    juego.jugador.x = float(juego.jugador.rect.x)
+    juego.jugador.y = float(juego.jugador.rect.y)
+    juego.jugador.vy = 200
+    juego.actualizar(1 / 60)
+    assert not em2.vivo
+    print("enemigo melee: OK")
+
+
 # --- Prueba: cámara --- #
 def probar_camara():
     nivel = Nivel(NIVEL_1, "prueba")
@@ -752,6 +788,7 @@ if __name__ == "__main__":
     probar_vida_extra()
     probar_reset_almas_al_morir()
     probar_enemigo()
+    probar_enemigo_melee()
     probar_camara()
     probar_estados_y_meta()
     probar_stomp_y_contacto()

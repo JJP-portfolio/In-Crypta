@@ -537,6 +537,22 @@ class Juego:
                 self.flash_color = AMARILLO
                 break
 
+        # Enemigos Melee.
+        if not self.jugador.ataque_golpeado:
+            for enemigo_melee in self.nivel.enemigos_melee:
+                if not enemigo_melee.vivo or not golpe.colliderect(enemigo_melee.rect):
+                    continue
+                enemigo_melee.vivo = False
+                self.jugador.ataque_golpeado = True
+                self.jugador.dash_usos_aire = DASH_USOS_AIRE
+                self.jugador.dash_cooldown = 0.0
+                self.audio.reproducir("pala")
+                self.particulas.pala(enemigo_melee.rect.centerx, enemigo_melee.rect.centery)
+                self.camara.sacudir(5.0, 0.12)
+                self.flash = 0.06
+                self.flash_color = AMARILLO
+                break
+
         # Jefe — pala: solo daña en Fase 1 (y con vulnerable=True)
         if (
             not self.jugador.ataque_golpeado
@@ -733,6 +749,27 @@ class Juego:
 
         for enemigo_melee in self.nivel.enemigos_melee:
             enemigo_melee.actualizar(dt, self.jugador)
+            if (
+                enemigo_melee.vivo
+                and self.jugador.invulnerable <= 0
+                and self.jugador.rect.colliderect(enemigo_melee.rect)
+            ):
+                viene_desde_arriba = (
+                    self.jugador.vy > 0
+                    and self.jugador.rect.bottom - enemigo_melee.rect.top <= 18
+                )
+                if viene_desde_arriba and self.jugador.tiene_pala:
+                    enemigo_melee.vivo = False
+                    self.jugador.vy = -REBOTE_ENEMIGO
+                    self.jugador.en_suelo = False
+                    self.jugador.dash_usos_aire = DASH_USOS_AIRE
+                    self.jugador.dash_cooldown = 0.0
+                    self.audio.reproducir("pala")
+                    self.particulas.pala(enemigo_melee.rect.centerx, enemigo_melee.rect.centery)
+                    self.camara.sacudir(6.0, 0.14)
+                else:
+                    self.perder_vida()
+                    return
 
         for totem in self.nivel.totems:
             totem.actualizar(dt, self.jugador)

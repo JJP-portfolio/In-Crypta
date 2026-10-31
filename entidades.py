@@ -709,6 +709,9 @@ class EnemigoMelee:
         if not self.vivo:
             return
 
+        if self.aviso_tiempo > 0:
+            self.aviso_tiempo = max(0.0, self.aviso_tiempo - dt)
+
         # Mantener en el rango
         self.x += self.direccion * VELOCIDAD_ENEMIGO * dt
         self.rect.x = round(self.x)
@@ -728,13 +731,7 @@ class EnemigoMelee:
 
         # Rango melee: 70px horizontal, 20px vertical (por debajo del torso del enemigo)
         if distancia_x <= 70 and distancia_y <= 20:
-            # Marcar como atacando (ejemplo visual)
             self.aviso_tiempo = 0.15
-
-            # Si el jugador está en el suelo y tiene dash disponible, podría ser un ataque exitoso
-            if jugador.en_suelo and jugador.dash_listo():
-                jugador.vy = -REBOTE_ENEMIGO
-                jugador.en_suelo = False
 
     # --- Función dibujar --- #
     def dibujar(self, surface, camara, tiempo):
@@ -846,7 +843,16 @@ class EnemigoMelee:
 
         # Advertencia visual cuando está atacando
         if self.aviso_tiempo > 0:
-            self.aviso_tiempo = max(0.0, self.aviso_tiempo - dt)
+            pygame.draw.circle(surface, (255, 60, 60), (centro_x, rect.y - 4 + salto), 3)
+            signo = self.direccion
+            pygame.draw.arc(
+                surface,
+                (255, 90, 90),
+                (rect.centerx - 14 + signo * 8, rect.y + 2, 28, 28),
+                0,
+                3.14,
+                2,
+            )
 
 
 # --- Clase TotemProyectil --- #

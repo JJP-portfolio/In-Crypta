@@ -568,20 +568,29 @@ class Nivel:
                         1,
                     )
             else:
-                # Tiles no-piso: semi-transparentes para que se vea el fondo parallax
-                w, h = rect.width, rect.height
-                tile_surf = pygame.Surface((w, h), pygame.SRCALPHA)
-                pygame.draw.rect(tile_surf, (*PIEDRA, 210), (0, 0, w, h))
-                pygame.draw.rect(tile_surf, (*PIEDRA_OSCURA, 255), (0, 0, w, h), 2)
-                # Highlight superior
-                pygame.draw.rect(tile_surf, (92, 95, 105, 180), (2, 2, w - 4, 5))
-                # Mortero vertical entre tiles
-                for gx in range(TILE, w, TILE):
-                    pygame.draw.line(tile_surf, (*PIEDRA_OSCURA, 160), (gx, 4), (gx, h - 4), 1)
-                # Línea horizontal de mortero central
-                if h >= TILE * 2:
-                    pygame.draw.line(tile_surf, (*PIEDRA_OSCURA, 120), (3, h // 2), (w - 4, h // 2), 1)
-                surface.blit(tile_surf, rect.topleft)
+                # Plataformas sólidas elevadas (opacas, nítidas y tematizadas según el nivel)
+                if self.tema == "osario":
+                    color_cuerpo = (72, 50, 48)
+                    color_marco = (38, 24, 26)
+                    color_borde_sup = (160, 135, 125)
+                elif self.tema == "cripta":
+                    color_cuerpo = PIEDRA_FRIA
+                    color_marco = (28, 30, 38)
+                    color_borde_sup = (110, 118, 135)
+                else:
+                    color_cuerpo = PIEDRA
+                    color_marco = PIEDRA_OSCURA
+                    color_borde_sup = (135, 140, 155)
+
+                pygame.draw.rect(surface, color_cuerpo, rect)
+                pygame.draw.rect(surface, color_marco, rect, 2)
+                # Borde superior luminoso para indicar superficie sólida transitable
+                pygame.draw.rect(surface, color_borde_sup, (rect.x + 2, rect.y + 1, rect.width - 4, 4))
+                # Juntas verticales de mampostería
+                for gx in range(rect.x + TILE, rect.right, TILE):
+                    pygame.draw.line(surface, color_marco, (gx, rect.y + 4), (gx, rect.bottom - 2), 1)
+                if rect.height >= TILE * 2:
+                    pygame.draw.line(surface, color_marco, (rect.x + 3, rect.centery), (rect.right - 4, rect.centery), 1)
 
     # --- Función dibujar_decoraciones --- #
     def dibujar_decoraciones(self, surface, camara):
