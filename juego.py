@@ -904,7 +904,7 @@ class Juego:
         elif tema == "osario":
             arriba, abajo = (12, 5, 9), (34, 13, 17)
         else:
-            arriba, abajo = (6, 8, 18), (22, 30, 42)
+            arriba, abajo = (14, 20, 36), (28, 42, 62)
 
         for y in range(h):
             proporcion = y / h
@@ -943,20 +943,21 @@ class Juego:
     # --- Función crear_vineta --- #
     def crear_vineta(self, fuerza):
         vineta = pygame.Surface((ANCHO, ALTO), pygame.SRCALPHA)
-        for i in range(24):
-            margen_x = i * 22
-            margen_y = i * 12
-            alfa = int(fuerza * (1 - i / 24) ** 1.4)
-            pygame.draw.ellipse(
-                vineta,
-                (0, 0, 0, max(0, min(255, alfa))),
-                (
-                    margen_x,
-                    margen_y,
-                    ANCHO - margen_x * 2,
-                    ALTO - margen_y * 2,
-                ),
-            )
+        # Viñeta gótica periférica suave: oscurece los bordes y esquinas exteriores,
+        # dejando el área central y los fosos limpios sin oscurecer la acción.
+        small_w, small_h = 160, 90
+        small = pygame.Surface((small_w, small_h), pygame.SRCALPHA)
+        cx, cy = small_w / 2, small_h / 2
+        for y in range(small_h):
+            for x in range(small_w):
+                dx = (x - cx) / (cx * 0.88)
+                dy = (y - cy) / (cy * 0.82)
+                dist = math.hypot(dx, dy)
+                if dist > 0.65:
+                    factor = min(1.0, (dist - 0.65) / 0.60)
+                    alfa = int(fuerza * (factor ** 2))
+                    small.set_at((x, y), (0, 0, 0, min(255, alfa)))
+        pygame.transform.smoothscale(small, (ANCHO, ALTO), vineta)
         return vineta
 
     # --- Función dibujar_fondo --- #
@@ -991,9 +992,9 @@ class Juego:
         luna_x = int(w * 0.68) - int(self.camara.x * 0.04)
         luna_y = 72
         halo_luna = pygame.Surface((120, 120), pygame.SRCALPHA)
-        pygame.draw.circle(halo_luna, (200, 200, 160, 18), (60, 60), 58)
-        pygame.draw.circle(halo_luna, (220, 220, 180, 28), (60, 60), 42)
-        destino.blit(halo_luna, (luna_x - 60, luna_y - 60))
+        pygame.draw.circle(halo_luna, (200, 200, 160, 20), (60, 60), 58)
+        pygame.draw.circle(halo_luna, (220, 220, 180, 30), (60, 60), 42)
+        destino.blit(halo_luna, (luna_x - 60, luna_y - 60), special_flags=pygame.BLEND_RGBA_ADD)
         pygame.draw.circle(destino, (236, 230, 196), (luna_x, luna_y), 26)
         pygame.draw.circle(destino, (218, 210, 174), (luna_x + 6, luna_y - 4), 8)
 
@@ -1014,12 +1015,12 @@ class Juego:
             x = i * 260 - desplazamiento
             pygame.draw.polygon(
                 destino,
-                (16, 24, 36),
+                (22, 34, 52),
                 [(x, h), (x + 180, int(h * 0.52) + 32), (x + 360, h)],
             )
             pygame.draw.polygon(
                 destino,
-                (22, 32, 46),
+                (28, 42, 62),
                 [(x + 90, h), (x + 230, int(h * 0.58) + 32), (x + 380, h)],
             )
 
@@ -1033,7 +1034,7 @@ class Juego:
 
     def dibujar_arbol_muerto(self, destino, x, base_y, escala):
         alto = int(150 * escala)
-        color = (18, 22, 32)
+        color = (24, 30, 44)
         pygame.draw.polygon(
             destino,
             color,
@@ -1059,13 +1060,13 @@ class Juego:
         alto = int(32 * escala)
         pygame.draw.rect(
             destino,
-            (20, 26, 36),
+            (28, 38, 54),
             (x, base_y - alto, ancho, alto),
             border_radius=3,
         )
         pygame.draw.circle(
             destino,
-            (20, 26, 36),
+            (28, 38, 54),
             (x + ancho // 2, base_y - alto),
             ancho // 2,
         )
@@ -1115,13 +1116,13 @@ class Juego:
         if destino is None:
             destino = self.pantalla
         w, h = destino.get_width(), destino.get_height()
-        color = (55, 72, 82) if tema != "osario" else (56, 32, 34)
+        color = (25, 38, 50) if tema != "osario" else (56, 32, 34)
         alto_niebla = 64
         niebla = pygame.Surface((w, alto_niebla), pygame.SRCALPHA)
         for i in range(alto_niebla):
-            alfa = int(22 * (i / alto_niebla))
+            alfa = int(24 * (i / alto_niebla))
             pygame.draw.line(niebla, (*color, alfa), (0, i), (w, i))
-        destino.blit(niebla, (0, h - alto_niebla))
+        destino.blit(niebla, (0, h - alto_niebla), special_flags=pygame.BLEND_RGBA_ADD)
 
     # --- Función dibujar_titulo (Intro) --- #
     def dibujar_titulo(self):
