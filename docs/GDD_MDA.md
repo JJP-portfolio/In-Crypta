@@ -99,14 +99,15 @@ El juego está compuesto por 3 niveles extensos y diseñados meticulosamente en 
   3. *Las Criptas Inferiores:* Pozos más profundos donde el dash es indispensable para cruzar hacia los altares.
   4. *La Escalada al Portón:* Ascenso en zigzag entre arañas patrulleras hacia la reja del camposanto.
 
-### 4.2 Nivel 2: La Cripta (130 columnas × 12 filas)
+### 4.2 Nivel 2: La Cripta (190 columnas × 12 filas)
 - **Tema:** Galería subterránea de piedra con arquerías de medio punto, cadenas colgantes y antorchas.
-- **Enseñanza:** Recogida de la pala, ataque frontal melee y plataformas móviles suspendidas.
-- **El Desafío Clímax Final (La Ventana Vertical):**
-  - Una pared vertical monolítica de piedra de 7 bloques de altura corta el paso.
-  - La pared posee un único orificio o "ventana" angosta a 4 bloques de altura.
-  - El foso anterior está sembrado de pinchos agudos.
-  - **Solución mecánica:** El jugador debe impulsarse desde una plataforma móvil, saltar hacia el vano y encadenar un dash aéreo rasante en el punto álgido del salto para atravesar la ventana limpiamente hacia el portón.
+- **Enseñanza:** Recogida de la pala, combate frontal contra guardias melee (`L`), plataformas móviles horizontales (`M`) y verticales (`V`), y recuperación de dash aéreo tras asestar golpes.
+- **Estructura en 5 Actos:**
+  1. *Acto I (El Umbral de Piedra):* Entrada a las catacumbas y el gran foso de 7 baldosas con salto y dash aéreo parabólico obligatorio.
+  2. *Acto II (El Altar de la Pala y Primer Duelo):* Adquisición de la Pala de Sepulturero (`W`), combate cerrado contra el primer Guardia Melee (`L`) y cruce sobre foso de pinchos con plataforma horizontal `MMMMM`.
+  3. *Acto III (Las Criptas Verticales):* Galerías de doble altura y foso profundo con plataforma móvil vertical (`V`) y guardias coordinados.
+  4. *Acto IV (La Galería de los Sepulcros y Combate Aéreo):* Pilares estrechos sobre un lecho de pinchos donde se encadena pisotón y palazo para reiniciar el dash en el aire.
+  5. *Acto V (La Gran Pared y el Santuario Interior):* Salto desde la atalaya (col 163), dash rasante a través de la ventana alta de la pared monolítica (cols 170–171) hacia el santuario final con cáliz (`c`), sepulcro (`s`) y portón (`G`) hacia El Osario.
 
 ### 4.3 Nivel 3: El Osario y El Custodio (160 columnas × 12 filas)
 - **Tema:** Catacumbas profundas de hueso y cráneos, atmósfera rojiza y fuego fatuo.

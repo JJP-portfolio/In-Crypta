@@ -631,7 +631,7 @@ def probar_jefe_final():
 # --- Prueba: limpieza de gemas y arena del jefe --- #
 def probar_mapa_final():
     filas_2 = NIVEL_2.strip("\n").splitlines()
-    assert len(filas_2) == 12 and len(filas_2[0]) == 130
+    assert len(filas_2) == 12 and len(filas_2[0]) == 190
     assert any("W" in fila for fila in filas_2)
     assert any("#" in fila for fila in filas_2)
     assert not any("B" in fila for fila in filas_2)
@@ -658,15 +658,15 @@ def probar_salto_ventana_nivel_2():
     juego.cargar_nivel(1)  # Nivel 2 (índice 1)
     nivel = juego.nivel
 
-    # Verificar existencia de la pared vertical con ventana (cols 110-111)
+    # Verificar existencia de la pared vertical con ventana (cols 170-171)
     filas = NIVEL_2.strip("\n").splitlines()
-    assert filas[2][110] == "#" and filas[2][111] == "#"  # Pared arriba
-    assert filas[6][110] != "#" and filas[6][111] != "#"  # Ventana abierta en fila 6
-    assert filas[7][110] != "#" and filas[7][111] != "#"  # Ventana abierta en fila 7
-    assert filas[9][110] == "#" and filas[9][111] == "#"  # Pared abajo
+    assert filas[2][170] == "#" and filas[2][171] == "#"  # Pared arriba
+    assert filas[6][170] != "#" and filas[6][171] != "#"  # Ventana abierta en fila 6
+    assert filas[7][170] != "#" and filas[7][171] != "#"  # Ventana abierta en fila 7
+    assert filas[9][170] == "#" and filas[9][171] == "#"  # Pared abajo
 
-    # Posicionar al jugador en la plataforma de lanzamiento (col 103, fila 8)
-    juego.jugador.x = 103 * TILE
+    # Posicionar al jugador en la plataforma de lanzamiento (col 163, fila 8)
+    juego.jugador.x = 163 * TILE
     juego.jugador.y = 8 * TILE - JUGADOR_ALTO
     juego.jugador.rect.topleft = (round(juego.jugador.x), round(juego.jugador.y))
     juego.jugador.en_suelo = True
@@ -682,12 +682,12 @@ def probar_salto_ventana_nivel_2():
 
     for _ in range(240):
         # Dashear en el aire al aproximarse a la ventana
-        if juego.jugador.rect.x > 105 * TILE and juego.jugador.dash_usos_aire > 0:
+        if juego.jugador.rect.x > 165 * TILE and juego.jugador.dash_usos_aire > 0:
             juego.jugador.pedir_dash()
 
         juego.jugador.actualizar(1 / 60, teclas, nivel.solidos)
 
-        if juego.jugador.rect.x > 112 * TILE:
+        if juego.jugador.rect.x > 172 * TILE:
             cruzo_ventana = True
 
         if juego.jugador.rect.colliderect(nivel.meta):
