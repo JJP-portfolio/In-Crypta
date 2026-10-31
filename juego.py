@@ -84,7 +84,7 @@ from entidades import (
 )
 from hud import HudOrquestador
 from nivel import Nivel
-from niveles import NIVELES, SALAS_PRUEBA
+from niveles import NIVELES, SALAS_PRUEBA, NIVEL_TUTORIAL
 from particulas import SistemaParticulas
 
 
@@ -129,6 +129,7 @@ class Juego:
         self.aviso_jefe = 0.0
         self.sala_prueba = False
         self.sala_prueba_indice = None
+        self.es_tutorial = False
         self.test_opcion = 0
         self.menu_opcion = 0
         self.nivel_seleccionado = 0
@@ -146,6 +147,7 @@ class Juego:
     def cargar_nivel(self, indice, vidas=None, sala=None):
         self.sala_prueba = sala is not None
         self.sala_prueba_indice = sala
+        self.es_tutorial = False
         if sala is None:
             self.nivel_indice = indice
             datos = NIVELES[indice]
@@ -175,6 +177,46 @@ class Juego:
         self.ondas_jefe = []
         self.punto_reintento = None
         self.aviso_jefe = 0.0
+
+    # --- Función iniciar_tutorial --- #
+    def iniciar_tutorial(self):
+        """Carga el nivel tutorial. No cuenta para la partida principal."""
+        self.es_tutorial = True
+        self.sala_prueba = False
+        self.sala_prueba_indice = None
+        self.almas_totales = 0
+        self.tiempo_total = 0.0
+        self.nivel_indice = 0  # 0-based; HUD leerá es_tutorial para mostrar "TUTORIAL"
+        self.nivel = Nivel(
+            NIVEL_TUTORIAL,
+            "El Ritual del Sepulturero",
+            (
+                "FLECHAS / WASD: MOVERSE · ARRIBA/W: SALTAR · "
+                "SHIFT: DASH EN EL AIRE · "
+                "RECOGÉ LA PALA (W) · J/Z/CLICK: ATACAR · "
+                "SALTÁ SOBRE LOS MORADORES PARA PISARLOS (STOMP) · "
+                "LA PLATAFORMA SOBRE PINCHOS LLEVA AL PORTÓN"
+            ),
+            "cripta",
+        )
+        vidas_iniciales = VIDAS_INICIALES
+        self.jugador = Jugador(*self.nivel.spawn, vidas=vidas_iniciales)
+        self.jugador.tiene_pala = False
+        self.camara = Camara()
+        self.camara.actualizar(self.jugador, self.nivel, 1.0)
+        self.estado = "jugando"
+        self.tiempo_nivel = 0.0
+        self.mostrar_ayuda = 6.0
+        self.texto_ayuda = self.nivel.pista
+        self.flash = 0.0
+        self.jefe = None
+        self.ondas_jefe = []
+        self.punto_reintento = None
+        self.aviso_jefe = 0.0
+        # Mensaje de bienvenida en el canal HUD
+        self.hud.mostrar_mensaje(
+            "EL RITUAL DEL SEPULTURERO · Aprende las mecánicas básicas", 1, 5.0
+        )
 
     # --- Función abrir_menu --- #
     def abrir_menu(self):
@@ -241,10 +283,10 @@ class Juego:
             elif evento.type == pygame.KEYDOWN:
                 if self.estado == "menu":
                     if evento.key in (pygame.K_UP, pygame.K_w):
-                        self.menu_opcion = (self.menu_opcion - 1) % 3
+                        self.menu_opcion = (self.menu_opcion - 1) % 4
                         self.audio.reproducir("ui")
                     elif evento.key in (pygame.K_DOWN, pygame.K_s):
-                        self.menu_opcion = (self.menu_opcion + 1) % 3
+                        self.menu_opcion = (self.menu_opcion + 1) % 4
                         self.audio.reproducir("ui")
                     elif evento.key in (pygame.K_RETURN, pygame.K_SPACE):
                         self.audio.reproducir("ui")
@@ -253,6 +295,8 @@ class Juego:
                         elif self.menu_opcion == 1:
                             self.abrir_seleccion_nivel()
                         elif self.menu_opcion == 2:
+                            self.iniciar_tutorial()
+                        elif self.menu_opcion == 3:
                             self.abrir_creditos()
                     elif evento.key == pygame.K_ESCAPE:
                         self.estado = "titulo"
@@ -312,6 +356,8 @@ class Juego:
                 elif evento.key == pygame.K_r and self.estado not in ("titulo", "menu", "seleccion_nivel", "creditos"):
                     if self.sala_prueba:
                         self.cargar_sala_prueba(self.sala_prueba_indice)
+                    elif self.es_tutorial:
+                        self.iniciar_tutorial()
                     else:
                         self.reiniciar_juego()
 
@@ -348,8 +394,12 @@ class Juego:
                         self.siguiente_nivel()
                     elif self.estado == "sala_completada":
                         self.abrir_menu()
+                    elif self.estado == "tutorial_completado":
+                        self.abrir_menu()
                     elif self.estado == "derrota" and self.sala_prueba:
                         self.cargar_sala_prueba(self.sala_prueba_indice)
+                    elif self.estado == "derrota" and self.es_tutorial:
+                        self.iniciar_tutorial()
                     elif self.estado in ("derrota", "victoria"):
                         self.abrir_menu()
 
@@ -413,7 +463,9 @@ class Juego:
 
             self.audio.reproducir("meta")
             self.particulas.meta(self.nivel.meta.centerx, self.nivel.meta.centery)
-            if self.sala_prueba:
+            if self.es_tutorial:
+                self.estado = "tutorial_completado"
+            elif self.sala_prueba:
                 self.estado = "sala_completada"
             elif self.nivel_indice + 1 >= len(NIVELES):
                 self.almas_totales += self.jugador.almas
@@ -651,6 +703,7 @@ class Juego:
                 self.punto_reintento = (limite, self.nivel.spawn[1])
                 self.texto_ayuda = "PUNTO DE CONTROL · LA ANTESALA DEL CUSTODIO"
                 self.mostrar_ayuda = 4.5
+                self.hud.mostrar_mensaje("PUNTO DE CONTROL · La antesala del Custodio del Osario", 1, 3.5)
                 self.audio.reproducir("ui")
 
         return False
@@ -843,6 +896,7 @@ class Juego:
                 self.particulas.alma(pala.rect.centerx, pala.rect.centery)
                 self.texto_ayuda = "¡PALA DE SEPULTURERO OBTENIDA! · J / CLICK: EXORCIZAR MORADORES"
                 self.mostrar_ayuda = 4.0
+                self.hud.mostrar_mensaje("¡PALA OBTENIDA! · J / Z: Atacar · Pisotón: salta sobre los moradores", 2, 4.0)
 
     # --- Función actualizar_power_ups_rango --- #
     def actualizar_power_ups_rango(self):
@@ -864,6 +918,7 @@ class Juego:
                 self.flash_color = (190, 60, 255)
                 self.texto_ayuda = "¡GUADAÑA MÍSTICA OBTENIDA! · ALCANCE ESPECTRAL Y PODER MEJORADO"
                 self.mostrar_ayuda = 4.0
+                self.hud.mostrar_mensaje("¡GUADAÑA MÍSTICA! · Alcance espectral de 72px · Pisotón en el Custodio", 3, 4.0)
 
     # --- Función perder_vida --- #
     def perder_vida(self, ignorar_invulnerabilidad=False):
@@ -1190,41 +1245,51 @@ class Juego:
         opciones = [
             ("JUGAR", "Comenzar la travesía desde el Camposanto"),
             ("SELECCIÓN DE PANTALLA", "Elegir nivel para descender a la cripta"),
+            ("TUTORIAL", "El Ritual del Sepulturero · Aprende las mecánicas"),
             ("CRÉDITOS", "Equipo de desarrollo y referencias"),
         ]
 
         ancho_caja = 560
         alto_caja = 64
         x_caja = (ANCHO - ancho_caja) // 2
-        y_base = 240
+        y_base = 200
 
         for i, (titulo_op, subtitulo_op) in enumerate(opciones):
-            y_caja = y_base + i * 94
+            y_caja = y_base + i * 84
             rect = pygame.Rect(x_caja, y_caja, ancho_caja, alto_caja)
             seleccionada = (i == self.menu_opcion)
 
             # Fondo de la opción
             surf_op = pygame.Surface((ancho_caja, alto_caja), pygame.SRCALPHA)
-            color_fondo = (28, 22, 34, 230) if seleccionada else (16, 13, 20, 180)
+            # Tutorial gets a slightly different hue when not selected
+            if i == 2 and not seleccionada:
+                color_fondo = (14, 12, 22, 180)
+            else:
+                color_fondo = (28, 22, 34, 230) if seleccionada else (16, 13, 20, 180)
             pygame.draw.rect(surf_op, color_fondo, (0, 0, ancho_caja, alto_caja), border_radius=8)
 
-            color_borde = HUD_ORO if seleccionada else (*HUD_BORDE, 150)
+            # Tutorial option gets a teal accent border
+            if i == 2:
+                color_borde = HUD_DASHTURQUESA if seleccionada else (*HUD_DASHTURQUESA[:3], 100)
+            else:
+                color_borde = HUD_ORO if seleccionada else (*HUD_BORDE, 150)
             grosor_borde = 2 if seleccionada else 1
             pygame.draw.rect(surf_op, color_borde, (0, 0, ancho_caja, alto_caja), grosor_borde, border_radius=8)
 
             # Detalles ornamentales en opción activa
             if seleccionada:
+                accent = HUD_DASHTURQUESA if i == 2 else HUD_ORO
                 # Resaltador lateral dorado
-                pygame.draw.rect(surf_op, HUD_ORO, (0, 8, 4, alto_caja - 16), border_radius=2)
+                pygame.draw.rect(surf_op, accent, (0, 8, 4, alto_caja - 16), border_radius=2)
                 # Remates en esquinas
                 for ex, ey, edx, edy in ((0, 0, 1, 1), (ancho_caja, 0, -1, 1), (0, alto_caja, 1, -1), (ancho_caja, alto_caja, -1, -1)):
-                    pygame.draw.line(surf_op, HUD_ORO, (ex + 6 * edx, ey), (ex + 16 * edx, ey), 1)
-                    pygame.draw.line(surf_op, HUD_ORO, (ex, ey + 6 * edy), (ex, ey + 14 * edy), 1)
+                    pygame.draw.line(surf_op, accent, (ex + 6 * edx, ey), (ex + 16 * edx, ey), 1)
+                    pygame.draw.line(surf_op, accent, (ex, ey + 6 * edy), (ex, ey + 14 * edy), 1)
 
             self.pantalla.blit(surf_op, (x_caja, y_caja))
 
             # Textos de la opción
-            color_titulo = HUD_ORO if seleccionada else HUD_TEXTO
+            color_titulo = (HUD_DASHTURQUESA if i == 2 and seleccionada else HUD_ORO) if seleccionada else HUD_TEXTO
             prefijo = "▸  " if seleccionada else "   "
             self.dibujar_texto(prefijo + titulo_op, x_caja + 24, y_caja + 12, 22, color_titulo, sombra=seleccionada)
             self.dibujar_texto(subtitulo_op, x_caja + 48, y_caja + 38, 13, HUD_MUTED if not seleccionada else CREMA)
@@ -1433,6 +1498,11 @@ class Juego:
             self.dibujar_overlay(
                 "DESAFÍO COMPLETADO",
                 "ENTER para continuar · ESC volver al menú",
+            )
+        elif self.estado == "tutorial_completado":
+            self.dibujar_overlay(
+                "¡RITUAL COMPLETADO!",
+                "El sepulturero ha aprendido su oficio · ENTER para volver al menú",
             )
         elif self.estado == "derrota":
             self.dibujar_overlay(

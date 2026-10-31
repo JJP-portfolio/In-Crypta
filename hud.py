@@ -36,6 +36,11 @@ from config import (
 )
 from efectos import ease_out_back, ease_out_cubic, ease_in_out_cubic
 
+try:
+    from niveles import NIVELES
+except ImportError:
+    NIVELES = []
+
 # ---------------------------------------------------------------------------
 # Constantes del riel (no existen todavía en config.py; se declaran acá)
 # ---------------------------------------------------------------------------
@@ -561,25 +566,43 @@ class HudRenderer:
             pygame.draw.circle(pantalla, (20, 16, 22), (cx + 5, top_y), 3)
 
     def _icono_alma(self, pantalla, ix, iy, color):
-        pygame.draw.polygon(pantalla, color, [(ix, iy - 13), (ix + 10, iy),
-                                              (ix, iy + 13), (ix - 10, iy)])
+        cy = iy + 8
+        pygame.draw.polygon(pantalla, color, [(ix + 6, cy - 7), (ix + 12, cy),
+                                              (ix + 6, cy + 7), (ix, cy)])
         pygame.draw.polygon(pantalla, (230, 255, 250),
-                            [(ix, iy - 6), (ix + 4, iy), (ix, iy + 6), (ix - 4, iy)])
+                            [(ix + 6, cy - 3), (ix + 9, cy),
+                             (ix + 6, cy + 3), (ix + 3, cy)])
 
     def _icono_ala_dash(self, pantalla, x, y, color):
-        pygame.draw.polygon(pantalla, color, [(x + 2, y + 44), (x + 16, y + 20),
-                                              (x + 22, y + 27), (x + 9, y + 48)])
-        pygame.draw.polygon(pantalla, color, [(x + 18, y + 31), (x + 29, y + 17),
-                                              (x + 33, y + 24), (x + 23, y + 39)])
+        pygame.draw.polygon(pantalla, color, [
+            (x + 1, y + 15),
+            (x + 7, y + 8),
+            (x + 5, y + 8),
+            (x + 11, y + 2),
+            (x + 6, y + 9),
+            (x + 8, y + 9),
+        ])
+        pygame.draw.polygon(pantalla, color, [
+            (x + 8, y + 15),
+            (x + 14, y + 7),
+            (x + 12, y + 7),
+            (x + 17, y + 3),
+            (x + 13, y + 9),
+            (x + 15, y + 9),
+        ])
 
     def _icono_pala(self, pantalla, x, y, es_guadaña, color):
         if es_guadaña:
-            pygame.draw.arc(pantalla, color, (x + 2, y + 15, 34, 34), 0, 3.14, 4)
-            pygame.draw.line(pantalla, (130, 50, 160), (x + 20, y + 30), (x + 8, y + 52), 3)
+            pygame.draw.arc(pantalla, color, (x + 2, y + 2, 14, 14), 0, 3.14, 3)
+            pygame.draw.line(pantalla, (160, 80, 190), (x + 9, y + 8), (x + 3, y + 16), 2)
         else:
-            pygame.draw.line(pantalla, (160, 120, 60), (x + 8, y + 50), (x + 22, y + 22), 3)
-            pygame.draw.polygon(pantalla, (190, 190, 205),
-                                [(x + 18, y + 20), (x + 31, y + 15), (x + 26, y + 32)])
+            pygame.draw.line(pantalla, (160, 120, 60), (x + 3, y + 15), (x + 10, y + 7), 2)
+            pygame.draw.polygon(pantalla, (190, 190, 205), [
+                (x + 8, y + 8),
+                (x + 14, y + 2),
+                (x + 16, y + 4),
+                (x + 10, y + 10),
+            ])
 
     def _icono_reloj(self, pantalla, x, y, color):
         pygame.draw.circle(pantalla, color, (x + 8, y + 8), 6, 2)
@@ -678,7 +701,10 @@ class HudRenderer:
             pantalla.blit(img_num, (x_seg + 8, barra_y))
         else:
             # Nivel
-            nivel_txt = f"NIVEL {modelo.nivel_indice + 1}/{modelo.nivel_total}"
+            if modelo.nivel_indice < 0:
+                nivel_txt = "TUTORIAL"
+            else:
+                nivel_txt = f"NIVEL {modelo.nivel_indice + 1}/{modelo.nivel_total}"
             img_n = self._texto(nivel_txt, self.tema.fuente_label, self.tema.oro)
             pantalla.blit(img_n, (c.x, c.y))
             nombre_txt = modelo.nivel_nombre.upper()
@@ -813,9 +839,15 @@ class HudOrquestador:
         self.modelo.jefe_vida = jefe.vida if jefe else 0
         self.modelo.jefe_fase = jefe.fase if jefe else 1
         self.modelo.jefe_nombre = "EL CUSTODIO DEL OSARIO"
-        self.modelo.nivel_indice = juego.nivel_indice
-        self.modelo.nivel_total = len(n.NIVELES) if hasattr(n, "NIVELES") else 1
-        self.modelo.nivel_nombre = n.nombre.upper() if n and hasattr(n, "nombre") else "CAMPOSANTO"
+        if getattr(juego, "es_tutorial", False):
+            self.modelo.nivel_indice = -1
+            self.modelo.nivel_total = 3
+            self.modelo.nivel_nombre = "RITUAL DEL SEPULTURERO"
+        else:
+            self.modelo.nivel_indice = juego.nivel_indice
+            total = len(getattr(juego, "niveles", [])) or (len(NIVELES) if "NIVELES" in globals() and NIVELES else 3)
+            self.modelo.nivel_total = total
+            self.modelo.nivel_nombre = n.nombre.upper() if n and hasattr(n, "nombre") else "CAMPOSANTO"
         self.modelo.tiempo = juego.tiempo_total
         self.modelo.estado = juego.estado
         self.modelo.pista = getattr(juego, "texto_ayuda", "") or (n.pista if n and hasattr(n, "pista") else "")

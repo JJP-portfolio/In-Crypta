@@ -759,6 +759,49 @@ def probar_menu_principal_y_navegacion():
     print("menú principal y selector de niveles: OK")
 
 
+# --- Prueba: tutorial completo --- #
+def probar_tutorial():
+    juego = Juego()
+
+    # Iniciar tutorial
+    juego.iniciar_tutorial()
+    assert juego.es_tutorial, "es_tutorial debe ser True tras iniciar_tutorial()"
+    assert juego.estado == "jugando"
+    assert juego.nivel is not None
+    assert juego.nivel.nombre == "El Ritual del Sepulturero"
+    assert not juego.jugador.tiene_pala
+
+    # HUD reporta TUTORIAL (nivel_indice = -1, nombre especial)
+    juego.hud.armar_modelo(juego)
+    assert juego.hud.modelo.nivel_indice == -1, (
+        f"nivel_indice esperado -1, obtenido {juego.hud.modelo.nivel_indice}"
+    )
+    assert juego.hud.modelo.nivel_nombre == "RITUAL DEL SEPULTURERO"
+
+    # R reinicia el tutorial (no llama reiniciar_juego)
+    juego.iniciar_tutorial()
+    assert juego.es_tutorial
+
+    # Al llegar a la meta pasa a tutorial_completado
+    juego.estado = "tutorial_completado"
+    juego.dibujar()
+    assert juego.estado == "tutorial_completado"
+
+    # ENTER desde tutorial_completado abre el menú
+    juego.abrir_menu()
+    assert juego.estado == "menu"
+    # es_tutorial se limpia al cargar un nivel normal
+    juego.cargar_nivel(0)
+    assert not juego.es_tutorial, "cargar_nivel() debe poner es_tutorial = False"
+
+    # Menú ahora tiene 4 opciones (JUGAR, SELECCIÓN, TUTORIAL, CRÉDITOS)
+    for delta in range(4):
+        juego.menu_opcion = delta
+        juego.dibujar()
+
+    print("tutorial: OK")
+
+
 # --- Prueba: las almas se reinician al cambiar de nivel, las vidas no --- #
 def probar_transicion_almas_vidas():
     juego = Juego()
@@ -803,6 +846,7 @@ if __name__ == "__main__":
     probar_salto_ventana_nivel_2()
     probar_salas_prueba()
     probar_menu_principal_y_navegacion()
+    probar_tutorial()
     probar_transicion_almas_vidas()
     probar_pinchos()
     probar_juego_headless()
