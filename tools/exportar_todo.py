@@ -66,7 +66,6 @@ def correr(comando: list[str], descripcion: str) -> tuple[bool, str]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--check", action="store_true", help="no escribe archivos, solo valida")
-    parser.add_argument("--solo-json", action="store_true", help="solo exporta game_data.json")
     parser.add_argument("--solo-nativo", action="store_true", help="solo genera el proyecto GDevelop nativo")
     parser.add_argument("--solo-paridad", action="store_true", help="solo verifica la paridad del proyecto nativo")
     args = parser.parse_args()
@@ -79,21 +78,6 @@ def main() -> int:
 
     fallos: list[str] = []
     inicio_total = time.time()
-
-    # ── Paso 1: JSON para el runtime JS ──────────────────────────────
-    if not args.solo_nativo and not args.solo_paridad:
-        cmd = [PYTHON, str(TOOLS / "export_gdevelop.py")]
-        if args.check:
-            cmd.append("--check")
-        ok, salida = correr(cmd, "Exportando game_data.json (JS runtime)")
-        if not ok:
-            fallos.append("export_gdevelop.py falló")
-        elif "EXPORT_OK" not in salida:
-            fallos.append("export_gdevelop.py no reportó EXPORT_OK")
-
-    if args.solo_json:
-        _imprimir_resultado(fallos, inicio_total)
-        return 1 if fallos else 0
 
     # ── Paso 2: Proyecto GDevelop nativo ─────────────────────────────
     if not args.solo_paridad:
@@ -152,7 +136,6 @@ def _imprimir_resultado(fallos: list[str], inicio: float) -> None:
         print(f"  ✔ EXPORT COMPLETO ({duracion:.1f}s)")
         print("  Ambas versiones de IN CRYPTA están sincronizadas.")
         print()
-        print("  export/gdevelop/game_data.json   → runtime JS en GDevelop")
         print("  export/gdevelop_nativo/IN_CRYPTA_NATIVO.json → proyecto nativo")
     print(f"{'='*60}\n")
 
