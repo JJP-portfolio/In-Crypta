@@ -157,6 +157,22 @@ def _plataformas(nivel: Nivel) -> list[Entidad]:
     ]
 
 
+def _minijefes(nivel: Nivel) -> list[Entidad]:
+    return [
+        Entidad(
+            "minijefe",
+            e.rect,
+            {
+                "vida": e.vida,
+                "dir": getattr(e, "direccion", 1),
+                "min_x": e.minimo_x,
+                "max_x": e.maximo_x,
+            },
+        )
+        for e in getattr(nivel, "minijefes", [])
+    ]
+
+
 def _jefes(nivel: Nivel) -> list[Entidad]:
     return [
         Entidad(
@@ -177,6 +193,7 @@ EXTRACTORES = {
     "alma": _almas,
     "enemigo": _enemigos,
     "enemigo_melee": _enemigos_melee,
+    "minijefe": _minijefes,
     "polilla": _polillas,
     "arana": _aranias,
     "cuervo": _cuervos,
