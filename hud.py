@@ -682,9 +682,14 @@ class HudRenderer:
             lleno = i < modelo.vidas
             self.dibujar_corazon(pantalla, cx, cy, lleno, escala_corazon)
             if i == 0 and getattr(modelo, "escudo_farol", False):
-                # Contorno celeste pulsante del Manto del Farol
-                pygame.draw.circle(pantalla, (120, 220, 255), (cx - 6, cy - 4), int(self.tema.corazon_radio * escala_corazon) + 3, 2)
-                pygame.draw.circle(pantalla, (120, 220, 255), (cx + 6, cy - 4), int(self.tema.corazon_radio * escala_corazon) + 3, 2)
+                # Contorno celeste pulsante del Manto del Farol (auréola protectora)
+                r_manto = int(self.tema.corazon_radio * escala_corazon) + 3
+                pulso_m = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() / 1000.0 * 5.0) if not reducir_movimiento else 0.5
+                color_manto = (int(100 + pulso_m * 40), int(210 + pulso_m * 45), 255)
+                pygame.draw.circle(pantalla, color_manto, (cx - 6, cy - 4), r_manto, 2)
+                pygame.draw.circle(pantalla, color_manto, (cx + 6, cy - 4), r_manto, 2)
+                pygame.draw.line(pantalla, color_manto, (cx - 12, cy - 4), (cx, cy + 16), 2)
+                pygame.draw.line(pantalla, color_manto, (cx + 12, cy - 4), (cx, cy + 16), 2)
 
     # --- Zona centro: nivel / jefe ---
     def _dibujar_centro(self, pantalla, modelo, reducir_movimiento, dt):
@@ -726,11 +731,11 @@ class HudRenderer:
         else:
             # Nivel
             if modelo.nivel_indice < 0:
-                nivel_txt = "PRELUDIO · TUTORIAL"
+                nivel_txt = "PRELUDIO"
                 nombre_txt = "EL UMBRAL DEL SEPULTURERO"
             else:
-                nivel_txt = f"NIVEL {modelo.nivel_indice + 1}/{modelo.nivel_total}"
-                nombre_txt = modelo.nivel_nombre.upper()
+                nivel_txt = f"NIVEL {modelo.nivel_indice + 1}/{modelo.nivel_total} · {modelo.nivel_nombre.upper()}"
+                nombre_txt = "CAMPOSANTO" if "CAMPOSANTO" in modelo.nivel_nombre.upper() else ("LA CRIPTA" if "CRIPTA" in modelo.nivel_nombre.upper() else "EL OSARIO")
             img_n = self._texto(nivel_txt, self.tema.fuente_label, self.tema.oro)
             pantalla.blit(img_n, (c.x, c.y))
             img_nom = self._texto(nombre_txt, self.tema.fuente_nombre,

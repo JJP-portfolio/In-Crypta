@@ -365,5 +365,57 @@ class TestOrquestador(unittest.TestCase):
         self.assertEqual(o.modelo.jefe_nombre, "EL CARCELERO DEL OSARIO")
 
 
+class TestPrioridad3UIUX(unittest.TestCase):
+    """Verificaciones unitarias de los 4 Tipos de Interfaz y 5 Principios UX."""
+
+    def test_ui_no_diegetica_riel_superior_fijo(self):
+        """UI No Diegética: riel 1232x72 y panel derecho de ancho fijo (360 px) sin layout shifts."""
+        layout = HudLayout.construir()
+        self.assertEqual(layout.riel.size, (1232, 72))
+        self.assertEqual(layout.zona_der.width, 360)
+        self.assertEqual(layout.zona_izq.width, 336)
+        self.assertEqual(layout.zona_centro.width, 512)
+
+        # Formatos de la grilla 2x2
+        m = HudModel(almas=5, almas_total=20, almas_para_vida=3)
+        self.assertEqual(fmt_dash(m), "[DASH] LISTO")
+        self.assertEqual(fmt_arma(m), "[PALA] --")
+        m.tiene_pala = True
+        self.assertEqual(fmt_arma(m), "[PALA] LISTO")
+        m.rango_ataque_mejorado = True
+        self.assertEqual(fmt_arma(m), "[GUADAÑA] LISTO")
+
+    def test_ui_diegetica_faroles(self):
+        """UI Diegética: Farol del jugador (llama turquesa/ámbar) y Checkpoints activos/inactivos."""
+        from entidades import Jugador, FarolCheckpoint
+
+        j = Jugador(100, 100)
+        j.tiene_dash = True
+        j.dash_cooldown = 0.0
+        j.en_suelo = True
+        self.assertTrue(j.dash_listo())
+
+        # Checkpoint: inactivo (apagado) y activo (encendido)
+        cp = FarolCheckpoint(pygame.Rect(200, 200, 20, 30))
+        self.assertFalse(cp.activo)
+        # Jugador toca el checkpoint
+        j.rect.center = cp.rect.center
+        cp.actualizar(j)
+        self.assertTrue(cp.activo)
+
+    def test_ui_espacial_coordenadas_y_distancia(self):
+        """UI Espacial: cálculo de distancia a 140 px y proyección mediante camara.aplicar_rect."""
+        from camara import Camara
+
+        cam = Camara()
+        cam.x = 200.0
+        cam.y = 50.0
+
+        rect_mundo = pygame.Rect(400, 300, 100, 30)
+        rect_pantalla = cam.aplicar_rect(rect_mundo)
+        self.assertEqual(rect_pantalla.x, 200)
+        self.assertEqual(rect_pantalla.y, 250)
+
+
 if __name__ == "__main__":
     unittest.main()
