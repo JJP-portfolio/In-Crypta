@@ -15,6 +15,7 @@ from config import (
     CARMESÍ_SANGRE,
     ENEMIGO_ALTO,
     ENEMIGO_ANCHO,
+    FAROL_CÁLIDO,
     HUESO,
     HUESO_MARFIL,
     JEFE_ALTO,
@@ -35,7 +36,9 @@ from config import (
     SALITRE_CRIPTA,
     SANGRE,
     TILE,
+    TURQUESA_ÁNIMA,
     VERDE_OSCURO,
+    VIOLETA_POE,
 )
 from entidades import (
     Alma,
@@ -553,68 +556,103 @@ class Nivel:
 
     # --- Función dibujar_plataformas --- #
     def dibujar_plataformas(self, surface, camara):
+        tema = getattr(self, "tema", "camposanto")
         for plataforma in self.plataformas:
             if not camara.is_on_screen(plataforma.rect):
                 continue
             rect = camara.aplicar_rect(plataforma.rect)
 
-            # Sombra suave proyectada
+            # Cadenas de hierro forjado de eslabones detallados suspendiendo la plataforma
+            for ancla_x in (rect.x + 10, rect.right - 10):
+                limite_y = max(-10, rect.y - 75)
+                for cy in range(rect.y - 4, limite_y, -8):
+                    pygame.draw.rect(surface, (18, 16, 22), (ancla_x - 3, cy - 6, 6, 8), border_radius=3)
+                    pygame.draw.rect(surface, (82, 78, 92), (ancla_x - 2, cy - 5, 4, 6), 1, border_radius=2)
+                    pygame.draw.circle(surface, (140, 136, 150), (ancla_x, cy - 2), 1)
+                # Argolla de anclaje de hierro
+                pygame.draw.circle(surface, (24, 20, 28), (ancla_x, rect.y + 3), 5)
+                pygame.draw.circle(surface, (120, 114, 130), (ancla_x, rect.y + 3), 4, 1)
+
+            # Sombra suave proyectada bajo el sarcófago
             pygame.draw.rect(
                 surface,
-                (12, 10, 16),
+                NEGRO_NOCHE,
                 (rect.x + 2, rect.bottom, rect.width - 4, 3),
                 border_radius=2,
             )
 
-            # Losa principal de piedra gótica
-            pygame.draw.rect(surface, (54, 48, 60), rect, border_radius=3)
-            # Marco exterior de hierro/piedra oscura
-            pygame.draw.rect(surface, (24, 20, 28), rect, 2, border_radius=3)
+            # Tapa de sarcófago labrada en piedra gótica
+            if tema == "osario":
+                color_losa = (60, 46, 48)
+                color_marco = (28, 20, 22)
+                color_bisel = (160, 130, 125)
+            elif tema == "cripta":
+                color_losa = (50, 52, 64)
+                color_marco = (22, 24, 32)
+                color_bisel = (155, 165, 182)
+            else:
+                color_losa = (56, 50, 62)
+                color_marco = (24, 20, 28)
+                color_bisel = (168, 160, 178)
 
-            # Superficie superior de paso (losa biselada clara)
+            pygame.draw.rect(surface, color_losa, rect, border_radius=3)
+            # Marco exterior labrado
+            pygame.draw.rect(surface, color_marco, rect, 2, border_radius=3)
+
+            # Bisel de piedra pulida en la superficie de paso
             pygame.draw.line(
                 surface,
-                (168, 160, 178),
+                color_bisel,
                 (rect.x + 3, rect.y + 1),
                 (rect.right - 3, rect.y + 1),
                 2,
             )
 
-            # Relieve central rúnico / dorado tenue
-            if rect.width >= 32:
+            # Relieve de cruz gótica labrada en la tapa del sarcófago
+            if rect.width >= 48:
+                cx = rect.centerx
+                pygame.draw.line(surface, color_marco, (cx, rect.y + 4), (cx, rect.bottom - 4), 3)
+                pygame.draw.line(surface, color_marco, (cx - 10, rect.y + 9), (cx + 10, rect.y + 9), 3)
+                pygame.draw.line(surface, ORO_LITÚRGICO, (cx, rect.y + 5), (cx, rect.bottom - 5), 1)
+                pygame.draw.line(surface, ORO_LITÚRGICO, (cx - 9, rect.y + 9), (cx + 9, rect.y + 9), 1)
+            elif rect.width >= 32:
                 pygame.draw.line(
                     surface,
-                    ORO,
+                    ORO_LITÚRGICO,
                     (rect.x + 10, rect.y + 3),
                     (rect.right - 10, rect.y + 3),
                     1,
                 )
 
-            # Ménsulas de soporte en la base de la plataforma
+            # Ménsulas o adornos de soporte en la base del sarcófago
             for mx in range(rect.x + 8, rect.right - 10, 24):
-                pygame.draw.polygon(
-                    surface,
-                    (34, 28, 38),
-                    [
-                        (mx, rect.bottom - 4),
-                        (mx + 8, rect.bottom - 4),
-                        (mx + 4, rect.bottom - 1),
-                    ],
-                )
+                if tema == "osario":
+                    pygame.draw.circle(surface, HUESO, (mx + 4, rect.bottom - 2), 2)
+                else:
+                    pygame.draw.polygon(
+                        surface,
+                        (34, 28, 38),
+                        [
+                            (mx, rect.bottom - 4),
+                            (mx + 8, rect.bottom - 4),
+                            (mx + 4, rect.bottom - 1),
+                        ],
+                    )
 
             # Remaches de forja en esquinas
-            pygame.draw.circle(surface, (135, 128, 145), (rect.x + 4, rect.y + 5), 1)
-            pygame.draw.circle(surface, (135, 128, 145), (rect.right - 5, rect.y + 5), 1)
+            pygame.draw.circle(surface, (140, 134, 150), (rect.x + 4, rect.y + 5), 1)
+            pygame.draw.circle(surface, (140, 134, 150), (rect.right - 5, rect.y + 5), 1)
 
     # --- Función dibujar_solidos --- #
     def dibujar_solidos(self, surface, camara):
-        if self.tema == "cripta":
+        tema = getattr(self, "tema", "camposanto")
+        if tema == "cripta":
             color_piso = (48, 52, 62)
             color_piso_profundo = (30, 32, 40)
             color_borde = (20, 22, 28)
             color_arriba = (55, 78, 68)
             color_brizna = (82, 118, 102)
-        elif self.tema == "osario":
+        elif tema == "osario":
             color_piso = (62, 45, 43)
             color_piso_profundo = (38, 26, 26)
             color_borde = (26, 18, 20)
@@ -644,19 +682,27 @@ class Nivel:
 
             if es_piso:
                 if not tiene_arriba:
-                    # Suelo superficial expuesto: césped/musgo gótico y tierra fértil
+                    # Suelo superficial expuesto: estrato de tierra oscura con gravilla y losas
                     pygame.draw.rect(surface, color_piso, rect)
                     pygame.draw.rect(surface, color_borde, rect, 1)
 
-                    # Capa de pasto/musgo superior
+                    # Capa de hierba marchita / musgo superior
                     pygame.draw.rect(surface, color_arriba, (rect.x, rect.y, rect.width, 5))
                     # Bisel luminoso superior de luz lunar
                     pygame.draw.line(surface, color_brizna, (rect.x, rect.y), (rect.right, rect.y), 1)
 
-                    # Briznas orgánicas de hierba gótica
-                    for bx in range(rect.x + 3, rect.right - 2, 7):
-                        alt = 2 + ((bx * 7) % 4)
+                    # Briznas orgánicas de hierba marchita de alturas consistentes
+                    for bx in range(rect.x + 3, rect.right - 2, 6):
+                        alt = 2 + ((bx * 11) % 5)
                         pygame.draw.line(surface, color_brizna, (bx, rect.y), (bx, rect.y - alt), 1)
+
+                    # Losas de lápidas fracturadas incrustadas al ras de la tierra
+                    for lx in range(rect.x + 16, rect.right - 24, 64):
+                        ly = rect.y + 3
+                        pygame.draw.rect(surface, (72, 70, 78), (lx, ly, 16, 8), border_radius=1)
+                        pygame.draw.rect(surface, (30, 26, 32), (lx, ly, 16, 8), 1, border_radius=1)
+                        pygame.draw.line(surface, (20, 16, 22), (lx + 5, ly + 1), (lx + 9, ly + 7), 1)
+                        pygame.draw.line(surface, (115, 120, 130), (lx + 1, ly + 1), (lx + 15, ly + 1), 1)
 
                     # Textura de tierra con gravilla y piedritas
                     for gx in range(rect.x + 8, rect.right - 6, 16):
@@ -674,26 +720,50 @@ class Nivel:
                         pygame.draw.rect(surface, (54, 42, 36), (rx + 10, ry + 2, 4, 3))
             else:
                 # Plataformas sólidas elevadas (bloques de sillería de piedra gótica)
-                if self.tema == "osario":
+                if tema == "osario":
                     color_cuerpo = (74, 52, 50)
                     color_marco = (36, 22, 24)
                     color_borde_sup = (168, 140, 130)
-                elif self.tema == "cripta":
+                elif tema == "cripta":
                     color_cuerpo = (52, 56, 68)
                     color_marco = (24, 26, 34)
-                    color_borde_sup = (120, 128, 146)
+                    color_borde_sup = (140, 150, 172)
                 else:
                     color_cuerpo = (64, 62, 70)
                     color_marco = (26, 24, 30)
                     color_borde_sup = (145, 148, 160)
 
                 pygame.draw.rect(surface, color_cuerpo, rect, border_radius=2)
+                # Juntas de mortero oscuras
                 pygame.draw.rect(surface, color_marco, rect, 2, border_radius=2)
+                # Bisel de luz lunar superior
                 pygame.draw.line(surface, color_borde_sup, (rect.x + 2, rect.y + 1), (rect.right - 2, rect.y + 1), 2)
+                # Líneas de sillería vertical
                 for gx in range(rect.x + TILE, rect.right, TILE):
                     pygame.draw.line(surface, color_marco, (gx, rect.y + 3), (gx, rect.bottom - 2), 1)
                 if rect.height >= TILE * 2:
                     pygame.draw.line(surface, color_marco, (rect.x + 3, rect.centery), (rect.right - 4, rect.centery), 1)
+
+                # Salitre mineral colgante en la Cripta
+                if tema == "cripta":
+                    for sx in range(rect.x + 10, rect.right - 8, 28):
+                        salt_alt = 3 + ((sx * 7) % 5)
+                        pygame.draw.line(surface, SALITRE_CRIPTA, (sx, rect.bottom), (sx, rect.bottom + salt_alt), 2)
+                        pygame.draw.circle(surface, SALITRE_CRIPTA, (sx, rect.bottom + salt_alt), 1)
+
+                # Catacumbas del Osario: nichos esculpidos repletos de fémures y calaveras
+                if tema == "osario" and rect.width >= 32 and rect.height >= 24:
+                    for nx in range(rect.x + 8, rect.right - 20, 36):
+                        ny = rect.y + 5
+                        if ny + 18 <= rect.bottom - 2:
+                            pygame.draw.rect(surface, (20, 12, 14), (nx, ny + 4, 18, 12), border_radius=3)
+                            pygame.draw.circle(surface, (20, 12, 14), (nx + 9, ny + 4), 7)
+                            pygame.draw.circle(surface, HUESO_MARFIL, (nx + 9, ny + 5), 4)
+                            pygame.draw.rect(surface, HUESO_MARFIL, (nx + 7, ny + 7, 5, 3))
+                            pygame.draw.circle(surface, (20, 12, 14), (nx + 8, ny + 5), 1)
+                            pygame.draw.circle(surface, (20, 12, 14), (nx + 10, ny + 5), 1)
+                            pygame.draw.line(surface, HUESO, (nx + 4, ny + 13), (nx + 14, ny + 9), 1)
+                            pygame.draw.line(surface, HUESO, (nx + 4, ny + 9), (nx + 14, ny + 13), 1)
 
     # --- Función dibujar_decoraciones --- #
     def dibujar_decoraciones(self, surface, camara):
@@ -783,6 +853,7 @@ class Nivel:
 
     # --- Función dibujar_peligros --- #
     def dibujar_peligros(self, surface, camara):
+        tiempo = pygame.time.get_ticks() / 1000.0
         for peligro in self.peligros:
             if not camara.is_on_screen(peligro):
                 continue
@@ -790,56 +861,93 @@ class Nivel:
             cantidad = 3
             ancho = max(1, rect.width // cantidad)
 
-            # Base de piedra oscura
+            # Hoja de péndulo oscilante de Poe suspendida sobre fosos de pinchos
+            if rect.width >= 32 and rect.y > 60:
+                angulo = math.sin(tiempo * 2.2 + rect.x * 0.04) * 0.42
+                pivote_x = rect.centerx
+                pivote_y = max(-20, rect.top - 62)
+                longitud = 52
+                extremo_x = int(pivote_x + math.sin(angulo) * longitud)
+                extremo_y = int(pivote_y + math.cos(angulo) * longitud)
+
+                # Varilla de hierro forjado
+                pygame.draw.line(surface, (42, 38, 48), (pivote_x, pivote_y), (extremo_x, extremo_y), 2)
+                # Hoja curva de media luna afilada
+                pygame.draw.arc(
+                    surface,
+                    (160, 165, 180),
+                    (extremo_x - 13, extremo_y - 6, 26, 14),
+                    3.14,
+                    0.0,
+                    2,
+                )
+                pygame.draw.arc(
+                    surface,
+                    (225, 230, 240),
+                    (extremo_x - 11, extremo_y - 5, 22, 12),
+                    3.14,
+                    0.0,
+                    1,
+                )
+                pygame.draw.circle(surface, CARMESÍ_SANGRE, (extremo_x, extremo_y + 3), 2)
+
+            # Base de piedra oscura corroída
             pygame.draw.rect(
                 surface,
-                (44, 38, 42),
+                (38, 32, 36),
                 (rect.x, rect.bottom - 5, rect.width, 5),
                 border_radius=2,
             )
-            # Mancha de sangre al pie de cada grupo
+            # Mancha de sangre seca coagulada
             pygame.draw.ellipse(
                 surface,
-                (*SANGRE, 140) if hasattr(SANGRE, '__len__') and len(SANGRE) == 3 else SANGRE,
-                (rect.x + rect.width // 2 - 7, rect.bottom - 3, 14, 4),
+                CARMESÍ_SANGRE,
+                (rect.x + rect.width // 2 - 8, rect.bottom - 3, 16, 4),
             )
 
             for i in range(cantidad):
                 x = rect.x + i * ancho
                 cx = x + ancho // 2
 
-                # Puntas óseas: triángulo oscuro de base (sombra)
+                # Puntas de hierro forjado: silueta oscura
                 pygame.draw.polygon(
                     surface,
-                    (80, 72, 68),
+                    (48, 40, 38),
                     [
                         (x + 2, rect.bottom - 4),
                         (cx + 1, rect.top + 2),
                         (x + ancho - 1, rect.bottom - 4),
                     ],
                 )
-                # Triángulo principal (gris piedra)
+                # Triángulo metálico con herrumbre
                 pygame.draw.polygon(
                     surface,
-                    (148, 140, 128),
+                    (112, 66, 50),
                     [
                         (x + 1, rect.bottom - 4),
                         (cx, rect.top + 1),
                         (x + ancho - 2, rect.bottom - 4),
                     ],
                 )
-                # Filo brillante (tono hueso)
+                # Filo cortante de acero frío
                 pygame.draw.line(
                     surface,
-                    (220, 210, 190),
+                    (190, 185, 200),
                     (cx, rect.top + 2),
                     (cx - 1, rect.bottom - 6),
                     1,
                 )
-                # Mancha de sangre individual (pequeño círculo)
+                # Manchas de sangre seca en la punta
+                pygame.draw.line(
+                    surface,
+                    CARMESÍ_SANGRE,
+                    (cx, rect.top + 2),
+                    (cx, rect.top + 6),
+                    1,
+                )
                 pygame.draw.circle(
                     surface,
-                    SANGRE,
+                    CARMESÍ_SANGRE,
                     (cx, rect.bottom - 5),
                     2,
                 )
