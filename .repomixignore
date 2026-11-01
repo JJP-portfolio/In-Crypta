@@ -1,0 +1,35 @@
+# Repomix ignore patterns para IN CRYPTA (PlataformeroMDA)
+
+# Carpeta de salida de Repomix
+repomix/
+**/repomix/**
+
+# Capturas / Imágenes
+capturas/
+**/*.png
+**/*.jpg
+**/*.jpeg
+**/*.ico
+
+# Audio y fuentes binarias
+**/*.wav
+**/*.ogg
+**/*.mp3
+**/*.ttf
+**/*.woff*
+
+# Exportación y builds de GDevelop (evita saturar el contexto de IA con JSONs gigantes y runtime compilado)
+export/gdevelop_nativo/build/
+export/gdevelop_nativo/assets/
+export/gdevelop_nativo/*.json
+export/gdevelop/game_data.json
+
+# Referencias web externas descargadas
+docs/referencias/in_crypta/incrypta.html
+
+# Cache y entornos virtuales
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+repomix-output.*
