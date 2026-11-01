@@ -146,7 +146,7 @@ def escena_tutorial() -> EscenaSpec:
         hud_sin_pala=_hud(False, 2),
         fondo="FondoTutorial",
         pala_inicial=False,
-        siguiente="Titulo",
+        siguiente="Nivel 1",
         destino_muerte="Derrota",
         reiniciar_vidas=True,
         es_tutorial=True,
