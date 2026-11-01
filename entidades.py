@@ -358,7 +358,6 @@ class Jugador:
             or _tecla_activa(teclas, pygame.K_SPACE)
             or _tecla_activa(teclas, pygame.K_UP)
             or _tecla_activa(teclas, pygame.K_w)
-            or _tecla_activa(teclas, pygame.K_z)
         )
         if not self.en_suelo and abs(self.vy) < APEX_VY_UMBRAL and salto_mantenido:
             factor_gravedad = min(factor_gravedad, APEX_GRAVEDAD_FACTOR)

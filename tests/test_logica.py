@@ -1548,6 +1548,18 @@ def probar_menu_configuracion_y_presets_teclado():
 
 
 # --- Ejecución --- #
+def probar_apex_no_se_activa_con_z():
+    jugador = Jugador(100, 300)
+    jugador.en_suelo = False
+    jugador.vy = -50.0
+    jugador.manteniendo_salto = False
+    teclas = {pygame.K_z: True}
+    jugador.actualizar(1 / 60, teclas, [])
+    esperado = -50.0 + GRAVEDAD * (1 / 60)
+    assert abs(jugador.vy - esperado) < 1e-4, "Z no debe activar el ápice"
+    print("apex no se activa con Z: OK")
+
+
 if __name__ == "__main__":
     probar_niveles()
     probar_parser()
@@ -1591,5 +1603,6 @@ if __name__ == "__main__":
     probar_prioridad_3_ui_ux()
     probar_fisica_salto_dash_game_feel()
     probar_menu_configuracion_y_presets_teclado()
+    probar_apex_no_se_activa_con_z()
     probar_juego_headless()
     print("\nTESTS_INCRYPTA_OK")
