@@ -51,7 +51,7 @@
       <fix id="FIX-PHYS-01" target="entidades.py &amp; config.py">
         <issue>Causas de caída abrupta en saltos y falta de respuesta dinámica en el aire.</issue>
         <resolution>
-          - Apex Hang-Time: Si not self.en_suelo, mantiene tecla de salto y |vy| &lt; 95.0 px/s, aplicar 55% de gravedad (0.55 * GRAVEDAD).
+          - Apex Hang-Time: Si not self.en_suelo, mantiene tecla de salto y |vy| &lt; 70 px/s, aplicar 55% de gravedad (0.55 * GRAVEDAD).
           - Coyote Time: Ventana de 0.10s tras dejar una plataforma en la que el salto permanece activo.
           - Jump Buffer: Registro de pulsación anticipada de salto durante 0.12s.
         </resolution>
@@ -59,7 +59,7 @@
       <fix id="FIX-PHYS-02" target="entidades.py">
         <issue>Frenazo brusco en el Dash ("pared invisible" al terminar la aceleración horizontal).</issue>
         <resolution>
-          Al finalizar el Dash (dash_tiempo == 0), se activa post_dash_tiempo = 0.06s conservando el 100% de la velocidad horizontal (vx = dash_dir * VELOCIDAD) y 50% de gravedad.
+          Al finalizar el Dash (dash_tiempo == 0), se activa post_dash_tiempo = 0.06s y la velocidad horizontal pasa de DASH_VELOCIDAD a VELOCIDAD al terminar el dash (criterio D4), y 50% de gravedad.
         </resolution>
       </fix>
       <fix id="FIX-PHYS-03" target="entidades.py">
@@ -96,9 +96,9 @@
       </fix>
       <fix id="FIX-GD-03" target="tools/integrar_assets_gdevelop.py">
         <issue>Hitbox genérica (32x32 px) causaba colisiones injustas en plataformas ajustadas.</issue>
-        <resolution>Inyectada customCollisionMask de 24x30 px centrada en el objeto Jugador, implementada en tools/integrar_assets_gdevelop.py (MASK_COLISION_JUGADOR).</resolution>
+        <resolution>Inyectada customCollisionMask de 24x30 px centrada en el objeto Jugador, implementada en integrar_assets (ver análisis H9) (MASK_COLISION_JUGADOR).</resolution>
       </fix>
-      <fix id="FIX-GD-04" target="tools/exportador/hoja_eventos.py">
+      <fix id="FIX-GD-04" target="tools/integrar_assets_gdevelop.py">
         <issue>Falta de correspondencia en las 16 animaciones multipose de Pixel-Art.</issue>
         <resolution>Enlazados en la hoja de eventos los índices de animación de GDevelop para Run, Jump, Caida, Dash, Idle y Ataque.</resolution>
       </fix>
@@ -112,7 +112,7 @@
       <title>Máquina de Estados de Fase 2 del Jefe Final ('B' - El Custodio)</title>
       <description>
         Verificar la transición al 50% de HP del Jefe Final en Nivel 3. Confirmar que el jefe despliegue su escudero espectral
-        y que los ataques sin el Power-Up de Guadaña ('X') generen rechazo (parry) con partículas de chispas y SFX metálico.
+        y que los ataques sin el Power-Up de Guadaña ('X')         generen rechazo (parry) con partículas de chispas y SFX metálico con `rebote_pala (alias rebote_metalico)`.
       </description>
       <file>entidades.py / juego.py</file>
     </item>
@@ -168,7 +168,7 @@
    - Si el jugador golpea sin la Guadaña ('X'), debe disparar SFX `escudo_parry` y emitir partículas de chispas sin restar vida al Boss.
 
 3. **Verificación de la Física Game Feel (Fase 1):**
-   - Confirma la presencia de Apex Hang-Time (gravedad 0.55 cuando $|v_y| < 95.0$).
+   - Confirma la presencia de Apex Hang-Time (gravedad 0.55 cuando $|v_y| < 70$).
    - Confirma el Post-Dash Float ($0.06\text{ s}$ a 50% de gravedad conservando $v_x$).
    - Confirma que el pisotón resetea `dash_usos_aire = 1`.
 
