@@ -11,6 +11,8 @@ import pygame
 
 from config import (
     AMARILLO,
+    APEX_GRAVEDAD_FACTOR,
+    APEX_VY_UMBRAL,
     ATAQUE_ALCANCE,
     ATAQUE_ALCANCE_MEJORADO,
     ATAQUE_ALTO,
@@ -19,11 +21,13 @@ from config import (
     AZUL_OSCURO,
     BLANCO,
     CARMESÍ_SANGRE,
+    CORNER_NUDGE_TECHO,
     COYOTE_TIME,
     CORTE_SALTO,
     CREMA,
     DASH_COOLDOWN,
     DASH_DURACION,
+    DASH_JUMP_IMPULSO_X,
     DASH_USOS_AIRE,
     DASH_VELOCIDAD,
     ENEMIGO_ALTO,
@@ -59,6 +63,8 @@ from config import (
     NEGRO_NOCHE,
     ORO,
     ORO_LITÚRGICO,
+    POST_DASH_DURACION,
+    POST_DASH_GRAVEDAD_FACTOR,
     ROJO,
     SALTO,
     SANGRE,
@@ -77,6 +83,17 @@ from particulas import ParticulaPluma
 # --- Función auxiliar: recortar un valor entre mínimo y máximo --- #
 def limitar(valor, minimo, maximo):
     return max(minimo, min(valor, maximo))
+
+
+def _tecla_activa(teclas, key):
+    if teclas is None:
+        return False
+    if isinstance(teclas, dict):
+        return bool(teclas.get(key, False))
+    try:
+        return bool(teclas[key])
+    except (IndexError, TypeError, KeyError):
+        return False
 
 
 # --- Caché de iluminación radial y siluetas para 60 FPS estables --- #
@@ -181,6 +198,10 @@ class Jugador:
         self.dash_cooldown = 0.0
         self.dash_usos_aire = DASH_USOS_AIRE
         self.dash_direccion = 1
+        self.post_dash_tiempo = 0.0
+        self.manteniendo_salto = False
+        self.teclas_izq = (pygame.K_a, pygame.K_LEFT)
+        self.teclas_der = (pygame.K_d, pygame.K_RIGHT)
 
         self.salto_recien = False
         self.dash_recien = False
@@ -201,10 +222,12 @@ class Jugador:
     def pedir_salto(self):
         """Se llama en KEYDOWN: deja preparado el salto."""
         self.buffer_salto = JUMP_BUFFER
+        self.manteniendo_salto = True
 
     # --- Función soltar_salto --- #
     def soltar_salto(self):
         """Se llama en KEYUP: corta el salto si todavía sube."""
+        self.manteniendo_salto = False
         if self.vy < 0:
             self.vy *= CORTE_SALTO
 
@@ -295,13 +318,28 @@ class Jugador:
             self.ataque_cooldown = max(0.0, self.ataque_cooldown - dt)
         if self.ataque_tiempo > 0:
             self.ataque_tiempo = max(0.0, self.ataque_tiempo - dt)
+        if self.post_dash_tiempo > 0:
+            self.post_dash_tiempo = max(0.0, self.post_dash_tiempo - dt)
+
+        # Actualizar siempre temporizadores (buffer_salto, coyote) antes del chequeo de dash
+        self.actualizar_temporizadores(dt)
 
         if self.dash_tiempo > 0:
-            self.actualizar_dash(dt, solidos)
-            return
+            # Dash-Jump: Salto impulsado si se presiona salto durante un dash en suelo
+            if self.buffer_salto > 0 and (self.en_suelo or self.coyote > 0):
+                self.dash_tiempo = 0.0
+                self.post_dash_tiempo = POST_DASH_DURACION
+                self.vy = SALTO
+                self.vx = self.dash_direccion * VELOCIDAD * DASH_JUMP_IMPULSO_X
+                self.en_suelo = False
+                self.coyote = 0.0
+                self.buffer_salto = 0.0
+                self.salto_recien = True
+            else:
+                self.actualizar_dash(dt, solidos)
+                return
 
         self.actualizar_horizontal(teclas)
-        self.actualizar_temporizadores(dt)
 
         if self.buffer_salto > 0 and (self.en_suelo or self.coyote > 0):
             self.vy = SALTO
@@ -310,7 +348,22 @@ class Jugador:
             self.buffer_salto = 0.0
             self.salto_recien = True
 
-        self.vy = min(MAX_CAIDA, self.vy + GRAVEDAD * dt)
+        # Gravedad con Apex Hang-Time (flotación en cima de salto) y Post-Dash Float
+        factor_gravedad = 1.0
+        if self.post_dash_tiempo > 0:
+            factor_gravedad = min(factor_gravedad, POST_DASH_GRAVEDAD_FACTOR)
+
+        salto_mantenido = (
+            self.manteniendo_salto
+            or _tecla_activa(teclas, pygame.K_SPACE)
+            or _tecla_activa(teclas, pygame.K_UP)
+            or _tecla_activa(teclas, pygame.K_w)
+            or _tecla_activa(teclas, pygame.K_z)
+        )
+        if not self.en_suelo and abs(self.vy) < APEX_VY_UMBRAL and salto_mantenido:
+            factor_gravedad = min(factor_gravedad, APEX_GRAVEDAD_FACTOR)
+
+        self.vy = min(MAX_CAIDA, self.vy + GRAVEDAD * factor_gravedad * dt)
 
         self.mover_x(self.vx * dt, solidos)
         self.en_suelo = False
@@ -338,24 +391,25 @@ class Jugador:
             self.dash_usos_aire = DASH_USOS_AIRE
 
         if self.dash_tiempo == 0:
-            self.vx = self.dash_direccion * VELOCIDAD * 0.55
+            # Conservación de momentum y float post-dash estilo Celeste
+            self.vx = self.dash_direccion * VELOCIDAD
+            self.post_dash_tiempo = POST_DASH_DURACION
 
     # --- Función actualizar_temporizadores --- #
     def actualizar_temporizadores(self, dt):
-        # Añadir temporizador de buffer de salto para mejor feedback al jugador
         if self.buffer_salto > 0:
             self.buffer_salto = max(0.0, self.buffer_salto - dt)
-        
-        # Mejor coyote time - más consistente
         if self.en_suelo:
-            self.coyote = 0.18  # Coincidir con config.py
+            self.coyote = COYOTE_TIME
         else:
             self.coyote = max(0.0, self.coyote - dt)
 
     # --- Función actualizar_horizontal --- #
     def actualizar_horizontal(self, teclas):
-        izquierda = teclas[pygame.K_LEFT]
-        derecha = teclas[pygame.K_d] or teclas[pygame.K_RIGHT]
+        teclas_i = getattr(self, "teclas_izq", (pygame.K_a, pygame.K_LEFT))
+        teclas_d = getattr(self, "teclas_der", (pygame.K_d, pygame.K_RIGHT))
+        izquierda = any(_tecla_activa(teclas, k) for k in teclas_i)
+        derecha = any(_tecla_activa(teclas, k) for k in teclas_d)
 
         if izquierda and not derecha:
             self.vx = -VELOCIDAD
@@ -364,15 +418,11 @@ class Jugador:
             self.vx = VELOCIDAD
             self.direccion = 1
         else:
-            self.vx = 0.0
-
-    # --- Función actualizar_temporizadores --- #
-    def actualizar_temporizadores(self, dt):
-        self.buffer_salto = max(0.0, self.buffer_salto - dt)
-        if self.en_suelo:
-            self.coyote = COYOTE_TIME
-        else:
-            self.coyote = max(0.0, self.coyote - dt)
+            if self.post_dash_tiempo > 0:
+                # Conserva impulso horizontal durante la ventana post-dash float
+                pass
+            else:
+                self.vx = 0.0
 
     # --- Función mover_x --- #
     def mover_x(self, dx, solidos):
@@ -422,17 +472,38 @@ class Jugador:
         self.y += dy
         self.rect.y = round(self.y)
 
-        for solido in solidos:
-            if not self.rect.colliderect(solido):
-                continue
-            if dy > 0:
-                self.rect.bottom = solido.top
-                self.en_suelo = True
-            elif dy < 0:
-                self.rect.top = solido.bottom
-            self.y = float(self.rect.y)
-            self.vy = 0.0
-            break
+        colision = any(self.rect.colliderect(s) for s in solidos)
+        # Jump Corner Correction (Tolerancia de esquinas en techo estilo Celeste):
+        # Si sube y roza la esquina de un bloque superior por <= 5 px, deslizarlo suavemente hacia el hueco
+        if colision and dy < 0:
+            tolerancia = CORNER_NUDGE_TECHO
+            direcciones_dx = [1, -1] if self.direccion >= 0 else [-1, 1]
+            corregido = False
+            for sign in direcciones_dx:
+                for d in range(1, tolerancia + 1):
+                    shift = sign * d
+                    test_rect = self.rect.move(shift, 0)
+                    if not any(test_rect.colliderect(s) for s in solidos):
+                        self.x += shift
+                        self.rect.x = round(self.x)
+                        colision = False
+                        corregido = True
+                        break
+                if corregido:
+                    break
+
+        if colision:
+            for solido in solidos:
+                if not self.rect.colliderect(solido):
+                    continue
+                if dy > 0:
+                    self.rect.bottom = solido.top
+                    self.en_suelo = True
+                elif dy < 0:
+                    self.rect.top = solido.bottom
+                self.y = float(self.rect.y)
+                self.vy = 0.0
+                break
 
         if dy >= 0 and not self.en_suelo:
             sonda = self.rect.move(0, 1)
@@ -456,6 +527,8 @@ class Jugador:
         self.dash_tiempo = 0.0
         self.dash_cooldown = 0.0
         self.dash_usos_aire = DASH_USOS_AIRE
+        self.post_dash_tiempo = 0.0
+        self.manteniendo_salto = False
         self.salto_recien = False
         self.dash_recien = False
         self.ataque_tiempo = 0.0
@@ -736,17 +809,25 @@ class Jugador:
         # 7. Farol litúrgico diegético aditivo
         farol_x = centro_x + self.direccion * 11
         farol_y = rect.y + 19
-        color_halo = VIOLETA if getattr(self, "rango_ataque_mejorado", False) else FAROL_CÁLIDO
-        halo_farol = obtener_estampa_luz(90, color_halo, 35)
-        surface.blit(halo_farol, (farol_x - 90, farol_y - 90), special_flags=pygame.BLEND_RGB_ADD)
+        tiene_consagrado = getattr(self, "rango_ataque_mejorado", False)
+        color_halo = (205, 80, 255) if tiene_consagrado else FAROL_CÁLIDO
+        halo_farol = obtener_estampa_luz(95, color_halo, 42 if tiene_consagrado else 35)
+        surface.blit(halo_farol, (farol_x - 95, farol_y - 95), special_flags=pygame.BLEND_RGB_ADD)
 
         # Montura de bronce del farol colgante
         pygame.draw.circle(surface, (115, 82, 34), (farol_x, farol_y), 6)
         pygame.draw.circle(surface, (165, 120, 50), (farol_x, farol_y), 6, 1)
-        # Llama diegética: chispa turquesa brillante si el dash está listo, ámbar si en cooldown/gastado
-        color_llama = TURQUESA_ÁNIMA if (self.tiene_dash and self.dash_listo()) else FAROL_CÁLIDO
-        pygame.draw.circle(surface, color_llama, (farol_x, farol_y), 3)
-        pygame.draw.circle(surface, BLANCO, (farol_x, farol_y), 1)
+
+        # Llama diegética: chispa turquesa brillante si dash_listo(), ámbar tenue si en cooldown o gastado
+        dash_disponible = self.tiene_dash and self.dash_listo()
+        if dash_disponible:
+            color_llama = (70, 235, 220)  # Turquesa brillante
+            pygame.draw.circle(surface, color_llama, (farol_x, farol_y), 4)
+            pygame.draw.circle(surface, (235, 255, 255), (farol_x, farol_y), 2)  # Chispa brillante
+        else:
+            color_llama = (175, 115, 45)  # Ámbar tenue
+            pygame.draw.circle(surface, color_llama, (farol_x, farol_y), 3)
+            pygame.draw.circle(surface, (205, 145, 55), (farol_x, farol_y), 1)  # Centro ámbar tenue
         # Cadena de sujeción
         pygame.draw.line(
             surface,
@@ -1295,9 +1376,10 @@ class OndaCustodio:
 # --- Clase Custodio --- #
 class Custodio:
     """Jefe final: 2 fases.
-    Fase 1 (vida 6->3): pala+pistón lo dañan, 2 ondas por golpe.
-    Fase 2 (vida 3->0): SOLO pisotón lo daña (pala rebota), 3 ondas,
-    ventana vulnerable más corta, carga horizontal telegrafíada.
+    Fase 1 (vida 6->3): pala y pisotón lo dañan en su ventana vulnerable, 2 ondas por golpe.
+    Fase 2 (vida 3->0): coraza espectral; pala y pisotón SOLO lo dañan si el jugador
+    posee la Guadaña Consagrada ('X'). 4 ondas, ventana vulnerable más corta,
+    carga horizontal telegrafiada.
     """
 
     def __init__(self, rect, minimo_x, maximo_x):
@@ -1372,8 +1454,9 @@ class Custodio:
 
     # --- Función recibir_golpe_pala --- #
     def recibir_golpe_pala(self, rango_mejorado=False):
-        """Pala: funciona en Fase 1. En Fase 2 requiere la Guadaña Consagrada (rango_mejorado)."""
-        if not self.vivo:
+        """Pala: funciona en Fase 1. En Fase 2 requiere la Guadaña Consagrada (rango_mejorado).
+        En ambas fases solo daña dentro de la ventana de vulnerabilidad."""
+        if not self.vivo or not self.vulnerable:
             return False
         if self.fase >= 2 and not rango_mejorado:
             return False  # Pala rebota en Fase 2 sin power-up X
@@ -1381,8 +1464,9 @@ class Custodio:
 
     # --- Función recibir_pisaton --- #
     def recibir_pisaton(self, rango_mejorado=False):
-        """Pisotón: funciona en Fase 1. En Fase 2 requiere la Guadaña Consagrada (rango_mejorado)."""
-        if not self.vivo:
+        """Pisotón: funciona en Fase 1. En Fase 2 requiere la Guadaña Consagrada (rango_mejorado).
+        En ambas fases solo daña dentro de la ventana de vulnerabilidad."""
+        if not self.vivo or not self.vulnerable:
             return False
         if self.fase >= 2 and not rango_mejorado:
             return False  # Pisotón rebota en Fase 2 sin power-up X
@@ -1629,6 +1713,7 @@ class MiniJefe:
         self.tiempo_flash = 0.0
         self.almas_otorgadas = False
         self.vx = 0.0
+        self.aviso_recien = False
 
     def reiniciar(self):
         self.rect = pygame.Rect(self.inicial_rect)
@@ -1644,9 +1729,11 @@ class MiniJefe:
         self.tiempo_flash = 0.0
         self.almas_otorgadas = False
         self.vx = 0.0
+        self.aviso_recien = False
 
     def _aplicar_dano(self):
-        if not self.vivo or self.invulnerable > 0:
+        # Patrón justo: solo recibe daño en su ventana de cansancio (1.3 s).
+        if not self.vivo or self.invulnerable > 0 or not self.vulnerable:
             return False
         self.vida -= 1
         self.tiempo_flash = 0.12
@@ -1671,6 +1758,7 @@ class MiniJefe:
         return self._aplicar_dano()
 
     def actualizar(self, dt, jugador):
+        self.aviso_recien = False
         if not self.vivo:
             return
 
@@ -1693,6 +1781,7 @@ class MiniJefe:
                 self.estado = "telegrafo"
                 self.temporizador = MINIJEFE_TELEGRAFO
                 self.vx = 0.0
+                self.aviso_recien = True
 
         elif self.estado == "telegrafo":
             self.vulnerable = False
@@ -2171,18 +2260,25 @@ class PalaRecogible:
 
 # --- Clase RangoPowerUp --- #
 class RangoPowerUp:
-    """Power-up que mejora el alcance del ataque de pala."""
+    """Power-up que mejora el alcance del ataque de pala (Guadaña Consagrada, 'X').
+
+    Mientras `sellado` sea True (el Carcelero del Osario sigue vivo) el altar
+    no puede recogerse: el Mini-Boss despeja el camino al morir.
+    """
 
     def __init__(self, rect):
         self.rect = pygame.Rect(rect)
         self.inicial_rect = pygame.Rect(rect)
         self.recogida = False
+        self.sellado = False
 
     def reiniciar(self):
         self.rect = pygame.Rect(self.inicial_rect)
         self.recogida = False
 
     def actualizar(self, jugador):
+        if self.sellado:
+            return False
         if not self.recogida and self.rect.colliderect(jugador.rect):
             self.recogida = True
             jugador.rango_ataque_mejorado = True
@@ -2194,6 +2290,17 @@ class RangoPowerUp:
             return
 
         rect = camara.aplicar_rect(self.rect)
+        if self.sellado:
+            # Altar sellado: guadaña apagada tras cadenas cruzadas.
+            cx, cy = rect.centerx, rect.centery
+            pygame.draw.circle(surface, (60, 40, 70), (cx, cy), 14, 1)
+            pygame.draw.line(surface, (110, 70, 130), (cx - 6, cy - 6), (cx + 6, cy + 6), 2)
+            pygame.draw.line(surface, (110, 70, 130), (cx + 6, cy + 6), (cx + 10, cy + 2), 2)
+            pygame.draw.line(surface, (110, 70, 130), (cx - 6, cy - 6), (cx - 2, cy - 10), 2)
+            pygame.draw.line(surface, (130, 125, 140), (cx - 12, cy - 12), (cx + 12, cy + 12), 2)
+            pygame.draw.line(surface, (130, 125, 140), (cx + 12, cy - 12), (cx - 12, cy + 12), 2)
+            return
+
         flotacion = int(math.sin(tiempo * 4 + rect.x * 0.02) * 3)
         rect.y += flotacion
 

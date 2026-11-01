@@ -18,6 +18,7 @@ from config import (
     ALMAS_MANTO_FAROL,
     ALMAS_POR_VIDA,
     ALTO,
+    ATAQUE_ALCANCE_MEJORADO,
     ATAQUE_COOLDOWN,
     AMARILLO,
     ANCHO,
@@ -94,6 +95,49 @@ from particulas import SistemaParticulas
 
 _CACHE_LUCES_JUEGO = {}
 
+# --- Presets de Configuración de Teclado y Controles ---
+PRESET_MODERNO = {
+    "id": "moderno",
+    "nombre": "Preset 1: WASD Moderno (WASD + Espacio + Shift + J/Click)",
+    "etiqueta": "WASD Moderno",
+    "desc": "Estilo PC plataformero: WASD/Flechas para mover, Espacio salto, Shift dash, J/Z/Click ataque",
+    "teclas_izq": (pygame.K_a, pygame.K_LEFT),
+    "teclas_der": (pygame.K_d, pygame.K_RIGHT),
+    "teclas_salto": (pygame.K_SPACE, pygame.K_w, pygame.K_UP),
+    "teclas_dash": (pygame.K_LSHIFT, pygame.K_RSHIFT, pygame.K_x),
+    "teclas_ataque": (pygame.K_j, pygame.K_z, pygame.K_k),
+    "mouse_ataque": True,
+    "resumen": "Mov: WASD/←→ | Salto: ESPACIO/W | Dash: SHIFT/X | Ataque: J/Z/Click",
+}
+
+PRESET_RETRO = {
+    "id": "retro",
+    "nombre": "Preset 2: Retro Arcada (Flechas + Z/X/C)",
+    "etiqueta": "Retro Arcada (Z-X-C)",
+    "desc": "Estilo clásico de consola: Flechas para mover, Z = Salto, X = Dash, C = Ataque",
+    "teclas_izq": (pygame.K_LEFT, pygame.K_a),
+    "teclas_der": (pygame.K_RIGHT, pygame.K_d),
+    "teclas_salto": (pygame.K_z, pygame.K_SPACE, pygame.K_UP),
+    "teclas_dash": (pygame.K_x, pygame.K_LSHIFT, pygame.K_RSHIFT),
+    "teclas_ataque": (pygame.K_c, pygame.K_j, pygame.K_z),
+    "mouse_ataque": True,
+    "resumen": "Mov: Flechas/AD | Salto: Z/ESPACIO | Dash: X/SHIFT | Ataque: C/J/Click",
+}
+
+PRESETS_TECLADO = (PRESET_MODERNO, PRESET_RETRO)
+
+# Esqueleto de opciones futuras ampliables:
+OPCIONES_CALIDAD = ("Alta", "Media", "Baja")
+OPCIONES_HUD = ("Completo", "Compacto", "Inmersivo")
+
+# Constantes base de compatibilidad
+TECLAS_SALTO = PRESET_MODERNO["teclas_salto"]
+TECLAS_ATAQUE = PRESET_MODERNO["teclas_ataque"]
+
+# Tolerancia vertical del pisotón: rect.bottom <= enemigo.rect.top + 18.
+TOLERANCIA_PISOTON = 18
+ALMAS_MINIJEFE = 5
+
 
 def _obtener_luz_perforacion(radio):
     clave = ("sub", radio)
@@ -110,21 +154,22 @@ def _obtener_luz_perforacion(radio):
     return surf
 
 
-def _obtener_luz_calida(radio):
-    clave = ("add", radio)
+def _obtener_luz_calida(radio, color=(240, 196, 90), factor_mult=0.16):
+    clave = ("add", radio, tuple(color), factor_mult)
     surf = _CACHE_LUCES_JUEGO.get(clave)
     if surf is None:
         surf = pygame.Surface((radio * 2, radio * 2), pygame.SRCALPHA)
         surf.fill((0, 0, 0, 0))
+        cr, cg, cb = color
         for r in range(radio, 0, -2):
             norm = r / radio
             factor = (1.0 - norm * norm) ** 1.5
             pygame.draw.circle(
                 surf,
                 (
-                    int(240 * factor * 0.16),
-                    int(196 * factor * 0.16),
-                    int(90 * factor * 0.16),
+                    int(cr * factor * factor_mult),
+                    int(cg * factor * factor_mult),
+                    int(cb * factor * factor_mult),
                 ),
                 (radio, radio),
                 r,
@@ -179,6 +224,7 @@ class Juego:
         self.almas_consagradas = 0
         self.almas_vida_consagradas = 0
         self.aviso_jefe = 0.0
+        self.hud_aviso_altar = 0.0
         self.sala_prueba = False
         self.sala_prueba_indice = None
         self.es_tutorial = False
@@ -195,6 +241,16 @@ class Juego:
         self.tiempo_menu = 0.0
         self.superficie_mundo = pygame.Surface((VIRTUAL_ANCHO, VIRTUAL_ALTO))
 
+        # Configuración del santuario: Presets de teclado y esqueleto de opciones
+        self.preset_teclado_idx = 0
+        self.config_opcion = 0
+        self.config_calidad_idx = 0  # 0: Alta, 1: Media, 2: Baja
+        self.config_hud_idx = 0      # 0: Completo, 1: Compacto, 2: Inmersivo
+        self.origen_configuracion = "menu"
+        self.teclas_salto = PRESETS_TECLADO[0]["teclas_salto"]
+        self.teclas_dash = PRESETS_TECLADO[0]["teclas_dash"]
+        self.teclas_ataque = PRESETS_TECLADO[0]["teclas_ataque"]
+
         if sala_inicial is not None:
             self.cargar_sala_prueba(sala_inicial)
         else:
@@ -207,12 +263,15 @@ class Juego:
         self.sala_prueba = sala is not None
         self.sala_prueba_indice = sala
         self.es_tutorial = False
-        jugador_previo = getattr(self, "jugador", None)
         if sala is None:
             self.nivel_indice = indice
             datos = NIVELES[indice]
-            tiene_pala = (jugador_previo.tiene_pala if jugador_previo else False) or (indice >= 2)
-            tiene_dash = (jugador_previo.tiene_dash if jugador_previo else False) or (indice >= 1)
+            # Progresión de habilidades fija por nivel (Matriz MDA):
+            #   Nivel 1 (0): sin dash ni pala → recoge 'D' a mitad del nivel.
+            #   Nivel 2 (1): inicia con dash → recoge el arma 'W'.
+            #   Nivel 3 (2): inicia con dash y pala → 'X' tras el Mini-Boss.
+            tiene_pala = indice >= 2
+            tiene_dash = indice >= 1
         else:
             datos = SALAS_PRUEBA[sala]
             self.nivel_indice = datos["nivel"]
@@ -229,6 +288,7 @@ class Juego:
         self.jugador = Jugador(*self.nivel.spawn, vidas=vidas_iniciales)
         self.jugador.tiene_pala = tiene_pala
         self.jugador.tiene_dash = tiene_dash
+        self.aplicar_preset_teclado(getattr(self, "preset_teclado_idx", 0))
         self.camara = Camara()
         self.camara.permitir_sacudida = not self.reducir_movimiento
         self.camara.actualizar(self.jugador, self.nivel, 1.0)
@@ -243,6 +303,7 @@ class Juego:
         self.almas_consagradas = 0
         self.almas_vida_consagradas = 0
         self.aviso_jefe = 0.0
+        self.hud_aviso_altar = 0.0
         # Iniciar dron fúnebre ambiental de la cripta
         self.audio.iniciar_dron()
         # Cita literaria de Edgar Allan Poe al comenzar cada nivel
@@ -263,18 +324,16 @@ class Juego:
             NIVEL_TUTORIAL,
             "El Ritual del Sepulturero",
             (
-                "FLECHAS / WASD: MOVERSE · ARRIBA/W: SALTAR · "
-                "SHIFT: DASH EN EL AIRE · "
-                "RECOGÉ LA PALA (W) · J/Z/CLICK: ATACAR · "
-                "SALTÁ SOBRE LOS MORADORES PARA PISARLOS (STOMP) · "
-                "LA PLATAFORMA SOBRE PINCHOS LLEVA AL PORTÓN"
+                "FLECHAS / WASD: MOVERSE · ESPACIO / ARRIBA: SALTO VARIABLE (TAP CORTO / MANTENER) · "
+                "RECOGÉ ALMAS (o) · FAROL DE REPOSO (F) CON 5 ALMAS: MANTO PROTECTOR · PORTÓN (G)"
             ),
-            "cripta",
+            "camposanto",
         )
         vidas_iniciales = VIDAS_INICIALES
         self.jugador = Jugador(*self.nivel.spawn, vidas=vidas_iniciales)
         self.jugador.tiene_pala = False
         self.jugador.tiene_dash = False
+        self.aplicar_preset_teclado(getattr(self, "preset_teclado_idx", 0))
         self.tutorial_zona_actual = None
         self.camara = Camara()
         self.camara.permitir_sacudida = not self.reducir_movimiento
@@ -290,6 +349,7 @@ class Juego:
         self.almas_consagradas = 0
         self.almas_vida_consagradas = 0
         self.aviso_jefe = 0.0
+        self.hud_aviso_altar = 0.0
         # Iniciar dron fúnebre ambiental
         self.audio.iniciar_dron()
         cita = CITAS_POE.get("tutorial", "")
@@ -320,8 +380,86 @@ class Juego:
         self.audio.detener_dron()
         self.audio.reproducir("ui")
 
+    # --- Métodos del Módulo de Configuración del Santuario --- #
+    def abrir_configuracion(self, origen="menu"):
+        self.estado = "configuracion"
+        self.origen_configuracion = origen
+        self.config_opcion = 0
+        self.audio.detener_dron()
+        self.audio.reproducir("ui")
+
+    def aplicar_preset_teclado(self, idx):
+        """Aplica el preset de controles especificado actualizando las tuplas de teclas del juego y jugador."""
+        self.preset_teclado_idx = idx % len(PRESETS_TECLADO)
+        preset = PRESETS_TECLADO[self.preset_teclado_idx]
+        self.teclas_salto = preset["teclas_salto"]
+        self.teclas_dash = preset["teclas_dash"]
+        self.teclas_ataque = preset["teclas_ataque"]
+        if getattr(self, "jugador", None):
+            self.jugador.teclas_izq = preset["teclas_izq"]
+            self.jugador.teclas_der = preset["teclas_der"]
+
+    def alternar_preset_teclado(self, delta=1):
+        """Alterna entre Preset 1 (WASD Moderno) y Preset 2 (Retro Arcada Z-X-C)."""
+        self.aplicar_preset_teclado(self.preset_teclado_idx + delta)
+        self.audio.reproducir("ui")
+        nombre_preset = PRESETS_TECLADO[self.preset_teclado_idx]["etiqueta"]
+        self.hud.mostrar_mensaje(f"CONTROL: {nombre_preset.upper()}", 1, 3.0)
+
+    # --- Esqueleto de Calidad Gráfica --- #
+    # Opciones: Alta (partículas + halos completos), Media (partículas reducidas), Baja (rendimiento)
+    # Comentario arquitectónico:
+    # Para conectar en el motor de renderizado:
+    # - En self.particulas.agregar(...): if self.config_calidad_idx == 2: return
+    # - En self.mascara_penumbra: if self.config_calidad_idx == 2: omitir blit compuesto
+    def alternar_calidad_grafica(self, delta=1):
+        self.config_calidad_idx = (self.config_calidad_idx + delta) % len(OPCIONES_CALIDAD)
+        self.audio.reproducir("ui")
+        calidad = OPCIONES_CALIDAD[self.config_calidad_idx]
+        self.hud.mostrar_mensaje(f"CALIDAD GRÁFICA: {calidad.upper()}", 1, 3.0)
+
+    # --- Esqueleto de Modo de HUD / Interfaz --- #
+    # Opciones: Completo (riel superior de 3 zonas), Compacto (solo orbes y farol), Inmersivo (sin HUD no-diegético)
+    # Comentario arquitectónico:
+    # Para conectar en hud.py / HudOrquestador:
+    # - if self.config_hud_idx == 2 (Inmersivo): self.hud.dibujar(...) solo dibuja avisos flotantes y omite el riel superior
+    # - if self.config_hud_idx == 1 (Compacto): omite el panel central de título de sala y combo
+    def alternar_modo_hud(self, delta=1):
+        self.config_hud_idx = (self.config_hud_idx + delta) % len(OPCIONES_HUD)
+        self.audio.reproducir("ui")
+        modo = OPCIONES_HUD[self.config_hud_idx]
+        self.hud.mostrar_mensaje(f"MODO DE HUD: {modo.upper()}", 1, 3.0)
+
+    def alternar_accesibilidad(self):
+        """Alterna el modo de reducción de movimiento (Principio 3 UX - Comodidad)."""
+        self.reducir_movimiento = not self.reducir_movimiento
+        self.camara.permitir_sacudida = not self.reducir_movimiento
+        self.hud.reducir_movimiento = self.reducir_movimiento
+        estado_str = "ACTIVADA" if self.reducir_movimiento else "DESACTIVADA"
+        self.hud.mostrar_mensaje(f"ACCESIBILIDAD: REDUCIR MOVIMIENTO {estado_str}", 3, 2.5)
+        self.audio.reproducir("ui")
+
+    # --- Función ejecutar_seleccion_nivel --- #
+    def ejecutar_seleccion_nivel(self, indice):
+        if indice == 0:
+            self.iniciar_tutorial()
+        elif indice == 1:
+            self.seleccionar_nivel(0)
+        elif indice == 2:
+            self.seleccionar_nivel(1)
+        elif indice == 3:
+            self.seleccionar_nivel(2)
+        elif indice == 4:
+            self.abrir_selector_pruebas()
+
     # --- Función seleccionar_nivel --- #
     def seleccionar_nivel(self, indice):
+        if indice in (-1, "preludio", "tutorial"):
+            self.iniciar_tutorial()
+            return
+        if indice in (4, "salas", "pruebas"):
+            self.abrir_selector_pruebas()
+            return
         self.almas_totales = 0
         self.tiempo_total = 0.0
         self.cargar_nivel(indice, vidas=VIDAS_INICIALES)
@@ -336,6 +474,7 @@ class Juego:
     def abrir_selector_pruebas(self):
         self.estado = "test_selector"
         self.test_opcion = 0
+        self.audio.detener_dron()
         self.audio.reproducir("ui")
 
     # --- Función iniciar_campaña --- #
@@ -378,11 +517,12 @@ class Juego:
 
             elif evento.type == pygame.KEYDOWN:
                 if self.estado == "menu":
+                    total_menu = 4
                     if evento.key in (pygame.K_UP, pygame.K_w):
-                        self.menu_opcion = (self.menu_opcion - 1) % 4
+                        self.menu_opcion = (self.menu_opcion - 1) % total_menu
                         self.audio.reproducir("ui")
                     elif evento.key in (pygame.K_DOWN, pygame.K_s):
-                        self.menu_opcion = (self.menu_opcion + 1) % 4
+                        self.menu_opcion = (self.menu_opcion + 1) % total_menu
                         self.audio.reproducir("ui")
                     elif evento.key in (pygame.K_RETURN, pygame.K_SPACE):
                         self.audio.reproducir("ui")
@@ -391,11 +531,66 @@ class Juego:
                         elif self.menu_opcion == 1:
                             self.abrir_seleccion_nivel()
                         elif self.menu_opcion == 2:
-                            self.iniciar_tutorial()
-                        elif self.menu_opcion == 3:
+                            self.abrir_configuracion("menu")
+                        else:
                             self.abrir_creditos()
                     elif evento.key == pygame.K_ESCAPE:
                         self.estado = "titulo"
+                        self.audio.reproducir("ui")
+                    continue
+
+                elif self.estado == "configuracion":
+                    total_config = 6
+                    if evento.key in (pygame.K_UP, pygame.K_w):
+                        self.config_opcion = (self.config_opcion - 1) % total_config
+                        self.audio.reproducir("ui")
+                    elif evento.key in (pygame.K_DOWN, pygame.K_s):
+                        self.config_opcion = (self.config_opcion + 1) % total_config
+                        self.audio.reproducir("ui")
+                    elif evento.key in (pygame.K_LEFT, pygame.K_a):
+                        if self.config_opcion == 0:
+                            self.alternar_preset_teclado(-1)
+                        elif self.config_opcion == 1:
+                            self.alternar_calidad_grafica(-1)
+                        elif self.config_opcion == 2:
+                            self.alternar_modo_hud(-1)
+                        elif self.config_opcion == 3:
+                            self.alternar_accesibilidad()
+                        elif self.config_opcion == 4:
+                            self.audio.alternar()
+                    elif evento.key in (pygame.K_RIGHT, pygame.K_d):
+                        if self.config_opcion == 0:
+                            self.alternar_preset_teclado(1)
+                        elif self.config_opcion == 1:
+                            self.alternar_calidad_grafica(1)
+                        elif self.config_opcion == 2:
+                            self.alternar_modo_hud(1)
+                        elif self.config_opcion == 3:
+                            self.alternar_accesibilidad()
+                        elif self.config_opcion == 4:
+                            self.audio.alternar()
+                    elif evento.key in (pygame.K_RETURN, pygame.K_SPACE):
+                        if self.config_opcion == 0:
+                            self.alternar_preset_teclado(1)
+                        elif self.config_opcion == 1:
+                            self.alternar_calidad_grafica(1)
+                        elif self.config_opcion == 2:
+                            self.alternar_modo_hud(1)
+                        elif self.config_opcion == 3:
+                            self.alternar_accesibilidad()
+                        elif self.config_opcion == 4:
+                            self.audio.alternar()
+                        elif self.config_opcion == 5:
+                            if self.origen_configuracion == "pausa":
+                                self.estado = "pausa"
+                            else:
+                                self.abrir_menu()
+                            self.audio.reproducir("ui")
+                    elif evento.key == pygame.K_ESCAPE:
+                        if self.origen_configuracion == "pausa":
+                            self.estado = "pausa"
+                        else:
+                            self.abrir_menu()
                         self.audio.reproducir("ui")
                     continue
 
@@ -406,6 +601,8 @@ class Juego:
                     elif evento.key in (pygame.K_DOWN, pygame.K_s):
                         self.pausa_opcion = (self.pausa_opcion + 1) % 4
                         self.audio.reproducir("ui")
+                    elif evento.key in (pygame.K_c, pygame.K_o):
+                        self.abrir_configuracion("pausa")
                     elif evento.key in (pygame.K_RETURN, pygame.K_SPACE):
                         self.audio.reproducir("ui")
                         if self.pausa_opcion == 0:
@@ -437,15 +634,16 @@ class Juego:
                     continue
 
                 elif self.estado == "seleccion_nivel":
+                    total_sn = 5
                     if evento.key in (pygame.K_UP, pygame.K_w, pygame.K_LEFT, pygame.K_a):
-                        self.nivel_seleccionado = (self.nivel_seleccionado - 1) % len(NIVELES)
+                        self.nivel_seleccionado = (self.nivel_seleccionado - 1) % total_sn
                         self.audio.reproducir("ui")
                     elif evento.key in (pygame.K_DOWN, pygame.K_s, pygame.K_RIGHT, pygame.K_d):
-                        self.nivel_seleccionado = (self.nivel_seleccionado + 1) % len(NIVELES)
+                        self.nivel_seleccionado = (self.nivel_seleccionado + 1) % total_sn
                         self.audio.reproducir("ui")
                     elif evento.key in (pygame.K_RETURN, pygame.K_SPACE):
                         self.audio.reproducir("ui")
-                        self.seleccionar_nivel(self.nivel_seleccionado)
+                        self.ejecutar_seleccion_nivel(self.nivel_seleccionado)
                     elif evento.key == pygame.K_ESCAPE:
                         self.abrir_menu()
                     continue
@@ -457,16 +655,18 @@ class Juego:
 
                 elif self.estado == "test_selector":
                     if evento.key == pygame.K_ESCAPE:
-                        self.abrir_menu()
-                    elif evento.key in (pygame.K_UP, pygame.K_w):
+                        self.abrir_seleccion_nivel()
+                    elif evento.key in (pygame.K_UP, pygame.K_w, pygame.K_LEFT, pygame.K_a):
                         self.test_opcion = (self.test_opcion - 1) % len(SALAS_PRUEBA)
                         self.audio.reproducir("ui")
-                    elif evento.key in (pygame.K_DOWN, pygame.K_s):
+                    elif evento.key in (pygame.K_DOWN, pygame.K_s, pygame.K_RIGHT, pygame.K_d):
                         self.test_opcion = (self.test_opcion + 1) % len(SALAS_PRUEBA)
                         self.audio.reproducir("ui")
-                    elif evento.key in (pygame.K_1, pygame.K_2, pygame.K_3):
-                        self.cargar_sala_prueba(evento.key - pygame.K_1)
-                    elif evento.key == pygame.K_RETURN:
+                    elif pygame.K_1 <= evento.key <= pygame.K_6:
+                        idx = evento.key - pygame.K_1
+                        if idx < len(SALAS_PRUEBA):
+                            self.cargar_sala_prueba(idx)
+                    elif evento.key in (pygame.K_RETURN, pygame.K_SPACE):
                         self.cargar_sala_prueba(self.test_opcion)
                     continue
 
@@ -512,22 +712,14 @@ class Juego:
                         self.audio.reproducir("ui")
                         self.estado = "jugando"
 
-                elif evento.key == pygame.K_SPACE and self.estado == "jugando":
+                elif evento.key in getattr(self, "teclas_salto", TECLAS_SALTO) and self.estado == "jugando":
                     self.jugador.pedir_salto()
 
-                elif evento.key in (pygame.K_LSHIFT, pygame.K_RSHIFT, pygame.K_x):
-                    if self.estado == "jugando":
-                        self.jugador.pedir_dash()
+                elif evento.key in getattr(self, "teclas_dash", (pygame.K_LSHIFT, pygame.K_RSHIFT, pygame.K_x)) and self.estado == "jugando":
+                    self.jugador.pedir_dash()
 
-                elif evento.key == pygame.K_a and self.estado == "jugando":
-                    if self.jugador.pedir_ataque():
-                        self.audio.reproducir("ataque")
-                        self.particulas.ataque(
-                            self.jugador.rect.centerx,
-                            self.jugador.rect.centery,
-                            self.jugador.direccion,
-                            mejorado=self.jugador.rango_ataque_mejorado,
-                        )
+                elif evento.key in getattr(self, "teclas_ataque", TECLAS_ATAQUE) and self.estado == "jugando":
+                    self.intentar_ataque()
 
                 elif evento.key == pygame.K_RETURN:
                     if self.estado == "titulo":
@@ -550,8 +742,26 @@ class Juego:
                         self.abrir_menu()
 
             elif evento.type == pygame.KEYUP:
-                if evento.key == pygame.K_SPACE and self.jugador is not None:
+                if evento.key in getattr(self, "teclas_salto", TECLAS_SALTO) and self.jugador is not None:
                     self.jugador.soltar_salto()
+
+            elif evento.type == pygame.MOUSEBUTTONDOWN:
+                if evento.button == 1 and self.estado == "jugando":
+                    self.intentar_ataque()
+
+    # --- Función intentar_ataque --- #
+    def intentar_ataque(self):
+        """Ataque frontal con pala (J / Z / C / click). Requiere tiene_pala."""
+        if not self.jugador.pedir_ataque():
+            return False
+        self.audio.reproducir("ataque")
+        self.particulas.ataque(
+            self.jugador.rect.centerx,
+            self.jugador.rect.centery,
+            self.jugador.direccion,
+            mejorado=self.jugador.rango_ataque_mejorado,
+        )
+        return True
 
     # --- Función actualizar --- #
     def actualizar(self, dt):
@@ -559,6 +769,8 @@ class Juego:
             self.flash = max(0.0, self.flash - dt)
         if self.aviso_jefe > 0:
             self.aviso_jefe = max(0.0, self.aviso_jefe - dt)
+        if self.hud_aviso_altar > 0:
+            self.hud_aviso_altar = max(0.0, self.hud_aviso_altar - dt)
 
         if self.estado in ("titulo", "menu", "seleccion_nivel", "creditos"):
             self.tiempo_titulo += dt
@@ -791,8 +1003,8 @@ class Juego:
             for mj in getattr(self.nivel, "minijefes", []):
                 if not mj.vivo or not golpe.colliderect(mj.rect):
                     continue
+                self.jugador.ataque_golpeado = True
                 if mj.recibir_golpe_pala():
-                    self.jugador.ataque_golpeado = True
                     self.jugador.dash_usos_aire = DASH_USOS_AIRE
                     self.jugador.dash_cooldown = 0.0
                     self.audio.reproducir("pala")
@@ -801,17 +1013,10 @@ class Juego:
                     self.hitstop = 0.08
                     self.flash = 0.06
                     self.flash_color = AMARILLO
-                    if not mj.vivo and not mj.almas_otorgadas:
-                        mj.almas_otorgadas = True
-                        self.jugador.almas += 5
-                        self.jugador.almas_para_vida += 5
-                        if self.jugador.almas_para_vida >= ALMAS_POR_VIDA and self.jugador.vidas < VIDAS_MAXIMAS:
-                            self.jugador.vidas += 1
-                            self.jugador.almas_para_vida -= ALMAS_POR_VIDA
-                        self.audio.reproducir("meta")
-                        self.particulas.meta(mj.rect.centerx, mj.rect.centery)
-                        self.hud.mostrar_mensaje("¡EL CARCELERO HA CAÍDO! · El Osario se abre (+5 Almas)", 2, 4.0)
-                    break
+                    self._comprobar_muerte_minijefe(mj)
+                else:
+                    self._rebote_minijefe_guardia(mj)
+                break
 
         # Jefe — pala: daña en Fase 1, rebota con chispas en Fase 2.
         if (
@@ -960,6 +1165,9 @@ class Juego:
             self.hud.mostrar_mensaje("¡CORAZA ESPECTRAL! Necesitás la Guadaña Consagrada (X)", 2, 2.5)
             return False
         if not self.jefe.recibir_pisaton(rango_mejorado=rango_mejorado):
+            # Fuera de la ventana de vulnerabilidad: rebota sin dañar.
+            self.audio.reproducir("rebote_pala")
+            self.particulas.chispas_rebote(self.jefe.rect.centerx, self.jefe.rect.top, 0)
             return False
         res = self._aplicar_golpe_jefe()
         self.audio.reproducir("stomp")
@@ -1000,7 +1208,10 @@ class Juego:
                 280,
             )
             self.aviso_jefe = 2.0
-            self.hud.mostrar_mensaje("¡FASE II! · Armadura impenetrable · Solo PISOTÓN desde las cornisas", 4, 4.5)
+            if getattr(self.jugador, "rango_ataque_mejorado", False):
+                self.hud.mostrar_mensaje("¡FASE II! · Coraza espectral · La Guadaña Consagrada (X) la quiebra", 4, 4.5)
+            else:
+                self.hud.mostrar_mensaje("¡FASE II! · Coraza espectral · Necesitás la Guadaña Consagrada (X)", 4, 4.5)
 
         return True
 
@@ -1016,89 +1227,75 @@ class Juego:
 
     # --- Función actualizar_enemigos --- #
     def actualizar_enemigos(self, dt):
+        # Regla de diseño: el pisotón (stomp) solo mata si el jugador tiene la pala.
+        # Cada pisotón rebota y recarga el dash aéreo → "trampolines dinámicos"
+        # para encadenar Salto -> Dash -> Pisotón -> Rebote -> Nuevo Dash.
         for enemigo in self.nivel.enemigos:
             enemigo.actualizar(dt)
-            if not enemigo.vivo or not self.jugador.rect.colliderect(enemigo.rect):
-                continue
-
-            viene_desde_arriba = (
-                self.jugador.vy > 0
-                and self.jugador.rect.bottom - enemigo.rect.top <= 18
-            )
-            if viene_desde_arriba and self.jugador.tiene_pala:
-                enemigo.vivo = False
-                self.jugador.vy = -REBOTE_ENEMIGO
-                self.jugador.en_suelo = False
-                self.jugador.dash_usos_aire = DASH_USOS_AIRE
-                self.jugador.dash_cooldown = 0.0
-                self.audio.reproducir("stomp")
-                self.particulas.stomp(enemigo.rect.centerx, enemigo.rect.top)
-                self.camara.sacudir(6.0, 0.14, dir_x=0.0, dir_y=1.0)
-                self.hitstop = 0.08
-            else:
-                self.perder_vida(causa="Contacto con un Morador de la cripta")
+            if self._resolver_contacto(enemigo, "Contacto con un Morador de la cripta"):
                 return
 
         for enemigo_melee in self.nivel.enemigos_melee:
             enemigo_melee.actualizar(dt, self.jugador)
-            if (
-                enemigo_melee.vivo
-                and self.jugador.invulnerable <= 0
-                and self.jugador.rect.colliderect(enemigo_melee.rect)
-            ):
-                viene_desde_arriba = (
-                    self.jugador.vy > 0
-                    and self.jugador.rect.bottom - enemigo_melee.rect.top <= 18
-                )
-                if viene_desde_arriba and self.jugador.tiene_pala:
-                    enemigo_melee.vivo = False
-                    self.jugador.vy = -REBOTE_ENEMIGO
-                    self.jugador.en_suelo = False
-                    self.jugador.dash_usos_aire = DASH_USOS_AIRE
-                    self.jugador.dash_cooldown = 0.0
-                    self.audio.reproducir("stomp")
-                    self.particulas.stomp(enemigo_melee.rect.centerx, enemigo_melee.rect.top)
-                    self.camara.sacudir(6.0, 0.14, dir_x=0.0, dir_y=1.0)
-                    self.hitstop = 0.08
-                else:
-                    self.perder_vida(causa="Embestida del Guardia de la cripta")
-                    return
+            if self._resolver_contacto(enemigo_melee, "Embestida del Guardia de la cripta"):
+                return
 
         for totem in self.nivel.totems:
             totem.actualizar(dt, self.jugador)
 
-        # Cuervos: vuelo circular, daño por contacto.
+        # Cuervos: vuelo circular. Pisables con pala (trampolín aéreo).
         for cuervo in self.nivel.cuervos:
             cuervo.actualizar(dt)
-            if (
-                cuervo.vivo
-                and self.jugador.invulnerable <= 0
-                and self.jugador.rect.colliderect(cuervo.rect)
-            ):
-                self.perder_vida(causa="Ataque aéreo de Cuervo espectral")
+            if self._resolver_contacto(cuervo, "Ataque aéreo de Cuervo espectral"):
                 return
 
-        # Polillas: vuelo zigzag, daño por contacto.
+        # Polillas: vuelo zigzag. Pisables con pala (trampolín aéreo).
         for polilla in self.nivel.polillas:
             polilla.actualizar(dt)
-            if (
-                polilla.vivo
-                and self.jugador.invulnerable <= 0
-                and self.jugador.rect.colliderect(polilla.rect)
-            ):
-                self.perder_vida(causa="Polvo letal de Polilla sombría")
+            if self._resolver_contacto(polilla, "Polvo letal de Polilla sombría"):
                 return
 
-        # Arañas: patrullaje horizontal, daño por contacto.
+        # Arañas: patrullaje horizontal. Pisables con pala.
         for araña in self.nivel.aranias:
             araña.actualizar(dt)
-            if (
-                araña.vivo
-                and self.jugador.invulnerable <= 0
-                and self.jugador.rect.colliderect(araña.rect)
-            ):
-                self.perder_vida(causa="Picadura de Araña espectral")
+            if self._resolver_contacto(araña, "Picadura de Araña espectral"):
                 return
+
+    # --- Función _viene_desde_arriba --- #
+    def _viene_desde_arriba(self, rect):
+        """Pisotón válido: cayendo y con los pies a ≤ 18 px de la cabeza del enemigo."""
+        return (
+            self.jugador.vy > 0
+            and self.jugador.rect.bottom <= rect.top + TOLERANCIA_PISOTON
+        )
+
+    # --- Función _rebote_pisoton --- #
+    def _rebote_pisoton(self, rect, fuerza_sacudida=6.0):
+        """Rebote + recarga instantánea del dash aéreo tras un pisotón exitoso."""
+        self.jugador.rect.bottom = min(self.jugador.rect.bottom, rect.top)
+        self.jugador.y = float(self.jugador.rect.y)
+        self.jugador.vy = -REBOTE_ENEMIGO
+        self.jugador.en_suelo = False
+        self.jugador.dash_usos_aire = DASH_USOS_AIRE
+        self.jugador.dash_cooldown = 0.0
+        self.audio.reproducir("stomp")
+        self.particulas.stomp(rect.centerx, rect.top)
+        self.camara.sacudir(fuerza_sacudida, 0.14, dir_x=0.0, dir_y=1.0)
+        self.hitstop = 0.08
+
+    # --- Función _resolver_contacto --- #
+    def _resolver_contacto(self, enemigo, causa):
+        """Resuelve el contacto jugador-enemigo. Devuelve True si el jugador perdió una vida."""
+        if not enemigo.vivo or not self.jugador.rect.colliderect(enemigo.rect):
+            return False
+        if self.jugador.tiene_pala and self._viene_desde_arriba(enemigo.rect):
+            enemigo.vivo = False
+            self._rebote_pisoton(enemigo.rect)
+            return False
+        if self.jugador.invulnerable > 0:
+            return False
+        self.perder_vida(causa=causa)
+        return True
 
     # --- Función actualizar_minijefes --- #
     def actualizar_minijefes(self, dt):
@@ -1107,34 +1304,63 @@ class Juego:
             if not mj.vivo:
                 continue
 
+            if mj.aviso_recien:
+                # Telegrafía: brillo carmesí (dibujar) + sonido de aviso.
+                self.audio.reproducir("jefe_aviso")
+
+            if not self.jugador.rect.colliderect(mj.rect):
+                continue
+
             # Pisotón sobre el Mini-Jefe (Carcelero del Osario)
-            viene_desde_arriba = (
-                self.jugador.vy > 0
-                and self.jugador.rect.bottom - mj.rect.top <= 18
-            )
-            if viene_desde_arriba and self.jugador.tiene_pala:
+            if self.jugador.tiene_pala and self._viene_desde_arriba(mj.rect):
                 if mj.recibir_pisaton():
-                    self.jugador.vy = -REBOTE_ENEMIGO
+                    self._rebote_pisoton(mj.rect, fuerza_sacudida=7.0)
+                    self._comprobar_muerte_minijefe(mj)
+                else:
+                    # Fuera de su ventana de cansancio: rebota sin dañarlo.
+                    self.jugador.rect.bottom = mj.rect.top
+                    self.jugador.y = float(self.jugador.rect.y)
+                    self.jugador.vy = -REBOTE_ENEMIGO * 0.75
                     self.jugador.en_suelo = False
-                    self.jugador.dash_usos_aire = DASH_USOS_AIRE
-                    self.jugador.dash_cooldown = 0.0
-                    self.audio.reproducir("stomp")
-                    self.particulas.stomp(mj.rect.centerx, mj.rect.top)
-                    self.camara.sacudir(7.0, 0.16, dir_x=0.0, dir_y=1.0)
-                    self.hitstop = 0.08
-                    if not mj.vivo and not mj.almas_otorgadas:
-                        mj.almas_otorgadas = True
-                        self.jugador.almas += 5
-                        self.jugador.almas_para_vida += 5
-                        if self.jugador.almas_para_vida >= ALMAS_POR_VIDA and self.jugador.vidas < VIDAS_MAXIMAS:
-                            self.jugador.vidas += 1
-                            self.jugador.almas_para_vida -= ALMAS_POR_VIDA
-                        self.audio.reproducir("meta")
-                        self.particulas.meta(mj.rect.centerx, mj.rect.centery)
-                        self.hud.mostrar_mensaje("¡EL CARCELERO HA CAÍDO! · El Osario se abre (+5 Almas)", 2, 4.0)
-            elif self.jugador.invulnerable <= 0 and self.jugador.rect.colliderect(mj.rect):
+                    self._rebote_minijefe_guardia(mj)
+            elif self.jugador.invulnerable <= 0:
                 self.perder_vida(causa="Ataque del Carcelero del Osario")
                 return
+
+    # --- Función _rebote_minijefe_guardia --- #
+    def _rebote_minijefe_guardia(self, mj):
+        """Feedback discernible: golpe fuera de la ventana vulnerable del Carcelero."""
+        self.audio.reproducir("rebote_pala")
+        self.particulas.chispas_rebote(mj.rect.centerx, mj.rect.centery, -self.jugador.direccion)
+        self.camara.sacudir(3.0, 0.08)
+
+    # --- Función _comprobar_muerte_minijefe --- #
+    def _comprobar_muerte_minijefe(self, mj):
+        if mj.vivo or mj.almas_otorgadas:
+            return
+        mj.almas_otorgadas = True
+        self.jugador.almas += ALMAS_MINIJEFE
+        self._sumar_almas_para_vida(ALMAS_MINIJEFE)
+        self.audio.reproducir("meta")
+        self.particulas.meta(mj.rect.centerx, mj.rect.centery)
+        self.camara.sacudir(9.0, 0.22)
+        self.hud.mostrar_mensaje(
+            f"¡EL CARCELERO HA CAÍDO! · El altar de la Guadaña se abre (+{ALMAS_MINIJEFE} Almas)", 2, 4.0
+        )
+
+    # --- Función _sumar_almas_para_vida --- #
+    def _sumar_almas_para_vida(self, cantidad):
+        """Loop positivo 'Rosario de Vida': cada ALMAS_POR_VIDA almas → +1 vida (tope VIDAS_MAXIMAS)."""
+        self.jugador.almas_para_vida += cantidad
+        while self.jugador.almas_para_vida >= ALMAS_POR_VIDA:
+            self.jugador.almas_para_vida -= ALMAS_POR_VIDA
+            if self.jugador.vidas < VIDAS_MAXIMAS:
+                self.jugador.vidas += 1
+                self.audio.reproducir("vida_extra")
+                self.flash = 0.12
+                self.flash_color = AMARILLO
+                self.efecto_hud.iniciar("escala", 1.25, 0.2)
+                self.hud.mostrar_mensaje("¡VIDA EXTRA · 10 ALMAS CONSAGRADAS!", 2, 3.0)
 
     # --- Función actualizar_almas --- #
     def actualizar_almas(self):
@@ -1149,16 +1375,7 @@ class Juego:
                 )
                 self.audio.reproducir(sonido_alma)
                 self.particulas.alma(alma.rect.centerx, alma.rect.centery)
-                self.jugador.almas_para_vida += 1
-                if self.jugador.almas_para_vida >= ALMAS_POR_VIDA:
-                    self.jugador.almas_para_vida = 0
-                    if self.jugador.vidas < VIDAS_MAXIMAS:
-                        self.jugador.vidas += 1
-                        self.audio.reproducir("vida_extra")
-                        self.flash = 0.12
-                        self.flash_color = AMARILLO
-                        self.efecto_hud.iniciar("escala", 1.25, 0.2)
-                        self.hud.mostrar_mensaje("¡VIDA EXTRA · 10 ALMAS CONSAGRADAS!", 2, 3.0)
+                self._sumar_almas_para_vida(1)
 
     # --- Función actualizar_palas --- #
     def actualizar_palas(self):
@@ -1229,24 +1446,18 @@ class Juego:
     # --- Función actualizar_tutorial_contextual --- #
     def actualizar_tutorial_contextual(self):
         col = self.jugador.rect.x // TILE
-        if col < 15:
+        if col < 26:
             zona = 1
-            msg = "MOVIMIENTO Y SALTO · FLECHAS / WASD: Mover · ESPACIO: Salto variable"
+            msg = "MOVIMIENTO Y SALTO · WASD / FLECHAS: Mover · ESPACIO: Salto variable (tap corto / mantener)"
         elif col < 32:
             zona = 2
-            msg = "FOSO DE SALTO · Medí tu impulso. Si caés, usá los escalones para subir"
-        elif col < 47:
+            msg = "FOSO DE SALTO · Medí tu impulso. Si caés, usá los escalones de la trinchera para subir"
+        elif col < 58:
             zona = 3
-            msg = "ALTAR DE LA PALA · Recogé la pala (W) · J / Z / CLICK: Atacar morador"
-        elif col < 62:
-            zona = 4
-            msg = "EL PISOTÓN (STOMP) · Saltá sobre la cabeza del morador para rebotar"
-        elif col < 78:
-            zona = 5
-            msg = "AMULETO DE SOMBRAS · Recogé el dash (D) · SHIFT / X: Dash en el aire"
+            msg = "FAROL DE REPOSO (F) · Con 5 o más almas consagradas recibís el Manto Protector"
         else:
-            zona = 6
-            msg = "PORTÓN FINAL · Cruzá el umbral hacia la cripta"
+            zona = 4
+            msg = "PORTÓN DEL UMBRAL (G) · Cruzá hacia El Camposanto"
 
         if getattr(self, "tutorial_zona_actual", None) != zona:
             self.tutorial_zona_actual = zona
@@ -1254,7 +1465,17 @@ class Juego:
 
     # --- Función actualizar_power_ups_rango --- #
     def actualizar_power_ups_rango(self):
+        carcelero_vivo = any(mj.vivo for mj in getattr(self.nivel, "minijefes", []))
         for power_up in self.nivel.power_ups_rango:
+            power_up.sellado = carcelero_vivo
+            if (
+                power_up.sellado
+                and not power_up.recogida
+                and power_up.rect.colliderect(self.jugador.rect)
+                and self.hud_aviso_altar <= 0
+            ):
+                self.hud_aviso_altar = 3.0
+                self.hud.mostrar_mensaje("ALTAR SELLADO · Derrotá al Carcelero del Osario para liberar la Guadaña", 2, 3.0)
             if power_up.actualizar(self.jugador):
                 self.audio.reproducir("alma")
                 self.particulas.emitir(
@@ -1270,9 +1491,13 @@ class Juego:
                 self.camara.sacudir(6.0, 0.16)
                 self.flash = 0.14
                 self.flash_color = (190, 60, 255)
-                self.texto_ayuda = "¡GUADAÑA MÍSTICA OBTENIDA! · ALCANCE ESPECTRAL Y PODER MEJORADO"
+                self.texto_ayuda = "¡GUADAÑA CONSAGRADA OBTENIDA! · ALCANCE ESPECTRAL Y CORAZA DEL CUSTODIO VULNERABLE"
                 self.mostrar_ayuda = 4.0
-                self.hud.mostrar_mensaje("¡GUADAÑA MÍSTICA! · Alcance espectral de 72px · Pisotón en el Custodio", 3, 4.0)
+                self.hud.mostrar_mensaje(
+                    f"¡GUADAÑA CONSAGRADA! · Alcance {ATAQUE_ALCANCE_MEJORADO}px · Quiebra la coraza del Custodio",
+                    3,
+                    4.0,
+                )
 
     # --- Función perder_vida --- #
     def perder_vida(self, ignorar_invulnerabilidad=False, causa="Peligros de la cripta"):
@@ -1328,6 +1553,8 @@ class Juego:
             tenia_pala = self.jugador.tiene_pala
             tenia_dash = self.jugador.tiene_dash
             self.jugador.respawn(*self.punto_reintento)
+            # respawn() limpia el contador del Rosario: restaurar lo consagrado en el farol.
+            self.jugador.almas_para_vida = getattr(self, "almas_vida_consagradas", 0)
             self.jugador.rango_ataque_mejorado = tenia_guadaña
             self.jugador.tiene_pala = tenia_pala
             self.jugador.tiene_dash = tenia_dash
@@ -1372,7 +1599,9 @@ class Juego:
                 if em.rect.x >= checkpoint_x - TILE * 2:
                     em.reiniciar()
             for mj in getattr(self.nivel, "minijefes", []):
-                mj.reiniciar()
+                # Un Carcelero ya derrotado no resucita: el altar sigue libre.
+                if mj.vivo:
+                    mj.reiniciar()
             if self.jefe is not None and self.jefe.vivo:
                 self.jefe.reiniciar()
                 self.ondas_jefe = []
@@ -1380,6 +1609,8 @@ class Juego:
             tenia_pala = self.jugador.tiene_pala
             tenia_dash = self.jugador.tiene_dash
             self.jugador.respawn(*self.punto_reintento)
+            # respawn() limpia el contador del Rosario: restaurar lo consagrado en el farol.
+            self.jugador.almas_para_vida = getattr(self, "almas_vida_consagradas", 0)
             self.jugador.rango_ataque_mejorado = tenia_guadaña
             self.jugador.tiene_pala = tenia_pala
             self.jugador.tiene_dash = tenia_dash
@@ -1459,6 +1690,22 @@ class Juego:
                     small.set_at((x, y), (112, 22, 34, min(255, alfa)))
         pygame.transform.smoothscale(small, (ANCHO, ALTO), vineta)
         return vineta
+
+    # --- Función dibujar_marco_heraldico --- #
+    def dibujar_marco_heraldico(self, destino, x, y, ancho, alto, color_fondo=(14, 11, 20, 235), color_borde=None):
+        """Marco heráldico gótico consistente con esquinas doradas (Principio 4 de UX)."""
+        borde_oro = HUD_ORO
+        borde_linea = color_borde if color_borde is not None else (*HUD_BORDE, 200)
+        panel = pygame.Surface((ancho, alto), pygame.SRCALPHA)
+        pygame.draw.rect(panel, color_fondo, (0, 0, ancho, alto), border_radius=12)
+        pygame.draw.rect(panel, borde_linea, (0, 0, ancho, alto), 1, border_radius=12)
+        pygame.draw.rect(panel, borde_oro, (0, 0, ancho, alto), 2, border_radius=12)
+        pygame.draw.line(panel, (*borde_oro, 140), (16, 1), (ancho - 16, 1), 1)
+        pygame.draw.line(panel, (*borde_oro, 140), (16, alto - 1), (ancho - 16, alto - 1), 1)
+        for vx, vy, vdx, vdy in ((0, 0, 1, 1), (ancho, 0, -1, 1), (0, alto, 1, -1), (ancho, alto, -1, -1)):
+            pygame.draw.line(panel, borde_oro, (vx + 6 * vdx, vy), (vx + 22 * vdx, vy), 2)
+            pygame.draw.line(panel, borde_oro, (vx, vy + 6 * vdy), (vx, vy + 22 * vdy), 2)
+        destino.blit(panel, (x, y))
 
     # --- Función dibujar_fondo --- #
     def dibujar_fondo(self, destino=None):
@@ -1661,23 +1908,30 @@ class Juego:
         velo.fill((4, 4, 8, 140))
         self.pantalla.blit(velo, (0, 0))
 
+        # Marco heráldico litúrgico consistente (Principio 4 UX)
+        pw, ph = 840, 520
+        px = (ANCHO - pw) // 2
+        py = (ALTO - ph) // 2 - 10
+        self.dibujar_marco_heraldico(self.pantalla, px, py, pw, ph)
+
         # Título y ambientación
-        self.dibujar_texto(TITULO, 0, 110, 88, ORO, centrado=True, sombra=True)
-        self.dibujar_texto(SUBTITULO, 0, 206, 26, HUESO, centrado=True)
-        pygame.draw.line(self.pantalla, SANGRE, (ANCHO // 2 - 180, 248), (ANCHO // 2 + 180, 248), 2)
+        self.dibujar_texto(TITULO, 0, py + 34, 76, HUD_ORO, centrado=True, sombra=True)
+        self.dibujar_texto(SUBTITULO, 0, py + 120, 22, HUD_MUTED, centrado=True)
+        pygame.draw.line(self.pantalla, (*HUD_ORO, 140), (ANCHO // 2 - 160, py + 154), (ANCHO // 2 + 160, py + 154), 1)
 
         historia = (
             "El sepulturero bajó a la cripta a cumplir su jornada. "
             "La puerta de hierro se cerró a sus espaldas y la oscuridad despertó. "
             "Con su pala y su farol de sombra, debe hallar la salida antes de que la muerte lo alcance."
         )
-        self.dibujar_parrafo(historia, 0, 280, 20, CREMA, ancho=76, centrado=True, interlineado=28)
+        self.dibujar_parrafo(historia, 0, py + 184, 19, CREMA, ancho=68, centrado=True, interlineado=26)
 
         # Prompt de avance
         pulso = 0.5 + 0.5 * math.sin(self.tiempo_titulo * 4)
         alfa_prompt = int(170 + pulso * 85)
         color_prompt = (int(TURQUESA[0] * (alfa_prompt / 255)), int(TURQUESA[1] * (alfa_prompt / 255)), int(TURQUESA[2] * (alfa_prompt / 255)))
-        self.dibujar_texto("PRESIONÁ ENTER PARA CONTINUAR", 0, 560, 22, color_prompt, centrado=True, sombra=True)
+        self.dibujar_texto("PRESIONÁ ENTER PARA COMENZAR LA VIGILIA", 0, py + ph - 70, 20, color_prompt, centrado=True, sombra=True)
+        self.dibujar_texto("[ENTER] Continuar · [ESC] Salir", 0, py + ph - 34, 13, HUD_MUTED, centrado=True)
 
     # --- Función dibujar_menu_principal --- #
     def dibujar_menu_principal(self):
@@ -1688,68 +1942,61 @@ class Juego:
         velo.fill((5, 4, 10, 165))
         self.pantalla.blit(velo, (0, 0))
 
-        # Encabezado
-        self.dibujar_texto(TITULO, 0, 72, 72, HUD_ORO, centrado=True, sombra=True)
-        self.dibujar_texto("PLATAFORMERO GÓTICO 2D", 0, 154, 18, HUD_MUTED, centrado=True)
-        pygame.draw.line(self.pantalla, (*HUD_ORO, 140), (ANCHO // 2 - 140, 185), (ANCHO // 2 + 140, 185), 1)
+        pw, ph = 740, 580
+        px = (ANCHO - pw) // 2
+        py = (ALTO - ph) // 2 - 10
+        self.dibujar_marco_heraldico(self.pantalla, px, py, pw, ph)
 
-        # Opciones del menú
+        # Encabezado
+        self.dibujar_texto(TITULO, 0, py + 30, 68, HUD_ORO, centrado=True, sombra=True)
+        self.dibujar_texto("PLATAFORMERO GÓTICO 2D · UNAHUR", 0, py + 104, 16, HUD_MUTED, centrado=True)
+        pygame.draw.line(self.pantalla, (*HUD_ORO, 140), (ANCHO // 2 - 160, py + 132), (ANCHO // 2 + 160, py + 132), 1)
+
+        # Opciones del menú (4 opciones claras ordenadas según principio 5)
         opciones = [
-            ("JUGAR CAMPAÑA", "Preludio / Tutorial + 3 Niveles continuos"),
-            ("SELECCIÓN DE NIVEL", "Elegir nivel para descender a la cripta"),
-            ("TUTORIAL", "El Ritual del Sepulturero · Aprende las mecánicas"),
-            ("CRÉDITOS & MARCO TEÓRICO", "Equipo UNAHUR y Matriz MDA"),
+            ("JUGAR CAMPAÑA", "Preludio + 3 Niveles continuos sin volver al menú"),
+            ("SELECCIÓN DE NIVEL", "Preludio, Camposanto, Cripta, Osario o Salas de Prueba"),
+            ("CONFIGURACIÓN", "Presets de teclado (WASD / Retro), calidad, HUD y accesibilidad"),
+            ("CRÉDITOS & MARCO TEÓRICO", "Equipo UNAHUR, Principios UX y Matriz MDA"),
         ]
 
-        ancho_caja = 560
-        alto_caja = 64
+        ancho_caja = 640
+        alto_caja = 68
         x_caja = (ANCHO - ancho_caja) // 2
-        y_base = 200
+        y_base = py + 144
 
         for i, (titulo_op, subtitulo_op) in enumerate(opciones):
             y_caja = y_base + i * 84
-            rect = pygame.Rect(x_caja, y_caja, ancho_caja, alto_caja)
             seleccionada = (i == self.menu_opcion)
 
-            # Fondo de la opción
             surf_op = pygame.Surface((ancho_caja, alto_caja), pygame.SRCALPHA)
-            # Tutorial gets a slightly different hue when not selected
-            if i == 2 and not seleccionada:
-                color_fondo = (14, 12, 22, 180)
-            else:
-                color_fondo = (28, 22, 34, 230) if seleccionada else (16, 13, 20, 180)
+            color_fondo = (32, 24, 42, 235) if seleccionada else (16, 13, 22, 180)
             pygame.draw.rect(surf_op, color_fondo, (0, 0, ancho_caja, alto_caja), border_radius=8)
 
-            # Tutorial option gets a teal accent border
-            if i == 2:
-                color_borde = HUD_DASHTURQUESA if seleccionada else (*HUD_DASHTURQUESA[:3], 100)
-            else:
-                color_borde = HUD_ORO if seleccionada else (*HUD_BORDE, 150)
+            color_borde = HUD_ORO if seleccionada else (*HUD_BORDE, 150)
             grosor_borde = 2 if seleccionada else 1
             pygame.draw.rect(surf_op, color_borde, (0, 0, ancho_caja, alto_caja), grosor_borde, border_radius=8)
 
-            # Detalles ornamentales en opción activa
             if seleccionada:
-                accent = HUD_DASHTURQUESA if i == 2 else HUD_ORO
                 # Resaltador lateral dorado
-                pygame.draw.rect(surf_op, accent, (0, 8, 4, alto_caja - 16), border_radius=2)
+                pygame.draw.rect(surf_op, HUD_ORO, (0, 8, 4, alto_caja - 16), border_radius=2)
                 # Remates en esquinas
                 for ex, ey, edx, edy in ((0, 0, 1, 1), (ancho_caja, 0, -1, 1), (0, alto_caja, 1, -1), (ancho_caja, alto_caja, -1, -1)):
-                    pygame.draw.line(surf_op, accent, (ex + 6 * edx, ey), (ex + 16 * edx, ey), 1)
-                    pygame.draw.line(surf_op, accent, (ex, ey + 6 * edy), (ex, ey + 14 * edy), 1)
+                    pygame.draw.line(surf_op, HUD_ORO, (ex + 6 * edx, ey), (ex + 16 * edx, ey), 1)
+                    pygame.draw.line(surf_op, HUD_ORO, (ex, ey + 6 * edy), (ex, ey + 14 * edy), 1)
 
             self.pantalla.blit(surf_op, (x_caja, y_caja))
 
             # Textos de la opción
-            color_titulo = (HUD_DASHTURQUESA if i == 2 and seleccionada else HUD_ORO) if seleccionada else HUD_TEXTO
+            color_titulo = HUD_ORO if seleccionada else HUD_TEXTO
             prefijo = "▸  " if seleccionada else "   "
-            self.dibujar_texto(prefijo + titulo_op, x_caja + 24, y_caja + 12, 22, color_titulo, sombra=seleccionada)
-            self.dibujar_texto(subtitulo_op, x_caja + 48, y_caja + 38, 13, HUD_MUTED if not seleccionada else CREMA)
+            self.dibujar_texto(prefijo + titulo_op, x_caja + 24, y_caja + 12, 20, color_titulo, sombra=seleccionada)
+            self.dibujar_texto(subtitulo_op, x_caja + 50, y_caja + 38, 12, CREMA if seleccionada else HUD_MUTED)
 
-        # Pie de página instructivo
+        # Pie de página instructivo constante (Principio 2 UX)
         self.dibujar_texto(
-            "FLECHAS / WASD: ELEGIR · ENTER: SELECCIONAR · ESC: SALIR",
-            0, 620, 14, HUD_MUTED, centrado=True,
+            "[↑/↓ / WASD] Elegir · [ENTER] Confirmar · [ESC] Volver",
+            0, py + ph - 36, 13, HUD_MUTED, centrado=True,
         )
 
     # --- Función dibujar_seleccion_nivel --- #
@@ -1761,72 +2008,147 @@ class Juego:
         velo.fill((5, 4, 10, 175))
         self.pantalla.blit(velo, (0, 0))
 
+        pw, ph = 840, 620
+        px = (ANCHO - pw) // 2
+        py = 40
+        self.dibujar_marco_heraldico(self.pantalla, px, py, pw, ph)
+
         # Título
-        self.dibujar_texto("SELECCIÓN DE PANTALLA", 0, 52, 54, HUD_ORO, centrado=True, sombra=True)
-        self.dibujar_texto("Elegí el nivel para descender a la oscuridad", 0, 114, 16, HUD_MUTED, centrado=True)
-        pygame.draw.line(self.pantalla, (*HUD_ORO, 120), (ANCHO // 2 - 160, 142), (ANCHO // 2 + 160, 142), 1)
+        self.dibujar_texto("SELECCIÓN DE NIVEL & SALAS", 0, py + 20, 36, HUD_ORO, centrado=True, sombra=True)
+        self.dibujar_texto("Elegí el tramo de la cripta o sala técnica para descender", 0, py + 58, 14, HUD_MUTED, centrado=True)
+        pygame.draw.line(self.pantalla, (*HUD_ORO, 130), (ANCHO // 2 - 180, py + 78), (ANCHO // 2 + 180, py + 78), 1)
 
         datos_niveles = [
             (
+                "0",
+                "PRELUDIO · EL RITUAL DEL SEPULTURERO",
+                "80 cols · Sensibilidad de salto, altar del farol y travesía segura",
+                "Aprende el oficio sin peligros de muerte antes de descender a las profundidades.",
+            ),
+            (
+                "I",
                 "NIVEL I · EL CAMPOSANTO",
-                "160 columnas · Salto de precisión y dash de sombra",
+                "150 cols · Salto de precisión y altar del Dash de sombra",
                 "Arranque melancólico bajo la luna llena. Los arcos de almas marcan la trayectoria.",
-                "CAMPOSANTO",
             ),
             (
+                "II",
                 "NIVEL II · LA CRIPTA",
-                "130 columnas · Recogida de pala y el salto de la ventana",
-                "Fosos oscuros, la pala del sepulturero y el desafío final: saltar por la pared alta.",
-                "CRIPTA",
+                "130 cols · Recogida de pala y el salto de la ventana alta",
+                "Fosos oscuros, combate con pala y el desafío final de la pared vertical.",
             ),
             (
+                "III",
                 "NIVEL III · EL OSARIO",
-                "160 columnas · Guadaña imperial y el Custodio en 2 fases",
-                "El clímax final en 5 actos: power-up de rango ampliado, centinelas y batalla de jefe.",
-                "OSARIO",
+                "160 cols · Guadaña imperial y el Custodio en 2 fases",
+                "El clímax final: power-up de rango consagrado, centinelas y duelo con el jefe.",
+            ),
+            (
+                "★",
+                "SALAS DE PRUEBA · RETOS MECÁNICOS",
+                "6 desafíos aislados · Pozo de dash, salto de ventana y combate",
+                "Espacio de experimentación técnica y verificación de mecánicas góticas.",
             ),
         ]
 
         ancho_tarjeta = 760
-        alto_tarjeta = 110
+        alto_tarjeta = 82
         x_tarjeta = (ANCHO - ancho_tarjeta) // 2
-        y_base = 180
+        y_base = py + 92
 
-        for i, (titulo_n, subtitulo_n, desc_n, tema_n) in enumerate(datos_niveles):
-            y_tarjeta = y_base + i * 134
+        for i, (insignia, titulo_n, subtitulo_n, desc_n) in enumerate(datos_niveles):
+            y_tarjeta = y_base + i * 94
             seleccionada = (i == self.nivel_seleccionado)
 
             surf_tarjeta = pygame.Surface((ancho_tarjeta, alto_tarjeta), pygame.SRCALPHA)
-            color_fondo = (28, 20, 36, 235) if seleccionada else (16, 12, 22, 185)
-            pygame.draw.rect(surf_tarjeta, color_fondo, (0, 0, ancho_tarjeta, alto_tarjeta), border_radius=10)
+            color_fondo = (32, 22, 40, 235) if seleccionada else (16, 12, 22, 185)
+            pygame.draw.rect(surf_tarjeta, color_fondo, (0, 0, ancho_tarjeta, alto_tarjeta), border_radius=8)
 
             color_borde = HUD_ORO if seleccionada else (*HUD_BORDE, 160)
             grosor = 2 if seleccionada else 1
-            pygame.draw.rect(surf_tarjeta, color_borde, (0, 0, ancho_tarjeta, alto_tarjeta), grosor, border_radius=10)
+            pygame.draw.rect(surf_tarjeta, color_borde, (0, 0, ancho_tarjeta, alto_tarjeta), grosor, border_radius=8)
 
             if seleccionada:
-                pygame.draw.rect(surf_tarjeta, HUD_ORO, (0, 10, 5, alto_tarjeta - 20), border_radius=2)
-                # Remates en las 4 esquinas
+                pygame.draw.rect(surf_tarjeta, HUD_ORO, (0, 8, 4, alto_tarjeta - 16), border_radius=2)
                 for ex, ey, edx, edy in ((0, 0, 1, 1), (ancho_tarjeta, 0, -1, 1), (0, alto_tarjeta, 1, -1), (ancho_tarjeta, alto_tarjeta, -1, -1)):
-                    pygame.draw.line(surf_tarjeta, HUD_ORO, (ex + 8 * edx, ey), (ex + 20 * edx, ey), 1)
-                    pygame.draw.line(surf_tarjeta, HUD_ORO, (ex, ey + 8 * edy), (ex, ey + 18 * edy), 1)
+                    pygame.draw.line(surf_tarjeta, HUD_ORO, (ex + 6 * edx, ey), (ex + 16 * edx, ey), 1)
+                    pygame.draw.line(surf_tarjeta, HUD_ORO, (ex, ey + 6 * edy), (ex, ey + 14 * edy), 1)
 
             self.pantalla.blit(surf_tarjeta, (x_tarjeta, y_tarjeta))
 
-            # Número romano estilizado
-            romanos = ["I", "II", "III"]
-            color_num = HUD_ORO if seleccionada else (110, 95, 120)
-            self.dibujar_texto(romanos[i], x_tarjeta + 24, y_tarjeta + 26, 42, color_num, sombra=seleccionada)
+            # Insignia romana / estrella
+            color_num = HUD_ORO if seleccionada else (120, 105, 130)
+            self.dibujar_texto(insignia, x_tarjeta + 24, y_tarjeta + 18, 32, color_num, sombra=seleccionada)
 
             # Textos descriptivos
+            prefijo = "▸  " if seleccionada else ""
             color_tit = HUD_ORO if seleccionada else HUD_TEXTO
-            self.dibujar_texto(titulo_n, x_tarjeta + 82, y_tarjeta + 16, 20, color_tit, sombra=seleccionada)
-            self.dibujar_texto(subtitulo_n, x_tarjeta + 82, y_tarjeta + 44, 13, HUD_VERDE if seleccionada else HUD_MUTED)
-            self.dibujar_texto(desc_n, x_tarjeta + 82, y_tarjeta + 70, 14, CREMA if seleccionada else (170, 160, 175))
+            self.dibujar_texto(prefijo + titulo_n, x_tarjeta + 76, y_tarjeta + 10, 17, color_tit, sombra=seleccionada)
+            self.dibujar_texto(subtitulo_n, x_tarjeta + 76, y_tarjeta + 34, 12, HUD_VERDE if seleccionada else HUD_MUTED)
+            self.dibujar_texto(desc_n, x_tarjeta + 76, y_tarjeta + 54, 12, CREMA if seleccionada else (170, 160, 175))
+
+        # Pie de página instructivo constante (Principio 2 UX)
+        self.dibujar_texto(
+            "[↑/↓ / WASD] Elegir · [ENTER] Descender / Probar · [ESC] Volver al Menú",
+            0, py + ph - 30, 13, HUD_MUTED, centrado=True,
+        )
+
+    # --- Función dibujar_selector_pruebas --- #
+    def dibujar_selector_pruebas(self):
+        self.dibujar_fondo(self.pantalla)
+        self.pantalla.blit(self.vineta, (0, 0))
+
+        velo = pygame.Surface((ANCHO, ALTO), pygame.SRCALPHA)
+        velo.fill((5, 4, 10, 180))
+        self.pantalla.blit(velo, (0, 0))
+
+        pw, ph = 840, 620
+        px = (ANCHO - pw) // 2
+        py = 40
+        self.dibujar_marco_heraldico(self.pantalla, px, py, pw, ph)
+
+        self.dibujar_texto("SALAS DE PRUEBA TÉCNICA", 0, py + 20, 36, HUD_ORO, centrado=True, sombra=True)
+        self.dibujar_texto("Verificación experimental de mecánicas góticas en entornos aislados", 0, py + 58, 14, HUD_MUTED, centrado=True)
+        pygame.draw.line(self.pantalla, (*HUD_ORO, 130), (ANCHO // 2 - 180, py + 78), (ANCHO // 2 + 180, py + 78), 1)
+
+        ancho_tarjeta = 760
+        alto_tarjeta = 70
+        x_tarjeta = (ANCHO - ancho_tarjeta) // 2
+        y_base = py + 90
+
+        for i, sala in enumerate(SALAS_PRUEBA):
+            y_tarjeta = y_base + i * 78
+            seleccionada = (i == self.test_opcion)
+
+            surf_tarjeta = pygame.Surface((ancho_tarjeta, alto_tarjeta), pygame.SRCALPHA)
+            color_fondo = (32, 22, 40, 235) if seleccionada else (16, 12, 22, 185)
+            pygame.draw.rect(surf_tarjeta, color_fondo, (0, 0, ancho_tarjeta, alto_tarjeta), border_radius=8)
+
+            color_borde = HUD_ORO if seleccionada else (*HUD_BORDE, 160)
+            grosor = 2 if seleccionada else 1
+            pygame.draw.rect(surf_tarjeta, color_borde, (0, 0, ancho_tarjeta, alto_tarjeta), grosor, border_radius=8)
+
+            if seleccionada:
+                pygame.draw.rect(surf_tarjeta, HUD_ORO, (0, 8, 4, alto_tarjeta - 16), border_radius=2)
+                for ex, ey, edx, edy in ((0, 0, 1, 1), (ancho_tarjeta, 0, -1, 1), (0, alto_tarjeta, 1, -1), (ancho_tarjeta, alto_tarjeta, -1, -1)):
+                    pygame.draw.line(surf_tarjeta, HUD_ORO, (ex + 6 * edx, ey), (ex + 16 * edx, ey), 1)
+                    pygame.draw.line(surf_tarjeta, HUD_ORO, (ex, ey + 6 * edy), (ex, ey + 14 * edy), 1)
+
+            self.pantalla.blit(surf_tarjeta, (x_tarjeta, y_tarjeta))
+
+            color_num = HUD_ORO if seleccionada else (120, 105, 130)
+            self.dibujar_texto(str(i + 1), x_tarjeta + 24, y_tarjeta + 16, 28, color_num, sombra=seleccionada)
+
+            prefijo = "▸  " if seleccionada else ""
+            color_tit = HUD_ORO if seleccionada else HUD_TEXTO
+            nombre_sala = sala.get("nombre", f"Sala de Prueba {i + 1}")
+            desc_sala = sala.get("desc", "Verificación de mecánicas")
+            self.dibujar_texto(prefijo + nombre_sala, x_tarjeta + 70, y_tarjeta + 12, 16, color_tit, sombra=seleccionada)
+            self.dibujar_texto(desc_sala, x_tarjeta + 70, y_tarjeta + 38, 12, HUD_VERDE if seleccionada else HUD_MUTED)
 
         self.dibujar_texto(
-            "FLECHAS / WASD: ELEGIR · ENTER: DESCENDER · ESC: VOLVER AL MENÚ",
-            0, 646, 14, HUD_MUTED, centrado=True,
+            "[↑/↓ / WASD] Elegir · [1-6 / ENTER] Probar · [ESC] Volver",
+            0, py + ph - 30, 13, HUD_MUTED, centrado=True,
         )
 
     # --- Función dibujar_creditos --- #
@@ -1839,57 +2161,141 @@ class Juego:
         self.pantalla.blit(velo, (0, 0))
 
         # Marco heráldico central
-        ancho_m = 780
-        alto_m = 560
+        ancho_m = 840
+        alto_m = 610
         x_m = (ANCHO - ancho_m) // 2
         y_m = (ALTO - alto_m) // 2
-
-        panel_c = pygame.Surface((ancho_m, alto_m), pygame.SRCALPHA)
-        pygame.draw.rect(panel_c, (16, 13, 22, 235), (0, 0, ancho_m, alto_m), border_radius=12)
-        pygame.draw.rect(panel_c, (*HUD_BORDE, 200), (0, 0, ancho_m, alto_m), 1, border_radius=12)
-        pygame.draw.rect(panel_c, HUD_ORO, (0, 0, ancho_m, alto_m), 2, border_radius=12)
-
-        # Ornamentos en esquinas
-        for ex, ey, edx, edy in ((0, 0, 1, 1), (ancho_m, 0, -1, 1), (0, alto_m, 1, -1), (ancho_m, alto_m, -1, -1)):
-            pygame.draw.line(panel_c, HUD_ORO, (ex + 10 * edx, ey), (ex + 28 * edx, ey), 1)
-            pygame.draw.line(panel_c, HUD_ORO, (ex, ey + 10 * edy), (ex, ey + 24 * edy), 1)
-        self.pantalla.blit(panel_c, (x_m, y_m))
+        self.dibujar_marco_heraldico(self.pantalla, x_m, y_m, ancho_m, alto_m)
 
         # Título
-        self.dibujar_texto("IN CRYPTA", 0, y_m + 26, 44, HUD_ORO, centrado=True, sombra=True)
-        self.dibujar_texto("CRÉDITOS & DESARROLLO", 0, y_m + 76, 16, HUD_MUTED, centrado=True)
-        pygame.draw.line(self.pantalla, (*HUD_ORO, 140), (ANCHO // 2 - 120, y_m + 102), (ANCHO // 2 + 120, y_m + 102), 1)
+        self.dibujar_texto("IN CRYPTA", 0, y_m + 22, 42, HUD_ORO, centrado=True, sombra=True)
+        self.dibujar_texto("CRÉDITOS, UX Y MARCO TEÓRICO (UNAHUR)", 0, y_m + 68, 15, HUD_MUTED, centrado=True)
+        pygame.draw.line(self.pantalla, (*HUD_ORO, 140), (ANCHO // 2 - 140, y_m + 92), (ANCHO // 2 + 140, y_m + 92), 1)
 
         # Bloque de integrantes
-        self.dibujar_texto("EQUIPO 6 — UNAHUR", 0, y_m + 122, 18, HUD_ORO, centrado=True)
+        self.dibujar_texto("EQUIPO 6 — UNAHUR", 0, y_m + 104, 17, HUD_ORO, centrado=True)
         for idx, nombre in enumerate(INTEGRANTES):
-            self.dibujar_texto(nombre, 0, y_m + 152 + idx * 26, 17, HUD_TEXTO, centrado=True)
+            self.dibujar_texto(nombre, 0, y_m + 130 + idx * 24, 16, HUD_TEXTO, centrado=True)
 
-        # Materias
-        self.dibujar_texto("Taller de Diseño Conceptual · Introducción a los Videojuegos", 0, y_m + 244, 15, HUD_MUTED, centrado=True)
-        self.dibujar_texto("Universidad Nacional de Hurlingham (UNAHUR)", 0, y_m + 268, 14, (140, 130, 150), centrado=True)
-        pygame.draw.line(self.pantalla, (*HUD_BORDE, 120), (ANCHO // 2 - 160, y_m + 300), (ANCHO // 2 + 160, y_m + 300), 1)
+        self.dibujar_texto("Taller de Diseño Conceptual · Introducción a los Videojuegos", 0, y_m + 210, 14, HUD_MUTED, centrado=True)
+        pygame.draw.line(self.pantalla, (*HUD_BORDE, 120), (ANCHO // 2 - 180, y_m + 234), (ANCHO // 2 + 180, y_m + 234), 1)
 
         # Matriz MDA
-        self.dibujar_texto("MATRIZ MDA & SISTEMAS (UNAHUR)", 0, y_m + 312, 17, HUD_ORO, centrado=True)
-        ref_texto = "Mecánicas (Salto, Dash, Pala) → Dinámicas (Riesgo/Recompensa, Stomp-Dash) → Estéticas (Desafío, Sensación)"
-        self.dibujar_texto(ref_texto, 0, y_m + 340, 13, CREMA, centrado=True)
+        self.dibujar_texto("MATRIZ MDA (MECÁNICAS · DINÁMICAS · ESTÉTICAS)", 0, y_m + 244, 16, HUD_ORO, centrado=True)
+        mda_1 = "• Mecánicas: Salto sensible al input, Dash aéreo de sombra, Ataque frontal y Pisotón."
+        mda_2 = "• Dinámicas: Riesgo/Recompensa en fosos de almas, Stomp-Dash encadenado, Faroles de reposo."
+        mda_3 = "• Estéticas: Melancolía litúrgica, Sensación de logro y Desafío gótico de precisión."
+        self.dibujar_texto(mda_1, 0, y_m + 270, 13, CREMA, centrado=True)
+        self.dibujar_texto(mda_2, 0, y_m + 292, 13, CREMA, centrado=True)
+        self.dibujar_texto(mda_3, 0, y_m + 314, 13, CREMA, centrado=True)
+        pygame.draw.line(self.pantalla, (*HUD_BORDE, 120), (ANCHO // 2 - 180, y_m + 338), (ANCHO // 2 + 180, y_m + 338), 1)
 
-        # Referencias
-        self.dibujar_texto("INSPIRACIONES & HOMENAJES", 0, y_m + 372, 16, HUD_ORO, centrado=True)
-        ref_texto2 = "Blasphemous (penitencia y pala) · Castlevania (criptas) · Ender Lilies (atmósfera y melancolía)"
-        self.dibujar_texto(ref_texto2, 0, y_m + 398, 13, HUD_MUTED, centrado=True)
+        # Los 4 Tipos de Interfaz
+        self.dibujar_texto("LOS 4 TIPOS DE INTERFAZ (APUNTE UI/UX UNAHUR)", 0, y_m + 348, 16, HUD_ORO, centrado=True)
+        ui_1 = "1. No Diegética: Riel fijo 1232×72 sin layout shifts ([HP], Corazones, Grilla 2×2, Reloj)."
+        ui_2 = "2. Diegética: Farol del sepulturero (llama turquesa/ámbar) y faroles de reposo (F) encendidos."
+        ui_3 = "3. Espacial: Carteles flotantes en el mundo sobre altares de Dash (D), Pala (W) y Guadaña (X)."
+        ui_4 = "4. Meta: Viñeta carmesí a 1 HP sincrónica con latido cardíaco (55 Hz) y destello del Manto."
+        self.dibujar_texto(ui_1, 0, y_m + 372, 12, (200, 195, 215), centrado=True)
+        self.dibujar_texto(ui_2, 0, y_m + 392, 12, (200, 195, 215), centrado=True)
+        self.dibujar_texto(ui_3, 0, y_m + 412, 12, (200, 195, 215), centrado=True)
+        self.dibujar_texto(ui_4, 0, y_m + 432, 12, (200, 195, 215), centrado=True)
+        pygame.draw.line(self.pantalla, (*HUD_BORDE, 120), (ANCHO // 2 - 180, y_m + 456), (ANCHO // 2 + 180, y_m + 456), 1)
 
-        # Tecnología
-        self.dibujar_texto("TECNOLOGÍA & ARTE", 0, y_m + 430, 16, HUD_ORO, centrado=True)
-        tec_texto = "Motor Python 3 + pygame-ce · Arte procedimental vectorial · Exportador 1:1 GDevelop 5.6"
-        self.dibujar_texto(tec_texto, 0, y_m + 456, 13, HUD_MUTED, centrado=True)
+        # Los 5 Principios de UX
+        self.dibujar_texto("LOS 5 PRINCIPIOS DE UX (UNAHUR)", 0, y_m + 466, 16, HUD_ORO, centrado=True)
+        ux_resumen = "1. Facilidad visual · 2. Rapidez y leyendas · 3. Comodidad dual · 4. Consistencia heráldica · 5. Fluidez de menús"
+        self.dibujar_texto(ux_resumen, 0, y_m + 490, 13, HUD_VERDE, centrado=True)
 
-        # Pie
-        self.dibujar_texto("ESC o ENTER: VOLVER AL MENÚ", 0, y_m + 500, 16, TURQUESA, centrado=True, sombra=True)
+        # Pie instructivo
+        self.dibujar_texto("[ENTER / ESC] Volver al Menú Principal", 0, y_m + alto_m - 34, 15, TURQUESA, centrado=True, sombra=True)
 
-    def dibujar_selector_pruebas(self):
-        self.dibujar_seleccion_nivel()
+    # --- Función dibujar_configuracion --- #
+    def dibujar_configuracion(self):
+        """Pantalla de Configuración gótica con 2 presets de teclado y esqueleto para opciones."""
+        self.dibujar_fondo(self.pantalla)
+        self.pantalla.blit(self.vineta, (0, 0))
+
+        velo = pygame.Surface((ANCHO, ALTO), pygame.SRCALPHA)
+        velo.fill((5, 4, 10, 175))
+        self.pantalla.blit(velo, (0, 0))
+
+        pw, ph = 860, 630
+        px = (ANCHO - pw) // 2
+        py = (ALTO - ph) // 2
+        self.dibujar_marco_heraldico(self.pantalla, px, py, pw, ph)
+
+        # Encabezado
+        self.dibujar_texto("CONFIGURACIÓN DEL SANTUARIO", 0, py + 22, 38, HUD_ORO, centrado=True, sombra=True)
+        self.dibujar_texto("AJUSTES DE CONTROLES, INTERFAZ Y ACCESIBILIDAD", 0, py + 66, 14, HUD_MUTED, centrado=True)
+        pygame.draw.line(self.pantalla, (*HUD_ORO, 120), (ANCHO // 2 - 200, py + 88), (ANCHO // 2 + 200, py + 88), 1)
+
+        # Estado de opciones
+        preset_activo = PRESETS_TECLADO[self.preset_teclado_idx]
+        calidad_activa = OPCIONES_CALIDAD[self.config_calidad_idx]
+        hud_activo = OPCIONES_HUD[self.config_hud_idx]
+        acc_activa = "Activada" if self.reducir_movimiento else "Desactivada"
+        audio_activo = "Activado" if getattr(self.audio, "activo", False) else "Silenciado"
+
+        opciones = [
+            ("CONTROLES / TECLADO", preset_activo["etiqueta"], preset_activo["desc"]),
+            ("CALIDAD GRÁFICA", calidad_activa, "Esqueleto: Partículas completas, halos aditivos y penumbra"),
+            ("MODO DE HUD", hud_activo, "Esqueleto: Estilo de interfaz (Completo / Compacto / Inmersivo)"),
+            ("ACCESIBILIDAD", acc_activa, "Reducir movimiento: elimina sacudidas de cámara bruscas"),
+            ("AUDIO Y SONIDO", audio_activo, "Música litúrgica, dron ambiental y efectos fúnebres"),
+            ("VOLVER AL MENÚ", "Guardar y regresar", "Aplicar cambios y regresar a la pantalla anterior"),
+        ]
+
+        ancho_caja = 760
+        alto_caja = 56
+        x_caja = (ANCHO - ancho_caja) // 2
+        y_base = py + 100
+
+        for i, (titulo_op, valor_op, desc_op) in enumerate(opciones):
+            y_caja = y_base + i * 62
+            seleccionada = (i == self.config_opcion)
+
+            surf_op = pygame.Surface((ancho_caja, alto_caja), pygame.SRCALPHA)
+            color_fondo = (32, 24, 42, 235) if seleccionada else (16, 13, 22, 180)
+            pygame.draw.rect(surf_op, color_fondo, (0, 0, ancho_caja, alto_caja), border_radius=6)
+
+            color_borde = HUD_ORO if seleccionada else (*HUD_BORDE, 140)
+            grosor_borde = 2 if seleccionada else 1
+            pygame.draw.rect(surf_op, color_borde, (0, 0, ancho_caja, alto_caja), grosor_borde, border_radius=6)
+
+            if seleccionada:
+                pygame.draw.rect(surf_op, HUD_ORO, (0, 6, 4, alto_caja - 12), border_radius=2)
+
+            self.pantalla.blit(surf_op, (x_caja, y_caja))
+
+            color_titulo = HUD_ORO if seleccionada else HUD_TEXTO
+            prefijo = "▸  " if seleccionada else "   "
+            self.dibujar_texto(prefijo + titulo_op, x_caja + 16, y_caja + 10, 16, color_titulo, sombra=seleccionada)
+            self.dibujar_texto(desc_op, x_caja + 38, y_caja + 32, 11, CREMA if seleccionada else HUD_MUTED)
+
+            # Valor a la derecha
+            color_valor = TURQUESA if seleccionada else HUD_ORO
+            flechas_val = f"◂ {valor_op} ▸" if seleccionada and i < 5 else valor_op
+            self.dibujar_texto(flechas_val, x_caja + ancho_caja - 270, y_caja + 16, 14, color_valor, sombra=seleccionada)
+
+        # Panel de detalle dinámico del preset activo
+        y_desglose = y_base + len(opciones) * 62 + 6
+        ancho_d = ancho_caja
+        alto_d = 70
+        surf_d = pygame.Surface((ancho_d, alto_d), pygame.SRCALPHA)
+        surf_d.fill((14, 11, 20, 225))
+        pygame.draw.rect(surf_d, (*HUD_BORDE, 140), (0, 0, ancho_d, alto_d), 1, border_radius=6)
+        self.pantalla.blit(surf_d, (x_caja, y_desglose))
+
+        self.dibujar_texto("DISTRIBUCIÓN DEL PRESET SELECCIONADO:", x_caja + 16, y_desglose + 8, 12, HUD_ORO)
+        self.dibujar_texto(preset_activo["resumen"], x_caja + 16, y_desglose + 28, 13, BLANCO)
+        self.dibujar_texto("Presiona [← / →] o [ENTER] sobre CONTROLES para alternar entre los 2 presets de teclado", x_caja + 16, y_desglose + 48, 11, HUD_MUTED)
+
+        # Pie instructivo
+        self.dibujar_texto(
+            "[↑/↓ / WASD] Elegir · [←/→ / ENTER] Cambiar ajuste · [ESC] Volver",
+            0, py + ph - 26, 12, HUD_MUTED, centrado=True,
+        )
 
     # --- Función dibujar --- #
     def dibujar(self):
@@ -1901,6 +2307,9 @@ class Juego:
             return
         if self.estado == "seleccion_nivel":
             self.dibujar_seleccion_nivel()
+            return
+        if self.estado == "configuracion":
+            self.dibujar_configuracion()
             return
         if self.estado == "creditos":
             self.dibujar_creditos()
@@ -1955,12 +2364,22 @@ class Juego:
                 )
         destino.blit(self.mascara_penumbra, (0, 0))
 
-        # Halo cálido aditivo del farol de bronce
+        # Halo cálido aditivo del farol de bronce o violeta consagrado
         if self.jugador:
             px = int(self.jugador.rect.centerx - self.camara.x)
             py = int(self.jugador.rect.centery - self.camara.y)
-            luz_add = _obtener_luz_calida(85)
+            color_luz = (195, 80, 255) if getattr(self.jugador, "rango_ataque_mejorado", False) else (240, 196, 90)
+            factor_luz = 0.20 if getattr(self.jugador, "rango_ataque_mejorado", False) else 0.16
+            luz_add = _obtener_luz_calida(85, color_luz, factor_luz)
             destino.blit(luz_add, (px - 85, py - 85), special_flags=pygame.BLEND_RGB_ADD)
+
+        # Halo aditivo turquesa de faroles de checkpoint activos
+        for cp in self.nivel.checkpoints:
+            if cp.activo and self.camara.is_on_screen(cp.rect):
+                cpx = int(cp.rect.centerx - self.camara.x)
+                cpy = int(cp.rect.centery - self.camara.y)
+                luz_cp = _obtener_luz_calida(65, (90, 200, 255), 0.18)
+                destino.blit(luz_cp, (cpx - 65, cpy - 65), special_flags=pygame.BLEND_RGB_ADD)
 
         # Escalar mundo virtual a pantalla (zoom 1.25x cinematográfico)
         pygame.transform.scale(self.superficie_mundo, (ANCHO, ALTO), self.pantalla)
@@ -1968,10 +2387,11 @@ class Juego:
         # Viñeta gótica en resolución nativa
         self.pantalla.blit(self.vineta, (0, 0))
 
-        # Viñeta reactiva carmesí sutil en salud crítica (1 HP) en sincronía con el corazón
+        # Viñeta reactiva carmesí sutil en salud crítica (1 HP) en sincronía con el corazón (55 Hz)
         if self.jugador and self.jugador.vidas == 1 and not self.reducir_movimiento:
-            pulso = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() / 1000.0 * 1.2 * math.tau)
-            alfa_vineta = int(30 + 35 * pulso)
+            ciclo = (self.timer_corazon / (1.0 / 1.2)) * math.pi
+            pulso = math.sin(ciclo)
+            alfa_vineta = int(30 + 45 * pulso)
             self.vineta_carmesi.set_alpha(alfa_vineta)
             self.pantalla.blit(self.vineta_carmesi, (0, 0))
 
@@ -2001,17 +2421,10 @@ class Juego:
         elif self.estado == "victoria":
             self.dibujar_victoria()
 
-    # --- Función dibujar_hud (Rediseño Total Gótico Diegético) --- #
+    # --- Función dibujar_hud --- #
     def dibujar_hud(self):
-        # 1. Relicario Izquierdo: Vidas del Sepulturero (+10% tamaño)
-        self.dibujar_hud_relicario_vidas(24, 16)
-
-        # 2. Relicario Derecho: Almas + Rosario + Sello Dash (+ Arma solo si se posee)
-        self.dibujar_hud_relicario_derecho(16)
-
-        # 3. Corona del Custodio (Solo Nivel 3 cuando el jefe está activo)
-        if self.jefe is not None and self.jefe.vivo:
-            self.dibujar_barra_jefe()
+        """Renderiza el HUD No Diegético desde hud.py (riel fijo 1232x72 px)."""
+        self.hud.dibujar(self.pantalla, self, self.dt)
 
         # 4. Aviso Central del Combate
         if self.aviso_jefe > 0:
@@ -2033,215 +2446,6 @@ class Juego:
         # 5. Pistas y Avisos Contextuales en la Franja Superior
         if self.mostrar_ayuda > 0 and self.estado == "jugando":
             self.dibujar_pista()
-
-    # --- Módulo HUD: Relicario de Vidas (+20% tamaño) --- #
-    def dibujar_hud_relicario_vidas(self, x, y):
-        ancho, alto = 344, 68
-        panel = pygame.Surface((ancho, alto), pygame.SRCALPHA)
-        pygame.draw.rect(panel, (14, 11, 18, 220), (0, 0, ancho, alto), border_radius=11)
-        pygame.draw.rect(panel, (*HUD_BORDE, 185), (0, 0, ancho, alto), 1, border_radius=11)
-        pygame.draw.line(panel, (*HUD_ORO, 120), (12, 1), (ancho - 12, 1), 1)
-
-        # Vértices góticos
-        for vx, vy, vdx, vdy in ((0, 0, 1, 1), (ancho, 0, -1, 1), (0, alto, 1, -1), (ancho, alto, -1, -1)):
-            pygame.draw.line(panel, HUD_ORO, (vx + 4 * vdx, vy), (vx + 16 * vdx, vy), 1)
-            pygame.draw.line(panel, HUD_ORO, (vx, vy + 4 * vdy), (vx, vy + 14 * vdy), 1)
-        self.pantalla.blit(panel, (x, y))
-
-        # Rótulo de clase y nivel (+20%)
-        self.dibujar_texto("SEPULTURERO", x + 18, y + 8, 14, HUD_ORO)
-        nivel_nombre = self.nivel.nombre.upper() if self.nivel else "CAMPOSANTO"
-        self.dibujar_texto(nivel_nombre, x + 140, y + 8, 13, HUD_MUTED)
-
-        # Corazones de sangre gótica (+20% radio y espaciado)
-        pulso_latido = int(math.sin(self.tiempo_nivel * 9) * 2) if self.jugador.vidas == 1 else 0
-        for i in range(VIDAS_MAXIMAS):
-            cx = x + 30 + i * 36
-            cy = y + 42
-            lleno = (i < self.jugador.vidas)
-            desp_y = pulso_latido if (i == 0 and self.jugador.vidas == 1) else 0
-
-            # Aura si está en última vida
-            if lleno and self.jugador.vidas == 1:
-                aura = pygame.Surface((38, 38), pygame.SRCALPHA)
-                pygame.draw.circle(aura, (220, 30, 40, int(35 + pulso_latido * 15)), (19, 19), 17)
-                self.pantalla.blit(aura, (cx - 19, cy - 19 + desp_y), special_flags=pygame.BLEND_RGBA_ADD)
-
-            self.dibujar_corazon_gotico(cx, cy + desp_y, lleno)
-
-    # --- Módulo HUD: Corazón Gótico (+20% escala, silueta anatómica limpia) --- #
-    def dibujar_corazon_gotico(self, cx, cy, lleno):
-        r = 7
-        top_y = cy - 4
-        tip_y = cy + 14
-
-        if lleno:
-            color_base = (220, 28, 48)
-            color_sombra = (130, 14, 26)
-            color_brillo = (255, 110, 130)
-            color_destello = (255, 235, 240)
-            color_borde = (180, 20, 36)
-        else:
-            color_base = (34, 26, 36)
-            color_sombra = (18, 14, 20)
-            color_brillo = (48, 36, 50)
-            color_destello = None
-            color_borde = (78, 62, 82)
-
-        # Sombra profunda envolvente
-        pygame.draw.circle(self.pantalla, color_sombra, (cx - 6, top_y + 1), r + 1)
-        pygame.draw.circle(self.pantalla, color_sombra, (cx + 6, top_y + 1), r + 1)
-        pygame.draw.polygon(self.pantalla, color_sombra, [(cx - 12, top_y + 1), (cx + 12, top_y + 1), (cx, tip_y + 1)])
-
-        # Cuerpo del corazón
-        pygame.draw.circle(self.pantalla, color_base, (cx - 6, top_y), r)
-        pygame.draw.circle(self.pantalla, color_base, (cx + 6, top_y), r)
-        pygame.draw.polygon(self.pantalla, color_base, [(cx - 11, top_y), (cx + 11, top_y), (cx, tip_y)])
-
-        # Borde exterior integral (sigue todo el contorno del corazón, sin triángulos sueltos)
-        pygame.draw.line(self.pantalla, color_borde, (cx - 11, top_y), (cx, tip_y), 1)
-        pygame.draw.line(self.pantalla, color_borde, (cx + 11, top_y), (cx, tip_y), 1)
-        pygame.draw.arc(self.pantalla, color_borde, (cx - 6 - r, top_y - r, r * 2, r * 2), 0, 3.14, 1)
-        pygame.draw.arc(self.pantalla, color_borde, (cx + 6 - r, top_y - r, r * 2, r * 2), 0, 3.14, 1)
-
-        # Destellos o hueco interno
-        if lleno and color_destello:
-            pygame.draw.circle(self.pantalla, color_destello, (cx - 3, top_y - 3), 2)
-            pygame.draw.circle(self.pantalla, color_brillo, (cx + 4, top_y - 2), 2)
-        else:
-            pygame.draw.circle(self.pantalla, (20, 16, 22), (cx - 5, top_y), 3)
-            pygame.draw.circle(self.pantalla, (20, 16, 22), (cx + 5, top_y), 3)
-
-    # --- Módulo HUD: Relicario Derecho (Almas + Rosario + Dash + Arma opcional) (+20%) --- #
-    def dibujar_hud_relicario_derecho(self, y):
-        tiene_arma = self.jugador.tiene_pala
-        ancho = 542 if tiene_arma else 404
-        alto = 68
-        x = ANCHO - ancho - 24
-
-        panel = pygame.Surface((ancho, alto), pygame.SRCALPHA)
-        pygame.draw.rect(panel, (14, 11, 18, 220), (0, 0, ancho, alto), border_radius=11)
-        pygame.draw.rect(panel, (*HUD_BORDE, 185), (0, 0, ancho, alto), 1, border_radius=11)
-        pygame.draw.line(panel, (*HUD_ORO, 120), (12, 1), (ancho - 12, 1), 1)
-
-        for vx, vy, vdx, vdy in ((0, 0, 1, 1), (ancho, 0, -1, 1), (0, alto, 1, -1), (ancho, alto, -1, -1)):
-            pygame.draw.line(panel, HUD_ORO, (vx + 4 * vdx, vy), (vx + 16 * vdx, vy), 1)
-            pygame.draw.line(panel, HUD_ORO, (vx, vy + 4 * vdy), (vx, vy + 14 * vdy), 1)
-        self.pantalla.blit(panel, (x, y))
-
-        # Icono de alma espectral en rombo (+20%)
-        ix, iy = x + 22, y + 34
-        panel_alma = pygame.Surface((44, 44), pygame.SRCALPHA)
-        pygame.draw.circle(panel_alma, (70, 230, 215, 55), (22, 22), 20)
-        self.pantalla.blit(panel_alma, (ix - 22, iy - 22))
-        pygame.draw.polygon(self.pantalla, HUD_ALMA, [(ix, iy - 13), (ix + 10, iy), (ix, iy + 13), (ix - 10, iy)])
-        pygame.draw.polygon(self.pantalla, (230, 255, 250), [(ix, iy - 6), (ix + 4, iy), (ix, iy + 6), (ix - 4, iy)])
-
-        # Contador de Almas (+20%)
-        total = self.nivel.total_almas if self.nivel else 24
-        self.dibujar_texto(f"ALMAS  {self.jugador.almas} / {total}", x + 44, y + 8, 15, HUD_ORO)
-
-        # Rosario de 10 Cuentas de Ánima (+20% espaciado y tamaño)
-        rx = x + 48
-        ry = y + 42
-        pulso_resurreccion = 0.5 + 0.5 * math.sin(self.tiempo_nivel * 8)
-        for i in range(ALMAS_POR_VIDA):
-            bx = rx + i * 20
-            by = ry
-            llena = (i < self.jugador.almas_para_vida)
-
-            if llena:
-                color_perla = (80, 235, 215)
-                radio = 5
-                if self.jugador.almas_para_vida >= 8:
-                    radio = 5 + int(pulso_resurreccion * 2)
-                pygame.draw.circle(self.pantalla, color_perla, (bx, by), radio)
-                pygame.draw.circle(self.pantalla, (230, 255, 250), (bx - 1, by - 1), max(1, radio - 2))
-            else:
-                pygame.draw.circle(self.pantalla, (42, 34, 46), (bx, by), 4)
-                pygame.draw.circle(self.pantalla, (22, 18, 26), (bx, by), 4, 1)
-
-        # Divisoria vertical de hierro hacia Sello DASH
-        pygame.draw.line(self.pantalla, (*HUD_BORDE, 160), (x + 280, y + 8), (x + 280, y + alto - 8), 1)
-
-        # SELLO DE DASH (+20%)
-        dx_box = x + 292
-        dash_listo = self.jugador.dash_listo()
-        color_dash = HUD_DASHTURQUESA if dash_listo else HUD_MUTED
-
-        # Ala rúnica de dash (+20%)
-        pygame.draw.polygon(self.pantalla, color_dash, [(dx_box + 2, y + 44), (dx_box + 16, y + 20), (dx_box + 22, y + 27), (dx_box + 9, y + 48)])
-        pygame.draw.polygon(self.pantalla, color_dash, [(dx_box + 18, y + 31), (dx_box + 29, y + 17), (dx_box + 33, y + 24), (dx_box + 23, y + 39)])
-
-        self.dibujar_texto("DASH", dx_box + 34, y + 8, 13, HUD_MUTED)
-        estado_dash = "LISTO" if dash_listo else f"{1.0 - (self.jugador.dash_cooldown / DASH_COOLDOWN):.1f}"
-        self.dibujar_texto(estado_dash, dx_box + 34, y + 34, 15, color_dash)
-
-        # SELLO DE ARMA (Solo si tiene pala) (+20%)
-        if tiene_arma:
-            pygame.draw.line(self.pantalla, (*HUD_BORDE, 160), (x + 412, y + 8), (x + 412, y + alto - 8), 1)
-            ax_box = x + 424
-            es_guadaña = getattr(self.jugador, "rango_ataque_mejorado", False)
-            color_arma = (215, 85, 255) if es_guadaña else HUD_ORO
-            etiqueta = "GUADAÑA +" if es_guadaña else "PALA"
-
-            if es_guadaña:
-                # Guadaña mística púrpura (+20%)
-                pygame.draw.arc(self.pantalla, color_arma, (ax_box + 2, y + 15, 34, 34), 0, 3.14, 4)
-                pygame.draw.line(self.pantalla, (130, 50, 160), (ax_box + 20, y + 30), (ax_box + 8, y + 52), 3)
-            else:
-                # Pala plateada (+20%)
-                pygame.draw.line(self.pantalla, (160, 120, 60), (ax_box + 8, y + 50), (ax_box + 22, y + 22), 3)
-                pygame.draw.polygon(self.pantalla, (190, 190, 205), [(ax_box + 18, y + 20), (ax_box + 31, y + 15), (ax_box + 26, y + 32)])
-
-            self.dibujar_texto(etiqueta, ax_box + 34, y + 8, 13, color_arma)
-            estado_ataque = "LISTO" if self.jugador.ataque_cooldown <= 0 else "..."
-            self.dibujar_texto(estado_ataque, ax_box + 34, y + 34, 15, HUD_VERDE if self.jugador.ataque_cooldown <= 0 else HUD_MUTED)
-
-    # --- Módulo HUD: Barra Imperial del Custodio (+20% escala) --- #
-    def dibujar_barra_jefe(self):
-        ancho, alto = 660, 76
-        x = (ANCHO - ancho) // 2
-        y = 16
-
-        panel = pygame.Surface((ancho, alto), pygame.SRCALPHA)
-        pygame.draw.rect(panel, (16, 12, 20, 230), (0, 0, ancho, alto), border_radius=12)
-        color_borde = (215, 45, 55) if self.jefe.fase >= 2 else (*HUD_BORDE, 200)
-        pygame.draw.rect(panel, color_borde, (0, 0, ancho, alto), 2 if self.jefe.fase >= 2 else 1, border_radius=12)
-
-        # Corona de oro en el borde superior
-        pygame.draw.line(panel, HUD_ORO, (16, 1), (ancho - 16, 1), 1)
-        self.pantalla.blit(panel, (x, y))
-
-        # Nombre y fase (+20%)
-        nombre_color = HUD_ROJO if self.jefe.fase >= 2 else HUD_ORO
-        self.dibujar_texto("EL CUSTODIO DEL OSARIO", x + 22, y + 9, 17, nombre_color, sombra=True)
-
-        if self.jefe.fase >= 2:
-            fase_txt = "FASE II · ¡LA PALA REBOTA! SOLO PISOTÓN"
-            fase_color = (250, 65, 65)
-        else:
-            fase_txt = "FASE I · VULNERABLE A PALA Y PISOTÓN"
-            fase_color = HUD_MUTED
-        self.dibujar_texto(fase_txt, x + ancho - 340, y + 11, 13, fase_color)
-
-        # 6 Celdas de Salud (Losas de Osario con Rubí) (+20%)
-        ancho_celda = 98
-        alto_celda = 15
-        y_celdas = y + 44
-        for i in range(6):
-            cx = x + 22 + i * (ancho_celda + 6)
-            rect_celda = pygame.Rect(cx, y_celdas, ancho_celda, alto_celda)
-            llena = (i < self.jefe.vida)
-
-            if llena:
-                color_rubi = (225, 38, 52)
-                pygame.draw.rect(self.pantalla, color_rubi, rect_celda, border_radius=4)
-                pygame.draw.rect(self.pantalla, (255, 105, 120), (rect_celda.x + 2, rect_celda.y + 2, rect_celda.width - 4, 3), border_radius=2)
-                pygame.draw.rect(self.pantalla, (120, 18, 28), rect_celda, 1, border_radius=4)
-            else:
-                pygame.draw.rect(self.pantalla, (36, 26, 30), rect_celda, border_radius=4)
-                pygame.draw.rect(self.pantalla, (22, 16, 20), rect_celda, 1, border_radius=4)
 
     # --- Función dibujar_pista (Ubicación Superior Contextual) (+20%) --- #
     def dibujar_pista(self):
@@ -2298,17 +2502,7 @@ class Juego:
         alto_panel = 370
         px = (ANCHO - ancho_panel) // 2
         py = (ALTO - alto_panel) // 2
-
-        panel = pygame.Surface((ancho_panel, alto_panel), pygame.SRCALPHA)
-        pygame.draw.rect(panel, (14, 12, 18, 235), (0, 0, ancho_panel, alto_panel), border_radius=12)
-        pygame.draw.rect(panel, (*HUD_BORDE, 220), (0, 0, ancho_panel, alto_panel), 2, border_radius=12)
-        pygame.draw.line(panel, (*HUD_ORO, 180), (20, 2), (ancho_panel - 20, 2), 1)
-
-        for vx, vy, vdx, vdy in ((0, 0, 1, 1), (ancho_panel, 0, -1, 1),
-                                 (0, alto_panel, 1, -1), (ancho_panel, alto_panel, -1, -1)):
-            pygame.draw.line(panel, HUD_ORO, (vx + 4 * vdx, vy), (vx + 18 * vdx, vy), 2)
-            pygame.draw.line(panel, HUD_ORO, (vx, vy + 4 * vdy), (vx, vy + 18 * vdy), 2)
-        self.pantalla.blit(panel, (px, py))
+        self.dibujar_marco_heraldico(self.pantalla, px, py, ancho_panel, alto_panel)
 
         self.dibujar_texto("PAUSA LITÚRGICA", 0, py + 22, 28, HUD_ORO, centrado=True, sombra=True)
         self.dibujar_texto("EL RESPIRO DEL SEPULTURERO", 0, py + 56, 14, HUD_MUTED, centrado=True)
@@ -2326,7 +2520,7 @@ class Juego:
             activa = (i == self.pausa_opcion)
             rect_op = pygame.Rect(px + 36, y_op, ancho_panel - 72, 48)
             surf_op = pygame.Surface((rect_op.w, rect_op.h), pygame.SRCALPHA)
-            color_bg = (28, 22, 34, 220) if activa else (18, 14, 22, 160)
+            color_bg = (32, 24, 42, 235) if activa else (18, 14, 22, 160)
             pygame.draw.rect(surf_op, color_bg, (0, 0, rect_op.w, rect_op.h), border_radius=6)
             color_border = HUD_ORO if activa else (*HUD_BORDE, 120)
             pygame.draw.rect(surf_op, color_border, (0, 0, rect_op.w, rect_op.h), 1, border_radius=6)
@@ -2338,7 +2532,7 @@ class Juego:
             self.dibujar_texto(desc_op, rect_op.x + 36, rect_op.y + 27, 12, HUD_MUTED)
             y_op += 56
 
-        self.dibujar_texto("[↑/↓] Elegir · [ENTER] Confirmar · [ESC / P] Continuar", 0, py + alto_panel - 26, 12, (150, 140, 155), centrado=True)
+        self.dibujar_texto("[↑/↓ / WASD] Elegir · [ENTER] Confirmar · [ESC / P] Continuar", 0, py + alto_panel - 26, 12, (150, 140, 155), centrado=True)
 
     # --- Función dibujar_ui_espacial --- #
     def dibujar_ui_espacial(self, destino, camara):
@@ -2352,27 +2546,30 @@ class Juego:
         bobbing = math.sin(tiempo * 4.0) * 3
 
         puntos_clave = []
+        es_retro = getattr(self, "preset_teclado_idx", 0) == 1
+        tecla_atk = "C / J" if es_retro else "J / Z"
+        tecla_dsh = "X / SHIFT" if es_retro else "SHIFT / X"
 
         # 1. Dash Power-ups en el nivel
         for dp in getattr(self.nivel, "power_ups_dash", []):
-            if not getattr(dp, "recogido", False):
-                puntos_clave.append((dp.rect.centerx, dp.rect.top, "[SHIFT] Dash en el aire"))
+            if not getattr(dp, "recogida", False) and not getattr(dp, "recogido", False):
+                puntos_clave.append((dp.rect.centerx, dp.rect.top, f"[{tecla_dsh}] Dash en el aire"))
 
         # 2. Palas en el nivel
         for p in getattr(self.nivel, "palas", []):
-            if not getattr(p, "recogida", False):
-                puntos_clave.append((p.rect.centerx, p.rect.top, "[A / J] Atacar · ¡Pisotón recarga Dash!"))
+            if not getattr(p, "recogida", False) and not getattr(p, "recogido", False):
+                puntos_clave.append((p.rect.centerx, p.rect.top, f"[{tecla_atk}] Atacar · ¡Saltá sobre enemigos para rebotar y recargar Dash!"))
 
         # 3. Power-Up X de Rango / Guadaña en el nivel
         for pr in getattr(self.nivel, "power_ups_rango", []):
-            if not getattr(pr, "recogido", False):
+            if not getattr(pr, "recogida", False) and not getattr(pr, "recogido", False):
                 puntos_clave.append((pr.rect.centerx, pr.rect.top, "[X] Guadaña Consagrada · Alcance ampliado"))
 
         # 4. En el Preludio / Tutorial: puntos pedagógicos específicos
         if getattr(self, "es_tutorial", False):
-            puntos_clave.append((20 * TILE, 9 * TILE, "[ESPACIO] Mantener para salto alto"))
-            puntos_clave.append((40 * TILE, 8 * TILE, "[A / J] Atacar · ¡Saltá encima para rebotar!"))
-            puntos_clave.append((76 * TILE, 8 * TILE, "[M] Plataforma móvil hacia el portón"))
+            puntos_clave.append((18 * TILE, 8 * TILE, "[ESPACIO / W] Mantener para salto alto"))
+            puntos_clave.append((40 * TILE, 8 * TILE, f"[{tecla_atk}] Atacar · ¡Saltá sobre enemigos para rebotar y recargar Dash!"))
+            puntos_clave.append((74 * TILE, 8 * TILE, "[ENTER] Portón hacia el Camposanto"))
 
         if 13 not in self.fuentes:
             try:
@@ -2385,23 +2582,27 @@ class Juego:
             dist = math.hypot(jx - wx, jy - wy)
             if dist <= 140:
                 alfa = int(min(240, max(0, (140 - dist) / 40.0 * 240)))
-                vx = int(wx - camara.x)
-                vy = int(wy - camara.y - 32 + bobbing)
+                img_txt = fuente.render(texto, True, (245, 235, 220))
+                tw, th = img_txt.get_size()
+                bw, bh = tw + 20, th + 10
 
-                if -150 <= vx <= VIRTUAL_ANCHO + 150 and -50 <= vy <= VIRTUAL_ALTO + 50:
-                    img_txt = fuente.render(texto, True, (245, 235, 220))
-                    tw, th = img_txt.get_size()
-                    bw, bh = tw + 20, th + 10
-                    bx = vx - bw // 2
-                    by = vy - bh
+                # Coordenadas transformadas por camara.aplicar_rect
+                rect_mundo = pygame.Rect(
+                    int(wx - bw // 2),
+                    int(wy - bh - 24 + bobbing),
+                    bw,
+                    bh,
+                )
+                rect_pantalla = camara.aplicar_rect(rect_mundo)
 
+                if -150 <= rect_pantalla.x <= VIRTUAL_ANCHO + 150 and -50 <= rect_pantalla.y <= VIRTUAL_ALTO + 50:
                     burbuja = pygame.Surface((bw, bh), pygame.SRCALPHA)
                     pygame.draw.rect(burbuja, (12, 10, 16, min(alfa, 215)), (0, 0, bw, bh), border_radius=6)
                     pygame.draw.rect(burbuja, (198, 156, 62, min(alfa, 235)), (0, 0, bw, bh), 1, border_radius=6)
                     pygame.draw.polygon(burbuja, (198, 156, 62, min(alfa, 235)), [(bw // 2 - 4, bh), (bw // 2 + 4, bh), (bw // 2, bh + 4)])
 
                     burbuja.blit(img_txt, (10, 5))
-                    destino.blit(burbuja, (bx, by))
+                    destino.blit(burbuja, rect_pantalla.topleft)
 
     # --- Función dibujar_victoria --- #
     def dibujar_victoria(self):
@@ -2426,20 +2627,10 @@ class Juego:
             self.pantalla.blit(s, (rx - radio - 1, ry - radio - 1))
 
         # Panel central
-        pw, ph = 680, 430
+        pw, ph = 680, 440
         px = (ANCHO - pw) // 2
         py = (ALTO - ph) // 2
-
-        panel = pygame.Surface((pw, ph), pygame.SRCALPHA)
-        pygame.draw.rect(panel, (12, 10, 16, 240), (0, 0, pw, ph), border_radius=14)
-        pygame.draw.rect(panel, (*ORO, 200), (0, 0, pw, ph), 2, border_radius=14)
-        pygame.draw.line(panel, (*ORO, 120), (20, 1), (pw - 20, 1), 1)
-        pygame.draw.line(panel, (*ORO, 120), (20, ph - 1), (pw - 20, ph - 1), 1)
-        # Remates de esquina
-        for cx_, cy_, dx_, dy_ in ((0, 0, 1, 1), (pw, 0, -1, 1), (0, ph, 1, -1), (pw, ph, -1, -1)):
-            pygame.draw.line(panel, ORO, (cx_ + 8 * dx_, cy_), (cx_ + 28 * dx_, cy_), 1)
-            pygame.draw.line(panel, ORO, (cx_, cy_ + 8 * dy_), (cx_, cy_ + 26 * dy_), 1)
-        self.pantalla.blit(panel, (px, py))
+        self.dibujar_marco_heraldico(self.pantalla, px, py, pw, ph)
 
         # Título
         self.dibujar_texto("¡EL SEPULTURERO ESCAPÓ!", 0, py + 24, 38, ORO, centrado=True, sombra=True)
@@ -2482,8 +2673,8 @@ class Juego:
                          (px + 30, y_rango, pw - 60, 44), 1, border_radius=8)
         self.dibujar_texto(f"RANGO {rango}", 0, y_rango + 11, 17, color_rango, centrado=True, sombra=True)
 
-        # Pie
-        self.dibujar_texto("ENTER · Volver al menú principal · ESC · Salir",
+        # Pie constante (Principio 2 UX)
+        self.dibujar_texto("[ENTER] Confirmar · [ESC] Volver al Menú",
                            0, py + ph - 30, 13, HUD_MUTED, centrado=True)
 
     # --- Función dibujar_derrota --- #
@@ -2498,18 +2689,7 @@ class Juego:
         pw, ph = 680, 440
         px = (ANCHO - pw) // 2
         py = (ALTO - ph) // 2
-
-        panel = pygame.Surface((pw, ph), pygame.SRCALPHA)
-        pygame.draw.rect(panel, (18, 10, 14, 245), (0, 0, pw, ph), border_radius=14)
-        pygame.draw.rect(panel, (160, 40, 50, 220), (0, 0, pw, ph), 2, border_radius=14)
-        pygame.draw.line(panel, (*HUD_ORO, 120), (20, 1), (pw - 20, 1), 1)
-        pygame.draw.line(panel, (*HUD_ORO, 120), (20, ph - 1), (pw - 20, ph - 1), 1)
-
-        # Ornamentos en esquinas
-        for cx_, cy_, dx_, dy_ in ((0, 0, 1, 1), (pw, 0, -1, 1), (0, ph, 1, -1), (pw, ph, -1, -1)):
-            pygame.draw.line(panel, HUD_ORO, (cx_ + 8 * dx_, cy_), (cx_ + 26 * dx_, cy_), 1)
-            pygame.draw.line(panel, HUD_ORO, (cx_, cy_ + 8 * dy_), (cx_, cy_ + 26 * dy_), 1)
-        self.pantalla.blit(panel, (px, py))
+        self.dibujar_marco_heraldico(self.pantalla, px, py, pw, ph, color_fondo=(18, 10, 14, 245), color_borde=(160, 40, 50))
 
         # Título fúnebre
         self.dibujar_texto("LA OSCURIDAD TE RECLAMA", 0, py + 24, 34, HUD_ROJO, centrado=True, sombra=True)
@@ -2544,7 +2724,7 @@ class Juego:
         # Separador inferior y llamada a la acción
         pygame.draw.line(self.pantalla, (160, 40, 50, 160),
                          (px + 30, py + 372), (px + pw - 30, py + 372), 1)
-        self.dibujar_texto("ENTER: REINTENTAR · ESC: VOLVER AL MENÚ",
+        self.dibujar_texto("[ENTER] Reintentar · [ESC] Volver al Menú",
                            0, py + 396, 16, HUD_ORO, centrado=True, sombra=True)
 
     # --- Función dibujar_texto --- #

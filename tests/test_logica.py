@@ -27,8 +27,17 @@ from config import (
     ALTO,
     ALMAS_POR_VIDA,
     ANCHO,
+    APEX_GRAVEDAD_FACTOR,
+    CORTE_SALTO,
+    DASH_JUMP_IMPULSO_X,
     DASH_USOS_AIRE,
+    GRAVEDAD,
     JUGADOR_ALTO,
+    JUMP_BUFFER,
+    MINIJEFE_TELEGRAFO,
+    MINIJEFE_VULNERABLE,
+    SALTO,
+    VELOCIDAD,
     VIRTUAL_ALTO,
     VIRTUAL_ANCHO,
     JUGADOR_ANCHO,
@@ -37,7 +46,7 @@ from config import (
     VIDAS_MAXIMAS,
 )
 from entidades import Alma, Enemigo, Jugador
-from juego import Juego
+from juego import Juego, OPCIONES_CALIDAD, OPCIONES_HUD
 from nivel import Nivel
 from niveles import NIVEL_1, NIVEL_2, NIVEL_3, NIVELES, SALAS_PRUEBA
 
@@ -68,7 +77,7 @@ def probar_niveles():
                 if simbolo not in ("E", "L", "K", "B"):
                     continue
                 piso = nivel.filas[fila + 1][columna] if fila + 1 < nivel.num_filas else "."
-                assert piso in ("#", "^"), f"enemigo {simbolo} flotante en nivel {indice}: {fila},{columna}"
+                assert piso == "#", f"enemigo {simbolo} flotante en nivel {indice}: {fila},{columna}"
 
     print("niveles: OK")
 
@@ -621,6 +630,12 @@ def probar_jefe_final():
     juego.actualizar_jefe(1 / 60)
     assert len(juego.ondas_jefe) == 2
 
+    # Fase 1: fuera de la ventana vulnerable, la pala no daña
+    jefe.estado = "espera"
+    jefe.vulnerable = False
+    juego.dañar_jefe()
+    assert jefe.vida == 6, "El Custodio solo recibe daño en su ventana de vulnerabilidad"
+
     jefe.estado = "recuperacion"
     jefe.vulnerable = True
     jefe.temporizador = 1.0
@@ -639,13 +654,21 @@ def probar_jefe_final():
     assert jefe.fase == 2  # 3 golpes acumulados → Fase 2
 
     # En Fase 2, la pala y el pisotón rebotan si no se posee la Guadaña Consagrada (X)
+    jefe.estado = "recuperacion"
+    jefe.vulnerable = True
     assert not juego.dañar_jefe()
     assert not juego.dañar_jefe_pisaton()
     assert jefe.vida == 3
 
-    # Con la Guadaña Consagrada ('X'), se vulnera la coraza espectral
+    # Con la Guadaña Consagrada ('X'), se vulnera la coraza espectral…
     juego.jugador.rango_ataque_mejorado = True
+    # …pero solo dentro de la ventana de vulnerabilidad.
+    jefe.vulnerable = False
+    assert not juego.dañar_jefe_pisaton()
+    assert jefe.vida == 3
     for _ in range(3):
+        jefe.estado = "recuperacion"
+        jefe.vulnerable = True
         assert juego.dañar_jefe_pisaton()
     assert not jefe.vivo
     assert jefe.fase == 2  # Muere en Fase 2
@@ -659,7 +682,7 @@ def probar_jefe_final():
     print("jefe final: OK")
 
 
-# --- Prueba: limpieza de gemas y arena del jefe --- #
+# --- Prueba: validación matemática de niveles y limpieza de gemas --- #
 def probar_mapa_final():
     from niveles import NIVEL_TUTORIAL
 
@@ -681,7 +704,24 @@ def probar_mapa_final():
     assert "B" in NIVEL_3
     assert NIVEL_3.count("F") >= 3
 
-    # 5. Longitud(NIVEL_TUTORIAL) < Longitud(NIVEL_1) < Longitud(NIVEL_2) < Longitud(NIVEL_3)
+    # 5. Ningún enemigo ('E', 'L', 'K', 'B') está flotando en el aire sin suelo '#' debajo
+    for nombre, mapa_str in (
+        ("NIVEL_TUTORIAL", NIVEL_TUTORIAL),
+        ("NIVEL_1", NIVEL_1),
+        ("NIVEL_2", NIVEL_2),
+        ("NIVEL_3", NIVEL_3),
+    ):
+        filas = mapa_str.strip("\n").splitlines()
+        ancho = len(filas[0])
+        for r, fila in enumerate(filas):
+            assert len(fila) == ancho, f"Fila {r} en {nombre} no uniforme ({len(fila)} != {ancho})"
+            for c, simbolo in enumerate(fila):
+                if simbolo in ("E", "L", "K", "B"):
+                    assert r + 1 < len(filas), f"Enemigo {simbolo} en la última fila en {nombre}"
+                    piso = filas[r + 1][c]
+                    assert piso == "#", f"Enemigo {simbolo} flotando en {nombre} en ({r},{c}), piso='{piso}'"
+
+    # 6. Longitud(NIVEL_TUTORIAL) < Longitud(NIVEL_1) < Longitud(NIVEL_2) < Longitud(NIVEL_3)
     w_tut = len(NIVEL_TUTORIAL.strip("\n").splitlines()[0])
     w_1 = len(NIVEL_1.strip("\n").splitlines()[0])
     w_2 = len(NIVEL_2.strip("\n").splitlines()[0])
@@ -747,7 +787,45 @@ def probar_salto_ventana_nivel_2():
 
 # --- Prueba: salas de prueba y selector --- #
 def probar_salas_prueba():
+    from niveles_rediseñados import SALAS_PRUEBA_RED
+
     assert len(SALAS_PRUEBA) == 6  # 3 originales + 3 rediseñadas
+    assert len(SALAS_PRUEBA_RED) == 3
+
+    # Validación estructural de las 3 SALAS_PRUEBA_RED hechas a mano
+    for idx, sala in enumerate(SALAS_PRUEBA_RED, start=1):
+        mapa = sala["mapa"]
+        assert mapa.count("P") == 1, f"Sala {idx} Rediseñada debe tener exactamente un 'P'"
+        assert mapa.count("G") == 1, f"Sala {idx} Rediseñada debe tener exactamente un 'G'"
+        filas = mapa.strip("\n").splitlines()
+        ancho = len(filas[0])
+        for r, fila in enumerate(filas):
+            assert len(fila) == ancho, f"Sala {idx} Rediseñada fila {r} tiene largo {len(fila)} != {ancho}"
+            for c, simbolo in enumerate(fila):
+                if simbolo in ("E", "L", "K", "B"):
+                    assert r + 1 < len(filas), f"Enemigo {simbolo} en borde inferior de Sala {idx}"
+                    piso = filas[r + 1][c]
+                    assert piso == "#", f"Enemigo {simbolo} flotando en Sala {idx} ({r},{c})"
+
+    # Aislamiento específico de mecánicas:
+    # Sala 1: Salto + Dash sin enemigos, fosos con trinchera segura en fila 11
+    sala_1_mapa = SALAS_PRUEBA_RED[0]["mapa"]
+    for e in ("E", "L", "K", "B"):
+        assert e not in sala_1_mapa, f"Sala 1 Rediseñada debe aislar Salto+Dash sin enemigos ({e})"
+    assert "D" in sala_1_mapa and "F" in sala_1_mapa
+
+    # Sala 2: Arma 'W' + Golpe frontal y Foso pisotón-dash con morador 'E'
+    sala_2_mapa = SALAS_PRUEBA_RED[1]["mapa"]
+    assert "W" in sala_2_mapa, "Sala 2 Rediseñada debe contener el altar de la pala 'W'"
+    assert sala_2_mapa.count("E") >= 2, "Sala 2 Rediseñada debe tener moradores 'E' para golpe frontal y pisotón"
+
+    # Sala 3: Mini-Boss 'K' + Power-Up 'X' + Boss Final 'B' y al menos 3 Faroles 'F'
+    sala_3_mapa = SALAS_PRUEBA_RED[2]["mapa"]
+    assert "K" in sala_3_mapa, "Sala 3 Rediseñada debe contener Mini-Boss 'K'"
+    assert "X" in sala_3_mapa, "Sala 3 Rediseñada debe contener Power-Up 'X'"
+    assert "B" in sala_3_mapa, "Sala 3 Rediseñada debe contener Boss Final 'B'"
+    assert sala_3_mapa.count("F") >= 3, "Sala 3 Rediseñada debe contener al menos 3 Faroles 'F'"
+
     juego = Juego()
     juego.abrir_selector_pruebas()
     juego.dibujar()
@@ -759,9 +837,10 @@ def probar_salas_prueba():
         assert juego.sala_prueba
         assert juego.nivel.nombre == datos["nombre"]
         assert juego.jugador.tiene_pala == datos["pala"]
-        if indice == 2:
+        if indice in (2, 5):
             assert juego.jefe is not None
 
+    # Verificación de completitud en Sala 3 original
     juego.cargar_sala_prueba(2)
     juego.jefe.vivo = False
     juego.jugador.rect.topleft = juego.nivel.meta.topleft
@@ -769,6 +848,29 @@ def probar_salas_prueba():
     juego.jugador.y = float(juego.jugador.rect.y)
     juego.actualizar(1 / 60)
     assert juego.estado == "sala_completada"
+
+    # Verificación de completitud y flujo en Sala 3 Rediseñada (índice 5)
+    juego.cargar_sala_prueba(5)
+    assert juego.jefe is not None
+    assert len(juego.nivel.minijefes) == 1
+    # 'X' sellado mientras el Mini-Boss viva
+    juego.actualizar_power_ups_rango()
+    assert juego.nivel.power_ups_rango[0].sellado is True
+    # Derrotar al Mini-Boss desprecinta 'X'
+    juego.nivel.minijefes[0].vivo = False
+    juego.actualizar_power_ups_rango()
+    assert juego.nivel.power_ups_rango[0].sellado is False
+    # Meta bloqueada si el Custodio sigue con vida
+    juego.jugador.rect.topleft = juego.nivel.meta.topleft
+    juego.jugador.x = float(juego.jugador.rect.x)
+    juego.jugador.y = float(juego.jugador.rect.y)
+    juego.actualizar(1 / 60)
+    assert juego.estado == "jugando"
+    # Al vencer al Custodio, el portón se abre
+    juego.jefe.vivo = False
+    juego.actualizar(1 / 60)
+    assert juego.estado == "sala_completada"
+
     print("salas de prueba: OK")
 
 
@@ -1024,49 +1126,425 @@ def probar_power_up_dash_y_checkpoint():
 
 
 # --- Prueba: Mini-Boss (El Carcelero del Osario) --- #
+def _cansar(mj):
+    """Pone al Carcelero en su ventana de cansancio (vulnerable 1.3 s)."""
+    mj.estado = "cansado"
+    mj.temporizador = MINIJEFE_VULNERABLE
+    mj.vulnerable = True
+    mj.invulnerable = 0
+
+
 def probar_minijefe():
     from entidades import MiniJefe
     mj = MiniJefe(pygame.Rect(100, 100, 36, 48), 50, 250)
     assert mj.vida == 3
     assert mj.vivo
+    assert mj.rect.size == (36, 48)
+
+    # Fuera de la ventana de cansancio no recibe daño (patrón justo)
+    assert not mj.vulnerable
+    assert not mj.recibir_golpe_pala()
+    assert not mj.recibir_pisaton()
+    assert mj.vida == 3
 
     # Daño por golpe de pala
+    _cansar(mj)
     assert mj.recibir_golpe_pala()
     assert mj.vida == 2
 
     # Daño por pisotón
-    mj.invulnerable = 0
+    _cansar(mj)
     assert mj.recibir_pisaton()
     assert mj.vida == 1
 
     # Tercer golpe: derrota
-    mj.invulnerable = 0
+    _cansar(mj)
     assert mj.recibir_golpe_pala()
     assert mj.vida == 0
     assert not mj.vivo
 
-    # En Juego: derrota otorga 5 almas y rebote
+    # Patrón: patrulla -> telegrafía 0.55 s (con aviso) -> embestida -> cansado 1.3 s
+    from entidades import Jugador
+    mj = MiniJefe(pygame.Rect(100, 100, 36, 48), 50, 250)
+    objetivo = Jugador(160, 100)
+    mj.actualizar(1 / 60, objetivo)
+    assert mj.estado == "telegrafo" and mj.aviso_recien
+    assert abs(mj.temporizador - MINIJEFE_TELEGRAFO) < 1e-9
+    mj.temporizador = 0.0
+    mj.actualizar(1 / 60, objetivo)
+    assert mj.estado == "ataque"
+    mj.temporizador = 0.0
+    mj.actualizar(1 / 60, objetivo)
+    assert mj.estado == "cansado" and mj.vulnerable
+    assert abs(mj.temporizador - MINIJEFE_VULNERABLE) < 1e-9
+
+    # En Juego: pisotón con pala lo daña y rebota (recargando el dash)
     juego = Juego()
     juego.cargar_nivel(0)
     mj2 = MiniJefe(pygame.Rect(200, 200, 36, 48), 100, 300)
     juego.nivel.minijefes = [mj2]
     almas_antes = juego.jugador.almas
+    _cansar(mj2)
     juego.jugador.rect.midbottom = (mj2.rect.centerx, mj2.rect.top + 1)
     juego.jugador.vy = 200
+    juego.jugador.dash_usos_aire = 0
     juego.jugador.tiene_pala = True
     juego.actualizar_minijefes(1 / 60)
     assert mj2.vida == 2
     assert juego.jugador.vy < 0, "Debe rebotar tras pisotón al mini-jefe"
+    assert juego.jugador.dash_usos_aire == DASH_USOS_AIRE
+
+    # Pisotón fuera de la ventana: rebota sin dañarlo ni dañar al jugador
+    mj2.estado = "patrulla"
+    mj2.temporizador = 5.0
+    mj2.vulnerable = False
+    mj2.invulnerable = 0
+    juego.jugador.invulnerable = 0
+    vidas = juego.jugador.vidas
+    juego.jugador.rect.midbottom = (mj2.rect.centerx, mj2.rect.top + 1)
+    juego.jugador.vy = 200
+    juego.actualizar_minijefes(1 / 60)
+    assert mj2.vida == 2
+    assert juego.jugador.vidas == vidas
+    assert juego.jugador.vy < 0
+
+    # Regresión: caer lejos del Carcelero NO dispara un pisotón fantasma
+    _cansar(mj2)
+    juego.jugador.rect.midbottom = (mj2.rect.centerx + 400, mj2.rect.top - 100)
+    juego.jugador.vy = 200
+    juego.actualizar_minijefes(1 / 60)
+    assert mj2.vida == 2
+    assert juego.jugador.vy == 200
 
     # Golpe letal: entrega 5 almas
-    mj2.invulnerable = 0
+    _cansar(mj2)
     mj2.vida = 1
     juego.jugador.rect.midbottom = (mj2.rect.centerx, mj2.rect.top + 1)
     juego.jugador.vy = 200
     juego.actualizar_minijefes(1 / 60)
     assert not mj2.vivo
     assert juego.jugador.almas == almas_antes + 5, "Derrotar al mini-jefe debe otorgar 5 almas"
+
+    # Derrota con pala (golpe frontal) en el Juego
+    juego = Juego()
+    juego.cargar_nivel(2)
+    mj3 = juego.nivel.minijefes[0]
+    jugador = juego.jugador
+    assert jugador.tiene_pala
+    for _ in range(3):
+        _cansar(mj3)
+        jugador.rect.midbottom = (mj3.rect.left - 20, mj3.rect.bottom)
+        jugador.direccion = 1
+        jugador.ataque_cooldown = 0.0
+        jugador.ataque_tiempo = 0.0
+        assert jugador.pedir_ataque()
+        juego.actualizar_ataque()
+    assert not mj3.vivo
     print("mini-boss carcelero: OK")
+
+
+# --- Prueba: el altar 'X' está sellado hasta derrotar al Carcelero --- #
+def probar_altar_guadaña_sellado():
+    juego = Juego()
+    juego.cargar_nivel(2)  # Nivel 3: El Osario
+    assert juego.nivel.minijefes and juego.nivel.power_ups_rango
+    mj = juego.nivel.minijefes[0]
+    pup = juego.nivel.power_ups_rango[0]
+
+    juego.jugador.rect.center = pup.rect.center
+    juego.actualizar_power_ups_rango()
+    assert pup.sellado and not pup.recogida
+    assert not juego.jugador.rango_ataque_mejorado
+
+    mj.vivo = False
+    juego.actualizar_power_ups_rango()
+    assert not pup.sellado and pup.recogida
+    assert juego.jugador.rango_ataque_mejorado
+
+    # Reintentar desde un farol no resucita al Carcelero ya vencido
+    juego.punto_reintento = (juego.nivel.checkpoints[1].rect.x, juego.nivel.checkpoints[1].rect.y - 4)
+    juego.reintentar_nivel()
+    assert not mj.vivo
+    assert juego.jugador.rango_ataque_mejorado
+    print("altar de la guadaña sellado: OK")
+
+
+# --- Prueba: progresión de habilidades por nivel (D en N1, W en N2, X en N3) --- #
+def probar_progresion_habilidades():
+    juego = Juego()
+    juego.iniciar_tutorial()
+    assert not juego.jugador.tiene_dash and not juego.jugador.tiene_pala
+    # Aunque el jugador previo traiga habilidades, el Nivel 1 arranca sin ellas
+    juego.jugador.tiene_dash = True
+    juego.jugador.tiene_pala = True
+    juego.cargar_nivel(0)
+    assert not juego.jugador.tiene_dash and not juego.jugador.tiene_pala
+    juego.cargar_nivel(1)
+    assert juego.jugador.tiene_dash and not juego.jugador.tiene_pala
+    juego.cargar_nivel(2)
+    assert juego.jugador.tiene_dash and juego.jugador.tiene_pala
+    assert not juego.jugador.rango_ataque_mejorado
+
+    # Sin pala no hay ataque; con pala, J / Z / K atacan
+    juego.cargar_nivel(1)
+    for tecla in (pygame.K_j, pygame.K_z, pygame.K_k):
+        juego.jugador.tiene_pala = False
+        juego.jugador.ataque_cooldown = 0.0
+        juego.jugador.ataque_tiempo = 0.0
+        pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=tecla))
+        juego.procesar_eventos()
+        assert juego.jugador.ataque_tiempo == 0.0
+        juego.jugador.tiene_pala = True
+        pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=tecla))
+        juego.procesar_eventos()
+        assert juego.jugador.ataque_tiempo > 0.0, f"La tecla {tecla} debe atacar con pala"
+
+    # Salto con ESPACIO / ARRIBA / W (con buffer) y corte al soltar
+    for tecla in (pygame.K_SPACE, pygame.K_UP, pygame.K_w):
+        juego.jugador.buffer_salto = 0.0
+        pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=tecla))
+        juego.procesar_eventos()
+        assert juego.jugador.buffer_salto == JUMP_BUFFER
+        juego.jugador.vy = SALTO
+        pygame.event.post(pygame.event.Event(pygame.KEYUP, key=tecla))
+        juego.procesar_eventos()
+        assert abs(juego.jugador.vy - SALTO * CORTE_SALTO) < 1e-6
+    print("progresión de habilidades y moveset: OK")
+
+
+# --- Prueba: pisotón encadenado sobre enemigos voladores (trampolines) --- #
+def probar_pisoton_encadenado_voladores():
+    juego = Juego()
+    juego.cargar_nivel(2)
+    grupos = [g for g in (juego.nivel.cuervos, juego.nivel.polillas, juego.nivel.aranias) if g]
+    for grupo in grupos:
+        bicho = grupo[0]
+        bicho.vivo = True
+        juego.jugador.tiene_pala = True
+        juego.jugador.invulnerable = 0
+        juego.jugador.dash_usos_aire = 0
+        juego.jugador.dash_cooldown = 0.5
+        # Desactivar el resto para aislar el contacto
+        for otro in (juego.nivel.enemigos + juego.nivel.enemigos_melee + juego.nivel.cuervos
+                     + juego.nivel.polillas + juego.nivel.aranias):
+            if otro is not bicho:
+                otro.vivo = False
+        bicho.actualizar(0)
+        juego.jugador.rect.midbottom = (bicho.rect.centerx, bicho.rect.top + 2)
+        juego.jugador.vy = 300
+        juego.actualizar_enemigos(0)
+        assert not bicho.vivo, f"{type(bicho).__name__} debe morir al pisotearlo con pala"
+        assert juego.jugador.vy < 0
+        assert juego.jugador.dash_usos_aire == DASH_USOS_AIRE
+        assert juego.jugador.dash_cooldown == 0.0
+    print("pisotón encadenado sobre voladores: OK")
+
+
+# --- Prueba: Farol (F) consagra almas, cura y otorga Manto --- #
+def probar_farol_consagracion():
+    juego = Juego()
+    juego.cargar_nivel(0, vidas=VIDAS_INICIALES)
+    cp = juego.nivel.checkpoints[0]
+
+    # Con vidas completas no cura; con < 5 almas en el tramo no otorga Manto
+    juego.jugador.almas = 4
+    juego.jugador.almas_para_vida = 4
+    juego.jugador.rect.center = cp.rect.center
+    juego.actualizar_checkpoints()
+    assert juego.jugador.vidas == VIDAS_INICIALES
+    assert not juego.jugador.escudo_farol
+    assert juego.almas_consagradas == 4 and juego.almas_vida_consagradas == 4
+    assert juego.punto_reintento == (cp.rect.x, cp.rect.y - 4)
+
+    # Muerte con farol: reaparece en el farol, conserva habilidades y almas consagradas;
+    # las almas posteriores al farol vuelven a estar disponibles como guía.
+    juego.jugador.tiene_dash = True
+    posteriores = [a for a in juego.nivel.almas if a.rect.x >= cp.rect.x]
+    for alma in posteriores:
+        alma.recogida = True
+    juego.jugador.almas = 4 + len(posteriores)
+    juego.jugador.invulnerable = 0
+    juego.perder_vida()
+    assert juego.jugador.vidas == VIDAS_INICIALES - 1
+    assert juego.jugador.rect.topleft == juego.punto_reintento
+    assert juego.jugador.almas == 4 and juego.jugador.almas_para_vida == 4
+    assert juego.jugador.tiene_dash
+    assert all(not a.recogida for a in posteriores)
+
+    # Derrota + reintentar: vuelve al último farol con VIDAS_INICIALES
+    juego.jugador.vidas = 1
+    juego.jugador.invulnerable = 0
+    juego.perder_vida()
+    assert juego.estado == "derrota"
+    juego.reintentar_nivel()
+    assert juego.jugador.vidas == VIDAS_INICIALES
+    assert juego.jugador.rect.topleft == juego.punto_reintento
+    assert juego.jugador.tiene_dash
+    print("farol: consagración, curación y manto: OK")
+
+
+# --- Prueba: Prioridad 3 (UI/UX, 4 Tipos de Interfaz y Flujo de Menús) --- #
+def probar_prioridad_3_ui_ux():
+    juego = Juego()
+
+    # 1. Menú Principal: flujo de 3 opciones claras
+    juego.abrir_menu()
+    assert juego.estado == "menu"
+
+    # Opción 0: Jugar Campaña (Preludio continuo)
+    juego.menu_opcion = 0
+    juego.iniciar_campaña()
+    assert juego.es_tutorial
+    assert juego.en_campaña
+
+    # Opción 1: Selección de Nivel con 5 destinos
+    juego.abrir_seleccion_nivel()
+    assert juego.estado == "seleccion_nivel"
+    # Destino 0: Preludio
+    juego.ejecutar_seleccion_nivel(0)
+    assert juego.es_tutorial
+    # Destino 1: Nivel 1 (Camposanto)
+    juego.ejecutar_seleccion_nivel(1)
+    assert not juego.es_tutorial and juego.nivel_indice == 0
+    # Destino 2: Nivel 2 (Cripta)
+    juego.ejecutar_seleccion_nivel(2)
+    assert juego.nivel_indice == 1
+    # Destino 3: Nivel 3 (Osario)
+    juego.ejecutar_seleccion_nivel(3)
+    assert juego.nivel_indice == 2
+    # Destino 4: Salas de Prueba
+    juego.ejecutar_seleccion_nivel(4)
+    assert juego.estado == "test_selector"
+
+    # Opción 2: Créditos y Marco Teórico
+    juego.abrir_creditos()
+    assert juego.estado == "creditos"
+
+    # 2. UI Meta: Manto del Farol y Viñeta en salud crítica
+    juego.cargar_nivel(0)
+    juego.jugador.escudo_farol = True
+    vidas_antes = juego.jugador.vidas
+    juego.perder_vida()
+    # El daño es absorbido por el Manto
+    assert not juego.jugador.escudo_farol
+    assert juego.jugador.vidas == vidas_antes
+    assert juego.flash > 0
+    assert juego.flash_color == (120, 220, 255)  # Destello turquesa protector
+
+    # A 1 vida, el temporizador de latido a 55 Hz se activa
+    juego.jugador.vidas = 1
+    juego.jugador.invulnerable = 0
+    juego.timer_corazon = 0.0
+    juego.actualizar(0.5)
+    assert juego.timer_corazon > 0.0
+
+    # 3. UI Espacial y dibujo de marcos sin errores
+    juego.dibujar()
+    assert juego.superficie_mundo is not None
+
+    print("prioridad 3 UI/UX y 4 tipos de interfaz: OK")
+
+
+# --- Prueba: Game Feel Celeste (Apex Hang-Time, Post-Dash Float, Dash-Jump y Corner Correction) --- #
+def probar_fisica_salto_dash_game_feel():
+    juego = Juego()
+    jugador = Jugador(100, 300)
+    solidos = [pygame.Rect(0, 330, 800, 32)]
+
+    # 1. Tecla K_a mueve hacia la izquierda
+    teclas_izq = {pygame.K_a: True, pygame.K_d: False, pygame.K_LEFT: False, pygame.K_RIGHT: False}
+    jugador.actualizar(1 / 60, teclas_izq, solidos)
+    assert jugador.vx < 0.0, "La tecla K_a debe mover al jugador hacia la izquierda"
+    assert jugador.direccion == -1
+
+    # 2. Apex Hang-Time: gravedad reducida cerca de la cima del salto (|vy| < 70)
+    jugador.en_suelo = False
+    jugador.vy = -50.0
+    jugador.manteniendo_salto = True
+    teclas_idle = {pygame.K_a: False, pygame.K_d: False, pygame.K_LEFT: False, pygame.K_RIGHT: False}
+    jugador.actualizar(1 / 60, teclas_idle, [])
+    assert abs(jugador.vy - (-50.0 + GRAVEDAD * APEX_GRAVEDAD_FACTOR * (1 / 60))) < 1e-4
+
+    # 3. Post-Dash Float y Conservación de Momentum:
+    jugador.tiene_dash = True
+    jugador.en_suelo = False
+    jugador.pedir_dash()
+    assert jugador.dash_tiempo > 0
+    while jugador.dash_tiempo > 0:
+        jugador.actualizar(1 / 60, teclas_idle, [])
+    assert jugador.dash_tiempo == 0
+    assert jugador.vx == jugador.dash_direccion * VELOCIDAD
+    assert jugador.post_dash_tiempo > 0.0
+
+    # 4. Dash-Jump desde el suelo
+    jugador_dj = Jugador(200, 300)
+    jugador_dj.en_suelo = True
+    jugador_dj.tiene_dash = True
+    jugador_dj.pedir_dash()
+    assert jugador_dj.dash_tiempo > 0
+    jugador_dj.pedir_salto()
+    y_inicial_dj = jugador_dj.rect.y
+    jugador_dj.actualizar(1 / 60, teclas_idle, solidos)
+    assert jugador_dj.salto_recien, "Dash-Jump debe disparar salto_recien"
+    assert jugador_dj.vy < 0, "Dash-Jump debe aplicar impulso vertical ascendente"
+    assert abs(jugador_dj.vx - jugador_dj.dash_direccion * VELOCIDAD * DASH_JUMP_IMPULSO_X) < 1e-4
+    assert jugador_dj.dash_tiempo == 0.0, "Dash-Jump debe cancelar el dash terrestre"
+
+    # 5. Jump Corner Correction (techo):
+    solido_techo = [pygame.Rect(110, 100, 32, 32)]
+    jugador_corner = Jugador(89, 131)
+    jugador_corner.vy = -200.0
+    jugador_corner.direccion = -1
+    jugador_corner.mover_y(-5.0, solido_techo)
+    assert jugador_corner.vy == -200.0, "Jump corner correction no debe matar vy"
+    assert jugador_corner.x < 89, "Jump corner correction debe empujar al hueco libre"
+    print("física salto+dash game feel: OK")
+
+
+# --- Prueba: Menú de Configuración y Presets de Teclado --- #
+def probar_menu_configuracion_y_presets_teclado():
+    juego = Juego()
+    juego.abrir_configuracion()
+    assert juego.estado == "configuracion"
+    assert juego.config_opcion == 0
+
+    # Preset inicial es Moderno (WASD)
+    assert juego.preset_teclado_idx == 0
+    assert pygame.K_SPACE in juego.teclas_salto
+    assert pygame.K_LSHIFT in juego.teclas_dash
+    assert pygame.K_j in juego.teclas_ataque
+    assert pygame.K_a in juego.jugador.teclas_izq
+
+    # Alternar preset a Retro Arcada (Z-X-C)
+    juego.alternar_preset_teclado(1)
+    assert juego.preset_teclado_idx == 1
+    assert pygame.K_z in juego.teclas_salto
+    assert pygame.K_x in juego.teclas_dash
+    assert pygame.K_c in juego.teclas_ataque
+    assert pygame.K_LEFT in juego.jugador.teclas_izq
+
+    # Alternar de vuelta a Moderno
+    juego.alternar_preset_teclado(1)
+    assert juego.preset_teclado_idx == 0
+
+    # Esqueleto de Calidad Gráfica
+    calidad_inicial = juego.config_calidad_idx
+    juego.alternar_calidad_grafica(1)
+    assert juego.config_calidad_idx == (calidad_inicial + 1) % len(OPCIONES_CALIDAD)
+
+    # Esqueleto de Modo de HUD
+    hud_inicial = juego.config_hud_idx
+    juego.alternar_modo_hud(1)
+    assert juego.config_hud_idx == (hud_inicial + 1) % len(OPCIONES_HUD)
+
+    # Accesibilidad
+    acc_inicial = juego.reducir_movimiento
+    juego.alternar_accesibilidad()
+    assert juego.reducir_movimiento != acc_inicial
+
+    # Dibujar pantalla de configuración sin fallos
+    juego.dibujar()
+    print("menú configuración y presets teclado: OK")
 
 
 # --- Ejecución --- #
@@ -1095,6 +1573,10 @@ if __name__ == "__main__":
     probar_ataque_pala()
     probar_jefe_final()
     probar_minijefe()
+    probar_altar_guadaña_sellado()
+    probar_progresion_habilidades()
+    probar_pisoton_encadenado_voladores()
+    probar_farol_consagracion()
     probar_mapa_final()
     probar_salto_ventana_nivel_2()
     probar_salas_prueba()
@@ -1106,5 +1588,8 @@ if __name__ == "__main__":
     probar_accesibilidad()
     probar_combo_almas()
     probar_pinchos()
+    probar_prioridad_3_ui_ux()
+    probar_fisica_salto_dash_game_feel()
+    probar_menu_configuracion_y_presets_teclado()
     probar_juego_headless()
     print("\nTESTS_INCRYPTA_OK")
