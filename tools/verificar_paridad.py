@@ -295,6 +295,7 @@ def comparar_escena(informe: Informe, proyecto: dict, nombre: str, nivel: Nivel)
     # Entidades que el juego tiene y el export no.
     faltantes = {
         "enemigos melee (L)": (len(nivel.enemigos_melee), "EnemyMelee"),
+        "minijefes (K)": (len(getattr(nivel, "minijefes", [])), "MiniJefe"),
         "tótems (O)": (len(nivel.totems), "Totem"),
         "cuervos (C)": (len(nivel.cuervos), "Cuervo"),
         "polillas (m)": (len(nivel.polillas), "Polilla"),
@@ -333,6 +334,54 @@ def comparar_escena(informe: Informe, proyecto: dict, nombre: str, nivel: Nivel)
             )
 
 
+def comparar_globales_y_recursos(informe: Informe, proyecto: dict) -> None:
+    """Verifica variables globales, zoom de cámara y presencia de assets."""
+    # 1. Variables globales obligatorias
+    variables = {v["name"]: v for v in proyecto.get("variables", [])}
+    for var in (
+        "checkpoint_activo",
+        "checkpoint_escena",
+        "escudo_farol",
+        "almas_consagradas",
+        "almas_vida_consagradas",
+        "minijefe_derrotado",
+    ):
+        if var in variables:
+            informe.ok(f"Variable global obligatoria '{var}' declarada en el proyecto")
+        else:
+            informe.mal(f"Variable global obligatoria '{var}' falta en el proyecto")
+
+    # 2. Zoom de la cámara (CAMARA_ZOOM == 1.25)
+    from config import CAMARA_ZOOM
+
+    escenas = {e["name"]: e for e in proyecto.get("layouts", [])}
+    tutorial = escenas.get("Tutorial") or escenas.get("Nivel 1")
+    if tutorial:
+        eventos_str = eventos_de(tutorial)
+        zoom_esperado = f'"{CAMARA_ZOOM}"'
+        if '"ZoomCamera"' in eventos_str and (zoom_esperado in eventos_str or str(CAMARA_ZOOM) in eventos_str):
+            informe.ok(f"Zoom de cámara {CAMARA_ZOOM} coincide con config.CAMARA_ZOOM")
+        else:
+            informe.mal(f"Zoom de cámara no coincide con config.CAMARA_ZOOM ({CAMARA_ZOOM})")
+
+    # 3. Integridad de recursos de imágenes en disco
+    recursos_img = [
+        r for r in proyecto.get("resources", {}).get("resources", [])
+        if r.get("kind") == "image"
+    ]
+    faltantes = 0
+    dir_nativo = ROOT / "export" / "gdevelop_nativo"
+    for r in recursos_img:
+        archivo = r.get("file", "")
+        ruta = dir_nativo / archivo
+        if not ruta.exists():
+            faltantes += 1
+    if faltantes == 0 and recursos_img:
+        informe.ok(f"Integridad de assets: {len(recursos_img)} imágenes existen en export/gdevelop_nativo/")
+    elif faltantes:
+        informe.mal(f"Integridad de assets: {faltantes} imágenes faltan en disco")
+
+
 # ------------------------------------------------------------
 # main
 # ------------------------------------------------------------
@@ -348,6 +397,7 @@ def main() -> int:
     proyecto = json.loads(args.proyecto.read_text(encoding="utf-8"))
     informe = Informe()
     print(f"Verificando paridad: {args.proyecto}")
+    comparar_globales_y_recursos(informe, proyecto)
     for nombre, nivel in escenas_del_juego():
         comparar_escena(informe, proyecto, nombre, nivel)
 
