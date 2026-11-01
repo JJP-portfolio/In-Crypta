@@ -13,10 +13,17 @@ const path = require('path');
 
 const RUTA_PROYECTO = process.argv[2];
 const RUTA_DESTINO = process.argv[3];
+const RUTA_LIBGD_DIR = process.env.GDEVELOP_RUNTIME_DIR;
+if (!RUTA_LIBGD_DIR) {
+  console.error(
+    'Falta la variable de entorno GDEVELOP_RUNTIME_DIR con la ruta de la instalación de GDevelop.'
+  );
+  process.exit(1);
+}
 const RUTA_LIBGD =
   process.argv[4] ||
   path.join(
-    process.env.HOME || '/home/sanodesu',
+    RUTA_LIBGD_DIR,
     '.local/share/flatpak/app/io.gdevelop.ide/current/active/files/GDevelop',
     'resources/app.asar'
   );

@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shutil
 import socket
@@ -30,8 +31,13 @@ ROOT = Path(__file__).resolve().parent.parent
 PROYECTO = ROOT / "export" / "gdevelop_nativo" / "IN_CRYPTA_NATIVO.json"
 ASSETS = ROOT / "export" / "gdevelop_nativo" / "assets"
 BUILD_OLD = ROOT / "export" / "gdevelop_nativo" / "build"
+_runtime_dir = os.environ.get("GDEVELOP_RUNTIME_DIR")
+if not _runtime_dir:
+    raise SystemExit(
+        "Falta la variable de entorno GDEVELOP_RUNTIME_DIR con la ruta de la instalación de GDevelop."
+    )
 RUNTIME = (
-    Path.home()
+    Path(_runtime_dir)
     / ".local/share/flatpak/app/io.gdevelop.ide/current/active/files/GDevelop"
     / "resources/GDJS/Runtime"
 )
