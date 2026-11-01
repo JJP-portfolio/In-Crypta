@@ -1171,11 +1171,6 @@ def eventos_nivel(
 )     -> list[dict]:
     if nombres_objetos is None:
         nombres_objetos = {"Jugador", "Enemy", "Alma", "Pinchos", "Puerta", "GolpePala"}
-    # Variable global para el umbral de velocidad vertical de ápice (paridad con APEX_VY_UMBRAL).
-    evento(
-        [cond("SceneJustBegins", [""])],
-        [accion("SetNumberVariable", ["velocidad_vertical_umbral", "=", str(APEX_VY_UMBRAL)])],
-    )
     # La cámara se controla por su centro. Si el nivel es más grande que el
     # viewport visible (1024x576 con GAME_ZOOM=1.25), el centro sigue al
     # jugador entre los bordes; si es más chico, queda centrado.
@@ -1202,17 +1197,6 @@ def eventos_nivel(
             else '"ESPACIO: SALTO · SHIFT: DASH"'
         )
 
-    # Variables auxiliares de velocidad vertical para la lógica de ápice (paridad con las de Pygame).
-    evento(
-        [cond("SceneJustBegins", [""])],
-        [
-            accion("SetNumberObjectVariable", ["Jugador", "velocidad_vertical", "=", "0"]),
-            accion("SetNumberObjectVariable", ["Jugador", "velocidad_vertical_abs", "=", "0"]),
-            accion("SetNumberVariable", ["velocidad_vertical_umbral", "=", str(APEX_VY_UMBRAL)]),
-        ],
-    ),
-
-    # Actualizar velocidad vertical y su valor absoluto cada frame (paridad con la física de Pygame).
 
 
     dash_input = cond_or(
@@ -1273,83 +1257,6 @@ def eventos_nivel(
         ],
         [accion("PlatformBehavior::PlatformerObjectBehavior::AbortJump", ["Jugador", "PlatformerObject"])],
     ),
-
-    # Apoyado en el suelo y sin movimiento vertical: reducir gravedad para flotación de ápice (paridad con APEX_GRAVEDAD_FACTOR de Pygame).
-    evento(
-        [
-            cond("PlatformBehavior::IsOnFloor", ["Jugador", "PlatformerObject"]),
-            cond("NumberObjectVariable", ["Jugador", "post_dash", ">", "0"]),
-            cond("NumberObjectVariable", ["Jugador", "coyote", ">", "0"]),
-            cond("NumberObjectVariable", ["Jugador", "buffer_salto", ">", "0"]),
-        ],
-        [
-            accion("PlatformBehavior::Gravity", ["Jugador", "PlatformerObject", "=", str(int(GRAVEDAD * APEX_GRAVEDAD_FACTOR))]),
-        ],
-    ),
-
-    # Apoyado en el suelo, en coyote, en buffer de salto y velocidad vertical cercana a cero: reducir gravedad para flotación de ápice (paridad con APEX_GRAVEDAD_FACTOR de Pygame).
-    evento(
-        [
-            cond("PlatformBehavior::IsOnFloor", ["Jugador", "PlatformerObject"]),
-            cond("NumberObjectVariable", ["Jugador", "coyote", ">", "0"]),
-            cond("NumberObjectVariable", ["Jugador", "buffer_salto", ">", "0"]),
-            cond("NumberObjectVariable", ["Jugador", "post_dash", "<=", "0"]),
-            cond("NumberObjectVariable", ["Jugador", "velocidad_vertical_abs", ">=", "0"]),
-            cond("NumberObjectVariable", ["Jugador", "velocidad_vertical_abs", "<=", str(APEX_VY_UMBRAL)]),
-        ],
-        [
-            accion("PlatformBehavior::Gravity", ["Jugador", "PlatformerObject", "=", str(int(GRAVEDAD * APEX_GRAVEDAD_FACTOR))]),
-        ],
-    ),
-
-    # En vuelo, en coyote o buffer de salto, y velocidad vertical cercana a cero: reducir gravedad para flotación de ápice (paridad con APEX_GRAVEDAD_FACTOR de Pygame).
-    evento(
-        [
-            cond("PlatformBehavior::IsOnFloor", ["Jugador", "PlatformerObject"], invertida=True),
-            cond_or(buffer_salto, cond("NumberObjectVariable", ["Jugador", "coyote", ">", "0"])),
-            cond("NumberObjectVariable", ["Jugador", "velocidad_vertical_abs", ">=", "0"]),
-            cond("NumberObjectVariable", ["Jugador", "velocidad_vertical_abs", "<=", str(APEX_VY_UMBRAL)]),
-        ],
-        [
-            accion("PlatformBehavior::Gravity", ["Jugador", "PlatformerObject", "=", str(int(GRAVEDAD * APEX_GRAVEDAD_FACTOR))]),
-        ],
-    ),
-
-    # En coyote o buffer de salto, con velocidad vertical menor a cero y en vuelo: reducir gravedad para flotación de ápice (paridad con APEX_GRAVEDAD_FACTOR de Pygame).
-    evento(
-        [
-            cond("PlatformBehavior::IsOnFloor", ["Jugador", "PlatformerObject"], invertida=True),
-            cond_or(buffer_salto, cond("NumberObjectVariable", ["Jugador", "coyote", ">", "0"])),
-            cond("NumberObjectVariable", ["Jugador", "velocidad_vertical", "<", "0"]),
-        ],
-        [
-            accion("PlatformBehavior::Gravity", ["Jugador", "PlatformerObject", "=", str(int(GRAVEDAD * APEX_GRAVEDAD_FACTOR))]),
-        ],
-    ),
-
-    # En vuelo, con velocidad vertical > 0 (ascendente) y no en coyote/buffer de salto: reducir gravedad para flotación de ápice (paridad con APEX_GRAVEDAD_FACTOR de Pygame).
-    evento(
-        [
-            cond("PlatformBehavior::IsOnFloor", ["Jugador", "PlatformerObject"], invertida=True),
-            cond("NumberObjectVariable", ["Jugador", "velocidad_vertical", ">", "0"]),
-            cond("NumberObjectVariable", ["Jugador", "coyote", "<=", "0"]),
-            cond("NumberObjectVariable", ["Jugador", "buffer_salto", "<=", "0"]),
-        ],
-        [
-            accion("PlatformBehavior::Gravity", ["Jugador", "PlatformerObject", "=", str(int(GRAVEDAD * APEX_GRAVEDAD_FACTOR))]),
-        ],
-    ),
-
-    # La gravedad del post-dash usa POST_DASH_GRAVEDAD_FACTOR (0.50) para conservarse tras el impulso del dash.
-    evento(
-        [
-            cond("NumberObjectVariable", ["Jugador", "post_dash", ">", "0"]),
-        ],
-        [
-            accion("PlatformBehavior::Gravity", ["Jugador", "PlatformerObject", "=", str(int(GRAVEDAD * POST_DASH_GRAVEDAD_FACTOR))]),
-        ],
-    ),
-
     eventos = [
         # Reinicio pedido desde el menú de pausa.
         evento(
@@ -1799,7 +1706,6 @@ def eventos_nivel(
                 accion("SetNumberObjectVariable", ["Jugador", "dashing", "=", "0"]),
                 accion("SetNumberObjectVariable", ["Jugador", "post_dash", "=", str(POST_DASH_DURACION)]),
                 accion("SetNumberObjectVariable", ["Jugador", "dash_time", "=", "0"]),
-                accion("PlatformBehavior::Gravity", ["Jugador", "PlatformerObject", "=", str(int(GRAVEDAD))]),
                 accion("PlatformBehavior::MaxSpeed", ["Jugador", "PlatformerObject", "=", str(int(VELOCIDAD * DASH_JUMP_IMPULSO_X))]),
                 accion("PlatformBehavior::JumpSpeed", ["Jugador", "PlatformerObject", "=", str(int(-SALTO))]),
                 accion("PlatformBehavior::SetCanJump", ["Jugador", "PlatformerObject"]),
@@ -1827,7 +1733,6 @@ def eventos_nivel(
                 accion("SetNumberObjectVariable", ["Jugador", "dash_time", "=", str(DASH_DURACION)]),
                 accion("SetNumberObjectVariable", ["Jugador", "dash_cd", "=", str(DASH_COOLDOWN)]),
                 accion("SetNumberObjectVariable", ["Jugador", "dash_aire", "=", "1"]),
-                accion("PlatformBehavior::Gravity", ["Jugador", "PlatformerObject", "=", "0"]),
                 accion(
                     "PlatformBehavior::MaxSpeed",
                     ["Jugador", "PlatformerObject", "=", str(DASH_VELOCIDAD)],
@@ -1860,7 +1765,6 @@ def eventos_nivel(
                 accion("SetNumberObjectVariable", ["Jugador", "dash_time", "=", str(DASH_DURACION)]),
                 accion("SetNumberObjectVariable", ["Jugador", "dash_cd", "=", str(DASH_COOLDOWN)]),
                 accion("SetNumberObjectVariable", ["Jugador", "dash_aire", "=", "0"]),
-                accion("PlatformBehavior::Gravity", ["Jugador", "PlatformerObject", "=", "0"]),
                 accion(
                     "PlatformBehavior::MaxSpeed",
                     ["Jugador", "PlatformerObject", "=", str(DASH_VELOCIDAD)],
@@ -1883,7 +1787,6 @@ def eventos_nivel(
                 cond("NumberObjectVariable", ["Jugador", "dash_time", ">", "0"]),
             ],
             [
-                accion("PlatformBehavior::Gravity", ["Jugador", "PlatformerObject", "=", "0"]),
                 accion(
                     "PlatformBehavior::PlatformerObjectBehavior::SetCurrentSpeed",
                     ["Jugador", "PlatformerObject", "=", "Jugador.Variable(dir) * " + str(DASH_VELOCIDAD)],
@@ -1905,10 +1808,6 @@ def eventos_nivel(
             [
                 accion("SetNumberObjectVariable", ["Jugador", "dashing", "=", "0"]),
                 accion("SetNumberObjectVariable", ["Jugador", "post_dash", "=", str(POST_DASH_DURACION)]),
-                accion(
-                    "PlatformBehavior::Gravity",
-                    ["Jugador", "PlatformerObject", "=", str(int(GRAVEDAD))],
-                ),
                 accion(
                     "PlatformBehavior::MaxSpeed",
                     ["Jugador", "PlatformerObject", "=", str(int(VELOCIDAD))],
@@ -2537,6 +2436,58 @@ def eventos_nivel(
     ]
     if nivel.jefes:
         eventos.extend(eventos_jefe(siguiente))
+
+    # --- Gravedad del jugador: un único escritor del comportamiento (plan T302) ---
+    _SIN_PISO = cond("PlatformBehavior::IsOnFloor", ["Jugador", "PlatformerObject"], invertida=True)
+    _TECLA_SALTO_MANTENIDA = cond_or(
+        cond("KeyFromTextPressed", ["Space"]),
+        cond("KeyFromTextPressed", ["Up"]),
+        cond("KeyFromTextPressed", ["w"]),
+        cond("KeyFromTextPressed", ["W"]),
+    )
+
+    def _fijar_gravedad_actual(valor: str) -> dict:
+        return accion("SetNumberObjectVariable", ["Jugador", "gravedad_actual", "=", valor])
+
+    bloque_gravedad = [
+        evento([], [_fijar_gravedad_actual(str(int(GRAVEDAD)))]),
+        evento(
+            [
+                _SIN_PISO,
+                _TECLA_SALTO_MANTENIDA,
+                cond("PlatformBehavior::IsJumping", ["Jugador", "PlatformerObject"]),
+                cond("PlatformBehavior::CurrentJumpSpeed", ["Jugador", "PlatformerObject", "<", str(int(APEX_VY_UMBRAL))]),
+            ],
+            [_fijar_gravedad_actual(str(int(GRAVEDAD * APEX_GRAVEDAD_FACTOR)))],
+        ),
+        evento(
+            [
+                _SIN_PISO,
+                _TECLA_SALTO_MANTENIDA,
+                cond("PlatformBehavior::IsFalling", ["Jugador", "PlatformerObject"]),
+                cond("PlatformBehavior::CurrentFallSpeed", ["Jugador", "PlatformerObject", "<", str(int(APEX_VY_UMBRAL))]),
+            ],
+            [_fijar_gravedad_actual(str(int(GRAVEDAD * APEX_GRAVEDAD_FACTOR)))],
+        ),
+        evento(
+            [cond("NumberObjectVariable", ["Jugador", "post_dash", ">", "0"])],
+            [_fijar_gravedad_actual(str(int(GRAVEDAD * POST_DASH_GRAVEDAD_FACTOR)))],
+        ),
+        evento(
+            [cond("NumberObjectVariable", ["Jugador", "dashing", "=", "1"])],
+            [_fijar_gravedad_actual("0")],
+        ),
+        evento(
+            [],
+            [
+                accion(
+                    "PlatformBehavior::Gravity",
+                    ["Jugador", "PlatformerObject", "=", "Jugador.Variable(gravedad_actual)"],
+                ),
+            ],
+        ),
+    ]
+    eventos += bloque_gravedad
     return eventos
 
 
