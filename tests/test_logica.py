@@ -28,12 +28,16 @@ from config import (
     ALMAS_POR_VIDA,
     ANCHO,
     APEX_GRAVEDAD_FACTOR,
+    APEX_VY_UMBRAL,
     CORTE_SALTO,
+    COYOTE_TIME,
     DASH_JUMP_IMPULSO_X,
     DASH_USOS_AIRE,
     GRAVEDAD,
     JUGADOR_ALTO,
     JUMP_BUFFER,
+    POST_DASH_DURACION,
+    POST_DASH_GRAVEDAD_FACTOR,
     MINIJEFE_TELEGRAFO,
     MINIJEFE_VULNERABLE,
     SALTO,
@@ -1560,6 +1564,72 @@ def probar_apex_no_se_activa_con_z():
     print("apex no se activa con Z: OK")
 
 
+def probar_apex_umbral_negativo():
+    jugador = Jugador(100, 300)
+    jugador.en_suelo = False
+    jugador.vy = -(APEX_VY_UMBRAL + 10.0)
+    jugador.manteniendo_salto = True
+    antes = jugador.vy
+    jugador.actualizar(1 / 60, {pygame.K_SPACE: True}, [])
+    esperado = antes + GRAVEDAD * (1 / 60)
+    assert abs(jugador.vy - esperado) < 1e-4, "con |vy| >= APEX_VY_UMBRAL no hay ápice"
+    print("apex umbral negativo: OK")
+
+
+def probar_post_dash_gravedad():
+    jugador = Jugador(100, 300)
+    jugador.en_suelo = False
+    jugador.vy = 0.0
+    jugador.post_dash_tiempo = POST_DASH_DURACION
+    jugador.manteniendo_salto = False
+    jugador.actualizar(1 / 60, {}, [])
+    esperado = GRAVEDAD * POST_DASH_GRAVEDAD_FACTOR * (1 / 60)
+    assert abs(jugador.vy - esperado) < 1e-4, "durante el post-dash la gravedad es POST_DASH_GRAVEDAD_FACTOR"
+    print("post-dash gravedad: OK")
+
+
+def probar_coyote_time():
+    jugador = Jugador(100, 300)
+    jugador.en_suelo = False
+    jugador.coyote = COYOTE_TIME
+    for _ in range(4):
+        jugador.actualizar(1 / 60, {}, [])
+    jugador.pedir_salto()
+    jugador.actualizar(1 / 60, {}, [])
+    assert jugador.salto_recien, "dentro del coyote time debe poder saltar"
+    jugador = Jugador(100, 300)
+    jugador.en_suelo = False
+    jugador.coyote = COYOTE_TIME
+    for _ in range(8):
+        jugador.actualizar(1 / 60, {}, [])
+    jugador.pedir_salto()
+    jugador.actualizar(1 / 60, {}, [])
+    assert not jugador.salto_recien, "fuera del coyote time no debe saltar"
+    print("coyote time: OK")
+
+
+def probar_jump_buffer():
+    jugador = Jugador(100, 300)
+    jugador.en_suelo = False
+    jugador.coyote = 0.0
+    jugador.pedir_salto()
+    for _ in range(4):
+        jugador.actualizar(1 / 60, {}, [])
+    jugador.en_suelo = True
+    jugador.actualizar(1 / 60, {}, [])
+    assert jugador.salto_recien, "el buffer vigente debe disparar el salto al aterrizar"
+    jugador = Jugador(100, 300)
+    jugador.en_suelo = False
+    jugador.coyote = 0.0
+    jugador.pedir_salto()
+    for _ in range(9):
+        jugador.actualizar(1 / 60, {}, [])
+    jugador.en_suelo = True
+    jugador.actualizar(1 / 60, {}, [])
+    assert not jugador.salto_recien, "el buffer vencido no debe disparar el salto"
+    print("jump buffer: OK")
+
+
 if __name__ == "__main__":
     probar_niveles()
     probar_parser()
@@ -1604,5 +1674,9 @@ if __name__ == "__main__":
     probar_fisica_salto_dash_game_feel()
     probar_menu_configuracion_y_presets_teclado()
     probar_apex_no_se_activa_con_z()
+    probar_apex_umbral_negativo()
+    probar_post_dash_gravedad()
+    probar_coyote_time()
+    probar_jump_buffer()
     probar_juego_headless()
     print("\nTESTS_INCRYPTA_OK")
