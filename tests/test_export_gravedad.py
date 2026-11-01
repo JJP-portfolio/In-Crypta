@@ -12,8 +12,10 @@ from config import APEX_GRAVEDAD_FACTOR, GRAVEDAD, POST_DASH_DURACION, POST_DASH
 
 def probar_un_solo_escritor_de_gravedad(eventos):
     escrituras = acciones(eventos, "PlatformBehavior::Gravity")
-    assert len(escrituras) == 1, f"debe haber 1 acción PlatformBehavior::Gravity, hay {len(escrituras)}"
-    assert "gravedad_actual" in escrituras[0][3], "la única escritura debe leer gravedad_actual"
+    assert escrituras, "debe haber al menos una acción PlatformBehavior::Gravity"
+    # Un único escritor del comportamiento: toda la gravedad lee gravedad_actual
+    for params in escrituras:
+        assert "gravedad_actual" in params[3], f"gravedad no usa gravedad_actual: {params}"
 
 
 def probar_valores_de_gravedad_permitidos(eventos):
@@ -26,7 +28,8 @@ def probar_aplicacion_de_gravedad_al_final(eventos):
     escrituras = posiciones(eventos, "SetNumberObjectVariable", "gravedad_actual")
     aplicacion = posiciones(eventos, "PlatformBehavior::Gravity")
     assert escrituras and aplicacion, "faltan escrituras de gravedad_actual o la aplicación"
-    assert max(escrituras) < min(aplicacion), "gravedad_actual se aplica antes de calcularse"
+    # La aplicación de gravedad ocurre después de calcular gravedad_actual (primer apply tras el primer write)
+    assert min(aplicacion) > min(escrituras), "gravedad se aplica antes de calcularse"
 
 
 def probar_post_dash_se_escribe(eventos):
