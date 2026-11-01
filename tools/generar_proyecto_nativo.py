@@ -52,6 +52,7 @@ from config import (
     JEFE_ALTO,
     JEFE_ANCHO,
     JEFE_ONDA_VELOCIDAD,
+    JUMP_BUFFER,
     MAX_CAIDA,
     NIEBLA,
     ORO,
@@ -1459,7 +1460,7 @@ def eventos_nivel(
         # Salto con buffer y coyote time: ESPACIO, ↑, W o Z.
         evento(
             [salto_justo],
-            [accion("SetNumberObjectVariable", ["Jugador", "buffer_salto", "=", "0.15"])],
+            [accion("SetNumberObjectVariable", ["Jugador", "buffer_salto", "=", str(JUMP_BUFFER)])],
         ),
         evento(
             [cond("PlatformBehavior::IsOnFloor", ["Jugador", "PlatformerObject"])],
