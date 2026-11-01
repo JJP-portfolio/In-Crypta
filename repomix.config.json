@@ -1,0 +1,48 @@
+{
+  "$schema": "https://repomix.com/schemas/latest/schema.json",
+  "output": {
+    "filePath": "repomix/repomix-output.xml",
+    "style": "xml",
+    "filePathStyle": "target-relative",
+    "parsableStyle": true,
+    "fileSummary": true,
+    "directoryStructure": true,
+    "removeComments": false,
+    "removeEmptyLines": false,
+    "compress": false,
+    "topFilesLength": 10,
+    "showLineNumbers": false,
+    "truncateBase64": true,
+    "copyToClipboard": false
+  },
+  "include": [],
+  "ignore": {
+    "useGitignore": true,
+    "useDotIgnore": true,
+    "useDefaultPatterns": true,
+    "customPatterns": [
+      "repomix/**",
+      "capturas/**",
+      "export/gdevelop_nativo/build/**",
+      "export/gdevelop_nativo/assets/**",
+      "export/gdevelop_nativo/*.json",
+      "export/gdevelop/game_data.json",
+      "docs/referencias/in_crypta/incrypta.html",
+      "**/*.png",
+      "**/*.jpg",
+      "**/*.jpeg",
+      "**/*.ico",
+      "**/*.wav",
+      "**/*.ogg",
+      "**/*.mp3",
+      "**/*.ttf",
+      "**/*.woff*"
+    ]
+  },
+  "security": {
+    "enableSecurityCheck": true
+  },
+  "tokenCount": {
+    "encoding": "o200k_base"
+  }
+}
