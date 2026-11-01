@@ -48,15 +48,18 @@ EXPRESIONES = {
 
 def _eventos_de(evento: dict):
     """Yield (clase, instrucción) de un evento y sus subeventos."""
+    if not isinstance(evento, dict):
+        return
     for clave, clase in (("actions", "action"), ("conditions", "condition")):
-        for instruccion in evento.get(clave) or []:
-            yield clase, instruccion
-    for subevento in evento.get("events") or []:
-        yield from _eventos_de(subevento)
-    for anidado in evento.get("subInstructions") or []:
-        yield from _eventos_de(anidado)
-    for grupo in evento.get("subevents") or []:
-        yield from _eventos_de(grupo)
+        valor = evento.get(clave)
+        if isinstance(valor, list):
+            for instruccion in valor:
+                yield clase, instruccion
+    for clave in ("events", "subInstructions", "subevents"):
+        valor = evento.get(clave)
+        if isinstance(valor, list):
+            for subevento in valor:
+                yield from _eventos_de(subevento)
 
 
 def _parece_expresion(valor: str) -> bool:
