@@ -45,6 +45,7 @@ from config import (
     APEX_GRAVEDAD_FACTOR,
     APEX_VY_UMBRAL,
     CORTE_SALTO,
+    COYOTE_TIME,
     DASH_DURACION,
     DASH_VELOCIDAD,
     GRAVEDAD,
@@ -1465,7 +1466,7 @@ def eventos_nivel(
         evento(
             [cond("PlatformBehavior::IsOnFloor", ["Jugador", "PlatformerObject"])],
             [
-                accion("SetNumberObjectVariable", ["Jugador", "coyote", "=", "0.18"]),
+                accion("SetNumberObjectVariable", ["Jugador", "coyote", "=", str(COYOTE_TIME)]),
                 accion("PlatformBehavior::JumpSpeed", ["Jugador", "PlatformerObject", "=", "620"]),
             ],
         ),
