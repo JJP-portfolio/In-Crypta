@@ -269,42 +269,25 @@ class ParityVerifier:
         pass
 ```
 
-## 5. INSTRUCCIONES DE USO DEL CLI PARA QUE CUALQUIER DESARROLLADOR EJECUTE EL EXPORTADOR Y VERIFIQUE PARIDAD CON UN SOLO COMANDO
+## 5. INSTRUCCIONES DE USO
 
-Para ejecutar el exportador automático de Pygame a GDevelop 5.6 y verificar la paridad con un solo comando, sigue estos pasos:
-
-### 5.1. Instalación
-
-Primero, asegúrate de tener Python y pip instalados en tu sistema. Luego, instala el exportador automático de Pygame a GDevelop 5.6 utilizando pip:
+Para ejecutar el exportador y verificar paridad:
 
 ```bash
-pip install pygame-gdevelop-exporter
+# Genera el proyecto GDevelop nativo y los assets
+.venv/bin/python tools/generar_proyecto_nativo.py
+
+# Valida la forma de los eventos contra el núcleo de GDevelop 5.6
+.venv/bin/python tools/validar_eventos_gd.py
+
+# Compara el JSON exportado contra el modelo vivo de Pygame
+.venv/bin/python tools/verificar_paridad.py
+
+# Suite de certificación completa (incluye tests del juego y del HUD)
+.venv/bin/python tools/exportar_todo.py
 ```
 
-### 5.2. Uso
-
-Para ejecutar el exportador automático de Pygame a GDevelop 5.6 y verificar la paridad con un solo comando, utiliza el siguiente comando:
-
-```bash
-python -m pygame_gdevelop_exporter export --manifest manifest.json --output output.gdevelop
-```
-
-Este comando ejecutará el exportador automático de Pygame a GDevelop 5.6 y generará un proyecto GDevelop en el archivo `output.gdevelop`. Además, verificará la paridad entre el proyecto Pygame y el proyecto GDevelop generado.
-
-### 5.3. Opciones
-
-El exportador automático de Pygame a GDevelop 5.6 proporciona varias opciones para personalizar el proceso de exportación. Puedes ver todas las opciones disponibles utilizando el siguiente comando:
-
-```bash
-python -m pygame_gdevelop_exporter export --help
-```
-
-### 5.4. Ejemplo
-
-Aquí tienes un ejemplo de cómo utilizar el exportador automático de Pygame a GDevelop 5.6 para exportar un proyecto Pygame a GDevelop 5.6:
-
-```bash
-python -m pygame_gdevelop_exporter export --manifest manifest.json --output output.gdevelop
-```
-
-Este comando ejecutará el exportador automático de Pygame a GDevelop 5.6 y generará un proyecto GDevelop en el archivo `output.gdevelop`. Además, verificará la paridad entre el proyecto Pygame y el proyecto GDevelop generado.
+Todo el exportador vive en `tools/`: `generar_proyecto_nativo.py` (CLI),
+`tools/exportador/` (paquete modular), `tools/verificar_paridad.py`,
+`tools/validar_eventos_gd.py` y `tools/exportar_todo.py` (orquestador). No hay
+paquete pip separado ni CLI externo.

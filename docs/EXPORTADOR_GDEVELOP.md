@@ -34,7 +34,7 @@ juego muestra 1280. Consecuencias:
   zoom 2 → **la barra inferior y el texto de pista quedaban fuera de pantalla**.
 
 **Arreglo**: el zoom se deriva de la resolución —
-`GAME_ZOOM = RENDER_W / ANCHO = 1.5` → el mundo visible es exactamente
+`GAME_ZOOM = CAMARA_ZOOM = 1.25` → el mundo visible es exactamente
 1280×720, igual que en Pygame, y el HUD entra entero.
 
 ### 1.2 Las plataformas no se movían
@@ -174,7 +174,7 @@ Además:
 * La acción de cámara se llama `CameraCenterX`/`CameraCenterY` (las
   `SetCameraCenterX` son alias viejos).
 * La capa UI lleva su propia cámara con zoom 1 (el HUD se dibuja en pixels de
-  pantalla) y la capa base con zoom 1.5 (1280×720 de mundo visible).
+  pantalla) y la capa base con zoom 1.25 (1280×720 de mundo visible).
 * El HUD necesita **instancias**: los objetos de texto y las barras existían
   pero no tenían instancia, así que no se veían.
 * Los sprites usan ancla explícita en la esquina (`centerPoint` con

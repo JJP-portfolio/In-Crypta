@@ -96,7 +96,7 @@
       </fix>
       <fix id="FIX-GD-03" target="tools/integrar_assets_gdevelop.py">
         <issue>Hitbox genérica (32x32 px) causaba colisiones injustas en plataformas ajustadas.</issue>
-        <resolution>Inyectada customCollisionMask de 24x30 px centrada en el objeto Jugador.</resolution>
+        <resolution>Inyectada customCollisionMask de 24x30 px centrada en el objeto Jugador, implementada en tools/integrar_assets_gdevelop.py (MASK_COLISION_JUGADOR).</resolution>
       </fix>
       <fix id="FIX-GD-04" target="tools/exportador/hoja_eventos.py">
         <issue>Falta de correspondencia en las 16 animaciones multipose de Pixel-Art.</issue>

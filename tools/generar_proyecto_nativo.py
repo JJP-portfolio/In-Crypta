@@ -123,13 +123,6 @@ from niveles import NIVELES, SALAS_PRUEBA
 OUT = ROOT / "export" / "gdevelop_nativo"
 ASSETS = OUT / "assets"
 PROJECT_NAME = "IN_CRYPTA_NATIVO.json"
-BASE_PROJECT = (
-    Path.home()
-    / "Documentos"
-    / "GDevelop projects"
-    / "My project"
-    / "Cryptus - Copy.json"
-)
 FONT_SOURCE = Path("/usr/share/fonts/noto/NotoSerifDisplay-Bold.ttf")
 FONT_RESOURCE = "FuenteHUD"
 FONT_FILE = "assets/NotoSerifDisplay-Bold.ttf"
@@ -3258,7 +3251,18 @@ def escena_sala(escena_modelo: Escena) -> dict:
 # Proyecto
 # ------------------------------------------------------------
 def construir_proyecto(escenas: list[Escena]) -> dict:
-    base = json.loads(BASE_PROJECT.read_text(encoding="utf-8"))
+    base: dict = {
+        "properties": {},
+        "firstLayout": "",
+        "resources": {"resources": []},
+        "objects": [],
+        "objectsGroups": [],
+        "variables": [],
+        "layouts": [],
+        "usedResources": [],
+        "externalEvents": [],
+        "externalLayouts": [],
+    }
 
     recursos = [
         recurso_imagen("FondoTitulo", "assets/titulo.png"),
@@ -3512,17 +3516,11 @@ def main() -> int:
     destino = OUT / PROJECT_NAME
     destino.write_text(contenido_json, encoding="utf-8")
 
-    destino_v099 = OUT / "In_Crypta_V0.9.9.json"
-    destino_v099.write_text(contenido_json, encoding="utf-8")
-
     # Integración de assets pixel-art góticos y animaciones multipose (Prioridad 5)
-    try:
-        import integrar_assets_gdevelop
-        integrar_assets_gdevelop.generar_todos_los_assets()
-        integrar_assets_gdevelop.actualizar_proyecto_gdevelop(destino)
-        integrar_assets_gdevelop.actualizar_proyecto_gdevelop(destino_v099)
-    except Exception as err:
-        print(f"Aviso al integrar assets pixel-art: {err}")
+    # Cualquier fallo aquí detiene la exportación con código distinto de cero.
+    import integrar_assets_gdevelop
+    integrar_assets_gdevelop.generar_todos_los_assets()
+    integrar_assets_gdevelop.actualizar_proyecto_gdevelop(destino)
 
     # Limpiar posibles restos .autosave y .bak que GDevelop pueda haber creado
     for residuo in list(OUT.glob("*.autosave")) + list(OUT.glob("*.bak*")):
@@ -3531,28 +3529,7 @@ def main() -> int:
         except OSError:
             pass
 
-    # Sincronizar espejo en ~/In-Crypta si existe
-    espejo_dir = Path("/home/sanodesu/In-Crypta/export/gdevelop_nativo")
-    if espejo_dir.exists():
-        (espejo_dir / PROJECT_NAME).write_text(contenido_json, encoding="utf-8")
-        (espejo_dir / "In_Crypta_V0.9.9.json").write_text(contenido_json, encoding="utf-8")
-        shutil.copytree(ASSETS, espejo_dir / "assets", dirs_exist_ok=True)
-        for residuo in list(espejo_dir.glob("*.autosave")) + list(espejo_dir.glob("*.bak*")):
-            try:
-                residuo.unlink()
-            except OSError:
-                pass
-
-    # Actualizar open-projects.json para que GDevelop abra el proyecto nativo actualizado
-    config_open = Path.home() / ".var/app/io.gdevelop.ide/config/GDevelop 5/open-projects.json"
-    if config_open.parent.exists():
-        try:
-            config_open.write_text(json.dumps([str(destino)]), encoding="utf-8")
-        except Exception:
-            pass
-
     print(f"Proyecto: {destino}")
-    print(f"Proyecto V0.9.9 sincronizado: {destino_v099}")
     print(f"Resolución: {RENDER_W}x{RENDER_H} (zoom {GAME_ZOOM})")
     print(f"Escenas: {[l['name'] for l in proyecto['layouts']]}")
     print(

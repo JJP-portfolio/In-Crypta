@@ -108,7 +108,28 @@ def main() -> int:
         _imprimir_resultado(fallos, inicio_total)
         return 1 if fallos else 0
 
-    # ── Paso 3: Verificar paridad ──────────────────────────────────────
+    # ── Paso 3: Suite de certificación ──────────────────────────────
+    # validar_eventos_gd contrasta la forma de los eventos con el núcleo real de GDevelop.
+    cmd = [PYTHON, str(TOOLS / "validar_eventos_gd.py")]
+    ok, salida = correr(cmd, "Validando eventos GDevelop 5.6 contra el núcleo real")
+    if not ok:
+        fallos.append("validar_eventos_gd.py falló")
+    elif "EVENTOS_OK" not in salida:
+        fallos.append("validar_eventos_gd.py no reportó EVENTOS_OK")
+
+    # Pruebas unitarias de lógica y física Pygame (headless)
+    cmd = [PYTHON, str(ROOT / "tests" / "test_logica.py")]
+    ok, salida = correr(cmd, "Pruebas unitarias de lógica y física Pygame")
+    if not ok:
+        fallos.append("tests/test_logica.py falló")
+
+    # Pruebas unitarias del HUD de 4 capas (headless)
+    cmd = [PYTHON, str(ROOT / "tests" / "test_hud.py")]
+    ok, salida = correr(cmd, "Pruebas unitarias del HUD de 4 capas")
+    if not ok:
+        fallos.append("tests/test_hud.py falló")
+
+    # ── Paso 4: Verificar paridad ──────────────────────────────────────
     cmd = [PYTHON, str(TOOLS / "verificar_paridad.py")]
     ok, salida = correr(cmd, "Verificando paridad Pygame ↔ GDevelop nativo")
     if not ok:
