@@ -5,6 +5,7 @@
 # para dibujarlas en pantalla. El HUD NO usa la cámara.
 # ============================================================
 
+import math
 import random
 
 import pygame
@@ -29,6 +30,8 @@ class Camara:
         self.offset_y = 0.0
         self.sacudida_tiempo = 0.0
         self.sacudida_fuerza = 0.0
+        self.sacudida_dir_x = 0.0
+        self.sacudida_dir_y = 0.0
         self.permitir_sacudida = True
 
     # --- Función actualizar --- #
@@ -55,25 +58,41 @@ class Camara:
         self.actualizar_sacudida(dt)
 
     # --- Función sacudir --- #
-    def sacudir(self, fuerza=SACUDIDA_FUERZA, duracion=SACUDIDA_DURACION):
+    def sacudir(self, fuerza=SACUDIDA_FUERZA, duracion=SACUDIDA_DURACION, dir_x=0.0, dir_y=0.0):
         if not self.permitir_sacudida:
             self.offset_x = 0.0
             self.offset_y = 0.0
+            self.sacudida_dir_x = 0.0
+            self.sacudida_dir_y = 0.0
             return
         self.sacudida_tiempo = max(self.sacudida_tiempo, duracion)
         self.sacudida_fuerza = max(self.sacudida_fuerza, fuerza)
+        mag = math.hypot(dir_x, dir_y)
+        if mag > 0.001:
+            self.sacudida_dir_x = dir_x / mag
+            self.sacudida_dir_y = dir_y / mag
+        else:
+            self.sacudida_dir_x = 0.0
+            self.sacudida_dir_y = 0.0
 
     # --- Función actualizar_sacudida --- #
     def actualizar_sacudida(self, dt):
         if self.sacudida_tiempo <= 0:
             self.offset_x = 0.0
             self.offset_y = 0.0
+            self.sacudida_dir_x = 0.0
+            self.sacudida_dir_y = 0.0
             return
 
         self.sacudida_tiempo = max(0.0, self.sacudida_tiempo - dt)
         intensidad = self.sacudida_fuerza * (self.sacudida_tiempo / SACUDIDA_DURACION)
-        self.offset_x = random.uniform(-intensidad, intensidad)
-        self.offset_y = random.uniform(-intensidad, intensidad)
+        if self.sacudida_dir_x != 0.0 or self.sacudida_dir_y != 0.0:
+            oscilacion = random.uniform(-intensidad, intensidad)
+            self.offset_x = self.sacudida_dir_x * oscilacion
+            self.offset_y = self.sacudida_dir_y * oscilacion
+        else:
+            self.offset_x = random.uniform(-intensidad, intensidad)
+            self.offset_y = random.uniform(-intensidad, intensidad)
 
     # --- Función aplicar_x / aplicar_y --- #
     def aplicar_x(self, x):
