@@ -249,9 +249,11 @@ class HudModel:
     ataque_cooldown: float = 0.0
     tiene_pala: bool = False
     rango_ataque_mejorado: bool = False
+    escudo_farol: bool = False
     # Jefe
     jefe_vivo: bool = False
     jefe_vida: int = 0
+    jefe_vida_max: int = JEFE_VIDA
     jefe_fase: int = 1
     jefe_nombre: str = "EL CUSTODIO DEL OSARIO"
     # Nivel / tiempo
@@ -679,6 +681,10 @@ class HudRenderer:
             cy = c.y + 30
             lleno = i < modelo.vidas
             self.dibujar_corazon(pantalla, cx, cy, lleno, escala_corazon)
+            if i == 0 and getattr(modelo, "escudo_farol", False):
+                # Contorno celeste pulsante del Manto del Farol
+                pygame.draw.circle(pantalla, (120, 220, 255), (cx - 6, cy - 4), int(self.tema.corazon_radio * escala_corazon) + 3, 2)
+                pygame.draw.circle(pantalla, (120, 220, 255), (cx + 6, cy - 4), int(self.tema.corazon_radio * escala_corazon) + 3, 2)
 
     # --- Zona centro: nivel / jefe ---
     def _dibujar_centro(self, pantalla, modelo, reducir_movimiento, dt):
@@ -688,7 +694,7 @@ class HudRenderer:
             nombre = modelo.jefe_nombre
             fuente_nombre = self._fuente(self.tema.fuente_nombre)
             if fuente_nombre.size(nombre)[0] > 300:
-                nombre = "EL CUSTODIO"
+                nombre = "EL CUSTODIO" if "CUSTODIO" in nombre else "EL CARCELERO"
             img_n = self._texto(nombre, self.tema.fuente_nombre,
                                 self.tema.rojo if modelo.jefe_fase >= 2 else self.tema.oro, sombra=True)
             pantalla.blit(img_n, (c.x, c.y))
@@ -697,12 +703,14 @@ class HudRenderer:
             img_f = self._texto(fase_txt, self.tema.fuente_label,
                                 self.tema.rojo if modelo.jefe_fase >= 2 else self.tema.texto_secundario)
             pantalla.blit(img_f, (c.right - img_f.get_width(), c.y))
-            # Barra de jefe: 6 segmentos de 68×12, gap 4, slot 48 para número
+            # Barra de jefe: segmentos según vida_max
             barra_y = c.y + 30
-            segmento_w, segmento_h = 68, 12
+            vida_max = getattr(modelo, "jefe_vida_max", JEFE_VIDA) or JEFE_VIDA
+            segmento_w = 68 if vida_max == JEFE_VIDA else 138
+            segmento_h = 12
             gap = 4
             x_seg = c.x
-            for i in range(JEFE_VIDA):
+            for i in range(vida_max):
                 llena = i < modelo.jefe_vida
                 color = (self.tema.jefe_segmento_lleno if llena
                          else self.tema.jefe_segmento_vacio)
@@ -712,18 +720,19 @@ class HudRenderer:
                     pygame.draw.rect(pantalla, (22, 16, 20), rect, 1, border_radius=4)
                 x_seg += segmento_w + gap
             # Número y fase a la derecha de la barra
-            num_txt = f"{modelo.jefe_vida}/{JEFE_VIDA}"
+            num_txt = f"{modelo.jefe_vida}/{vida_max}"
             img_num = self._texto(num_txt, self.tema.fuente_label, self.tema.texto)
             pantalla.blit(img_num, (x_seg + 8, barra_y))
         else:
             # Nivel
             if modelo.nivel_indice < 0:
-                nivel_txt = "TUTORIAL"
+                nivel_txt = "PRELUDIO · TUTORIAL"
+                nombre_txt = "EL UMBRAL DEL SEPULTURERO"
             else:
                 nivel_txt = f"NIVEL {modelo.nivel_indice + 1}/{modelo.nivel_total}"
+                nombre_txt = modelo.nivel_nombre.upper()
             img_n = self._texto(nivel_txt, self.tema.fuente_label, self.tema.oro)
             pantalla.blit(img_n, (c.x, c.y))
-            nombre_txt = modelo.nivel_nombre.upper()
             img_nom = self._texto(nombre_txt, self.tema.fuente_nombre,
                                   self.tema.texto_secundario, sombra=True)
             pantalla.blit(img_nom, (c.x, c.y + 18))
@@ -861,10 +870,35 @@ class HudOrquestador:
         self.modelo.ataque_cooldown = j.ataque_cooldown if j else 0.0
         self.modelo.tiene_pala = j.tiene_pala if j else False
         self.modelo.rango_ataque_mejorado = getattr(j, "rango_ataque_mejorado", False) if j else False
-        self.modelo.jefe_vivo = jefe is not None and getattr(jefe, "vivo", False)
-        self.modelo.jefe_vida = jefe.vida if jefe else 0
-        self.modelo.jefe_fase = jefe.fase if jefe else 1
-        self.modelo.jefe_nombre = "EL CUSTODIO DEL OSARIO"
+        self.modelo.escudo_farol = getattr(j, "escudo_farol", False) if j else False
+
+        minijefe_activo = None
+        if n and hasattr(n, "minijefes") and not (jefe and getattr(jefe, "vivo", False)):
+            for mj in n.minijefes:
+                if mj.vivo and mj.estado != "muerto":
+                    dist = abs(j.rect.centerx - mj.rect.centerx) if j else 9999
+                    if dist < 450 or mj.estado in ("ataque", "telegrafo", "recuperacion", "cansado"):
+                        minijefe_activo = mj
+                        break
+
+        if jefe is not None and getattr(jefe, "vivo", False):
+            self.modelo.jefe_vivo = True
+            self.modelo.jefe_vida = jefe.vida
+            self.modelo.jefe_vida_max = JEFE_VIDA
+            self.modelo.jefe_fase = jefe.fase
+            self.modelo.jefe_nombre = "EL CUSTODIO DEL OSARIO"
+        elif minijefe_activo is not None:
+            self.modelo.jefe_vivo = True
+            self.modelo.jefe_vida = minijefe_activo.vida
+            self.modelo.jefe_vida_max = 3
+            self.modelo.jefe_fase = 1
+            self.modelo.jefe_nombre = "EL CARCELERO DEL OSARIO"
+        else:
+            self.modelo.jefe_vivo = False
+            self.modelo.jefe_vida = 0
+            self.modelo.jefe_vida_max = JEFE_VIDA
+            self.modelo.jefe_fase = 1
+            self.modelo.jefe_nombre = "EL CUSTODIO DEL OSARIO"
         if getattr(juego, "es_tutorial", False):
             self.modelo.nivel_indice = -1
             self.modelo.nivel_total = 3

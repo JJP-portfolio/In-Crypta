@@ -311,6 +311,59 @@ class TestOrquestador(unittest.TestCase):
 
         o.dibujar(pantalla, JuegoFalso(), 0.016)
 
+    def test_modelo_escudo_farol(self):
+        o = HudOrquestador()
+        pantalla = pygame.Surface((ANCHO, ALTO))
+        jf = self._jugador_falso()
+        jf.escudo_farol = True
+
+        class JuegoFalso:
+            jugador = jf
+            jefe = None
+            nivel_indice = 0
+            nivel = self._nivel_falso()
+            tiempo_total = 5.0
+            estado = "jugando"
+            texto_ayuda = ""
+            aviso_jefe = 0.0
+
+        o.dibujar(pantalla, JuegoFalso(), 0.016)
+        self.assertTrue(o.modelo.escudo_farol)
+
+    def test_dibujar_con_minijefe(self):
+        o = HudOrquestador()
+        pantalla = pygame.Surface((ANCHO, ALTO))
+
+        class MiniJefeFalso:
+            vivo = True
+            vida = 2
+            estado = "ataque"
+            rect = pygame.Rect(100, 100, 36, 48)
+
+        jf = self._jugador_falso()
+        jf.rect = pygame.Rect(120, 100, 24, 30)
+
+        class NivelConMiniJefe:
+            total_almas = 10
+            nombre = "El Osario"
+            minijefes = [MiniJefeFalso()]
+
+        class JuegoFalso:
+            jugador = jf
+            jefe = None
+            nivel_indice = 2
+            nivel = NivelConMiniJefe()
+            tiempo_total = 20.0
+            estado = "jugando"
+            texto_ayuda = ""
+            aviso_jefe = 0.0
+
+        o.dibujar(pantalla, JuegoFalso(), 0.016)
+        self.assertTrue(o.modelo.jefe_vivo)
+        self.assertEqual(o.modelo.jefe_vida, 2)
+        self.assertEqual(o.modelo.jefe_vida_max, 3)
+        self.assertEqual(o.modelo.jefe_nombre, "EL CARCELERO DEL OSARIO")
+
 
 if __name__ == "__main__":
     unittest.main()
