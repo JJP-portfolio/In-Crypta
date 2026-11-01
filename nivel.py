@@ -22,6 +22,8 @@ from config import (
     JEFE_ANCHO,
     MARRON,
     MARRON_OSCURO,
+    MINIJEFE_ALTO,
+    MINIJEFE_ANCHO,
     MUSGO,
     NEGRO,
     NEGRO_NOCHE,
@@ -49,6 +51,7 @@ from entidades import (
     Enemigo,
     EnemigoMelee,
     FarolCheckpoint,
+    MiniJefe,
     PalaRecogible,
     Polilla,
     RangoPowerUp,
@@ -129,6 +132,7 @@ class Nivel:
         self.checkpoints = self._crear_checkpoints()
         self.plataformas = self._crear_plataformas()
         self.jefes = self._crear_jefes()
+        self.minijefes = self._crear_minijefes()
         self.cuervos = self._crear_cuervos()
         self.polillas = self._crear_polillas()
         self.aranias = self._crear_aranias()
@@ -367,6 +371,24 @@ class Nivel:
                 maximo_x = min(self.ancho - JEFE_ANCHO, (columna + 20) * TILE)
                 jefes.append(Custodio(rect, minimo_x, maximo_x))
         return jefes
+
+    # --- Función _crear_minijefes --- #
+    def _crear_minijefes(self):
+        minijefes = []
+        for fila, texto in enumerate(self.filas):
+            for columna, simbolo in enumerate(texto):
+                if simbolo != "K":
+                    continue
+                rect = pygame.Rect(
+                    columna * TILE - (MINIJEFE_ANCHO - TILE) // 2,
+                    (fila + 1) * TILE - MINIJEFE_ALTO,
+                    MINIJEFE_ANCHO,
+                    MINIJEFE_ALTO,
+                )
+                minimo_x = max(0, (columna - 12) * TILE)
+                maximo_x = min(self.ancho - MINIJEFE_ANCHO, (columna + 12) * TILE)
+                minijefes.append(MiniJefe(rect, minimo_x, maximo_x))
+        return minijefes
     def _crear_plataformas(self):
         plataformas = []
         for fila, texto in enumerate(self.filas):
@@ -520,6 +542,8 @@ class Nivel:
             araña.reiniciar()
         for plataforma in self.plataformas:
             plataforma.reiniciar()
+        for minijefe in self.minijefes:
+            minijefe.reiniciar()
         for jefe in self.jefes:
             jefe.reiniciar()
 
@@ -541,6 +565,8 @@ class Nivel:
             power_up.dibujar(surface, camara, tiempo)
         for checkpoint in self.checkpoints:
             checkpoint.dibujar(surface, camara, tiempo)
+        for minijefe in self.minijefes:
+            minijefe.dibujar(surface, camara, tiempo)
         for enemigo_melee in self.enemigos_melee:
             enemigo_melee.dibujar(surface, camara, tiempo)
         for totem in self.totems:
