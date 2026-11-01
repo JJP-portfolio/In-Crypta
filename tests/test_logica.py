@@ -1477,6 +1477,7 @@ def probar_fisica_salto_dash_game_feel():
     while jugador.dash_tiempo > 0:
         jugador.actualizar(1 / 60, teclas_idle, [])
     assert jugador.dash_tiempo == 0
+    # Criterio D4: al terminar el dash, vx pasa a VELOCIDAD (250). Cambiar esto es un cambio de diseño.
     assert jugador.vx == jugador.dash_direccion * VELOCIDAD
     assert jugador.post_dash_tiempo > 0.0
 
