@@ -15,6 +15,7 @@ import pygame
 from audio import Audio
 from camara import Camara
 from config import (
+    ALMAS_MANTO_FAROL,
     ALMAS_POR_VIDA,
     ALTO,
     ATAQUE_COOLDOWN,
@@ -50,6 +51,7 @@ from config import (
     HUESO,
     HUD_GRIS_CLARO,
     INTEGRANTES,
+    INVULNERABILIDAD,
     JEFE_ONDA_VELOCIDAD,
     ORO,
     REBOTE_ENEMIGO,
@@ -174,6 +176,8 @@ class Juego:
         self.jefe = None
         self.ondas_jefe = []
         self.punto_reintento = None
+        self.almas_consagradas = 0
+        self.almas_vida_consagradas = 0
         self.aviso_jefe = 0.0
         self.sala_prueba = False
         self.sala_prueba_indice = None
@@ -206,7 +210,7 @@ class Juego:
             self.nivel_indice = indice
             datos = NIVELES[indice]
             tiene_pala = (jugador_previo.tiene_pala if jugador_previo else False) or (indice >= 2)
-            tiene_dash = (jugador_previo.tiene_dash if jugador_previo else False) or (indice >= 2)
+            tiene_dash = (jugador_previo.tiene_dash if jugador_previo else False) or (indice >= 1)
         else:
             datos = SALAS_PRUEBA[sala]
             self.nivel_indice = datos["nivel"]
@@ -234,6 +238,8 @@ class Juego:
         self.jefe = self.nivel.jefes[0] if self.nivel.jefes else None
         self.ondas_jefe = []
         self.punto_reintento = None
+        self.almas_consagradas = 0
+        self.almas_vida_consagradas = 0
         self.aviso_jefe = 0.0
         # Iniciar dron fúnebre ambiental de la cripta
         self.audio.iniciar_dron()
@@ -279,6 +285,8 @@ class Juego:
         self.jefe = None
         self.ondas_jefe = []
         self.punto_reintento = None
+        self.almas_consagradas = 0
+        self.almas_vida_consagradas = 0
         self.aviso_jefe = 0.0
         # Iniciar dron fúnebre ambiental
         self.audio.iniciar_dron()
@@ -486,7 +494,7 @@ class Juego:
                     elif self.estado == "derrota" and self.es_tutorial:
                         self.iniciar_tutorial()
                     elif self.estado == "derrota":
-                        self.cargar_nivel(self.nivel_indice, vidas=VIDAS_INICIALES)
+                        self.reintentar_nivel()
                         self.estado = "jugando"
                     elif self.estado == "victoria":
                         self.abrir_menu()
@@ -550,6 +558,7 @@ class Juego:
             return
 
         self.actualizar_enemigos(dt)
+        self.actualizar_minijefes(dt)
         self.actualizar_almas()
         self.actualizar_palas()
         self.actualizar_power_ups_dash()
@@ -721,9 +730,33 @@ class Juego:
                 self.flash = 0.06
                 self.flash_color = AMARILLO
                 break
-                self.flash = 0.06
-                self.flash_color = AMARILLO
-                break
+
+        # Mini-Jefes (El Carcelero del Osario)
+        if not self.jugador.ataque_golpeado:
+            for mj in getattr(self.nivel, "minijefes", []):
+                if not mj.vivo or not golpe.colliderect(mj.rect):
+                    continue
+                if mj.recibir_golpe_pala():
+                    self.jugador.ataque_golpeado = True
+                    self.jugador.dash_usos_aire = DASH_USOS_AIRE
+                    self.jugador.dash_cooldown = 0.0
+                    self.audio.reproducir("pala")
+                    self.particulas.pala(mj.rect.centerx, mj.rect.centery)
+                    self.camara.sacudir(6.0, 0.14, dir_x=self.jugador.direccion, dir_y=0.0)
+                    self.hitstop = 0.08
+                    self.flash = 0.06
+                    self.flash_color = AMARILLO
+                    if not mj.vivo and not mj.almas_otorgadas:
+                        mj.almas_otorgadas = True
+                        self.jugador.almas += 5
+                        self.jugador.almas_para_vida += 5
+                        if self.jugador.almas_para_vida >= ALMAS_POR_VIDA and self.jugador.vidas < VIDAS_MAXIMAS:
+                            self.jugador.vidas += 1
+                            self.jugador.almas_para_vida -= ALMAS_POR_VIDA
+                        self.audio.reproducir("meta")
+                        self.particulas.meta(mj.rect.centerx, mj.rect.centery)
+                        self.hud.mostrar_mensaje("¡EL CARCELERO HA CAÍDO! · El Osario se abre (+5 Almas)", 2, 4.0)
+                    break
 
         # Jefe — pala: daña en Fase 1, rebota con chispas en Fase 2.
         if (
@@ -827,30 +860,51 @@ class Juego:
         """Golpe al jefe (usado por compatibilidad y tests)."""
         return self.dañar_jefe_pala()
 
+    def _rebotar_jefe_coraza(self):
+        self.jugador.vx = -self.jugador.direccion * 220
+        self.jugador.vy = -160
+        self.jugador.invulnerable = 0.25
+        self.camara.sacudir(5.0, 0.12, dir_x=-self.jugador.direccion, dir_y=0.0)
+        self.flash = 0.08
+        self.flash_color = (200, 50, 50)
+        self.audio.reproducir("rebote_pala")
+        self.particulas.chispas_rebote(
+            self.jefe.rect.centerx - self.jugador.direccion * 16,
+            self.jefe.rect.centery,
+            -self.jugador.direccion,
+        )
+
     # --- Función dañar_jefe_pala --- #
     def dañar_jefe_pala(self):
-        """Golpe de pala: daña en Fase 1; rebota físicamente en Fase 2."""
-        if not self.jefe.recibir_golpe_pala():
-            # Fase 2: pala rebota contra la armadura reforzada de la Muerte Roja
-            self.jugador.vx = -self.jugador.direccion * 220
-            self.jugador.vy = -160
-            self.jugador.invulnerable = 0.25
-            self.camara.sacudir(5.0, 0.12, dir_x=-self.jugador.direccion, dir_y=0.0)
-            self.flash = 0.08
-            self.flash_color = (200, 50, 50)
-            self.audio.reproducir("rebote_pala")
-            self.particulas.chispas_rebote(
-                self.jefe.rect.centerx - self.jugador.direccion * 16,
-                self.jefe.rect.centery,
-                -self.jugador.direccion,
-            )
+        """Golpe de pala: daña en Fase 1; rebota en Fase 2 sin Guadaña Consagrada (X)."""
+        if self.jefe is None or not self.jefe.vivo:
+            return False
+        rango_mejorado = getattr(self.jugador, "rango_ataque_mejorado", False)
+        if self.jefe.fase >= 2 and not rango_mejorado:
+            self._rebotar_jefe_coraza()
+            self.hud.mostrar_mensaje("¡CORAZA ESPECTRAL! Necesitás la Guadaña Consagrada (X)", 2, 2.5)
+            return False
+        if not self.jefe.recibir_golpe_pala(rango_mejorado=rango_mejorado):
+            self._rebotar_jefe_coraza()
             return False
         return self._aplicar_golpe_jefe()
 
     # --- Función dañar_jefe_pisaton --- #
     def dañar_jefe_pisaton(self):
-        """Pisotón: siempre funciona en ambas fases."""
-        if not self.jefe.recibir_pisaton():
+        """Pisotón: daña en Fase 1; en Fase 2 exige la Guadaña Consagrada (X)."""
+        if self.jefe is None or not self.jefe.vivo:
+            return False
+        rango_mejorado = getattr(self.jugador, "rango_ataque_mejorado", False)
+        if self.jefe.fase >= 2 and not rango_mejorado:
+            self.jugador.vy = -REBOTE_ENEMIGO
+            self.jugador.dash_usos_aire = DASH_USOS_AIRE
+            self.jugador.dash_cooldown = 0.0
+            self.audio.reproducir("rebote_pala")
+            self.particulas.chispas_rebote(self.jefe.rect.centerx, self.jefe.rect.top, 0)
+            self.camara.sacudir(5.0, 0.12)
+            self.hud.mostrar_mensaje("¡CORAZA ESPECTRAL! Necesitás la Guadaña Consagrada (X)", 2, 2.5)
+            return False
+        if not self.jefe.recibir_pisaton(rango_mejorado=rango_mejorado):
             return False
         res = self._aplicar_golpe_jefe()
         self.audio.reproducir("stomp")
@@ -991,6 +1045,42 @@ class Juego:
                 self.perder_vida(causa="Picadura de Araña espectral")
                 return
 
+    # --- Función actualizar_minijefes --- #
+    def actualizar_minijefes(self, dt):
+        for mj in getattr(self.nivel, "minijefes", []):
+            mj.actualizar(dt, self.jugador)
+            if not mj.vivo:
+                continue
+
+            # Pisotón sobre el Mini-Jefe (Carcelero del Osario)
+            viene_desde_arriba = (
+                self.jugador.vy > 0
+                and self.jugador.rect.bottom - mj.rect.top <= 18
+            )
+            if viene_desde_arriba and self.jugador.tiene_pala:
+                if mj.recibir_pisaton():
+                    self.jugador.vy = -REBOTE_ENEMIGO
+                    self.jugador.en_suelo = False
+                    self.jugador.dash_usos_aire = DASH_USOS_AIRE
+                    self.jugador.dash_cooldown = 0.0
+                    self.audio.reproducir("stomp")
+                    self.particulas.stomp(mj.rect.centerx, mj.rect.top)
+                    self.camara.sacudir(7.0, 0.16, dir_x=0.0, dir_y=1.0)
+                    self.hitstop = 0.08
+                    if not mj.vivo and not mj.almas_otorgadas:
+                        mj.almas_otorgadas = True
+                        self.jugador.almas += 5
+                        self.jugador.almas_para_vida += 5
+                        if self.jugador.almas_para_vida >= ALMAS_POR_VIDA and self.jugador.vidas < VIDAS_MAXIMAS:
+                            self.jugador.vidas += 1
+                            self.jugador.almas_para_vida -= ALMAS_POR_VIDA
+                        self.audio.reproducir("meta")
+                        self.particulas.meta(mj.rect.centerx, mj.rect.centery)
+                        self.hud.mostrar_mensaje("¡EL CARCELERO HA CAÍDO! · El Osario se abre (+5 Almas)", 2, 4.0)
+            elif self.jugador.invulnerable <= 0 and self.jugador.rect.colliderect(mj.rect):
+                self.perder_vida(causa="Ataque del Carcelero del Osario")
+                return
+
     # --- Función actualizar_almas --- #
     def actualizar_almas(self):
         for alma in self.nivel.almas:
@@ -1063,7 +1153,23 @@ class Juego:
                     3,
                     120,
                 )
-                self.hud.mostrar_mensaje("FAROL CONSAGRADO · Punto de control registrado", 1, 3.0)
+
+                # Curación y Consagración de Almas
+                almas_tramo = self.jugador.almas - getattr(self, "almas_consagradas", 0)
+                msg_partes = ["FAROL CONSAGRADO"]
+                if almas_tramo >= ALMAS_MANTO_FAROL:
+                    self.jugador.escudo_farol = True
+                    msg_partes.append("Manto protector otorgado")
+                else:
+                    msg_partes.append("Punto de control registrado")
+
+                if self.jugador.vidas < VIDAS_INICIALES:
+                    self.jugador.vidas += 1
+                    msg_partes.append("(+1 Vida)")
+
+                self.almas_consagradas = self.jugador.almas
+                self.almas_vida_consagradas = self.jugador.almas_para_vida
+                self.hud.mostrar_mensaje(" · ".join(msg_partes), 1, 3.5)
 
     # --- Función actualizar_tutorial_contextual --- #
     def actualizar_tutorial_contextual(self):
@@ -1118,6 +1224,25 @@ class Juego:
         if self.jugador.invulnerable > 0 and not ignorar_invulnerabilidad:
             return
 
+        # Si el jugador posee el Manto del Farol, absorbe el golpe letal
+        if getattr(self.jugador, "escudo_farol", False):
+            self.jugador.escudo_farol = False
+            self.jugador.invulnerable = INVULNERABILIDAD
+            self.audio.reproducir("rebote_pala")
+            self.particulas.emitir(
+                self.jugador.rect.centerx,
+                self.jugador.rect.centery,
+                24,
+                ((120, 220, 255), (200, 245, 255), BLANCO),
+                220,
+                0.7,
+                4,
+            )
+            self.flash = 0.15
+            self.flash_color = (120, 220, 255)
+            self.hud.mostrar_mensaje("¡MANTO DEL FAROL CONSUMIDO! · Daño absorbido", 2, 2.5)
+            return
+
         self.jugador.vidas -= 1
         self.audio.reproducir("daño")
         self.particulas.daño(self.jugador.rect.centerx, self.jugador.rect.centery)
@@ -1137,11 +1262,13 @@ class Juego:
 
         self.hitstop = 0.08
 
-        self.jugador.almas = 0
-        for alma in self.nivel.almas:
-            alma.reiniciar()
-
         if self.punto_reintento is not None:
+            self.jugador.almas = getattr(self, "almas_consagradas", 0)
+            self.jugador.almas_para_vida = getattr(self, "almas_vida_consagradas", 0)
+            checkpoint_x = self.punto_reintento[0]
+            for alma in self.nivel.almas:
+                if alma.rect.x >= checkpoint_x:
+                    alma.reiniciar()
             tenia_guadaña = self.jugador.rango_ataque_mejorado
             tenia_pala = self.jugador.tiene_pala
             tenia_dash = self.jugador.tiene_dash
@@ -1150,6 +1277,10 @@ class Juego:
             self.jugador.tiene_pala = tenia_pala
             self.jugador.tiene_dash = tenia_dash
         else:
+            self.jugador.almas = 0
+            self.jugador.almas_para_vida = 0
+            for alma in self.nivel.almas:
+                alma.reiniciar()
             tenia_pala = self.jugador.tiene_pala
             tenia_dash = self.jugador.tiene_dash
             self.jugador.respawn(*self.nivel.spawn)
@@ -1163,7 +1294,44 @@ class Juego:
         if self.jefe is not None and self.jefe.vivo:
             self.jefe.reiniciar()
             self.ondas_jefe = []
+        for mj in getattr(self.nivel, "minijefes", []):
+            if mj.vivo:
+                mj.reiniciar()
         self.camara.actualizar(self.jugador, self.nivel, 1.0)
+
+    # --- Función reintentar_nivel --- #
+    def reintentar_nivel(self):
+        """Reinicia desde el último Farol activado o desde el inicio del nivel con vidas iniciales."""
+        if self.punto_reintento is not None:
+            self.jugador.vidas = VIDAS_INICIALES
+            self.jugador.almas = getattr(self, "almas_consagradas", 0)
+            self.jugador.almas_para_vida = getattr(self, "almas_vida_consagradas", 0)
+            checkpoint_x = self.punto_reintento[0]
+            for alma in self.nivel.almas:
+                if alma.rect.x >= checkpoint_x:
+                    alma.reiniciar()
+            for enemigo in self.nivel.enemigos:
+                if enemigo.rect.x >= checkpoint_x - TILE * 2:
+                    enemigo.reiniciar()
+            for em in self.nivel.enemigos_melee:
+                if em.rect.x >= checkpoint_x - TILE * 2:
+                    em.reiniciar()
+            for mj in getattr(self.nivel, "minijefes", []):
+                mj.reiniciar()
+            if self.jefe is not None and self.jefe.vivo:
+                self.jefe.reiniciar()
+                self.ondas_jefe = []
+            tenia_guadaña = self.jugador.rango_ataque_mejorado
+            tenia_pala = self.jugador.tiene_pala
+            tenia_dash = self.jugador.tiene_dash
+            self.jugador.respawn(*self.punto_reintento)
+            self.jugador.rango_ataque_mejorado = tenia_guadaña
+            self.jugador.tiene_pala = tenia_pala
+            self.jugador.tiene_dash = tenia_dash
+            self.camara.actualizar(self.jugador, self.nivel, 1.0)
+            self.audio.iniciar_dron()
+        else:
+            self.cargar_nivel(self.nivel_indice, vidas=VIDAS_INICIALES)
 
     # --- Función crear_fondo --- #
     def crear_fondo(self, tema, w=ANCHO, h=ALTO):
