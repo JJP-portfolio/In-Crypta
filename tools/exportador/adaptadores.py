@@ -12,7 +12,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from config import ENEMIGO_ALTO, ENEMIGO_ANCHO, JEFE_ALTO, JEFE_ANCHO, TILE
+from config import (
+    ENEMIGO_ALTO,
+    ENEMIGO_ANCHO,
+    JEFE_ALTO,
+    JEFE_ANCHO,
+    MINIJEFE_ALTO,
+    MINIJEFE_ANCHO,
+    TILE,
+)
 
 SOUL_SPRITE = 24
 GATE_W = 42
@@ -65,6 +73,13 @@ ADAPTADORES: dict[str, Adaptador] = {
         variables=("dir", "min_x", "max_x"),
         sprite=(ENEMIGO_ANCHO, ENEMIGO_ALTO),
         nota="Paradoja de fase 2: aparece con la pala.",
+    ),
+    "minijefe": Adaptador(
+        "minijefe", "MiniJefe", "MiniJefe", z=5,
+        comportamiento="enemigo", regla="minijefe",
+        variables=("vida", "dir", "min_x", "max_x"),
+        sprite=(MINIJEFE_ANCHO, MINIJEFE_ALTO),
+        nota="El Carcelero del Osario (Mini-Boss, 3 HP).",
     ),
     "polilla": Adaptador(
         "polilla", "Polilla", "Polilla", z=5,
