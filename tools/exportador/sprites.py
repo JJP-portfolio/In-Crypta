@@ -158,6 +158,14 @@ def render_plataforma(ancho: int, alto: int) -> pygame.Surface:
     return surface
 
 
+def render_minijefe(ancho: int, alto: int) -> pygame.Surface:
+    from entidades import MiniJefe
+
+    surface = _superficie(ancho, alto)
+    MiniJefe(pygame.Rect(0, 0, ancho, alto), 0, 0).dibujar(surface, _camara(), 0.0)
+    return surface
+
+
 def render_jefe(ancho: int, alto: int) -> pygame.Surface:
     from entidades import Custodio
 
@@ -170,6 +178,7 @@ RENDERIZADORES = {
     "alma": render_alma,
     "enemigo": render_enemigo,
     "enemigo_melee": render_enemigo_melee,
+    "minijefe": render_minijefe,
     "polilla": render_polilla,
     "arana": render_arana,
     "cuervo": render_cuervo,
