@@ -47,6 +47,12 @@ from config import (
     MARRON,
     MARRON_OSCURO,
     MAX_CAIDA,
+    MINIJEFE_ALTO,
+    MINIJEFE_ANCHO,
+    MINIJEFE_TELEGRAFO,
+    MINIJEFE_VELOCIDAD,
+    MINIJEFE_VIDA,
+    MINIJEFE_VULNERABLE,
     MUSGO,
     NARANJA,
     NEGRO,
@@ -189,6 +195,7 @@ class Jugador:
         self.tiene_pala = False
         self.tiene_dash = tiene_dash
         self.rango_ataque_mejorado = False
+        self.escudo_farol = False
 
     # --- Función pedir_salto --- #
     def pedir_salto(self):
@@ -456,6 +463,7 @@ class Jugador:
         self.ataque_golpeado = False
         self.almas_para_vida = 0
         self.rango_ataque_mejorado = False
+        self.escudo_farol = False
 
     # --- Función dibujar --- #
     def dibujar(self, surface, camara, tiempo, pose=None, con_pala=True):
@@ -725,16 +733,19 @@ class Jugador:
         # Bufanda fúnebre
         pygame.draw.rect(surface, CARMESÍ_SANGRE, (centro_x - 7, rect.y + 15, 14, 3), border_radius=1)
 
-        # 7. Farol cálido aditivo (alfa aditivo 35, radio 90 px)
+        # 7. Farol litúrgico diegético aditivo
         farol_x = centro_x + self.direccion * 11
         farol_y = rect.y + 19
-        halo_farol = obtener_estampa_luz(90, FAROL_CÁLIDO, 35)
+        color_halo = VIOLETA if getattr(self, "rango_ataque_mejorado", False) else FAROL_CÁLIDO
+        halo_farol = obtener_estampa_luz(90, color_halo, 35)
         surface.blit(halo_farol, (farol_x - 90, farol_y - 90), special_flags=pygame.BLEND_RGB_ADD)
 
         # Montura de bronce del farol colgante
         pygame.draw.circle(surface, (115, 82, 34), (farol_x, farol_y), 6)
         pygame.draw.circle(surface, (165, 120, 50), (farol_x, farol_y), 6, 1)
-        pygame.draw.circle(surface, FAROL_CÁLIDO, (farol_x, farol_y), 3)
+        # Llama diegética: chispa turquesa brillante si el dash está listo, ámbar si en cooldown/gastado
+        color_llama = TURQUESA_ÁNIMA if (self.tiene_dash and self.dash_listo()) else FAROL_CÁLIDO
+        pygame.draw.circle(surface, color_llama, (farol_x, farol_y), 3)
         pygame.draw.circle(surface, BLANCO, (farol_x, farol_y), 1)
         # Cadena de sujeción
         pygame.draw.line(
@@ -744,6 +755,18 @@ class Jugador:
             (farol_x, rect.y + 15),
             1,
         )
+
+        # Manto del Farol (UI Diegética/Espacial: aura celeste sutil de protección)
+        if getattr(self, "escudo_farol", False):
+            pulso = 0.5 + 0.5 * math.sin(tiempo * 6.0)
+            aura = pygame.Surface((rect.width + 16, rect.height + 16), pygame.SRCALPHA)
+            pygame.draw.ellipse(
+                aura,
+                (92, 190, 220, int(50 + pulso * 35)),
+                (0, 0, rect.width + 16, rect.height + 16),
+                2,
+            )
+            surface.blit(aura, (rect.x - 8, rect.y - 8))
 
 
 # --- Clase Enemigo --- #
@@ -1348,25 +1371,27 @@ class Custodio:
         return True
 
     # --- Función recibir_golpe_pala --- #
-    def recibir_golpe_pala(self):
-        """Pala: funciona en Fase 1. En Fase 2 rebota (solo pisotón hace daño)."""
+    def recibir_golpe_pala(self, rango_mejorado=False):
+        """Pala: funciona en Fase 1. En Fase 2 requiere la Guadaña Consagrada (rango_mejorado)."""
         if not self.vivo:
             return False
-        if self.fase >= 2:
-            return False  # Pala rebota en Fase 2
+        if self.fase >= 2 and not rango_mejorado:
+            return False  # Pala rebota en Fase 2 sin power-up X
         return self._aplicar_dano()
 
     # --- Función recibir_pisaton --- #
-    def recibir_pisaton(self):
-        """Pisotón: funciona siempre en ambas fases."""
+    def recibir_pisaton(self, rango_mejorado=False):
+        """Pisotón: funciona en Fase 1. En Fase 2 requiere la Guadaña Consagrada (rango_mejorado)."""
         if not self.vivo:
             return False
+        if self.fase >= 2 and not rango_mejorado:
+            return False  # Pisotón rebota en Fase 2 sin power-up X
         return self._aplicar_dano()
 
     # --- Función recibir_golpe (compatibilidad tests y golpe cuerpo a cuerpo) --- #
-    def recibir_golpe(self):
+    def recibir_golpe(self, rango_mejorado=False):
         """Alias de recibir_golpe_pala."""
-        return self.recibir_golpe_pala()
+        return self.recibir_golpe_pala(rango_mejorado=rango_mejorado)
 
     # --- Función actualizar --- #
     def actualizar(self, dt, jugador):
@@ -1575,6 +1600,215 @@ class Custodio:
         # Flash de silueta al recibir daño (1 frame BLEND_RGB_ADD 140)
         if self.tiempo_flash > 0:
             flash_overlay = obtener_aura_custodio(rect.width, rect.height, (140, 140, 140), 140)
+            surface.blit(flash_overlay, rect.topleft, special_flags=pygame.BLEND_RGB_ADD)
+
+
+# --- Clase MiniJefe (El Carcelero del Osario) --- #
+class MiniJefe:
+    """Mini-Boss del Nivel 3: El Carcelero del Osario (36x48 px, 3 vidas).
+    Custodia el pedestal del Power-Up 'X' (Guadaña Consagrada).
+    Patrón: Patrulla -> Telegrafía ataque (0.55s) -> Embestida corta -> Cansado/Vulnerable (1.3s).
+    Al morir otorga 5 almas y despeja el camino al power-up.
+    """
+
+    def __init__(self, rect, minimo_x, maximo_x):
+        self.rect = pygame.Rect(rect)
+        self.inicial_rect = pygame.Rect(rect)
+        self.x = float(self.rect.x)
+        self.y = float(self.rect.y)
+        self.minimo_x = int(minimo_x)
+        self.maximo_x = int(maximo_x)
+        self.vida = MINIJEFE_VIDA
+        self.max_vida = MINIJEFE_VIDA
+        self.vivo = True
+        self.direccion = -1
+        self.estado = "patrulla"
+        self.temporizador = 1.0
+        self.vulnerable = False
+        self.invulnerable = 0.0
+        self.tiempo_flash = 0.0
+        self.almas_otorgadas = False
+        self.vx = 0.0
+
+    def reiniciar(self):
+        self.rect = pygame.Rect(self.inicial_rect)
+        self.x = float(self.rect.x)
+        self.y = float(self.rect.y)
+        self.vida = MINIJEFE_VIDA
+        self.vivo = True
+        self.direccion = -1
+        self.estado = "patrulla"
+        self.temporizador = 1.0
+        self.vulnerable = False
+        self.invulnerable = 0.0
+        self.tiempo_flash = 0.0
+        self.almas_otorgadas = False
+        self.vx = 0.0
+
+    def _aplicar_dano(self):
+        if not self.vivo or self.invulnerable > 0:
+            return False
+        self.vida -= 1
+        self.tiempo_flash = 0.12
+        self.invulnerable = 0.40
+        if self.vida <= 0:
+            self.vivo = False
+            self.estado = "muerto"
+            self.vulnerable = False
+        else:
+            self.estado = "recuperacion"
+            self.temporizador = 0.50
+            self.vulnerable = False
+        return True
+
+    def recibir_golpe_pala(self):
+        return self._aplicar_dano()
+
+    def recibir_pisaton(self):
+        return self._aplicar_dano()
+
+    def recibir_golpe(self):
+        return self._aplicar_dano()
+
+    def actualizar(self, dt, jugador):
+        if not self.vivo:
+            return
+
+        if self.invulnerable > 0:
+            self.invulnerable = max(0.0, self.invulnerable - dt)
+        if self.tiempo_flash > 0:
+            self.tiempo_flash = max(0.0, self.tiempo_flash - dt)
+
+        self.temporizador -= dt
+
+        dist_x = jugador.rect.centerx - self.rect.centerx
+        dir_jugador = 1 if dist_x > 0 else -1
+
+        if self.estado == "patrulla":
+            self.vulnerable = False
+            self.direccion = dir_jugador
+            self.vx = self.direccion * MINIJEFE_VELOCIDAD
+            self.x += self.vx * dt
+            if abs(dist_x) < 170 or self.temporizador <= 0:
+                self.estado = "telegrafo"
+                self.temporizador = MINIJEFE_TELEGRAFO
+                self.vx = 0.0
+
+        elif self.estado == "telegrafo":
+            self.vulnerable = False
+            self.vx = 0.0
+            self.direccion = dir_jugador
+            if self.temporizador <= 0:
+                self.estado = "ataque"
+                self.temporizador = 0.40
+                self.vx = self.direccion * 220.0
+
+        elif self.estado == "ataque":
+            self.vulnerable = False
+            self.x += self.vx * dt
+            if self.temporizador <= 0:
+                self.estado = "cansado"
+                self.temporizador = MINIJEFE_VULNERABLE
+                self.vulnerable = True
+                self.vx = 0.0
+
+        elif self.estado == "cansado":
+            self.vulnerable = True
+            self.vx = 0.0
+            if self.temporizador <= 0:
+                self.estado = "patrulla"
+                self.temporizador = 1.4
+                self.vulnerable = False
+
+        elif self.estado == "recuperacion":
+            self.vulnerable = False
+            self.vx = 0.0
+            if self.temporizador <= 0:
+                self.estado = "patrulla"
+                self.temporizador = 1.0
+
+        # Limitar dentro de su arena
+        self.x = limitar(self.x, self.minimo_x, self.maximo_x)
+        self.rect.x = int(self.x)
+
+    def dibujar(self, surface, camara, tiempo):
+        if not self.vivo:
+            return
+
+        rect = camara.aplicar_rect(self.rect)
+        cx = rect.centerx
+        base_y = rect.bottom
+
+        # Sombra en el suelo
+        pygame.draw.ellipse(surface, (10, 8, 14), (rect.x - 2, base_y - 6, rect.width + 4, 10))
+
+        # Aura de telegrafiado carmesí
+        if self.estado == "telegrafo":
+            pulso = 0.5 + 0.5 * math.sin(tiempo * 18)
+            radio_alerta = int(24 + pulso * 6)
+            alerta = pygame.Surface((radio_alerta * 2, radio_alerta * 2), pygame.SRCALPHA)
+            pygame.draw.circle(alerta, (180, 20, 36, int(70 + pulso * 60)), (radio_alerta, radio_alerta), radio_alerta, 3)
+            surface.blit(alerta, (cx - radio_alerta, rect.centery - radio_alerta), special_flags=pygame.BLEND_RGBA_ADD)
+
+        # Aura de cansancio / vulnerabilidad dorada/ámbar
+        if self.vulnerable:
+            pulso_v = 0.5 + 0.5 * math.sin(tiempo * 10)
+            alerta_v = pygame.Surface((rect.width + 12, rect.height + 12), pygame.SRCALPHA)
+            pygame.draw.ellipse(alerta_v, (240, 200, 70, int(60 + pulso_v * 50)), (0, 0, rect.width + 12, rect.height + 12), 2)
+            surface.blit(alerta_v, (rect.x - 6, rect.y - 6))
+
+        # Cuerpo del Carcelero: Túnica pesada de hierro y cuero oscuro
+        cuerpo = pygame.Rect(rect.x + 3, rect.y + 12, rect.width - 6, rect.height - 12)
+        pygame.draw.rect(surface, (26, 22, 30), cuerpo, border_radius=5)
+        pygame.draw.rect(surface, (45, 38, 52), (cuerpo.x + 3, cuerpo.y + 4, cuerpo.width - 6, cuerpo.height - 8), border_radius=3)
+        pygame.draw.rect(surface, (15, 12, 18), cuerpo, 2, border_radius=5)
+
+        # Cadenas y grilletes colgando del torso
+        pygame.draw.line(surface, (130, 125, 140), (cuerpo.x + 2, cuerpo.y + 14), (cuerpo.right - 2, cuerpo.y + 22), 2)
+        pygame.draw.line(surface, (130, 125, 140), (cuerpo.x + 2, cuerpo.y + 22), (cuerpo.right - 2, cuerpo.y + 14), 2)
+
+        # Cabeza: Capucha puntiaguda con máscara de verdugo de hierro
+        cabeza_y = rect.y + 2
+        pygame.draw.polygon(
+            surface,
+            (20, 16, 24),
+            [
+                (cx, cabeza_y),
+                (rect.x + 4, cabeza_y + 14),
+                (rect.right - 4, cabeza_y + 14),
+            ],
+        )
+        # Ranuras oculares carmesí incandescentes
+        ojo_x = cx + self.direccion * 3
+        pygame.draw.circle(surface, (220, 30, 45), (ojo_x - 3, cabeza_y + 10), 2)
+        pygame.draw.circle(surface, (220, 30, 45), (ojo_x + 3, cabeza_y + 10), 2)
+
+        # Arma: Gran cuchilla carcelera / gancho oxidado
+        arma_x = cx + self.direccion * 16
+        arma_y = rect.y + 22
+        pygame.draw.line(surface, (70, 60, 50), (cx, arma_y), (arma_x, arma_y + 6), 3)
+        pygame.draw.polygon(
+            surface,
+            (170, 160, 150),
+            [
+                (arma_x, arma_y + 2),
+                (arma_x + self.direccion * 10, arma_y + 8),
+                (arma_x + self.direccion * 4, arma_y + 16),
+                (arma_x, arma_y + 8),
+            ],
+        )
+
+        # Mini barra de salud encima de la cabeza (3 segmentos)
+        bx = cx - 18
+        by = rect.y - 10
+        pygame.draw.rect(surface, (15, 12, 18), (bx - 1, by - 1, 38, 7), border_radius=2)
+        for i in range(self.max_vida):
+            seg_color = (220, 38, 52) if i < self.vida else (40, 30, 36)
+            pygame.draw.rect(surface, seg_color, (bx + i * 12 + 1, by + 1, 10, 4), border_radius=1)
+
+        # Destello al recibir daño
+        if self.tiempo_flash > 0:
+            flash_overlay = obtener_aura_custodio(rect.width, rect.height, (180, 180, 180), 160)
             surface.blit(flash_overlay, rect.topleft, special_flags=pygame.BLEND_RGB_ADD)
 
 
