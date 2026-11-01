@@ -1255,6 +1255,7 @@ def eventos_nivel(
             cond("KeyFromTextPressed", ['"z"'], invertida=True),
             cond("KeyFromTextPressed", ['"Z"'], invertida=True),
         ],
+        # Divergencia conocida (D3): AbortJump detiene el movimiento vertical; Pygame multiplica vy por CORTE_SALTO (0,45) una sola vez al soltar.
         [accion("PlatformBehavior::PlatformerObjectBehavior::AbortJump", ["Jugador", "PlatformerObject"])],
     ),
     eventos = [
@@ -1415,7 +1416,8 @@ def eventos_nivel(
                 cond("KeyFromTextPressed", ['"z"'], invertida=True),
                 cond("KeyFromTextPressed", ['"Z"'], invertida=True),
             ],
-            [accion("PlatformBehavior::PlatformerObjectBehavior::AbortJump", ["Jugador", "PlatformerObject"])],
+        # Divergencia conocida (D3): AbortJump detiene el movimiento vertical; Pygame multiplica vy por CORTE_SALTO (0,45) una sola vez al soltar.
+        [accion("PlatformBehavior::PlatformerObjectBehavior::AbortJump", ["Jugador", "PlatformerObject"])],
         ),
 
         # Ataque con pala: A.
