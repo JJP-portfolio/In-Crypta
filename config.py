@@ -9,6 +9,7 @@
 TITULO = "IN CRYPTA"
 SUBTITULO = "El sepulturero de la cripta"
 EQUIPO = "Equipo 6"
+VERSION = "0.2.4"
 INTEGRANTES = (
     "Ovelar Alejandro Ezequiel",
     "Joaquín Cardiel Gomez",
@@ -36,8 +37,8 @@ GRAVEDAD = 1500.0
 SALTO = -620.0
 VELOCIDAD = 250.0
 MAX_CAIDA = 900.0
-COYOTE_TIME = 0.18
-JUMP_BUFFER = 0.15
+COYOTE_TIME = 0.10
+JUMP_BUFFER = 0.12
 CORTE_SALTO = 0.45
 INVULNERABILIDAD = 1.2
 REBOTE_ENEMIGO = 360.0

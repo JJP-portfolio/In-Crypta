@@ -521,8 +521,8 @@ def render_jefe(frame: int = 0) -> pygame.Surface:
     _pixel(s, bx + 1, 8 + dy, OBSIDIAN_DEEP)
     # Llama de ánima pulsante
     flama_r = 3 + (frame % 2)
-    pygame.draw.circle(s, ANIMA_LIGHT, (bx, 2 + dy), flama_r)
-    pygame.draw.circle(s, ANIMA_TURQUOISE, (bx, 2 + dy), flama_r + 1, 1)
+    pygame.draw.circle(s, (*ANIMA_LIGHT, 180), (bx, 2 + dy), flama_r)
+    pygame.draw.circle(s, (*ANIMA_TURQUOISE, 110), (bx, 2 + dy), flama_r + 1, 1)
 
     return s
 
@@ -536,10 +536,11 @@ def render_alma(frame: int = 0) -> pygame.Surface:
     # Levitación
     dy = int(math.sin(frame * math.pi / 2) * 2)
 
-    # Aura espectral externa turquesa
+    # Aura espectral externa turquesa translúcida (halo etéreo, no círculo opaco)
     radio = 6 + (frame % 2)
-    pygame.draw.circle(s, (*ANIMA_DARK, 140), (12, 12 + dy), radio + 3)
-    pygame.draw.circle(s, ANIMA_TURQUOISE, (12, 12 + dy), radio)
+    pygame.draw.circle(s, (*ANIMA_DARK, 50), (12, 12 + dy), radio + 3)
+    pygame.draw.circle(s, (*ANIMA_TURQUOISE, 90), (12, 12 + dy), radio + 1)
+    pygame.draw.circle(s, (*ANIMA_LIGHT, 150), (12, 12 + dy), radio - 1)
 
     # Núcleo sagrado de cristal / cráneo espiritual
     _rect(s, 9, 9 + dy, 6, 6, ANIMA_LIGHT)

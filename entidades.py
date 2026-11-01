@@ -2158,9 +2158,17 @@ class Alma:
         flotacion = int(math.sin(tiempo * 5 + rect.x * 0.03) * 3)
         centro = (rect.centerx, rect.centery + flotacion)
 
-        pygame.draw.circle(surface, (54, 38, 76), (centro[0], centro[1] + 1), 11)
-        pygame.draw.circle(surface, VIOLETA, centro, 8)
-        pygame.draw.circle(surface, BLANCO, centro, 4)
+        # Resplandor espectral translúcido (iluminación etérea, no círculo opaco)
+        pulso = 0.5 + 0.5 * math.sin(tiempo * 6 + rect.x * 0.04)
+        halo_alma = pygame.Surface((44, 44), pygame.SRCALPHA)
+        factor = 0.8 + 0.2 * pulso
+        pygame.draw.circle(halo_alma, (160, 90, 245, int(25 * factor)), (22, 22), 18)
+        pygame.draw.circle(halo_alma, (180, 120, 255, int(48 * factor)), (22, 22), 12)
+        pygame.draw.circle(halo_alma, (210, 180, 255, int(85 * factor)), (22, 22), 6)
+        surface.blit(halo_alma, (centro[0] - 22, centro[1] - 22), special_flags=pygame.BLEND_RGBA_ADD)
+
+        # Núcleo sagrado de ánima
+        pygame.draw.circle(surface, (220, 190, 255), centro, 3)
         pygame.draw.polygon(
             surface,
             TURQUESA,
@@ -2427,15 +2435,16 @@ class FarolCheckpoint:
         flame_y = base_y - 27
         if self.activo:
             pulso = 0.5 + 0.5 * math.sin(tiempo * 8 + cx * 0.05)
+            # Resplandor místico translúcido aditivo (iluminación litúrgica, no disco opaco)
+            brillo = pygame.Surface((48, 48), pygame.SRCALPHA)
+            pygame.draw.circle(brillo, (60, 180, 255, int(30 + pulso * 20)), (24, 24), 22)
+            pygame.draw.circle(brillo, (140, 220, 255, int(55 + pulso * 30)), (24, 24), 12)
+            pygame.draw.circle(brillo, (200, 245, 255, int(80 + pulso * 40)), (24, 24), 6)
+            surface.blit(brillo, (cx - 24, flame_y - 24), special_flags=pygame.BLEND_RGBA_ADD)
+
             radio_llama = int(3 + pulso * 2)
             pygame.draw.circle(surface, (120, 220, 255), (cx, flame_y), radio_llama)
             pygame.draw.circle(surface, (240, 255, 255), (cx, flame_y), max(1, radio_llama - 2))
-
-            # Resplandor místico
-            brillo = pygame.Surface((48, 48), pygame.SRCALPHA)
-            pygame.draw.circle(brillo, (60, 180, 255, int(35 + pulso * 20)), (24, 24), 22)
-            pygame.draw.circle(brillo, (140, 220, 255, int(60 + pulso * 30)), (24, 24), 12)
-            surface.blit(brillo, (cx - 24, flame_y - 24), special_flags=pygame.BLEND_RGBA_ADD)
         else:
             # Vela apagada
             pygame.draw.rect(surface, (120, 110, 100), (cx - 1, flame_y, 2, 4))

@@ -1850,14 +1850,16 @@ class Juego:
             for y in range(0, largo, 12):
                 pygame.draw.ellipse(destino, (42, 42, 50), (x - 3, y, 6, 12), 1)
 
-        # Resplandor de velas lejanas (paralaje 0.48)
+        # Resplandor de velas lejanas (paralaje 0.48, iluminación translúcida)
         torch_w = 360
         offset_t = int(self.camara.x * 0.48) % torch_w
         for i in range(-1, int(w / torch_w) + 2):
             x = i * torch_w - offset_t + 110
             base_y = h - 160
-            pygame.draw.circle(destino, (58, 42, 18), (x, base_y), 18)
-            pygame.draw.circle(destino, (112, 74, 28), (x, base_y), 8)
+            halo_vela = pygame.Surface((40, 40), pygame.SRCALPHA)
+            pygame.draw.circle(halo_vela, (255, 175, 55, 26), (20, 20), 18)
+            pygame.draw.circle(halo_vela, (255, 205, 95, 48), (20, 20), 8)
+            destino.blit(halo_vela, (x - 20, base_y - 20), special_flags=pygame.BLEND_RGBA_ADD)
 
     def dibujar_fondo_osario(self, destino=None):
         if destino is None:

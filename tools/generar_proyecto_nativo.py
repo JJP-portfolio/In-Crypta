@@ -42,6 +42,9 @@ from config import (
     AMARILLO,
     ANCHO,
     CREMA,
+    APEX_GRAVEDAD_FACTOR,
+    APEX_VY_UMBRAL,
+    CORTE_SALTO,
     DASH_DURACION,
     DASH_VELOCIDAD,
     GRAVEDAD,
@@ -52,6 +55,8 @@ from config import (
     MAX_CAIDA,
     NIEBLA,
     ORO,
+    POST_DASH_DURACION,
+    POST_DASH_GRAVEDAD_FACTOR,
     ROJO,
     SACUDIDA_DURACION,
     SALTO,
@@ -246,8 +251,10 @@ def generar_fondo_nivel(nivel: Nivel) -> pygame.Surface:
             pygame.draw.line(surface, (54, 48, 58), (x + 21, 210), (x + 21, 410), 3)
             pygame.draw.line(surface, (54, 48, 58), (x + 169, 210), (x + 169, 410), 3)
         for x in range(120, nivel.ancho, 410):
-            pygame.draw.circle(surface, (80, 54, 24), (x, 290), 18)
-            pygame.draw.circle(surface, (150, 99, 36), (x, 290), 9)
+            halo = pygame.Surface((44, 44), pygame.SRCALPHA)
+            pygame.draw.circle(halo, (255, 175, 55, 28), (22, 22), 18)
+            pygame.draw.circle(halo, (255, 205, 95, 50), (22, 22), 9)
+            surface.blit(halo, (x - 22, 290 - 22), special_flags=pygame.BLEND_RGBA_ADD)
             pygame.draw.rect(surface, (186, 176, 148), (x - 3, 297, 6, 30), border_radius=2)
             pygame.draw.polygon(surface, (214, 174, 82), [(x, 276), (x + 5, 288), (x, 296), (x - 5, 288)])
     elif tema == "osario":
@@ -291,9 +298,12 @@ def generar_fondo_victoria() -> pygame.Surface:
     _colinas(surface, GAME_H - 105, 17, (12, 12, 19))
     _niebla(surface, (104, 92, 122), GAME_H - 150, GAME_H, 26)
 
-    # Un portón lejano, como cierre visual.
+    # Un portón lejano, como cierre visual con halo suave.
     x = GAME_W // 2
-    pygame.draw.circle(surface, (42, 34, 22), (x, 316), 64)
+    halo_v = pygame.Surface((130, 130), pygame.SRCALPHA)
+    pygame.draw.circle(halo_v, (255, 195, 75, 28), (65, 65), 60)
+    pygame.draw.circle(halo_v, (255, 220, 110, 48), (65, 65), 35)
+    surface.blit(halo_v, (x - 65, 316 - 65), special_flags=pygame.BLEND_RGBA_ADD)
     pygame.draw.rect(surface, (7, 6, 10), (x - 50, 300, 100, 128))
     pygame.draw.circle(surface, (7, 6, 10), (x, 300), 50)
     pygame.draw.rect(surface, (72, 55, 38), (x - 56, 300, 6, 128))
@@ -1157,9 +1167,14 @@ def eventos_nivel(
     destino_muerte: str = "Derrota",
     reiniciar_vidas: bool = False,
     nombres_objetos: set[str] | None = None,
-) -> list[dict]:
+)     -> list[dict]:
     if nombres_objetos is None:
         nombres_objetos = {"Jugador", "Enemy", "Alma", "Pinchos", "Puerta", "GolpePala"}
+    # Variable global para el umbral de velocidad vertical de ápice (paridad con APEX_VY_UMBRAL).
+    evento(
+        [cond("SceneJustBegins", [""])],
+        [accion("SetNumberVariable", ["velocidad_vertical_umbral", "=", str(APEX_VY_UMBRAL)])],
+    )
     # La cámara se controla por su centro. Si el nivel es más grande que el
     # viewport visible (1024x576 con GAME_ZOOM=1.25), el centro sigue al
     # jugador entre los bordes; si es más chico, queda centrado.
@@ -1185,6 +1200,19 @@ def eventos_nivel(
             if indice == 2
             else '"ESPACIO: SALTO · SHIFT: DASH"'
         )
+
+    # Variables auxiliares de velocidad vertical para la lógica de ápice (paridad con las de Pygame).
+    evento(
+        [cond("SceneJustBegins", [""])],
+        [
+            accion("SetNumberObjectVariable", ["Jugador", "velocidad_vertical", "=", "0"]),
+            accion("SetNumberObjectVariable", ["Jugador", "velocidad_vertical_abs", "=", "0"]),
+            accion("SetNumberVariable", ["velocidad_vertical_umbral", "=", str(APEX_VY_UMBRAL)]),
+        ],
+    ),
+
+    # Actualizar velocidad vertical y su valor absoluto cada frame (paridad con la física de Pygame).
+
 
     dash_input = cond_or(
         cond("KeyFromTextJustPressed", ['"LShift"']),
@@ -1229,6 +1257,97 @@ def eventos_nivel(
         cond("PlatformBehavior::IsOnFloor", ["Jugador", "PlatformerObject"]),
         cond("NumberObjectVariable", ["Jugador", "coyote", ">", "0"]),
     )
+
+    # Corte de salto variable 1:1 con Pygame: si el jugador suelta el botón en pleno salto,
+    # abortar el impulso ascendente inmediatamente.
+    evento(
+        [
+            cond("PlatformBehavior::IsJumping", ["Jugador", "PlatformerObject"]),
+            cond("KeyFromTextPressed", ['"Space"'], invertida=True),
+            cond("KeyFromTextPressed", ['"Up"'], invertida=True),
+            cond("KeyFromTextPressed", ['"w"'], invertida=True),
+            cond("KeyFromTextPressed", ['"W"'], invertida=True),
+            cond("KeyFromTextPressed", ['"z"'], invertida=True),
+            cond("KeyFromTextPressed", ['"Z"'], invertida=True),
+        ],
+        [accion("PlatformBehavior::PlatformerObjectBehavior::AbortJump", ["Jugador", "PlatformerObject"])],
+    ),
+
+    # Apoyado en el suelo y sin movimiento vertical: reducir gravedad para flotación de ápice (paridad con APEX_GRAVEDAD_FACTOR de Pygame).
+    evento(
+        [
+            cond("PlatformBehavior::IsOnFloor", ["Jugador", "PlatformerObject"]),
+            cond("NumberObjectVariable", ["Jugador", "post_dash", ">", "0"]),
+            cond("NumberObjectVariable", ["Jugador", "coyote", ">", "0"]),
+            cond("NumberObjectVariable", ["Jugador", "buffer_salto", ">", "0"]),
+        ],
+        [
+            accion("PlatformBehavior::Gravity", ["Jugador", "PlatformerObject", "=", str(int(GRAVEDAD * APEX_GRAVEDAD_FACTOR))]),
+        ],
+    ),
+
+    # Apoyado en el suelo, en coyote, en buffer de salto y velocidad vertical cercana a cero: reducir gravedad para flotación de ápice (paridad con APEX_GRAVEDAD_FACTOR de Pygame).
+    evento(
+        [
+            cond("PlatformBehavior::IsOnFloor", ["Jugador", "PlatformerObject"]),
+            cond("NumberObjectVariable", ["Jugador", "coyote", ">", "0"]),
+            cond("NumberObjectVariable", ["Jugador", "buffer_salto", ">", "0"]),
+            cond("NumberObjectVariable", ["Jugador", "post_dash", "<=", "0"]),
+            cond("NumberObjectVariable", ["Jugador", "velocidad_vertical_abs", ">=", "0"]),
+            cond("NumberObjectVariable", ["Jugador", "velocidad_vertical_abs", "<=", str(APEX_VY_UMBRAL)]),
+        ],
+        [
+            accion("PlatformBehavior::Gravity", ["Jugador", "PlatformerObject", "=", str(int(GRAVEDAD * APEX_GRAVEDAD_FACTOR))]),
+        ],
+    ),
+
+    # En vuelo, en coyote o buffer de salto, y velocidad vertical cercana a cero: reducir gravedad para flotación de ápice (paridad con APEX_GRAVEDAD_FACTOR de Pygame).
+    evento(
+        [
+            cond("PlatformBehavior::IsOnFloor", ["Jugador", "PlatformerObject"], invertida=True),
+            cond_or(buffer_salto, cond("NumberObjectVariable", ["Jugador", "coyote", ">", "0"])),
+            cond("NumberObjectVariable", ["Jugador", "velocidad_vertical_abs", ">=", "0"]),
+            cond("NumberObjectVariable", ["Jugador", "velocidad_vertical_abs", "<=", str(APEX_VY_UMBRAL)]),
+        ],
+        [
+            accion("PlatformBehavior::Gravity", ["Jugador", "PlatformerObject", "=", str(int(GRAVEDAD * APEX_GRAVEDAD_FACTOR))]),
+        ],
+    ),
+
+    # En coyote o buffer de salto, con velocidad vertical menor a cero y en vuelo: reducir gravedad para flotación de ápice (paridad con APEX_GRAVEDAD_FACTOR de Pygame).
+    evento(
+        [
+            cond("PlatformBehavior::IsOnFloor", ["Jugador", "PlatformerObject"], invertida=True),
+            cond_or(buffer_salto, cond("NumberObjectVariable", ["Jugador", "coyote", ">", "0"])),
+            cond("NumberObjectVariable", ["Jugador", "velocidad_vertical", "<", "0"]),
+        ],
+        [
+            accion("PlatformBehavior::Gravity", ["Jugador", "PlatformerObject", "=", str(int(GRAVEDAD * APEX_GRAVEDAD_FACTOR))]),
+        ],
+    ),
+
+    # En vuelo, con velocidad vertical > 0 (ascendente) y no en coyote/buffer de salto: reducir gravedad para flotación de ápice (paridad con APEX_GRAVEDAD_FACTOR de Pygame).
+    evento(
+        [
+            cond("PlatformBehavior::IsOnFloor", ["Jugador", "PlatformerObject"], invertida=True),
+            cond("NumberObjectVariable", ["Jugador", "velocidad_vertical", ">", "0"]),
+            cond("NumberObjectVariable", ["Jugador", "coyote", "<=", "0"]),
+            cond("NumberObjectVariable", ["Jugador", "buffer_salto", "<=", "0"]),
+        ],
+        [
+            accion("PlatformBehavior::Gravity", ["Jugador", "PlatformerObject", "=", str(int(GRAVEDAD * APEX_GRAVEDAD_FACTOR))]),
+        ],
+    ),
+
+    # La gravedad del post-dash usa POST_DASH_GRAVEDAD_FACTOR (0.50) para conservarse tras el impulso del dash.
+    evento(
+        [
+            cond("NumberObjectVariable", ["Jugador", "post_dash", ">", "0"]),
+        ],
+        [
+            accion("PlatformBehavior::Gravity", ["Jugador", "PlatformerObject", "=", str(int(GRAVEDAD * POST_DASH_GRAVEDAD_FACTOR))]),
+        ],
+    ),
 
     eventos = [
         # Reinicio pedido desde el menú de pausa.
@@ -1950,7 +2069,6 @@ def eventos_nivel(
                 [
                     accion("Delete", ["PowerUpDash"]),
                     accion("SetNumberObjectVariable", ["Jugador", "tiene_dash", "=", "1"]),
-                    accion("SetNumberVariable", ["tiene_dash", "=", "1"]),
                     accion_sonido("Dash"),
                     *acciones_sacudida(4.0, 0.12),
                     accion("TextObject::String", ["HUD_Aviso", "=", '"¡AMULETO DE SOMBRAS: DASH EN EL AIRE!"']),
