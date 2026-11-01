@@ -36,6 +36,8 @@ import pygame
 
 from config import (
     ALMAS_POR_VIDA,
+    ATAQUE_COOLDOWN,
+    ATAQUE_DURACION,
     CAMARA_SUAVIZADO,
     CAMARA_ZOOM,
     ALTO,
@@ -1515,8 +1517,8 @@ def eventos_nivel(
             [
                 accion("SetNumberObjectVariable", ["Jugador", "atacando", "=", "1"]),
                 accion_sonido("Pala"),
-                accion("SetNumberObjectVariable", ["Jugador", "ataque_time", "=", "0.18"]),
-                accion("SetNumberObjectVariable", ["Jugador", "ataque_cd", "=", "0.40"]),
+                accion("SetNumberObjectVariable", ["Jugador", "ataque_time", "=", str(ATAQUE_DURACION)]),
+                accion("SetNumberObjectVariable", ["Jugador", "ataque_cd", "=", str(ATAQUE_COOLDOWN)]),
             ],
             [
                 evento(
