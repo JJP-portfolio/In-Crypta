@@ -135,27 +135,27 @@ class TextoCache:
 # ---------------------------------------------------------------------------
 @dataclass
 class HudTheme:
-    panel_bg: tuple = (14, 11, 18, 240)
+    panel_bg: tuple = (9, 8, 13, 190)
     panel_border: tuple = HUD_BORDE
     panel_border_alpha: int = 200
-    linea_oro: tuple = (*HUD_ORO, 120)
+    linea_oro: tuple = (198, 156, 62, 140)
     texto: tuple = HUD_TEXTO
     texto_secundario: tuple = (170, 158, 146)
-    oro: tuple = HUD_ORO
-    alma: tuple = HUD_ALMA
-    dash_turquesa: tuple = HUD_DASHTURQUESA
-    rojo: tuple = HUD_ROJO
+    oro: tuple = (198, 156, 62)
+    alma: tuple = (92, 190, 174)
+    dash_turquesa: tuple = (92, 190, 174)
+    rojo: tuple = (112, 22, 34)
     verde: tuple = HUD_VERDE
-    negro: tuple = HUD_NEGRO
-    corazon_lleno: tuple = (220, 28, 48)
-    corazon_vacio_fill: tuple = (40, 32, 44)
-    corazon_vacio_borde: tuple = (120, 100, 125)
+    negro: tuple = (9, 8, 13)
+    corazon_lleno: tuple = (195, 24, 46)
+    corazon_vacio_fill: tuple = (38, 30, 42)
+    corazon_vacio_borde: tuple = (110, 95, 120)
     jefe_borde_fase1: tuple = (*HUD_BORDE, 200)
     jefe_borde_fase2: tuple = (215, 45, 55)
     jefe_segmento_lleno: tuple = (225, 38, 52)
     jefe_segmento_vacio: tuple = (36, 26, 30)
     guadaña: tuple = (215, 85, 255)
-    pala: tuple = HUD_ORO
+    pala: tuple = (198, 156, 62)
 
     # Tamaños
     fuente_label: int = FUENTE_LABEL
@@ -538,7 +538,7 @@ class HudRenderer:
         tip_y = cy + 14
         if lleno:
             color_base = t.corazon_lleno
-            color_borde = (180, 20, 36)
+            color_borde = (160, 18, 32)
             color_destello = (255, 235, 240)
             color_brillo = (255, 110, 130)
         else:
@@ -546,11 +546,13 @@ class HudRenderer:
             color_borde = t.corazon_vacio_borde
             color_destello = None
             color_brillo = None
-        color_sombra = (18, 14, 20)
-        pygame.draw.circle(pantalla, color_sombra, (cx - 6, top_y + 1), r + 1)
-        pygame.draw.circle(pantalla, color_sombra, (cx + 6, top_y + 1), r + 1)
+        color_sombra = (16, 12, 18)
+        # Marco de hierro forjado gótico
+        pygame.draw.circle(pantalla, color_sombra, (cx - 6, top_y + 1), r + 2)
+        pygame.draw.circle(pantalla, color_sombra, (cx + 6, top_y + 1), r + 2)
         pygame.draw.polygon(pantalla, color_sombra,
-                            [(cx - 12, top_y + 1), (cx + 12, top_y + 1), (cx, tip_y + 1)])
+                            [(cx - 13, top_y + 1), (cx + 13, top_y + 1), (cx, tip_y + 2)])
+        # Cuerpo principal del corazón
         pygame.draw.circle(pantalla, color_base, (cx - 6, top_y), r)
         pygame.draw.circle(pantalla, color_base, (cx + 6, top_y), r)
         pygame.draw.polygon(pantalla, color_base,
@@ -561,49 +563,60 @@ class HudRenderer:
                         (cx - 6 - r, top_y - r, r * 2, r * 2), 0, 3.14, 1)
         pygame.draw.arc(pantalla, color_borde,
                         (cx + 6 - r, top_y - r, r * 2, r * 2), 0, 3.14, 1)
-        if lleno and color_destello:
-            pygame.draw.circle(pantalla, color_destello, (cx - 3, top_y - 3), 2)
-            pygame.draw.circle(pantalla, color_brillo, (cx + 4, top_y - 2), 2)
+        if lleno:
+            # Faceta facetada de rubí (sombra lateral y arista central)
+            pygame.draw.polygon(pantalla, (135, 15, 28), [(cx, top_y + 4), (cx + 10, top_y), (cx, tip_y)])
+            pygame.draw.line(pantalla, (255, 140, 160), (cx, top_y + 4), (cx, tip_y), 1)
+            pygame.draw.line(pantalla, (255, 180, 200), (cx - 8, top_y - 1), (cx, top_y + 4), 1)
+            if color_destello:
+                pygame.draw.circle(pantalla, color_destello, (cx - 3, top_y - 2), 2)
+                pygame.draw.circle(pantalla, color_brillo, (cx + 4, top_y - 1), 1)
         else:
-            pygame.draw.circle(pantalla, (20, 16, 22), (cx - 5, top_y), 3)
-            pygame.draw.circle(pantalla, (20, 16, 22), (cx + 5, top_y), 3)
+            pygame.draw.circle(pantalla, (18, 14, 20), (cx - 5, top_y), 3)
+            pygame.draw.circle(pantalla, (18, 14, 20), (cx + 5, top_y), 3)
 
     def _icono_alma(self, pantalla, ix, iy, color):
         cy = iy + 8
         pygame.draw.polygon(pantalla, color, [(ix + 6, cy - 7), (ix + 12, cy),
                                               (ix + 6, cy + 7), (ix, cy)])
         pygame.draw.polygon(pantalla, (230, 255, 250),
-                            [(ix + 6, cy - 3), (ix + 9, cy),
-                             (ix + 6, cy + 3), (ix + 3, cy)])
+                             [(ix + 6, cy - 3), (ix + 9, cy),
+                              (ix + 6, cy + 3), (ix + 3, cy)])
 
     def _icono_ala_dash(self, pantalla, x, y, color):
+        # Dial rúnico exterior
+        pygame.draw.circle(pantalla, (24, 18, 28), (x + 8, y + 8), 8)
+        pygame.draw.circle(pantalla, color, (x + 8, y + 8), 8, 1)
         pygame.draw.polygon(pantalla, color, [
-            (x + 1, y + 15),
+            (x + 2, y + 14),
             (x + 7, y + 8),
             (x + 5, y + 8),
-            (x + 11, y + 2),
+            (x + 10, y + 3),
             (x + 6, y + 9),
             (x + 8, y + 9),
         ])
         pygame.draw.polygon(pantalla, color, [
-            (x + 8, y + 15),
-            (x + 14, y + 7),
-            (x + 12, y + 7),
-            (x + 17, y + 3),
+            (x + 7, y + 14),
+            (x + 12, y + 8),
+            (x + 10, y + 8),
+            (x + 15, y + 4),
+            (x + 11, y + 9),
             (x + 13, y + 9),
-            (x + 15, y + 9),
         ])
 
     def _icono_pala(self, pantalla, x, y, es_guadaña, color):
+        # Medallón de habilidad labrado
+        pygame.draw.circle(pantalla, (24, 18, 28), (x + 8, y + 8), 8)
+        pygame.draw.circle(pantalla, color, (x + 8, y + 8), 8, 1)
         if es_guadaña:
-            pygame.draw.arc(pantalla, color, (x + 2, y + 2, 14, 14), 0, 3.14, 3)
-            pygame.draw.line(pantalla, (160, 80, 190), (x + 9, y + 8), (x + 3, y + 16), 2)
+            pygame.draw.arc(pantalla, color, (x + 2, y + 2, 12, 12), 0, 3.14, 2)
+            pygame.draw.line(pantalla, (180, 95, 220), (x + 9, y + 7), (x + 4, y + 14), 2)
         else:
-            pygame.draw.line(pantalla, (160, 120, 60), (x + 3, y + 15), (x + 10, y + 7), 2)
-            pygame.draw.polygon(pantalla, (190, 190, 205), [
+            pygame.draw.line(pantalla, (160, 120, 60), (x + 4, y + 14), (x + 10, y + 7), 2)
+            pygame.draw.polygon(pantalla, (200, 205, 215), [
                 (x + 8, y + 8),
-                (x + 14, y + 2),
-                (x + 16, y + 4),
+                (x + 13, y + 3),
+                (x + 15, y + 5),
                 (x + 10, y + 10),
             ])
 
@@ -659,8 +672,8 @@ class HudRenderer:
         # Corazones (2ª fila)
         pulso = 0.0
         if modelo.vidas == 1 and not reducir_movimiento:
-            pulso = 0.5 + 0.5 * math.sin(dt * 0 + pygame.time.get_ticks() / 1000.0 * 1.1)
-        escala_corazon = 1.0 + 0.04 * pulso if modelo.vidas == 1 and not reducir_movimiento else 1.0
+            pulso = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() / 1000.0 * 1.2 * math.tau)
+        escala_corazon = 1.0 + 0.12 * pulso if modelo.vidas == 1 and not reducir_movimiento else 1.0
         for i in range(modelo.vidas_max):
             cx = c.x + i * self.tema.corazon_pitch
             cy = c.y + 30
@@ -743,13 +756,22 @@ class HudRenderer:
         img_ve = self._texto(txt_ve, self.tema.fuente_contador,
                              self.tema.oro if modelo.almas_para_vida < ALMAS_POR_VIDA else self.muted_color())
         pantalla.blit(img_ve, (x0, y1))
-        # Pips del rosario (10 cuentas, 5×3, pitch 6) debajo del texto
-        pip_y = y1 + 16
+        # Pips del rosario (10 cuentas de marfil con fulgor turquesa)
+        pip_y = y1 + 17
+        es_consagracion = modelo.almas_para_vida >= ALMAS_POR_VIDA
         for i in range(ALMAS_POR_VIDA):
+            bx = x0 + 4 + i * 8
             llena = i < modelo.almas_para_vida
-            color = self.tema.alma if llena else (42, 34, 46)
-            pygame.draw.rect(pantalla, color,
-                             (x0 + 4 + i * 6, pip_y, 5, 3))
+            if es_consagracion:
+                color_cuenta = (255, 220, 90) if (int(pygame.time.get_ticks() / 150) % 2 == 0) else (198, 156, 62)
+            elif llena:
+                color_cuenta = self.tema.alma
+            else:
+                color_cuenta = (40, 32, 44)
+            pygame.draw.circle(pantalla, (20, 16, 24), (bx + 3, pip_y + 2), 3)
+            pygame.draw.circle(pantalla, color_cuenta, (bx + 3, pip_y + 2), 2)
+            if llena and not es_consagracion:
+                pygame.draw.circle(pantalla, (220, 255, 250), (bx + 3, pip_y + 2), 1)
         # Col 1: Pala/Guadaña
         txt_arma = fmt_arma(modelo)
         color_arma = (self.tema.guadaña if modelo.rango_ataque_mejorado
