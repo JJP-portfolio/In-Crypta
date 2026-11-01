@@ -22,13 +22,16 @@ from config import (
     ANCHO,
     AZUL_OSCURO,
     BLANCO,
+    CARMESÍ_SANGRE,
     CELESTE,
+    CITAS_POE,
     CREMA,
     DASH_COOLDOWN,
     DASH_USOS_AIRE,
     DASH_DASHTURQUESA,
     DASH_VELOCIDAD,
     EQUIPO,
+    FAROL_CÁLIDO,
     FPS,
     GRIS,
     GRIS_OSCURO,
@@ -87,6 +90,46 @@ from nivel import Nivel
 from niveles import NIVELES, SALAS_PRUEBA, NIVEL_TUTORIAL
 from particulas import SistemaParticulas
 
+_CACHE_LUCES_JUEGO = {}
+
+
+def _obtener_luz_perforacion(radio):
+    clave = ("sub", radio)
+    surf = _CACHE_LUCES_JUEGO.get(clave)
+    if surf is None:
+        surf = pygame.Surface((radio * 2, radio * 2), pygame.SRCALPHA)
+        surf.fill((0, 0, 0, 0))
+        for r in range(radio, 0, -2):
+            norm = r / radio
+            factor = (1.0 - norm * norm) ** 1.5
+            alfa = int(65 * factor)
+            pygame.draw.circle(surf, (0, 0, 0, alfa), (radio, radio), r)
+        _CACHE_LUCES_JUEGO[clave] = surf
+    return surf
+
+
+def _obtener_luz_calida(radio):
+    clave = ("add", radio)
+    surf = _CACHE_LUCES_JUEGO.get(clave)
+    if surf is None:
+        surf = pygame.Surface((radio * 2, radio * 2), pygame.SRCALPHA)
+        surf.fill((0, 0, 0, 0))
+        for r in range(radio, 0, -2):
+            norm = r / radio
+            factor = (1.0 - norm * norm) ** 1.5
+            pygame.draw.circle(
+                surf,
+                (
+                    int(240 * factor * 0.16),
+                    int(196 * factor * 0.16),
+                    int(90 * factor * 0.16),
+                ),
+                (radio, radio),
+                r,
+            )
+        _CACHE_LUCES_JUEGO[clave] = surf
+    return surf
+
 
 # --- Clase Juego --- #
 class Juego:
@@ -103,6 +146,11 @@ class Juego:
             self._ruta_fuente_gotica = None
         self.fondos = {}
         self.vineta = self.crear_vineta(90)
+        self.vineta_carmesi = self.crear_vineta_carmesi()
+        self.mascara_penumbra = pygame.Surface((VIRTUAL_ANCHO, VIRTUAL_ALTO), pygame.SRCALPHA)
+        self.superficie_flash = pygame.Surface((ANCHO, ALTO), pygame.SRCALPHA)
+        self.hitstop = 0.0
+        self.timer_corazon = 0.0
 
         self.particulas = SistemaParticulas()
         self.efecto_hud = EfectoAnimacion()
@@ -187,6 +235,12 @@ class Juego:
         self.ondas_jefe = []
         self.punto_reintento = None
         self.aviso_jefe = 0.0
+        # Iniciar dron fúnebre ambiental de la cripta
+        self.audio.iniciar_dron()
+        # Cita literaria de Edgar Allan Poe al comenzar cada nivel
+        cita = CITAS_POE.get(self.nivel_indice, "")
+        if cita:
+            self.hud.mostrar_mensaje(cita, 2, 5.5)
 
     # --- Función iniciar_tutorial --- #
     def iniciar_tutorial(self):
@@ -226,26 +280,34 @@ class Juego:
         self.ondas_jefe = []
         self.punto_reintento = None
         self.aviso_jefe = 0.0
-        # Mensaje de bienvenida en el canal HUD
-        self.hud.mostrar_mensaje(
-            "EL RITUAL DEL SEPULTURERO · Aprende las mecánicas básicas", 1, 5.0
-        )
+        # Iniciar dron fúnebre ambiental
+        self.audio.iniciar_dron()
+        cita = CITAS_POE.get("tutorial", "")
+        if cita:
+            self.hud.mostrar_mensaje(cita, 2, 5.5)
+        else:
+            self.hud.mostrar_mensaje(
+                "EL RITUAL DEL SEPULTURERO · Aprende las mecánicas básicas", 1, 5.0
+            )
 
     # --- Función abrir_menu --- #
     def abrir_menu(self):
         self.estado = "menu"
         self.menu_opcion = 0
+        self.audio.detener_dron()
         self.audio.reproducir("ui")
 
     # --- Función abrir_seleccion_nivel --- #
     def abrir_seleccion_nivel(self):
         self.estado = "seleccion_nivel"
         self.nivel_seleccionado = self.nivel_indice
+        self.audio.detener_dron()
         self.audio.reproducir("ui")
 
     # --- Función abrir_creditos --- #
     def abrir_creditos(self):
         self.estado = "creditos"
+        self.audio.detener_dron()
         self.audio.reproducir("ui")
 
     # --- Función seleccionar_nivel --- #
@@ -453,6 +515,15 @@ class Juego:
             self.camara.actualizar_sacudida(dt)
             return
 
+        # Sfx del corazón delator a 1 HP
+        if self.jugador and self.jugador.vidas == 1:
+            self.timer_corazon += dt
+            if self.timer_corazon >= (1.0 / 1.2):
+                self.timer_corazon = 0.0
+                self.audio.reproducir("corazon")
+        else:
+            self.timer_corazon = 0.0
+
         self.tiempo_nivel += dt
         self.tiempo_total += dt
 
@@ -551,7 +622,7 @@ class Juego:
 
         if self.jugador.dash_recien:
             self.audio.reproducir("dash")
-            self.camara.sacudir(3.5, 0.10)
+            self.camara.sacudir(3.5, 0.10, dir_x=self.jugador.direccion, dir_y=0.0)
 
         if self.jugador.dash_tiempo > 0:
             self.particulas.dash(
@@ -577,7 +648,8 @@ class Juego:
             self.jugador.dash_cooldown = 0.0
             self.audio.reproducir("pala")
             self.particulas.pala(enemigo.rect.centerx, enemigo.rect.centery)
-            self.camara.sacudir(5.0, 0.12)
+            self.camara.sacudir(5.0, 0.12, dir_x=self.jugador.direccion, dir_y=0.0)
+            self.hitstop = 0.08
             self.flash = 0.06
             self.flash_color = AMARILLO
             break
@@ -593,7 +665,8 @@ class Juego:
                 self.jugador.dash_cooldown = 0.0
                 self.audio.reproducir("pala")
                 self.particulas.pala(cuervo.rect.centerx, cuervo.rect.centery)
-                self.camara.sacudir(5.0, 0.12)
+                self.camara.sacudir(5.0, 0.12, dir_x=self.jugador.direccion, dir_y=0.0)
+                self.hitstop = 0.08
                 self.flash = 0.06
                 self.flash_color = AMARILLO
                 break
@@ -609,7 +682,8 @@ class Juego:
                 self.jugador.dash_cooldown = 0.0
                 self.audio.reproducir("pala")
                 self.particulas.pala(polilla.rect.centerx, polilla.rect.centery)
-                self.camara.sacudir(5.0, 0.12)
+                self.camara.sacudir(5.0, 0.12, dir_x=self.jugador.direccion, dir_y=0.0)
+                self.hitstop = 0.08
                 self.flash = 0.06
                 self.flash_color = AMARILLO
                 break
@@ -625,7 +699,8 @@ class Juego:
                 self.jugador.dash_cooldown = 0.0
                 self.audio.reproducir("pala")
                 self.particulas.pala(araña.rect.centerx, araña.rect.centery)
-                self.camara.sacudir(5.0, 0.12)
+                self.camara.sacudir(5.0, 0.12, dir_x=self.jugador.direccion, dir_y=0.0)
+                self.hitstop = 0.08
                 self.flash = 0.06
                 self.flash_color = AMARILLO
                 break
@@ -641,7 +716,11 @@ class Juego:
                 self.jugador.dash_cooldown = 0.0
                 self.audio.reproducir("pala")
                 self.particulas.pala(enemigo_melee.rect.centerx, enemigo_melee.rect.centery)
-                self.camara.sacudir(5.0, 0.12)
+                self.camara.sacudir(5.0, 0.12, dir_x=self.jugador.direccion, dir_y=0.0)
+                self.hitstop = 0.08
+                self.flash = 0.06
+                self.flash_color = AMARILLO
+                break
                 self.flash = 0.06
                 self.flash_color = AMARILLO
                 break
@@ -752,23 +831,18 @@ class Juego:
     def dañar_jefe_pala(self):
         """Golpe de pala: daña en Fase 1; rebota físicamente en Fase 2."""
         if not self.jefe.recibir_golpe_pala():
-            # Fase 2: pala rebota contra la armadura reforzada
+            # Fase 2: pala rebota contra la armadura reforzada de la Muerte Roja
             self.jugador.vx = -self.jugador.direccion * 220
             self.jugador.vy = -160
             self.jugador.invulnerable = 0.25
-            self.camara.sacudir(5.0, 0.12)
+            self.camara.sacudir(5.0, 0.12, dir_x=-self.jugador.direccion, dir_y=0.0)
             self.flash = 0.08
             self.flash_color = (200, 50, 50)
-            self.audio.reproducir("pala")
-            self.particulas.emitir(
+            self.audio.reproducir("rebote_pala")
+            self.particulas.chispas_rebote(
                 self.jefe.rect.centerx - self.jugador.direccion * 16,
                 self.jefe.rect.centery,
-                14,
-                ((255, 80, 80), (255, 200, 100), BLANCO),
-                220,
-                0.35,
-                3,
-                180,
+                -self.jugador.direccion,
             )
             return False
         return self._aplicar_golpe_jefe()
@@ -780,6 +854,8 @@ class Juego:
             return False
         res = self._aplicar_golpe_jefe()
         self.audio.reproducir("stomp")
+        self.particulas.stomp(self.jefe.rect.centerx, self.jefe.rect.top)
+        self.camara.sacudir(9.0, 0.20, dir_x=0.0, dir_y=1.0)
         return res
 
     # --- Función _aplicar_golpe_jefe (efectos comunes) --- #
@@ -788,11 +864,13 @@ class Juego:
         self.jugador.dash_cooldown = 0.0
         self.audio.reproducir("pala")
         self.particulas.pala(self.jefe.rect.centerx, self.jefe.rect.centery)
-        self.camara.sacudir(8.0, 0.18)
+        self.camara.sacudir(8.0, 0.18, dir_x=self.jugador.direccion, dir_y=0.0)
+        self.hitstop = 0.08
         self.flash = 0.10
         self.flash_color = AMARILLO
 
         if not self.jefe.vivo:
+            self.audio.detener_dron()
             self.audio.reproducir("meta")
             self.particulas.meta(self.jefe.rect.centerx, self.jefe.rect.centery)
             self.ondas_jefe = []
@@ -801,7 +879,7 @@ class Juego:
             self.hud.mostrar_mensaje("¡EL CUSTODIO CAYÓ! · La cripta se abre…", 5, 4.0)
         elif self.jefe.estado == "cambio":
             self.audio.reproducir("jefe_fase")
-            self.camara.sacudir(11.0, 0.26)
+            self.camara.sacudir(11.0, 0.26, dir_x=0.0, dir_y=1.0)
             self.particulas.emitir(
                 self.jefe.rect.centerx,
                 self.jefe.rect.centery,
@@ -845,8 +923,9 @@ class Juego:
                 self.jugador.dash_usos_aire = DASH_USOS_AIRE
                 self.jugador.dash_cooldown = 0.0
                 self.audio.reproducir("stomp")
-                self.particulas.pala(enemigo.rect.centerx, enemigo.rect.centery)
-                self.camara.sacudir(6.0, 0.14)
+                self.particulas.stomp(enemigo.rect.centerx, enemigo.rect.top)
+                self.camara.sacudir(6.0, 0.14, dir_x=0.0, dir_y=1.0)
+                self.hitstop = 0.08
             else:
                 self.perder_vida(causa="Contacto con un Morador de la cripta")
                 return
@@ -869,8 +948,9 @@ class Juego:
                     self.jugador.dash_usos_aire = DASH_USOS_AIRE
                     self.jugador.dash_cooldown = 0.0
                     self.audio.reproducir("stomp")
-                    self.particulas.pala(enemigo_melee.rect.centerx, enemigo_melee.rect.centery)
-                    self.camara.sacudir(6.0, 0.14)
+                    self.particulas.stomp(enemigo_melee.rect.centerx, enemigo_melee.rect.top)
+                    self.camara.sacudir(6.0, 0.14, dir_x=0.0, dir_y=1.0)
+                    self.hitstop = 0.08
                 else:
                     self.perder_vida(causa="Embestida del Guardia de la cripta")
                     return
@@ -1041,7 +1121,7 @@ class Juego:
         self.jugador.vidas -= 1
         self.audio.reproducir("daño")
         self.particulas.daño(self.jugador.rect.centerx, self.jugador.rect.centery)
-        self.camara.sacudir(9.0, 0.22)
+        self.camara.sacudir(9.0, 0.22, dir_x=-self.jugador.direccion, dir_y=-0.5)
         self.flash = 0.16
         self.flash_color = ROJO
         self.almas_combo_count = 0
@@ -1051,8 +1131,11 @@ class Juego:
             self.muertes_totales += 1
             self.causa_muerte = causa
             self.estado = "derrota"
+            self.audio.detener_dron()
             self.audio.reproducir("muerte")
             return
+
+        self.hitstop = 0.08
 
         self.jugador.almas = 0
         for alma in self.nivel.almas:
@@ -1133,6 +1216,24 @@ class Juego:
                     factor = min(1.0, (dist - 0.65) / 0.60)
                     alfa = int(fuerza * (factor ** 2))
                     small.set_at((x, y), (0, 0, 0, min(255, alfa)))
+        pygame.transform.smoothscale(small, (ANCHO, ALTO), vineta)
+        return vineta
+
+    # --- Función crear_vineta_carmesi --- #
+    def crear_vineta_carmesi(self):
+        vineta = pygame.Surface((ANCHO, ALTO), pygame.SRCALPHA)
+        small_w, small_h = 160, 90
+        small = pygame.Surface((small_w, small_h), pygame.SRCALPHA)
+        cx, cy = small_w / 2, small_h / 2
+        for y in range(small_h):
+            for x in range(small_w):
+                dx = (x - cx) / (cx * 0.90)
+                dy = (y - cy) / (cy * 0.85)
+                dist = math.hypot(dx, dy)
+                if dist > 0.70:
+                    factor = min(1.0, (dist - 0.70) / 0.50)
+                    alfa = int(70 * (factor ** 2))
+                    small.set_at((x, y), (112, 22, 34, min(255, alfa)))
         pygame.transform.smoothscale(small, (ANCHO, ALTO), vineta)
         return vineta
 
@@ -1602,18 +1703,55 @@ class Juego:
         )
         self.particulas.dibujar(destino, self.camara)
 
+        # Penumbra gótica y claroscuro sutil (alpha 65 / 255)
+        self.mascara_penumbra.fill((9, 8, 13, 65))
+        if self.jugador:
+            px = int(self.jugador.rect.centerx - self.camara.x)
+            py = int(self.jugador.rect.centery - self.camara.y)
+            radio_farol = 90
+            luz_sub = _obtener_luz_perforacion(radio_farol)
+            self.mascara_penumbra.blit(
+                luz_sub,
+                (px - radio_farol, py - radio_farol),
+                special_flags=pygame.BLEND_RGBA_SUB,
+            )
+        for cp in self.nivel.checkpoints:
+            if cp.activo and self.camara.is_on_screen(cp.rect):
+                cpx = int(cp.rect.centerx - self.camara.x)
+                cpy = int(cp.rect.centery - self.camara.y)
+                self.mascara_penumbra.blit(
+                    _obtener_luz_perforacion(60),
+                    (cpx - 60, cpy - 60),
+                    special_flags=pygame.BLEND_RGBA_SUB,
+                )
+        destino.blit(self.mascara_penumbra, (0, 0))
+
+        # Halo cálido aditivo del farol de bronce
+        if self.jugador:
+            px = int(self.jugador.rect.centerx - self.camara.x)
+            py = int(self.jugador.rect.centery - self.camara.y)
+            luz_add = _obtener_luz_calida(85)
+            destino.blit(luz_add, (px - 85, py - 85), special_flags=pygame.BLEND_RGB_ADD)
+
         # Escalar mundo virtual a pantalla (zoom 1.25x cinematográfico)
         pygame.transform.scale(self.superficie_mundo, (ANCHO, ALTO), self.pantalla)
 
-        # Viñeta gótica y HUD en resolución nativa
+        # Viñeta gótica en resolución nativa
         self.pantalla.blit(self.vineta, (0, 0))
+
+        # Viñeta reactiva carmesí sutil en salud crítica (1 HP) en sincronía con el corazón
+        if self.jugador and self.jugador.vidas == 1 and not self.reducir_movimiento:
+            pulso = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() / 1000.0 * 1.2 * math.tau)
+            alfa_vineta = int(30 + 35 * pulso)
+            self.vineta_carmesi.set_alpha(alfa_vineta)
+            self.pantalla.blit(self.vineta_carmesi, (0, 0))
+
         self.hud.dibujar(self.pantalla, self, self.dt)
 
         if self.flash > 0:
-            velo = pygame.Surface((ANCHO, ALTO), pygame.SRCALPHA)
             alfa = int(110 * (self.flash / 0.16))
-            velo.fill((*self.flash_color, max(0, min(255, alfa))))
-            self.pantalla.blit(velo, (0, 0))
+            self.superficie_flash.fill((*self.flash_color, max(0, min(255, alfa))))
+            self.pantalla.blit(self.superficie_flash, (0, 0))
 
         if self.estado == "pausa":
             self.dibujar_overlay(
@@ -2114,7 +2252,11 @@ class Juego:
         while self.corriendo:
             dt = min(self.reloj.tick(FPS) / 1000, MAX_DT)
             self.procesar_eventos()
-            self.actualizar(dt)
+            if self.hitstop > 0:
+                self.hitstop = max(0.0, self.hitstop - dt)
+                self.camara.actualizar_sacudida(dt)
+            else:
+                self.actualizar(dt)
             self.dt = dt
             self.hud.actualizar(dt)
             self.dibujar()
