@@ -37,8 +37,10 @@ from entidades import (
     Araña,
     Cuervo,
     Custodio,
+    DashPowerUp,
     Enemigo,
     EnemigoMelee,
+    FarolCheckpoint,
     PalaRecogible,
     Polilla,
     RangoPowerUp,
@@ -114,7 +116,9 @@ class Nivel:
         self.decoraciones = self._crear_decoraciones()
         self.peligros = self._crear_peligros()
         self.palas = self._crear_palas()
+        self.power_ups_dash = self._crear_power_ups_dash()
         self.power_ups_rango = self._crear_power_ups_rango()
+        self.checkpoints = self._crear_checkpoints()
         self.plataformas = self._crear_plataformas()
         self.jefes = self._crear_jefes()
         self.cuervos = self._crear_cuervos()
@@ -237,6 +241,21 @@ class Nivel:
                 )))
         return palas
 
+    # --- Función _crear_power_ups_dash --- #
+    def _crear_power_ups_dash(self):
+        power_ups = []
+        for fila, texto in enumerate(self.filas):
+            for columna, simbolo in enumerate(texto):
+                if simbolo != "D":
+                    continue
+                power_ups.append(DashPowerUp(pygame.Rect(
+                    columna * TILE + 6,
+                    fila * TILE + 2,
+                    20,
+                    30,
+                )))
+        return power_ups
+
     # --- Función _crear_power_ups_rango --- #
     def _crear_power_ups_rango(self):
         power_ups = []
@@ -251,6 +270,21 @@ class Nivel:
                     30,
                 )))
         return power_ups
+
+    # --- Función _crear_checkpoints --- #
+    def _crear_checkpoints(self):
+        checkpoints = []
+        for fila, texto in enumerate(self.filas):
+            for columna, simbolo in enumerate(texto):
+                if simbolo != "F":
+                    continue
+                checkpoints.append(FarolCheckpoint(pygame.Rect(
+                    columna * TILE + 6,
+                    fila * TILE + 2,
+                    20,
+                    30,
+                )))
+        return checkpoints
 
     # --- Función _crear_cuervos --- #
     def _crear_cuervos(self):
@@ -464,8 +498,12 @@ class Nivel:
             totem.reiniciar()
         for pala in self.palas:
             pala.reiniciar()
+        for power_up in self.power_ups_dash:
+            power_up.reiniciar()
         for power_up in self.power_ups_rango:
             power_up.reiniciar()
+        for checkpoint in self.checkpoints:
+            checkpoint.reiniciar()
         for cuervo in self.cuervos:
             cuervo.reiniciar()
         for polilla in self.polillas:
@@ -489,8 +527,12 @@ class Nivel:
             alma.dibujar(surface, camara, tiempo)
         for pala in self.palas:
             pala.dibujar(surface, camara, tiempo)
+        for power_up in self.power_ups_dash:
+            power_up.dibujar(surface, camara, tiempo)
         for power_up in self.power_ups_rango:
             power_up.dibujar(surface, camara, tiempo)
+        for checkpoint in self.checkpoints:
+            checkpoint.dibujar(surface, camara, tiempo)
         for enemigo_melee in self.enemigos_melee:
             enemigo_melee.dibujar(surface, camara, tiempo)
         for totem in self.totems:

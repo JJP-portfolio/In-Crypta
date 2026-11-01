@@ -123,6 +123,14 @@ def _power_ups(nivel: Nivel) -> list[Entidad]:
     return [Entidad("power_up_rango", p.rect) for p in nivel.power_ups_rango]
 
 
+def _power_ups_dash(nivel: Nivel) -> list[Entidad]:
+    return [Entidad("power_up_dash", p.rect) for p in getattr(nivel, "power_ups_dash", [])]
+
+
+def _checkpoints(nivel: Nivel) -> list[Entidad]:
+    return [Entidad("checkpoint", p.rect) for p in getattr(nivel, "checkpoints", [])]
+
+
 def _peligros(nivel: Nivel) -> list[Entidad]:
     return [Entidad("peligro", pygame.Rect(r)) for r in nivel.peligros]
 
@@ -174,7 +182,9 @@ EXTRACTORES = {
     "cuervo": _cuervos,
     "totem": _totems,
     "pala": _palas,
+    "power_up_dash": _power_ups_dash,
     "power_up_rango": _power_ups,
+    "checkpoint": _checkpoints,
     "peligro": _peligros,
     "decoracion": _decoraciones,
     "plataforma": _plataformas,

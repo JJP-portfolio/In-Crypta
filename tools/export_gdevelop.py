@@ -238,6 +238,30 @@ def exportar_nivel(prefijo, nivel, pala_inicial=False):
         }
         for i, p in enumerate(nivel.power_ups_rango)
     ]
+    # Power-ups de dash (D)
+    power_ups_dash = [
+        {
+            "id": f"{prefijo}-powerup_dash-{i + 1:03d}",
+            "kind": "power_up_dash",
+            "x": p.rect.x,
+            "y": p.rect.y,
+            "w": p.rect.width,
+            "h": p.rect.height,
+        }
+        for i, p in enumerate(getattr(nivel, "power_ups_dash", []))
+    ]
+    # Checkpoints diegéticos (F)
+    checkpoints = [
+        {
+            "id": f"{prefijo}-checkpoint-{i + 1:03d}",
+            "kind": "checkpoint",
+            "x": c.rect.x,
+            "y": c.rect.y,
+            "w": c.rect.width,
+            "h": c.rect.height,
+        }
+        for i, c in enumerate(getattr(nivel, "checkpoints", []))
+    ]
     # Plataformas móviles (Q/V)
     plataformas = [
         {
@@ -308,7 +332,9 @@ def exportar_nivel(prefijo, nivel, pala_inicial=False):
         "crows": cuervos,
         "totems": totems,
         "shovels": palas,
+        "powerups_dash": power_ups_dash,
         "powerups_range": power_ups_rango,
+        "checkpoints": checkpoints,
         "platforms": plataformas,
         "bosses": jefes,
         "total_souls": nivel.total_almas,
@@ -474,7 +500,9 @@ def validar_documento(documento):
             ("aranias", len(reconstruido.aranias), len(escena["spiders"])),
             ("jefes", len(reconstruido.jefes), len(escena["bosses"])),
             ("palas", len(reconstruido.palas), len(escena["shovels"])),
+            ("power_ups_dash", len(getattr(reconstruido, "power_ups_dash", [])), len(escena["powerups_dash"])),
             ("power_ups_rango", len(reconstruido.power_ups_rango), len(escena["powerups_range"])),
+            ("checkpoints", len(getattr(reconstruido, "checkpoints", [])), len(escena["checkpoints"])),
         ]
         for coleccion, esperado, actual in checks:
             if esperado != actual:

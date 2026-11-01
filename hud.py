@@ -244,6 +244,7 @@ class HudModel:
     almas_para_vida: int = 0
     dash_cooldown: float = 0.0
     dash_usos_aire: int = 0
+    tiene_dash: bool = True
     en_suelo: bool = True
     ataque_cooldown: float = 0.0
     tiene_pala: bool = False
@@ -398,6 +399,8 @@ def fmt_cooldown(restante: float) -> str:
 
 
 def fmt_dash(model: HudModel) -> str:
+    if not getattr(model, "tiene_dash", False):
+        return "[DASH] --"
     if model.dash_cooldown > 0:
         return f"[DASH] {fmt_cooldown(model.dash_cooldown)}"
     if not model.en_suelo and model.dash_usos_aire <= 0:
@@ -728,7 +731,7 @@ class HudRenderer:
         # Col 1: Dash
         x1 = x0 + celda_w + gap_x
         txt_dash = fmt_dash(modelo)
-        listo = modelo.dash_cooldown <= 0
+        listo = modelo.tiene_dash and modelo.dash_cooldown <= 0
         color_dash = self.tema.dash_turquesa if listo else self.muted_color()
         img_d = self._texto(txt_dash, self.tema.fuente_contador, color_dash)
         self._icono_ala_dash(pantalla, x1 + 2, y0, color_dash)
@@ -831,6 +834,7 @@ class HudOrquestador:
         self.modelo.almas_para_vida = j.almas_para_vida if j else 0
         self.modelo.dash_cooldown = j.dash_cooldown if j else 0.0
         self.modelo.dash_usos_aire = j.dash_usos_aire if j else DASH_USOS_AIRE
+        self.modelo.tiene_dash = getattr(j, "tiene_dash", False) if j else False
         self.modelo.en_suelo = j.en_suelo if j else True
         self.modelo.ataque_cooldown = j.ataque_cooldown if j else 0.0
         self.modelo.tiene_pala = j.tiene_pala if j else False

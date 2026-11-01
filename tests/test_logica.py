@@ -135,6 +135,12 @@ def probar_dash():
     jugador = Jugador(*nivel.spawn)
     teclas = {k: False for k in (pygame.K_a, pygame.K_d, pygame.K_LEFT, pygame.K_RIGHT)}
 
+    # Sin el power-up de dash no se puede dashear
+    assert jugador.tiene_dash is False
+    assert jugador.pedir_dash() is False
+
+    # Al obtener el power-up
+    jugador.tiene_dash = True
     for _ in range(3):
         jugador.actualizar(1 / 60, teclas, nivel.solidos)
 
@@ -181,6 +187,7 @@ def probar_pozo_de_dash():
 
     for dash_frame in range(0, 40):
         jugador = Jugador(10 * TILE - 24, 8 * TILE - 30)
+        jugador.tiene_dash = True
         jugador.en_suelo = True
         for frame in range(120):
             if frame == 0:
@@ -218,6 +225,7 @@ def probar_primer_salto_cripta():
         if salto_con_dash:
             for dash_frame in range(0, 60):
                 jugador = Jugador(tramos[0].right - JUGADOR_ANCHO, suelo_y - 30)
+                jugador.tiene_dash = True
                 jugador.en_suelo = True
                 for frame in range(150):
                     if frame == 0:
@@ -229,6 +237,7 @@ def probar_primer_salto_cripta():
                         return True
             return False
         jugador = Jugador(tramos[0].right - JUGADOR_ANCHO, suelo_y - 30)
+        jugador.tiene_dash = False
         jugador.en_suelo = True
         for frame in range(150):
             if frame == 0:
@@ -428,7 +437,7 @@ def probar_stomp_y_contacto():
 # --- Prueba: pickup de pala y límites del mapa --- #
 def probar_pala_y_limites():
     juego = Juego()
-    juego.cargar_nivel(1)
+    juego.cargar_nivel(0)
     assert not juego.jugador.tiene_pala
     assert len(juego.nivel.palas) == 1
     pala = juego.nivel.palas[0]
@@ -631,9 +640,11 @@ def probar_jefe_final():
 
 # --- Prueba: limpieza de gemas y arena del jefe --- #
 def probar_mapa_final():
+    filas_1 = NIVEL_1.strip("\n").splitlines()
+    assert any("W" in fila for fila in filas_1), "Nivel 1 debe consagrar la pala (W)"
     filas_2 = NIVEL_2.strip("\n").splitlines()
     assert len(filas_2) == 12 and len(filas_2[0]) == 190
-    assert any("W" in fila for fila in filas_2)
+    assert any("D" in fila for fila in filas_2), "Nivel 2 debe consagrar el dash (D)"
     assert any("#" in fila for fila in filas_2)
     assert not any("B" in fila for fila in filas_2)
 
@@ -771,6 +782,9 @@ def probar_tutorial():
     assert juego.nivel is not None
     assert juego.nivel.nombre == "El Ritual del Sepulturero"
     assert not juego.jugador.tiene_pala
+    assert not juego.jugador.tiene_dash
+    assert len(juego.nivel.palas) >= 1
+    assert len(juego.nivel.power_ups_dash) >= 1
 
     # HUD reporta TUTORIAL (nivel_indice = -1, nombre especial)
     juego.hud.armar_modelo(juego)
@@ -899,6 +913,37 @@ def probar_combo_almas():
     print("combo almas: OK")
 
 
+# --- Prueba: dash power-up y checkpoints diegéticos --- #
+def probar_power_up_dash_y_checkpoint():
+    juego = Juego()
+    # Nivel 2 tiene DashPowerUp al inicio
+    juego.cargar_nivel(1)
+    assert not juego.jugador.tiene_dash
+    assert len(juego.nivel.power_ups_dash) >= 1
+    pup = juego.nivel.power_ups_dash[0]
+    juego.jugador.rect.center = pup.rect.center
+    juego.jugador.x = float(juego.jugador.rect.x)
+    juego.jugador.y = float(juego.jugador.rect.y)
+    juego.actualizar_power_ups_dash()
+    assert juego.jugador.tiene_dash
+    assert pup.recogida
+
+    # Nivel 1 tiene Checkpoint
+    juego.cargar_nivel(0)
+    assert len(juego.nivel.checkpoints) >= 1
+    cp = juego.nivel.checkpoints[0]
+    assert not cp.activo
+    juego.jugador.rect.center = cp.rect.center
+    juego.actualizar_checkpoints()
+    assert cp.activo
+    assert juego.punto_reintento is not None
+
+    # Al perder vida con checkpoint activo, reaparece en el checkpoint
+    juego.perder_vida(ignorar_invulnerabilidad=True)
+    assert juego.jugador.x == float(juego.punto_reintento[0])
+    print("power-up dash y checkpoints: OK")
+
+
 # --- Ejecución --- #
 if __name__ == "__main__":
     probar_niveles()
@@ -917,6 +962,7 @@ if __name__ == "__main__":
     probar_estados_y_meta()
     probar_stomp_y_contacto()
     probar_pala_y_limites()
+    probar_power_up_dash_y_checkpoint()
     probar_plataformas()
     probar_perder_vida()
     probar_reiniciar_nivel()

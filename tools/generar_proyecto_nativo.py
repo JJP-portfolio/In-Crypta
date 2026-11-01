@@ -548,13 +548,26 @@ def generar_fondo_derrota() -> pygame.Surface:
     return surface
 
 
+def guardar_fondo_titulo() -> None:
+    """Genera un fondo limpio gótico de alta resolución para el Menú Principal."""
+    surf = pygame.Surface((RENDER_W, RENDER_H))
+    from juego import Juego
+    j = Juego()
+    j.dibujar_fondo(surf)
+    j.dibujar_arbol_muerto(surf, 90, RENDER_H - 54, 1.5)
+    j.dibujar_arbol_muerto(surf, 1100, RENDER_H - 40, 1.1)
+    j.dibujar_tumba_lejana(surf, 950, RENDER_H - 54, 1.3)
+    j.dibujar_tumba_lejana(surf, 1020, RENDER_H - 44, 0.9)
+    surf.blit(j.vineta, (0, 0))
+    velo = pygame.Surface((RENDER_W, RENDER_H), pygame.SRCALPHA)
+    velo.fill((5, 4, 10, 165))
+    surf.blit(velo, (0, 0))
+    pygame.image.save(surf, ASSETS / "titulo.png")
+
+
 def generar_assets(escenas: list[Escena]) -> None:
     ASSETS.mkdir(parents=True, exist_ok=True)
-    titulo = pygame.image.load(str(ROOT / "capturas" / "titulo.png"))
-    pygame.image.save(
-        pygame.transform.smoothscale(titulo, (RENDER_W, RENDER_H)),
-        ASSETS / "titulo.png",
-    )
+    guardar_fondo_titulo()
     shutil.copy2(FONT_SOURCE, ASSETS / FONT_SOURCE.name)
 
     guardar_jugador()
@@ -1551,6 +1564,34 @@ def eventos_nivel(
             )
         ] if "PowerUpRango" in nombres_objetos else []),
 
+        # Power-up de dash espectral (paridad con Pygame 'D').
+        *([
+            evento(
+                [cond("CollisionNP", ["Jugador", "PowerUpDash", "no"])],
+                [
+                    accion("Delete", ["PowerUpDash"]),
+                    accion("SetNumberObjectVariable", ["Jugador", "tiene_dash", "=", "1"]),
+                    accion_sonido("Dash"),
+                    *acciones_sacudida(4.0, 0.12),
+                    accion("TextObject::String", ["HUD_Aviso", "=", '"¡AMULETO DE SOMBRAS: DASH EN EL AIRE!"']),
+                ],
+            )
+        ] if "PowerUpDash" in nombres_objetos else []),
+
+        # Checkpoint diegético (paridad con Pygame 'F').
+        *([
+            evento(
+                [cond("CollisionNP", ["Jugador", "FarolCheckpoint", "no"])],
+                [
+                    accion("SetNumberObjectVariable", ["FarolCheckpoint", "activo", "=", "1"]),
+                    accion("SetNumberVariable", ["checkpoint_x", "=", "FarolCheckpoint.X()"]),
+                    accion("SetNumberVariable", ["checkpoint_y", "=", "FarolCheckpoint.Y()"]),
+                    accion_sonido("Alma"),
+                    accion("TextObject::String", ["HUD_Aviso", "=", '"¡PUNTO DE CONTROL ALCANZADO!"']),
+                ],
+            )
+        ] if "FarolCheckpoint" in nombres_objetos else []),
+
         # Pisotón: el jugador viene desde arriba y ya tiene la pala.
         # Paridad audio.py: reproduce sfx_stomp + sacudida 6/0.18 (commit 020b19c).
         *[
@@ -1768,62 +1809,183 @@ def escena_titulo(specs_campana: list | None = None) -> dict:
         specs_campana = escenas_campaña()
     objetos = [
         objeto_sprite("FondoTitulo", "FondoTitulo"),
+        objeto_texto("Menu_Titulo", "IN CRYPTA", 58, ORO, "center"),
+        objeto_texto("Menu_Sub", "PLATAFORMERO GÓTICO 2D", 17, NIEBLA, "center"),
+        objeto_texto("Menu_Op1", ">> 1 · JUGAR <<", 24, ORO, "center"),
+        objeto_texto("Menu_Op1_Sub", "Comenzar la travesía desde el Camposanto", 14, CREMA, "center"),
+        objeto_texto("Menu_Op2", "2 · SELECCIÓN DE NIVEL", 24, HUESO, "center"),
+        objeto_texto("Menu_Op2_Sub", "Descender directamente a los niveles de la cripta", 14, NIEBLA, "center"),
+        objeto_texto("Menu_Op3", "3 · TUTORIAL", 24, HUESO, "center"),
+        objeto_texto("Menu_Op3_Sub", "El Ritual del Sepulturero · Aprende las mecánicas", 14, NIEBLA, "center"),
+        objeto_texto("Menu_Op4", "4 · SALAS DE PRUEBA", 24, HUESO, "center"),
+        objeto_texto("Menu_Op4_Sub", "Mecánicas aisladas para evaluación del jurado", 14, NIEBLA, "center"),
         objeto_texto(
-            "Titulo_Prompt",
-            "ENTER: JUGAR  ·  U: TUTORIAL  ·  T: SALAS DE PRUEBA",
-            17,
-            ORO,
+            "Menu_Ayuda",
+            "FLECHAS / WASD: ELEGIR · ENTER: SELECCIONAR · U: TUTORIAL · T: SALAS · 1..3: NIVELES",
+            14,
+            NIEBLA,
             "center",
         ),
     ]
     instancias = [
         instancia("FondoTitulo", 0, 0, 0, tam=(GAME_W, GAME_H)),
-        instancia("Titulo_Prompt", 0, GAME_H - 42, 2, "UI", tam=(GAME_W, 26)),
+        instancia("Menu_Titulo", 0, 56, 2, "UI", tam=(GAME_W, 70)),
+        instancia("Menu_Sub", 0, 130, 2, "UI", tam=(GAME_W, 28)),
+        instancia("Menu_Op1", 0, 188, 3, "UI", tam=(GAME_W, 34)),
+        instancia("Menu_Op1_Sub", 0, 222, 3, "UI", tam=(GAME_W, 24)),
+        instancia("Menu_Op2", 0, 268, 3, "UI", tam=(GAME_W, 34)),
+        instancia("Menu_Op2_Sub", 0, 302, 3, "UI", tam=(GAME_W, 24)),
+        instancia("Menu_Op3", 0, 348, 3, "UI", tam=(GAME_W, 34)),
+        instancia("Menu_Op3_Sub", 0, 382, 3, "UI", tam=(GAME_W, 24)),
+        instancia("Menu_Op4", 0, 428, 3, "UI", tam=(GAME_W, 34)),
+        instancia("Menu_Op4_Sub", 0, 462, 3, "UI", tam=(GAME_W, 24)),
+        instancia("Menu_Ayuda", 0, GAME_H - 46, 3, "UI", tam=(GAME_W, 26)),
     ]
+
+    arriba = cond_or(
+        cond("KeyFromTextJustPressed", ['"Up"']),
+        cond("KeyFromTextJustPressed", ['"w"']),
+        cond("KeyFromTextJustPressed", ['"W"']),
+    )
+    abajo = cond_or(
+        cond("KeyFromTextJustPressed", ['"Down"']),
+        cond("KeyFromTextJustPressed", ['"s"']),
+        cond("KeyFromTextJustPressed", ['"S"']),
+    )
+    confirmar = cond_or(
+        cond("KeyFromTextJustPressed", ['"Return"']),
+        cond("KeyFromTextJustPressed", ['"Space"']),
+    )
+
+    opcion_1 = [
+        accion("TextObject::String", ["Menu_Op1", "=", '">> 1 · JUGAR <<"']),
+        accion("TextObject::String", ["Menu_Op2", "=", '"2 · SELECCIÓN DE NIVEL"']),
+        accion("TextObject::String", ["Menu_Op3", "=", '"3 · TUTORIAL"']),
+        accion("TextObject::String", ["Menu_Op4", "=", '"4 · SALAS DE PRUEBA"']),
+    ]
+    opcion_2 = [
+        accion("TextObject::String", ["Menu_Op1", "=", '"1 · JUGAR"']),
+        accion("TextObject::String", ["Menu_Op2", "=", '">> 2 · SELECCIÓN DE NIVEL <<"']),
+        accion("TextObject::String", ["Menu_Op3", "=", '"3 · TUTORIAL"']),
+        accion("TextObject::String", ["Menu_Op4", "=", '"4 · SALAS DE PRUEBA"']),
+    ]
+    opcion_3 = [
+        accion("TextObject::String", ["Menu_Op1", "=", '"1 · JUGAR"']),
+        accion("TextObject::String", ["Menu_Op2", "=", '"2 · SELECCIÓN DE NIVEL"']),
+        accion("TextObject::String", ["Menu_Op3", "=", '">> 3 · TUTORIAL <<"']),
+        accion("TextObject::String", ["Menu_Op4", "=", '"4 · SALAS DE PRUEBA"']),
+    ]
+    opcion_4 = [
+        accion("TextObject::String", ["Menu_Op1", "=", '"1 · JUGAR"']),
+        accion("TextObject::String", ["Menu_Op2", "=", '"2 · SELECCIÓN DE NIVEL"']),
+        accion("TextObject::String", ["Menu_Op3", "=", '"3 · TUTORIAL"']),
+        accion("TextObject::String", ["Menu_Op4", "=", '">> 4 · SALAS DE PRUEBA <<"']),
+    ]
+
     eventos = [
         evento(
             [cond("SceneJustBegins", [""])],
             [
+                accion("SetNumberVariable", ["menu_opcion", "=", "1"]),
                 accion("SetNumberVariable", ["vidas", "=", str(VIDAS_INICIALES)]),
                 accion("SetNumberVariable", ["almas", "=", "0"]),
                 accion("SetNumberVariable", ["almas_para_vida", "=", "0"]),
                 accion("SetNumberVariable", ["almas_totales", "=", "0"]),
+                accion("SetNumberVariable", ["combo_almas", "=", "0"]),
+                accion("SetNumberVariable", ["combo_timer", "=", "0"]),
+                accion("SetNumberVariable", ["muertes_totales", "=", "0"]),
+                accion("SetNumberVariable", ["reducir_movimiento", "=", "0"]),
+                accion("SetNumberVariable", ["rango_mejorado", "=", "0"]),
+                accion("SetNumberVariable", ["jefe_derrotado", "=", "0"]),
                 *acciones_camara_inicial(),
             ],
         ),
+        evento([cond("NumberVariable", ["menu_opcion", "=", "1"])], opcion_1),
+        evento([cond("NumberVariable", ["menu_opcion", "=", "2"])], opcion_2),
+        evento([cond("NumberVariable", ["menu_opcion", "=", "3"])], opcion_3),
+        evento([cond("NumberVariable", ["menu_opcion", "=", "4"])], opcion_4),
+
+        # Navegación hacia arriba
         evento(
-            [cond("KeyFromTextJustPressed", ['"Return"'])],
-            [
-                accion_sonido("UI"),
-                accion("Scene", ['"Nivel 1"', "no"]),
-            ],
-        ),
-        *[
-            evento(
-                [cond("KeyFromTextJustPressed", [f'"{i}"'])],
-                [
-                    accion_sonido("UI"),
-                    accion("Scene", [f'"{spec.nombre}"', "no"]),
-                ],
-            )
-            for i, spec in enumerate(specs_campana, start=1)
-        ],
-        evento(
-            [cond("KeyFromTextJustPressed", ['"u"'])],
-            [
-                accion_sonido("UI"),
-                accion("Scene", ['"Tutorial"', "no"]),
-            ],
+            [arriba, cond("NumberVariable", ["menu_opcion", "=", "1"])],
+            [accion_sonido("UI"), accion("SetNumberVariable", ["menu_opcion", "=", "4"])],
         ),
         evento(
-            [cond("KeyFromTextJustPressed", ['"t"'])],
-            [
-                accion_sonido("UI"),
-                accion("Scene", ['"Salas"', "no"]),
-            ],
+            [arriba, cond("NumberVariable", ["menu_opcion", ">", "1"])],
+            [accion_sonido("UI"), accion("SetNumberVariable", ["menu_opcion", "-", "1"])],
+        ),
+
+        # Navegación hacia abajo
+        evento(
+            [abajo, cond("NumberVariable", ["menu_opcion", "=", "4"])],
+            [accion_sonido("UI"), accion("SetNumberVariable", ["menu_opcion", "=", "1"])],
+        ),
+        evento(
+            [abajo, cond("NumberVariable", ["menu_opcion", "<", "4"])],
+            [accion_sonido("UI"), accion("SetNumberVariable", ["menu_opcion", "+", "1"])],
+        ),
+
+        # Confirmación
+        evento(
+            [confirmar, cond("NumberVariable", ["menu_opcion", "=", "1"])],
+            [accion_sonido("UI"), accion("Scene", ['"Nivel 1"', "no"])],
+        ),
+        evento(
+            [confirmar, cond("NumberVariable", ["menu_opcion", "=", "2"])],
+            [accion_sonido("UI"), accion("Scene", ['"Salas"', "no"])],
+        ),
+        evento(
+            [confirmar, cond("NumberVariable", ["menu_opcion", "=", "3"])],
+            [accion_sonido("UI"), accion("Scene", ['"Tutorial"', "no"])],
+        ),
+        evento(
+            [confirmar, cond("NumberVariable", ["menu_opcion", "=", "4"])],
+            [accion_sonido("UI"), accion("Scene", ['"Salas"', "no"])],
+        ),
+
+        # Clics de ratón en las opciones
+        evento(
+            [cond("SourisSurObjet", ["Menu_Op1", "", "", ""]), cond("MouseButtonReleased", ["", "Left"])],
+            [accion_sonido("UI"), accion("Scene", ['"Nivel 1"', "no"])],
+        ),
+        evento(
+            [cond("SourisSurObjet", ["Menu_Op2", "", "", ""]), cond("MouseButtonReleased", ["", "Left"])],
+            [accion_sonido("UI"), accion("Scene", ['"Salas"', "no"])],
+        ),
+        evento(
+            [cond("SourisSurObjet", ["Menu_Op3", "", "", ""]), cond("MouseButtonReleased", ["", "Left"])],
+            [accion_sonido("UI"), accion("Scene", ['"Tutorial"', "no"])],
+        ),
+        evento(
+            [cond("SourisSurObjet", ["Menu_Op4", "", "", ""]), cond("MouseButtonReleased", ["", "Left"])],
+            [accion_sonido("UI"), accion("Scene", ['"Salas"', "no"])],
+        ),
+
+        # Atajos de teclado directos
+        evento(
+            [cond_or(cond("KeyFromTextJustPressed", ['"u"']), cond("KeyFromTextJustPressed", ['"U"']))],
+            [accion_sonido("UI"), accion("Scene", ['"Tutorial"', "no"])],
+        ),
+        evento(
+            [cond_or(cond("KeyFromTextJustPressed", ['"t"']), cond("KeyFromTextJustPressed", ['"T"']))],
+            [accion_sonido("UI"), accion("Scene", ['"Salas"', "no"])],
+        ),
+        evento(
+            [cond_or(cond("KeyFromTextJustPressed", ['"Num1"']), cond("KeyFromTextJustPressed", ['"1"']))],
+            [accion_sonido("UI"), accion("Scene", ['"Nivel 1"', "no"])],
+        ),
+        evento(
+            [cond_or(cond("KeyFromTextJustPressed", ['"Num2"']), cond("KeyFromTextJustPressed", ['"2"']))],
+            [accion_sonido("UI"), accion("Scene", ['"Nivel 2"', "no"])],
+        ),
+        evento(
+            [cond_or(cond("KeyFromTextJustPressed", ['"Num3"']), cond("KeyFromTextJustPressed", ['"3"']))],
+            [accion_sonido("UI"), accion("Scene", ['"Nivel 3"', "no"])],
         ),
     ]
-    return escena("Titulo", objetos, instancias, eventos)
+    titulo = escena("Titulo", objetos, instancias, eventos)
+    titulo["variables"] = [{"name": "menu_opcion", "type": "number", "value": 1}]
+    return titulo
 
 
 def escena_victoria() -> dict:
@@ -2426,6 +2588,9 @@ def construir_proyecto(escenas: list[Escena]) -> dict:
         {"name": "sacudida_f", "type": "number", "value": 0},
         {"name": "sacudida_t", "type": "number", "value": 0},
         {"name": "rango_mejorado", "type": "number", "value": 0},
+        {"name": "checkpoint_x", "type": "number", "value": 0},
+        {"name": "checkpoint_y", "type": "number", "value": 0},
+        {"name": "menu_opcion", "type": "number", "value": 1},
     ]
     base["layouts"] = [
         escena_titulo(specs_campana),
@@ -2472,26 +2637,11 @@ def construir_proyecto(escenas: list[Escena]) -> dict:
         )
         eventos.extend(reglas_escena(escena_modelo))
         base["layouts"].append(escena(spec.nombre, objetos, instancias, eventos))
-    base["usedResources"] = [
-        {"name": "SFX_Salto"},
-        {"name": "SFX_Alma"},
-        {"name": "SFX_Dash"},
-        {"name": "SFX_Pala"},
-        {"name": "SFX_PalaRecoger"},
-        {"name": "SFX_Golpe"},
-        {"name": "SFX_Dano"},
-        {"name": "SFX_Meta"},
-        {"name": "SFX_Vida"},
-        {"name": "SFX_UI"},
-        {"name": "SFX_Stomp"},
-        {"name": "SFX_Muerte"},
-        {"name": "SFX_Alma1"},
-        {"name": "SFX_Alma2"},
-        {"name": "SFX_Alma3"},
-        {"name": "SFX_Alma4"},
-        {"name": "SFX_Alma5"},
-        {"name": "SFX_Alma6"},
-    ]
+    todos_recursos = [{"name": r["name"]} for r in recursos]
+    for layout in base["layouts"]:
+        layout["usedResources"] = list(todos_recursos)
+
+    base["usedResources"] = list(todos_recursos)
     base["externalEvents"] = []
     base["externalLayouts"] = []
     return base
@@ -2525,10 +2675,44 @@ def main() -> int:
     generar_assets(escenas)
     proyecto = construir_proyecto(escenas)
     borrados = limpiar_assets(proyecto)
+
+    contenido_json = json.dumps(proyecto, ensure_ascii=False, indent=2)
+
     destino = OUT / PROJECT_NAME
-    destino.write_text(json.dumps(proyecto, ensure_ascii=False, indent=2), encoding="utf-8")
+    destino.write_text(contenido_json, encoding="utf-8")
+
+    destino_v099 = OUT / "In_Crypta_V0.9.9.json"
+    destino_v099.write_text(contenido_json, encoding="utf-8")
+
+    # Limpiar posibles restos .autosave y .bak que GDevelop pueda haber creado
+    for residuo in list(OUT.glob("*.autosave")) + list(OUT.glob("*.bak*")):
+        try:
+            residuo.unlink()
+        except OSError:
+            pass
+
+    # Sincronizar espejo en ~/In-Crypta si existe
+    espejo_dir = Path("/home/sanodesu/In-Crypta/export/gdevelop_nativo")
+    if espejo_dir.exists():
+        (espejo_dir / PROJECT_NAME).write_text(contenido_json, encoding="utf-8")
+        (espejo_dir / "In_Crypta_V0.9.9.json").write_text(contenido_json, encoding="utf-8")
+        shutil.copytree(ASSETS, espejo_dir / "assets", dirs_exist_ok=True)
+        for residuo in list(espejo_dir.glob("*.autosave")) + list(espejo_dir.glob("*.bak*")):
+            try:
+                residuo.unlink()
+            except OSError:
+                pass
+
+    # Actualizar open-projects.json para que GDevelop abra el proyecto nativo actualizado
+    config_open = Path.home() / ".var/app/io.gdevelop.ide/config/GDevelop 5/open-projects.json"
+    if config_open.parent.exists():
+        try:
+            config_open.write_text(json.dumps([str(destino)]), encoding="utf-8")
+        except Exception:
+            pass
 
     print(f"Proyecto: {destino}")
+    print(f"Proyecto V0.9.9 sincronizado: {destino_v099}")
     print(f"Resolución: {RENDER_W}x{RENDER_H} (zoom {GAME_ZOOM})")
     print(f"Escenas: {[l['name'] for l in proyecto['layouts']]}")
     print(

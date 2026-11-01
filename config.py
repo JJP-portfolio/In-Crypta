@@ -80,15 +80,29 @@ CAMARA_SUAVIZADO = 7.0
 SACUDIDA_FUERZA = 7.0
 SACUDIDA_DURACION = 0.18
 
-# --- Paleta gótica (R, G, B) ---
-NEGRO = (9, 8, 13)
+# --- Paleta poeana de claroscuro ---
+NEGRO_NOCHE = (9, 8, 13)
+HUESO_MARFIL = (215, 207, 184)
+CARMESÍ_SANGRE = (112, 22, 34)
+CARMESI_SANGRE = CARMESÍ_SANGRE
+TURQUESA_ÁNIMA = (92, 190, 174)
+TURQUESA_ANIMA = TURQUESA_ÁNIMA
+ORO_LITÚRGICO = (198, 156, 62)
+ORO_LITURGICO = ORO_LITÚRGICO
+VIOLETA_POE = (75, 40, 75)
+SALITRE_CRIPTA = (181, 185, 194)
+FAROL_CÁLIDO = (240, 196, 90)
+FAROL_CALIDO = FAROL_CÁLIDO
+
+# --- Paleta gótica armonizada (R, G, B) ---
+NEGRO = NEGRO_NOCHE
 BLANCO = (225, 220, 205)
 GRIS = (105, 108, 118)
-AMARILLO = (214, 174, 82)
-ORO = (198, 156, 62)
+AMARILLO = FAROL_CÁLIDO
+ORO = ORO_LITÚRGICO
 NARANJA = (190, 104, 48)
 ROJO = (142, 32, 44)
-SANGRE = (112, 22, 34)
+SANGRE = CARMESÍ_SANGRE
 VERDE = (86, 118, 82)
 VERDE_OSCURO = (42, 66, 52)
 MUSGO = (72, 94, 62)
@@ -99,15 +113,23 @@ AZUL_OSCURO = (27, 34, 51)
 CELESTE = (150, 180, 190)
 CREMA = (214, 199, 168)
 GRIS_OSCURO = (43, 45, 54)
-HUESO = (215, 207, 184)
-SOMBRA = (7, 6, 10, 205)
+HUESO = HUESO_MARFIL
+SOMBRA = (9, 8, 13, 205)
 PASTO = (66, 88, 60)
 PIEDRA = (72, 74, 84)
 PIEDRA_OSCURA = (43, 45, 54)
 PIEDRA_FRIA = (58, 61, 72)
-VIOLETA = (128, 96, 168)
-TURQUESA = (92, 190, 174)
+VIOLETA = (128, 70, 140)
+TURQUESA = TURQUESA_ÁNIMA
 NIEBLA = (104, 122, 130)
+
+# --- Citas literarias de Edgar Allan Poe ---
+CITAS_POE = {
+    0: "«Los límites entre la Vida y la Muerte son borrosos e indefinidos.» — E. A. Poe",
+    1: "«En lo más profundo de la fosa... una sombra más negra que la noche.» — E. A. Poe",
+    2: "«¡Y la Muerte Roja reinó triunfal sobre todo el dominio!» — E. A. Poe",
+    "tutorial": "«Bajo la losa sellada, la campana espera en silencio.» — E. A. Poe",
+}
 
 # --- HUD (paleta de referencia: SOTN / Blasphemous / Ender Lilies) ---
 HUD_PANEL = (18, 14, 24, 196)

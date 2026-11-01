@@ -93,8 +93,16 @@ ADAPTADORES: dict[str, Adaptador] = {
         "pala", "PalaRecogible", "Pala", z=4,
         sprite=(PALA_W, PALA_ALTO),
     ),
+    "power_up_dash": Adaptador(
+        "power_up_dash", "PowerUpDash", "PowerUpDash", z=4,
+        sprite=(PALA_W, PALA_ALTO),
+    ),
     "power_up_rango": Adaptador(
         "power_up_rango", "PowerUpRango", "PowerUpRango", z=4,
+        sprite=(PALA_W, PALA_ALTO),
+    ),
+    "checkpoint": Adaptador(
+        "checkpoint", "FarolCheckpoint", "FarolCheckpoint", z=3,
         sprite=(PALA_W, PALA_ALTO),
     ),
     "peligro": Adaptador(

@@ -153,14 +153,17 @@ class Juego:
         self.sala_prueba = sala is not None
         self.sala_prueba_indice = sala
         self.es_tutorial = False
+        jugador_previo = getattr(self, "jugador", None)
         if sala is None:
             self.nivel_indice = indice
             datos = NIVELES[indice]
-            tiene_pala = indice >= 2
+            tiene_pala = (jugador_previo.tiene_pala if jugador_previo else False) or (indice >= 2)
+            tiene_dash = (jugador_previo.tiene_dash if jugador_previo else False) or (indice >= 2)
         else:
             datos = SALAS_PRUEBA[sala]
             self.nivel_indice = datos["nivel"]
             tiene_pala = datos["pala"]
+            tiene_dash = datos.get("dash", datos["nivel"] >= 1)
 
         self.nivel = Nivel(
             datos["mapa"],
@@ -171,6 +174,7 @@ class Juego:
         vidas_iniciales = VIDAS_INICIALES if vidas is None else vidas
         self.jugador = Jugador(*self.nivel.spawn, vidas=vidas_iniciales)
         self.jugador.tiene_pala = tiene_pala
+        self.jugador.tiene_dash = tiene_dash
         self.camara = Camara()
         self.camara.permitir_sacudida = not self.reducir_movimiento
         self.camara.actualizar(self.jugador, self.nivel, 1.0)
@@ -208,6 +212,8 @@ class Juego:
         vidas_iniciales = VIDAS_INICIALES
         self.jugador = Jugador(*self.nivel.spawn, vidas=vidas_iniciales)
         self.jugador.tiene_pala = False
+        self.jugador.tiene_dash = False
+        self.tutorial_zona_actual = None
         self.camara = Camara()
         self.camara.permitir_sacudida = not self.reducir_movimiento
         self.camara.actualizar(self.jugador, self.nivel, 1.0)
@@ -264,6 +270,7 @@ class Juego:
     def iniciar_partida(self):
         self.almas_totales = 0
         self.tiempo_total = 0.0
+        self.jugador = None
         self.cargar_nivel(0, vidas=VIDAS_INICIALES)
         self.estado = "jugando"
 
@@ -271,6 +278,7 @@ class Juego:
     def reiniciar_juego(self):
         self.almas_totales = 0
         self.tiempo_total = 0.0
+        self.jugador = None
         self.cargar_nivel(0, vidas=VIDAS_INICIALES)
 
     # --- Función siguiente_nivel --- #
@@ -473,7 +481,11 @@ class Juego:
         self.actualizar_enemigos(dt)
         self.actualizar_almas()
         self.actualizar_palas()
+        self.actualizar_power_ups_dash()
         self.actualizar_power_ups_rango()
+        self.actualizar_checkpoints()
+        if self.es_tutorial:
+            self.actualizar_tutorial_contextual()
         self.particulas.actualizar(dt)
         self.camara.actualizar(self.jugador, self.nivel, dt)
 
@@ -933,6 +945,72 @@ class Juego:
                 self.mostrar_ayuda = 4.0
                 self.hud.mostrar_mensaje("¡PALA OBTENIDA! · J / Z: Atacar · Pisotón: salta sobre los moradores", 2, 4.0)
 
+    # --- Función actualizar_power_ups_dash --- #
+    def actualizar_power_ups_dash(self):
+        for power_up in self.nivel.power_ups_dash:
+            if power_up.actualizar(self.jugador):
+                self.audio.reproducir("dash_recoger")
+                self.particulas.emitir(
+                    power_up.rect.centerx,
+                    power_up.rect.centery,
+                    28,
+                    ((80, 220, 255), (180, 250, 255), BLANCO, (40, 150, 240)),
+                    240,
+                    0.7,
+                    5,
+                    200,
+                )
+                self.camara.sacudir(6.0, 0.16)
+                self.flash = 0.14
+                self.flash_color = (60, 200, 255)
+                self.texto_ayuda = "¡AMULETO DE SOMBRAS OBTENIDO! · SHIFT: DASH EN EL AIRE"
+                self.mostrar_ayuda = 4.0
+                self.hud.mostrar_mensaje("¡AMULETO DE SOMBRAS! · SHIFT / X: Dash en el aire", 2, 4.0)
+
+    # --- Función actualizar_checkpoints --- #
+    def actualizar_checkpoints(self):
+        for checkpoint in self.nivel.checkpoints:
+            if checkpoint.actualizar(self.jugador):
+                self.punto_reintento = (checkpoint.rect.x, checkpoint.rect.y - 4)
+                self.audio.reproducir("checkpoint")
+                self.particulas.emitir(
+                    checkpoint.rect.centerx,
+                    checkpoint.rect.bottom - 20,
+                    18,
+                    ((120, 220, 255), (200, 245, 255), BLANCO),
+                    180,
+                    0.6,
+                    3,
+                    120,
+                )
+                self.hud.mostrar_mensaje("FAROL CONSAGRADO · Punto de control registrado", 1, 3.0)
+
+    # --- Función actualizar_tutorial_contextual --- #
+    def actualizar_tutorial_contextual(self):
+        col = self.jugador.rect.x // TILE
+        if col < 15:
+            zona = 1
+            msg = "MOVIMIENTO Y SALTO · FLECHAS / WASD: Mover · ESPACIO: Salto variable"
+        elif col < 32:
+            zona = 2
+            msg = "FOSO DE SALTO · Medí tu impulso. Si caés, usá los escalones para subir"
+        elif col < 47:
+            zona = 3
+            msg = "ALTAR DE LA PALA · Recogé la pala (W) · J / Z / CLICK: Atacar morador"
+        elif col < 62:
+            zona = 4
+            msg = "EL PISOTÓN (STOMP) · Saltá sobre la cabeza del morador para rebotar"
+        elif col < 78:
+            zona = 5
+            msg = "AMULETO DE SOMBRAS · Recogé el dash (D) · SHIFT / X: Dash en el aire"
+        else:
+            zona = 6
+            msg = "PORTÓN FINAL · Cruzá el umbral hacia la cripta"
+
+        if getattr(self, "tutorial_zona_actual", None) != zona:
+            self.tutorial_zona_actual = zona
+            self.hud.mostrar_mensaje(msg, 2, 4.0)
+
     # --- Función actualizar_power_ups_rango --- #
     def actualizar_power_ups_rango(self):
         for power_up in self.nivel.power_ups_rango:
@@ -982,11 +1060,21 @@ class Juego:
 
         if self.punto_reintento is not None:
             tenia_guadaña = self.jugador.rango_ataque_mejorado
+            tenia_pala = self.jugador.tiene_pala
+            tenia_dash = self.jugador.tiene_dash
             self.jugador.respawn(*self.punto_reintento)
             self.jugador.rango_ataque_mejorado = tenia_guadaña
+            self.jugador.tiene_pala = tenia_pala
+            self.jugador.tiene_dash = tenia_dash
         else:
+            tenia_pala = self.jugador.tiene_pala
+            tenia_dash = self.jugador.tiene_dash
             self.jugador.respawn(*self.nivel.spawn)
+            self.jugador.tiene_pala = tenia_pala
+            self.jugador.tiene_dash = tenia_dash
             for pup in self.nivel.power_ups_rango:
+                pup.reiniciar()
+            for pup in self.nivel.power_ups_dash:
                 pup.reiniciar()
 
         if self.jefe is not None and self.jefe.vivo:

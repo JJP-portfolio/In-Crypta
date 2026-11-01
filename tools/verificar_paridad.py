@@ -299,7 +299,9 @@ def comparar_escena(informe: Informe, proyecto: dict, nombre: str, nivel: Nivel)
         "cuervos (C)": (len(nivel.cuervos), "Cuervo"),
         "polillas (m)": (len(nivel.polillas), "Polilla"),
         "arañas (A)": (len(nivel.aranias), "Arana"),
+        "power-ups de dash (D)": (len(getattr(nivel, "power_ups_dash", [])), "PowerUpDash"),
         "power-ups de rango (X)": (len(nivel.power_ups_rango), "PowerUpRango"),
+        "checkpoints (F)": (len(getattr(nivel, "checkpoints", [])), "FarolCheckpoint"),
     }
     for etiqueta, (cantidad, objeto) in faltantes.items():
         if cantidad == 0:

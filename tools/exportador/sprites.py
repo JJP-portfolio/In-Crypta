@@ -116,6 +116,22 @@ def render_power_up(ancho: int, alto: int) -> pygame.Surface:
     return surface
 
 
+def render_power_up_dash(ancho: int, alto: int) -> pygame.Surface:
+    from entidades import DashPowerUp
+
+    surface = _superficie(ancho, alto)
+    DashPowerUp(pygame.Rect(0, 0, ancho, alto)).dibujar(surface, _camara(), 0.0)
+    return surface
+
+
+def render_checkpoint(ancho: int, alto: int) -> pygame.Surface:
+    from entidades import FarolCheckpoint
+
+    surface = _superficie(ancho, alto)
+    FarolCheckpoint(pygame.Rect(0, 0, ancho, alto)).dibujar(surface, _camara(), 0.0)
+    return surface
+
+
 def render_peligro(ancho: int, alto: int) -> pygame.Surface:
     from nivel import Nivel
 
@@ -159,7 +175,9 @@ RENDERIZADORES = {
     "cuervo": render_cuervo,
     "totem": render_totem,
     "pala": render_pala,
+    "power_up_dash": render_power_up_dash,
     "power_up_rango": render_power_up,
+    "checkpoint": render_checkpoint,
     "peligro": render_peligro,
     "plataforma": render_plataforma,
     "jefe": render_jefe,
