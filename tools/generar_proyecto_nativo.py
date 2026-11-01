@@ -613,6 +613,10 @@ def generar_assets(escenas: list[Escena]) -> None:
     guardar_2x(generar_fondo_pausa(), "pausa.png")
     guardar_2x(generar_fondo_derrota(), "derrota.png")
 
+    # Assets Pixel-Art góticos y animaciones multipose (Prioridad 5)
+    import integrar_assets_gdevelop
+    integrar_assets_gdevelop.generar_todos_los_assets()
+
 
 # ------------------------------------------------------------
 # Eventos compartidos
@@ -2746,6 +2750,29 @@ def construir_proyecto(escenas: list[Escena]) -> dict:
         recurso_audio("SFX_Muerte", "assets/sfx_muerte.wav"),
         *[recurso_audio(f"SFX_Alma{i}", f"assets/sfx_alma_{i}.wav") for i in range(1, 7)],
     ]
+
+    # Frames multipose Pixel-Art góticos (Prioridad 5)
+    for pose, cnt in [("idle", 4), ("run", 6), ("jump", 2), ("caida", 2), ("dash", 3), ("ataque", 3)]:
+        for f in range(1, cnt + 1):
+            recursos.append(recurso_imagen(f"Jugador_{pose.capitalize()}_{f}", f"assets/jugador_{pose}_{f}.png"))
+            recursos.append(recurso_imagen(f"Jugador_{pose.capitalize()}_Izq_{f}", f"assets/jugador_{pose}_izq_{f}.png"))
+            recursos.append(recurso_imagen(f"Jugador_{pose.capitalize()}_SinPala_{f}", f"assets/jugador_{pose}_sin_pala_{f}.png"))
+            recursos.append(recurso_imagen(f"Jugador_{pose.capitalize()}_Izq_SinPala_{f}", f"assets/jugador_{pose}_izq_sin_pala_{f}.png"))
+
+    for f in range(1, 5):
+        recursos.append(recurso_imagen(f"EnemyWalk{f}", f"assets/enemy_walk_{f}.png"))
+        recursos.append(recurso_imagen(f"EnemyMeleeWalk{f}", f"assets/enemymelee_walk_{f}.png"))
+        recursos.append(recurso_imagen(f"MiniJefeWalk{f}", f"assets/minijefe_walk_{f}.png"))
+        recursos.append(recurso_imagen(f"JefeWalk{f}", f"assets/jefe_walk_{f}.png"))
+        recursos.append(recurso_imagen(f"Alma{f}", f"assets/alma_{f}.png"))
+        recursos.append(recurso_imagen(f"FarolOn{f}", f"assets/farolcheckpoint_on_{f}.png"))
+        recursos.append(recurso_imagen(f"PowerUpDash{f}", f"assets/powerupdash_{f}.png"))
+        recursos.append(recurso_imagen(f"PowerUpRango{f}", f"assets/poweruprango_{f}.png"))
+        recursos.append(recurso_imagen(f"PalaRecogible{f}", f"assets/pala_{f}.png"))
+
+    recursos.append(recurso_imagen("FarolOff", "assets/farolcheckpoint_off.png"))
+    recursos.append(recurso_imagen("PaletaGothica", "assets/paleta_gothica.png"))
+
     ya_en_recursos = {r["name"] for r in recursos}
     for escena_modelo in escenas:
         for entidad in escena_modelo.entidades:
@@ -2919,6 +2946,15 @@ def main() -> int:
 
     destino_v099 = OUT / "In_Crypta_V0.9.9.json"
     destino_v099.write_text(contenido_json, encoding="utf-8")
+
+    # Integración de assets pixel-art góticos y animaciones multipose (Prioridad 5)
+    try:
+        import integrar_assets_gdevelop
+        integrar_assets_gdevelop.generar_todos_los_assets()
+        integrar_assets_gdevelop.actualizar_proyecto_gdevelop(destino)
+        integrar_assets_gdevelop.actualizar_proyecto_gdevelop(destino_v099)
+    except Exception as err:
+        print(f"Aviso al integrar assets pixel-art: {err}")
 
     # Limpiar posibles restos .autosave y .bak que GDevelop pueda haber creado
     for residuo in list(OUT.glob("*.autosave")) + list(OUT.glob("*.bak*")):
