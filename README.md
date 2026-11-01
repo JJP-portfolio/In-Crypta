@@ -206,6 +206,21 @@ DISPLAY=:1 WAYLAND_DISPLAY=wayland-1 \
 
 El runtime JavaScript anterior (`export/gdevelop/` y `tools/instalar_gdevelop.py`) queda como versión legada. El build nativo está validado de forma headless con Chromium/CDP: título, los tres niveles, salto, dash, audio, recogida de pala, ataque, pisotón, daño, pozo, límites, plataformas móviles, game over y transiciones. La vista previa real dentro de GDevelop todavía debe validarla una persona.
 
+## Repomix
+
+El proyecto incluye configuración para [Repomix](https://repomix.com) (`repomix.config.json` y `.repomixignore`), optimizada para empaquetar el código fuente, tests y documentación excluyendo assets binarios, builds HTML5 compilados y JSONs gigantes de GDevelop:
+
+```bash
+# Empaquetar el repositorio en repomix/repomix-output.xml
+npx repomix
+
+# Empaquetar en formato Markdown en repomix/repomix-output.md
+npx repomix --style markdown -o repomix/repomix-output.md
+
+# Ver desglose de archivos y árbol de tokens
+npx repomix --token-count-tree
+```
+
 ## Documentación
 
 - [`docs/GDD_MDA.md`](docs/GDD_MDA.md): high concept, MDA, niveles, sistemas, UI/UX, producción y mapas de conceptos.
