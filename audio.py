@@ -363,6 +363,7 @@ class Audio:
         # 14. Corazón delator a 55 Hz
         self.sonido_latido = sintetizar_corazon_delator(volumen=0.34)
         self.sonidos["corazon_latido"] = self.sonido_latido
+        self.sonidos["corazon"] = self.sonido_latido
 
         # 15. Dron fúnebre ambiental
         self.sonido_dron = sintetizar_dron_funebre(duracion=4.0, volumen=0.08)
