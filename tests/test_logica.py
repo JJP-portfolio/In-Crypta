@@ -65,10 +65,10 @@ def probar_niveles():
 
         for fila in range(nivel.num_filas):
             for columna, simbolo in enumerate(nivel.filas[fila]):
-                if simbolo != "E":
+                if simbolo not in ("E", "L", "K", "B"):
                     continue
                 piso = nivel.filas[fila + 1][columna] if fila + 1 < nivel.num_filas else "."
-                assert piso == "#", f"enemigo flotante en nivel {indice}: {fila},{columna}"
+                assert piso in ("#", "^"), f"enemigo {simbolo} flotante en nivel {indice}: {fila},{columna}"
 
     print("niveles: OK")
 
@@ -402,6 +402,24 @@ def probar_estados_y_meta():
 
 # --- Prueba: pala, dash aéreo y daño por contacto --- #
 def probar_stomp_y_contacto():
+    # 1. Pisotón SIN pala (tiene_pala = False): daña al jugador en lugar de matar al enemigo
+    juego = Juego()
+    juego.iniciar_partida()
+    enemigo = juego.nivel.enemigos[0]
+    enemigo.vivo = True
+    juego.jugador.rect.midbottom = (enemigo.rect.centerx, enemigo.rect.top + 1)
+    juego.jugador.x = float(juego.jugador.rect.x)
+    juego.jugador.y = float(juego.jugador.rect.y)
+    juego.jugador.vy = 200
+    juego.jugador.dash_usos_aire = 0
+    juego.jugador.invulnerable = 0
+    juego.jugador.tiene_pala = False
+    vidas_antes = juego.jugador.vidas
+    juego.actualizar_enemigos(1 / 60)
+    assert enemigo.vivo, "enemigo no debe morir si el jugador no tiene pala"
+    assert juego.jugador.vidas == vidas_antes - 1, "jugador debe recibir daño al pisar sin pala"
+
+    # 2. Pisotón CON pala (tiene_pala = True): mata al enemigo, rebota y recarga dash
     juego = Juego()
     juego.iniciar_partida()
     enemigo = juego.nivel.enemigos[0]
@@ -419,6 +437,7 @@ def probar_stomp_y_contacto():
     assert juego.jugador.dash_usos_aire == DASH_USOS_AIRE
     assert juego.jugador.dash_cooldown == 0.0
 
+    # 3. Contacto lateral: daño al jugador
     juego = Juego()
     juego.iniciar_partida()
     enemigo = juego.nivel.enemigos[0]
@@ -437,9 +456,9 @@ def probar_stomp_y_contacto():
 # --- Prueba: pickup de pala y límites del mapa --- #
 def probar_pala_y_limites():
     juego = Juego()
-    juego.cargar_nivel(0)
+    juego.cargar_nivel(1)  # Nivel 2 consagra la pala (W)
     assert not juego.jugador.tiene_pala
-    assert len(juego.nivel.palas) == 1
+    assert len(juego.nivel.palas) >= 1
     pala = juego.nivel.palas[0]
     juego.jugador.rect.center = pala.rect.center
     juego.jugador.x = float(juego.jugador.rect.x)
@@ -619,11 +638,13 @@ def probar_jefe_final():
     juego.dañar_jefe()
     assert jefe.fase == 2  # 3 golpes acumulados → Fase 2
 
-    # En Fase 2, la pala rebota y no lo daña
+    # En Fase 2, la pala y el pisotón rebotan si no se posee la Guadaña Consagrada (X)
     assert not juego.dañar_jefe()
+    assert not juego.dañar_jefe_pisaton()
     assert jefe.vida == 3
 
-    # En Fase 2, solo el pisotón lo daña
+    # Con la Guadaña Consagrada ('X'), se vulnera la coraza espectral
+    juego.jugador.rango_ataque_mejorado = True
     for _ in range(3):
         assert juego.dañar_jefe_pisaton()
     assert not jefe.vivo
@@ -640,19 +661,32 @@ def probar_jefe_final():
 
 # --- Prueba: limpieza de gemas y arena del jefe --- #
 def probar_mapa_final():
-    filas_1 = NIVEL_1.strip("\n").splitlines()
-    assert any("W" in fila for fila in filas_1), "Nivel 1 debe consagrar la pala (W)"
-    filas_2 = NIVEL_2.strip("\n").splitlines()
-    assert len(filas_2) == 12 and len(filas_2[0]) == 190
-    assert any("D" in fila for fila in filas_2), "Nivel 2 debe consagrar el dash (D)"
-    assert any("#" in fila for fila in filas_2)
-    assert not any("B" in fila for fila in filas_2)
+    from niveles import NIVEL_TUTORIAL
 
-    filas_3 = NIVEL_3.strip("\n").splitlines()
-    assert len(filas_3) == 12 and len(filas_3[0]) == 220
-    fila_jefe = next(fila for fila in filas_3 if "B" in fila)
-    assert fila_jefe.index("B") == 196
-    assert next(fila for fila in filas_3 if "G" in fila).index("G") == 216
+    # 1. NIVEL_TUTORIAL, NIVEL_1, NIVEL_2 y NIVEL_3 tienen exactamente un P y un G
+    for mapa_str in (NIVEL_TUTORIAL, NIVEL_1, NIVEL_2, NIVEL_3):
+        assert mapa_str.count("P") == 1
+        assert mapa_str.count("G") == 1
+
+    # 2. NIVEL_1 contiene 'D' y 'F', pero NO contiene 'W' ni 'X'
+    assert "D" in NIVEL_1 and "F" in NIVEL_1
+    assert "W" not in NIVEL_1 and "X" not in NIVEL_1
+
+    # 3. NIVEL_2 contiene 'W' y 'F'
+    assert "W" in NIVEL_2 and "F" in NIVEL_2
+
+    # 4. NIVEL_3 contiene 'K' (Mini-Boss), 'X' (Power-Up), 'B' (Boss) y al menos 3 'F'
+    assert "K" in NIVEL_3
+    assert "X" in NIVEL_3
+    assert "B" in NIVEL_3
+    assert NIVEL_3.count("F") >= 3
+
+    # 5. Longitud(NIVEL_TUTORIAL) < Longitud(NIVEL_1) < Longitud(NIVEL_2) < Longitud(NIVEL_3)
+    w_tut = len(NIVEL_TUTORIAL.strip("\n").splitlines()[0])
+    w_1 = len(NIVEL_1.strip("\n").splitlines()[0])
+    w_2 = len(NIVEL_2.strip("\n").splitlines()[0])
+    w_3 = len(NIVEL_3.strip("\n").splitlines()[0])
+    assert w_tut < w_1 < w_2 < w_3, f"Longitudes no crecientes: {w_tut} < {w_1} < {w_2} < {w_3}"
 
     for datos in (NIVEL_2, NIVEL_3):
         filas = datos.strip("\n").splitlines()
@@ -783,8 +817,7 @@ def probar_tutorial():
     assert juego.nivel.nombre == "El Ritual del Sepulturero"
     assert not juego.jugador.tiene_pala
     assert not juego.jugador.tiene_dash
-    assert len(juego.nivel.palas) >= 1
-    assert len(juego.nivel.power_ups_dash) >= 1
+    assert len(juego.nivel.checkpoints) >= 1
 
     # HUD reporta TUTORIAL (nivel_indice = -1, nombre especial)
     juego.hud.armar_modelo(juego)
@@ -916,8 +949,8 @@ def probar_combo_almas():
 # --- Prueba: dash power-up y checkpoints diegéticos --- #
 def probar_power_up_dash_y_checkpoint():
     juego = Juego()
-    # Nivel 2 tiene DashPowerUp al inicio
-    juego.cargar_nivel(1)
+    # Nivel 1 tiene DashPowerUp
+    juego.cargar_nivel(0)
     assert not juego.jugador.tiene_dash
     assert len(juego.nivel.power_ups_dash) >= 1
     pup = juego.nivel.power_ups_dash[0]
@@ -929,19 +962,78 @@ def probar_power_up_dash_y_checkpoint():
     assert pup.recogida
 
     # Nivel 1 tiene Checkpoint
-    juego.cargar_nivel(0)
+    juego.cargar_nivel(0, vidas=2)
     assert len(juego.nivel.checkpoints) >= 1
     cp = juego.nivel.checkpoints[0]
     assert not cp.activo
+    juego.jugador.almas = 6
+    juego.jugador.almas_para_vida = 6
     juego.jugador.rect.center = cp.rect.center
     juego.actualizar_checkpoints()
     assert cp.activo
     assert juego.punto_reintento is not None
+    assert juego.jugador.vidas == 3, "El farol debe curar +1 vida si está por debajo de 3"
+    assert juego.almas_consagradas == 6, "El farol debe consagrar las almas acumuladas"
+    assert juego.jugador.escudo_farol, "El farol debe otorgar el Manto si juntó >= 5 almas"
 
-    # Al perder vida con checkpoint activo, reaparece en el checkpoint
+    # Golpe con escudo activo: absorbe daño sin restar vidas
     juego.perder_vida(ignorar_invulnerabilidad=True)
+    assert not juego.jugador.escudo_farol, "El escudo debe consumirse"
+    assert juego.jugador.vidas == 3, "No debe perder vida si tenía el escudo activo"
+
+    # Siguiente golpe sin escudo: pierde vida y reaparece en el checkpoint con almas consagradas
+    juego.jugador.almas = 9
+    juego.perder_vida(ignorar_invulnerabilidad=True)
+    assert juego.jugador.vidas == 2
     assert juego.jugador.x == float(juego.punto_reintento[0])
+    assert juego.jugador.almas == 6, "Debe restaurar exactamente las almas consagradas en el farol"
     print("power-up dash y checkpoints: OK")
+
+
+# --- Prueba: Mini-Boss (El Carcelero del Osario) --- #
+def probar_minijefe():
+    from entidades import MiniJefe
+    mj = MiniJefe(pygame.Rect(100, 100, 36, 48), 50, 250)
+    assert mj.vida == 3
+    assert mj.vivo
+
+    # Daño por golpe de pala
+    assert mj.recibir_golpe_pala()
+    assert mj.vida == 2
+
+    # Daño por pisotón
+    mj.invulnerable = 0
+    assert mj.recibir_pisaton()
+    assert mj.vida == 1
+
+    # Tercer golpe: derrota
+    mj.invulnerable = 0
+    assert mj.recibir_golpe_pala()
+    assert mj.vida == 0
+    assert not mj.vivo
+
+    # En Juego: derrota otorga 5 almas y rebote
+    juego = Juego()
+    juego.cargar_nivel(0)
+    mj2 = MiniJefe(pygame.Rect(200, 200, 36, 48), 100, 300)
+    juego.nivel.minijefes = [mj2]
+    almas_antes = juego.jugador.almas
+    juego.jugador.rect.midbottom = (mj2.rect.centerx, mj2.rect.top + 1)
+    juego.jugador.vy = 200
+    juego.jugador.tiene_pala = True
+    juego.actualizar_minijefes(1 / 60)
+    assert mj2.vida == 2
+    assert juego.jugador.vy < 0, "Debe rebotar tras pisotón al mini-jefe"
+
+    # Golpe letal: entrega 5 almas
+    mj2.invulnerable = 0
+    mj2.vida = 1
+    juego.jugador.rect.midbottom = (mj2.rect.centerx, mj2.rect.top + 1)
+    juego.jugador.vy = 200
+    juego.actualizar_minijefes(1 / 60)
+    assert not mj2.vivo
+    assert juego.jugador.almas == almas_antes + 5, "Derrotar al mini-jefe debe otorgar 5 almas"
+    print("mini-boss carcelero: OK")
 
 
 # --- Ejecución --- #
@@ -969,6 +1061,7 @@ if __name__ == "__main__":
     probar_titulo()
     probar_ataque_pala()
     probar_jefe_final()
+    probar_minijefe()
     probar_mapa_final()
     probar_salto_ventana_nivel_2()
     probar_salas_prueba()
