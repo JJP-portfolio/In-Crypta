@@ -100,7 +100,7 @@ def escenas_del_juego() -> list[tuple[str, Nivel]]:
                 Nivel(datos["mapa"], datos["nombre"], datos["pista"], datos["tema"]),
             )
         )
-    for numero, sala in enumerate(SALAS_PRUEBA[:3], start=1):
+    for numero, sala in enumerate(SALAS_PRUEBA, start=1):
         escenas.append(
             (
                 f"Sala {numero}",

@@ -145,6 +145,10 @@ def _index_html(destino: Path) -> None:
         html = html.replace(
             "</head>", scripts + '\t<script src="data.js" crossorigin="anonymous"></script>\n</head>'
         )
+    html = html.replace(
+        "var game = new gdjs.RuntimeGame",
+        "var game = window.runtimeGame = new gdjs.RuntimeGame"
+    )
     (destino / "index.html").write_text(html, encoding="utf-8")
 
 

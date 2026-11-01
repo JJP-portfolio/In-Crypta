@@ -103,10 +103,11 @@ def escenas_campaña() -> list[EscenaSpec]:
     return encadenadas
 
 
-def escenas_salas(cantidad: int = 3) -> list[EscenaSpec]:
-    """Las salas de prueba (los primeros ``cantidad`` escenarios)."""
+def escenas_salas(cantidad: int | None = None) -> list[EscenaSpec]:
+    """Las salas de prueba (todas las que existan en SALAS_PRUEBA por defecto)."""
+    salas = SALAS_PRUEBA if cantidad is None else SALAS_PRUEBA[:cantidad]
     specs = []
-    for indice, datos in enumerate(SALAS_PRUEBA[:cantidad], start=1):
+    for indice, datos in enumerate(salas, start=1):
         specs.append(
             EscenaSpec(
                 clave=f"sala_{indice}",
@@ -156,5 +157,5 @@ def escena_tutorial() -> EscenaSpec:
     )
 
 
-def manifiesto_completo(cantidad_salas: int = 3) -> list[EscenaSpec]:
+def manifiesto_completo(cantidad_salas: int | None = None) -> list[EscenaSpec]:
     return [escena_tutorial()] + escenas_campaña() + escenas_salas(cantidad_salas)

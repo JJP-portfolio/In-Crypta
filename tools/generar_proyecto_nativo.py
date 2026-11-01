@@ -128,12 +128,11 @@ FONT_FILE = "assets/NotoSerifDisplay-Bold.ttf"
 
 GAME_W = ANCHO
 GAME_H = ALTO
-RENDER_W = 1920
-RENDER_H = 1080
-# El zoom se deriva de la resolución: el mundo visible tiene que ser
-# exactamente ANCHO x ALTO como en el Pygame (si no, la cámara recorta
-# el nivel y el HUD inferior queda fuera de pantalla).
-GAME_ZOOM = RENDER_W / ANCHO
+RENDER_W = ANCHO
+RENDER_H = ALTO
+# Con resolución nativa 1280x720, el zoom es 1.0 (exactamente 1:1 como en Pygame,
+# sin distorsión de escala ni pixel blur).
+GAME_ZOOM = 1.0
 
 # Sacudida de cámara: la intensidad cae linealmente durante la duración
 # (camara.py::Camara.actualizar_sacudida) y el offset es aleatorio.
@@ -617,8 +616,8 @@ def acciones_sacudida(fuerza: float, duracion: float) -> list[dict]:
     ]
 
 
-def eventos_dano(alto: int, destino_muerte: str = "Derrota") -> list[dict]:
-    subeventos = [
+def subeventos_reintento(destino_muerte: str = "Derrota") -> list[dict]:
+    return [
         evento(
             [cond("NumberVariable", ["vidas", ">", "0"])],
             [
@@ -626,6 +625,7 @@ def eventos_dano(alto: int, destino_muerte: str = "Derrota") -> list[dict]:
                 accion("SetNumberVariable", ["almas_para_vida", "=", "0"]),
                 accion("SetNumberVariable", ["combo_almas", "=", "0"]),
                 accion("SetNumberVariable", ["combo_timer", "=", "0"]),
+                accion("SetNumberVariable", ["rango_mejorado", "=", "0"]),
                 accion("Scene", ["CurrentSceneName()", "no"]),
             ],
         ),
@@ -639,11 +639,16 @@ def eventos_dano(alto: int, destino_muerte: str = "Derrota") -> list[dict]:
                 accion("SetNumberVariable", ["almas_totales", "=", "0"]),
                 accion("SetNumberVariable", ["combo_almas", "=", "0"]),
                 accion("SetNumberVariable", ["combo_timer", "=", "0"]),
+                accion("SetNumberVariable", ["rango_mejorado", "=", "0"]),
                 accion_sonido("Muerte"),
                 accion("Scene", [f'"{destino_muerte}"', "no"]),
             ],
         ),
     ]
+
+
+def eventos_dano(alto: int, destino_muerte: str = "Derrota") -> list[dict]:
+    subeventos = subeventos_reintento(destino_muerte)
     return [
         evento(
             [cond("CollisionNP", ["Jugador", "Pinchos", "no"])],
@@ -949,7 +954,10 @@ def eventos_nivel(
     texto_dash_sin_pala: str | None = None,
     destino_muerte: str = "Derrota",
     reiniciar_vidas: bool = False,
+    nombres_objetos: set[str] | None = None,
 ) -> list[dict]:
+    if nombres_objetos is None:
+        nombres_objetos = {"Jugador", "Enemy", "Alma", "Pinchos", "Puerta", "GolpePala"}
     # La cámara se controla por su centro. Si el nivel es más grande que la
     # pantalla, el centro sigue al jugador entre los bordes; si es más chico,
     # el nivel queda centrado (igual que camara.py de la versión pygame).
@@ -980,7 +988,10 @@ def eventos_nivel(
         cond("KeyFromTextJustPressed", ['"LShift"']),
         cond("KeyFromTextJustPressed", ['"RShift"']),
     )
-    ataque_input = cond("KeyFromTextJustPressed", ['"a"'])
+    ataque_input = cond_or(
+        cond("KeyFromTextJustPressed", ['"a"']),
+        cond("KeyFromTextJustPressed", ['"j"']),
+    )
     pausa_input = cond_or(
         cond("KeyFromTextJustPressed", ['"Escape"']),
         cond("KeyFromTextJustPressed", ['"p"']),
@@ -988,17 +999,14 @@ def eventos_nivel(
     salto_justo = cond_or(
         cond("KeyFromTextJustPressed", ['"Space"']),
         cond("KeyFromTextJustPressed", ['"Up"']),
+        cond("KeyFromTextJustPressed", ['"w"']),
         cond("KeyFromTextJustPressed", ['"W"']),
     )
     salto_presionado = cond_or(
         cond("KeyFromTextPressed", ['"Space"']),
         cond("KeyFromTextPressed", ['"Up"']),
+        cond("KeyFromTextPressed", ['"w"']),
         cond("KeyFromTextPressed", ['"W"']),
-    )
-    salto_suelto = cond_or(
-        cond("KeyFromTextReleased", ['"Space"']),
-        cond("KeyFromTextReleased", ['"Up"']),
-        cond("KeyFromTextReleased", ['"W"']),
     )
     buffer_salto = cond("NumberObjectVariable", ["Jugador", "buffer_salto", ">", "0"])
     en_suelo_o_coyote = cond_or(
@@ -1029,6 +1037,7 @@ def eventos_nivel(
                 accion("SetNumberVariable", ["almas_para_vida", "=", "0"]),
                 accion("SetNumberVariable", ["combo_almas", "=", "0"]),
                 accion("SetNumberVariable", ["combo_timer", "=", "0"]),
+                accion("SetNumberVariable", ["rango_mejorado", "=", "0"]),
                 *(
                     [accion("SetNumberVariable", ["vidas", "=", str(VIDAS_INICIALES)])]
                     if reiniciar_vidas
@@ -1108,6 +1117,7 @@ def eventos_nivel(
         evento(
             [buffer_salto, en_suelo_o_coyote],
             [
+                accion("PlatformBehavior::SetCanJump", ["Jugador", "PlatformerObject"]),
                 accion("PlatformBehavior::SimulateJumpKey", ["Jugador", "PlatformerObject"]),
                 accion_sonido("Salto"),
                 accion("SetNumberObjectVariable", ["Jugador", "buffer_salto", "=", "0"]),
@@ -1122,20 +1132,10 @@ def eventos_nivel(
             [accion("PlatformBehavior::SimulateJumpKey", ["Jugador", "PlatformerObject"])],
         ),
 
-        # Corte de salto: si se suelta la tecla mientras el jugador sube, el
-        # salto se aborta (equivalente al CORTE_SALTO de la versión pygame).
-        evento(
-            [
-                salto_suelto,
-                cond("PlatformBehavior::IsJumping", ["Jugador", "PlatformerObject"]),
-            ],
-            [
-                accion(
-                    "PlatformBehavior::PlatformerObjectBehavior::AbortJump",
-                    ["Jugador", "PlatformerObject"],
-                ),
-            ],
-        ),
+        # Corte de salto: jumpSustainTime=0.20 en el comportamiento ya maneja
+        # el corte variable nativamente — no se necesita AbortJump manual.
+        # (El AbortJump con OR de 3 teclas causaba que el salto se cancelara
+        # de forma espuria cuando una tecla no presionada disparaba Released.)
 
         # Ataque con pala: A.
         evento(
@@ -1224,17 +1224,22 @@ def eventos_nivel(
             [accion("SetNumberObjectVariable", ["Jugador", "ataque_cd", "-", "TimeDelta()"])],
         ),
 
-        # La pala golpea a los moradores.
-        evento(
-            [cond("CollisionNP", ["GolpePala", "Enemy", "no"])],
-            [
-                accion("Delete", ["Enemy"]),
-                accion("Delete", ["GolpePala"]),
-                accion("SetNumberObjectVariable", ["Jugador", "dash_aire", "=", "1"]),
-                accion("SetNumberObjectVariable", ["Jugador", "dash_cd", "=", "0"]),
-                *acciones_sacudida(5.0, 0.12),
-            ],
-        ),
+        # La pala golpea a los moradores y enemigos vulnerables.
+        *[
+            evento(
+                [cond("CollisionNP", ["GolpePala", enemigo_tipo, "no"])],
+                [
+                    accion("Delete", [enemigo_tipo]),
+                    accion("Delete", ["GolpePala"]),
+                    accion("SetNumberObjectVariable", ["Jugador", "dash_aire", "=", "1"]),
+                    accion("SetNumberObjectVariable", ["Jugador", "dash_cd", "=", "0"]),
+                    accion_sonido("Golpe"),
+                    *acciones_sacudida(5.0, 0.12),
+                ],
+            )
+            for enemigo_tipo in ("Enemy", "EnemyMelee", "Polilla", "Arana")
+            if enemigo_tipo in nombres_objetos
+        ],
         evento(
             [cond("NumberObjectVariable", ["GolpePala", "vida", ">", "0"])],
             [accion("SetNumberObjectVariable", ["GolpePala", "vida", "-", "TimeDelta()"])],
@@ -1464,31 +1469,6 @@ def eventos_nivel(
             ],
         ),
 
-        # Patrulla de los moradores.
-        evento(
-            [
-                cond("NumberObjectVariable", ["Enemy", "dir", "=", "1"]),
-                cond("PosX", ["Enemy", ">=", "Enemy.Variable(max_x)"]),
-            ],
-            [accion("SetNumberObjectVariable", ["Enemy", "dir", "=", "-1"])],
-        ),
-        evento(
-            [
-                cond("NumberObjectVariable", ["Enemy", "dir", "=", "-1"]),
-                cond("PosX", ["Enemy", "<=", "Enemy.Variable(min_x)"]),
-            ],
-            [accion("SetNumberObjectVariable", ["Enemy", "dir", "=", "1"])],
-        ),
-        evento(
-            [],
-            [
-                accion(
-                    "PlatformBehavior::PlatformerObjectBehavior::SetCurrentSpeed",
-                    ["Enemy", "PlatformerObject", "=", "Enemy.Variable(dir) * " + str(int(VELOCIDAD_ENEMIGO))],
-                )
-            ],
-        ),
-
         # Almas con sistema de combo (paridad audio.py commit 020b19c).
         # ventana_combo = 1.3 s; combo_almas se incrementa por cada alma
         # consecutiva y selecciona sfx_alma_N (N de 1 a 6 toneado por semitono).
@@ -1546,63 +1526,84 @@ def eventos_nivel(
         ),
 
         # Pala recogible.
-        evento(
-            [cond("CollisionNP", ["Jugador", "PalaRecogible", "no"])],
-            [
-                accion("Delete", ["PalaRecogible"]),
-                accion("SetNumberObjectVariable", ["Jugador", "tiene_pala", "=", "1"]),
-                accion_sonido("PalaRecoger"),
-            ],
-        ),
+        *([
+            evento(
+                [cond("CollisionNP", ["Jugador", "PalaRecogible", "no"])],
+                [
+                    accion("Delete", ["PalaRecogible"]),
+                    accion("SetNumberObjectVariable", ["Jugador", "tiene_pala", "=", "1"]),
+                    accion_sonido("PalaRecoger"),
+                ],
+            )
+        ] if "PalaRecogible" in nombres_objetos else []),
+
+        # Power-up de rango de ataque (paridad con Pygame 'X').
+        *([
+            evento(
+                [cond("CollisionNP", ["Jugador", "PowerUpRango", "no"])],
+                [
+                    accion("Delete", ["PowerUpRango"]),
+                    accion("SetNumberVariable", ["rango_mejorado", "=", "1"]),
+                    accion_sonido("Meta"),
+                    *acciones_sacudida(4.0, 0.12),
+                    accion("TextObject::String", ["HUD_Aviso", "=", '"¡ALCANCE DE PALA MEJORADO!"']),
+                ],
+            )
+        ] if "PowerUpRango" in nombres_objetos else []),
 
         # Pisotón: el jugador viene desde arriba y ya tiene la pala.
         # Paridad audio.py: reproduce sfx_stomp + sacudida 6/0.18 (commit 020b19c).
-        evento(
-            [
-                cond("CollisionNP", ["Jugador", "Enemy", "no"]),
-                cond("PosY", ["Jugador", "<", "Enemy.Y() - 10"]),
-                cond("NumberObjectVariable", ["Jugador", "tiene_pala", "=", "1"]),
-            ],
-            [
-                accion("Delete", ["Enemy"]),
-                accion("SetNumberObjectVariable", ["Jugador", "dash_aire", "=", "1"]),
-                accion("SetNumberObjectVariable", ["Jugador", "dash_cd", "=", "0"]),
-                accion_sonido("Stomp"),
-                *acciones_sacudida(6.0, 0.18),
-            ],
-        ),
+        *[
+            evento(
+                [
+                    cond("CollisionNP", ["Jugador", enemigo_tipo, "no"]),
+                    cond("PosY", ["Jugador", "<", f"{enemigo_tipo}.Y() - 10"]),
+                    cond("NumberObjectVariable", ["Jugador", "tiene_pala", "=", "1"]),
+                ],
+                [
+                    accion("Delete", [enemigo_tipo]),
+                    accion("SetNumberObjectVariable", ["Jugador", "dash_aire", "=", "1"]),
+                    accion("SetNumberObjectVariable", ["Jugador", "dash_cd", "=", "0"]),
+                    accion_sonido("Stomp"),
+                    *acciones_sacudida(6.0, 0.18),
+                ],
+            )
+            for enemigo_tipo in ("Enemy", "EnemyMelee", "Polilla", "Arana")
+            if enemigo_tipo in nombres_objetos
+        ],
 
         # Daño por enemigo: contacto lateral o sin pala.
-        evento(
-            [
-                cond("CollisionNP", ["Jugador", "Enemy", "no"]),
-                cond("PosY", ["Jugador", ">=", "Enemy.Y() - 10"]),
-            ],
-            [
-                accion("SetNumberVariable", ["vidas", "-", "1"]),
-                accion_sonido("Dano"),
-            ],
-            [
-                evento(
-                    [cond("NumberVariable", ["vidas", ">", "0"])],
-                    [accion("Scene", ["CurrentSceneName()", "no"])],
-                ),
-                evento(
-                    [cond("NumberVariable", ["vidas", "<=", "0"])],
-                    [
-                        accion("SetNumberVariable", ["muertes_totales", "+", "1"]),
-                        accion("SetNumberVariable", ["vidas", "=", str(VIDAS_INICIALES)]),
-                        accion("SetNumberVariable", ["almas", "=", "0"]),
-                        accion("SetNumberVariable", ["almas_para_vida", "=", "0"]),
-                        accion("SetNumberVariable", ["almas_totales", "=", "0"]),
-                        accion("SetNumberVariable", ["combo_almas", "=", "0"]),
-                        accion("SetNumberVariable", ["combo_timer", "=", "0"]),
-                        accion_sonido("Muerte"),
-                        accion("Scene", [f'"{destino_muerte}"', "no"]),
-                    ],
-                ),
-            ],
-        ),
+        *[
+            evento(
+                [
+                    cond("CollisionNP", ["Jugador", enemigo_tipo, "no"]),
+                    cond("PosY", ["Jugador", ">=", f"{enemigo_tipo}.Y() - 10"]),
+                ],
+                [
+                    accion("SetNumberVariable", ["vidas", "-", "1"]),
+                    accion_sonido("Dano"),
+                    *acciones_sacudida(9.0, 0.22),
+                ],
+                subeventos_reintento(destino_muerte),
+            )
+            for enemigo_tipo in ("Enemy", "EnemyMelee", "Polilla", "Arana")
+            if enemigo_tipo in nombres_objetos
+        ],
+
+        # Daño por obstáculos voladores o tótems.
+        *[
+            evento(
+                [cond("CollisionNP", ["Jugador", obstaculo, "no"])],
+                [
+                    accion("SetNumberVariable", ["vidas", "-", "1"]),
+                    accion_sonido("Dano"),
+                    *acciones_sacudida(9.0, 0.22),
+                ],
+                subeventos_reintento(destino_muerte),
+            )
+            for obstaculo in ("Cuervo", "Totem")
+            if obstaculo in nombres_objetos
+        ],
 
         # Pinchos y caída al vacío.
         *eventos_dano(nivel.alto, destino_muerte=destino_muerte),
@@ -1707,13 +1708,11 @@ def objetos_y_instancias_escena(escena_modelo: Escena) -> tuple[list[dict], list
         objeto_jugador(),
         objeto_sprite("Puerta", "Puerta"),
         objeto_sprite("HUD_Barra", "BarraHUD"),
-        objeto_sprite("HUD_BarraInferior", "BarraPista"),
         objeto_texto("HUD_Nivel", spec.titulo, 20, HUESO, "center"),
         objeto_texto("HUD_Almas", "ALMAS 0 · VIDA +0/10", 18, AMARILLO),
         objeto_texto("HUD_Vidas", "VIDAS 3/5", 18, ROJO),
         objeto_texto("HUD_Aviso", "", 12, ROJO),
         objeto_texto("HUD_Dash", spec.hud, 12, TURQUESA),
-        objeto_texto("HUD_Pista", "\n".join(textwrap.wrap(spec.pista, width=84)), 15, CREMA, "center"),
         objeto_jefe(),
         objeto_onda(),
         objeto_onda_der(),
@@ -1739,7 +1738,13 @@ def objetos_y_instancias_escena(escena_modelo: Escena) -> tuple[list[dict], list
     )
     # El jugador aparece exactamente donde el juego lo pone.
     instancias.append(
-        instancia("Jugador", nivel.spawn[0], nivel.spawn[1], 6, tam=(PLAYER_W, PLAYER_H))
+        instancia(
+            "Jugador",
+            nivel.spawn[0],
+            nivel.spawn[1],
+            6,
+            tam=(PLAYER_W, PLAYER_H),
+        )
     )
     instancias.extend(instancias_entidades(escena_modelo))
     instancias.extend(instancias_hud())
@@ -1747,20 +1752,20 @@ def objetos_y_instancias_escena(escena_modelo: Escena) -> tuple[list[dict], list
 
 
 def instancias_hud() -> list[dict]:
-    """Instancias del HUD (capa UI, tamaño de la vista del juego: 1280x720)."""
+    """Instancias del HUD superior (capa UI, tamaño de la vista del juego: 1280x720)."""
     return [
         instancia("HUD_Barra", 0, 0, 0, capa="UI", tam=(GAME_W, 52)),
-        instancia("HUD_BarraInferior", 0, GAME_H - 58, 0, capa="UI", tam=(GAME_W, 58)),
         instancia("HUD_Nivel", 173, 12, 1, capa="UI", tam=(933, 40)),
         instancia("HUD_Almas", 24, 19, 1, capa="UI"),
         instancia("HUD_Vidas", GAME_W - 133, 19, 1, capa="UI"),
         instancia("HUD_Aviso", 827, 45, 1, capa="UI"),
         instancia("HUD_Dash", 24, 47, 1, capa="UI"),
-        instancia("HUD_Pista", 27, GAME_H - 69, 1, capa="UI", tam=(1227, 61)),
     ]
 
 
-def escena_titulo() -> dict:
+def escena_titulo(specs_campana: list | None = None) -> dict:
+    if specs_campana is None:
+        specs_campana = escenas_campaña()
     objetos = [
         objeto_sprite("FondoTitulo", "FondoTitulo"),
         objeto_texto(
@@ -1793,6 +1798,16 @@ def escena_titulo() -> dict:
                 accion("Scene", ['"Nivel 1"', "no"]),
             ],
         ),
+        *[
+            evento(
+                [cond("KeyFromTextJustPressed", [f'"{i}"'])],
+                [
+                    accion_sonido("UI"),
+                    accion("Scene", [f'"{spec.nombre}"', "no"]),
+                ],
+            )
+            for i, spec in enumerate(specs_campana, start=1)
+        ],
         evento(
             [cond("KeyFromTextJustPressed", ['"u"'])],
             [
@@ -1850,7 +1865,14 @@ def escena_victoria() -> dict:
     return escena("Victoria", objetos, instancias, eventos)
 
 
-def escena_derrota() -> dict:
+def escena_derrota(
+    specs_campana: list | None = None,
+    specs_salas: list | None = None,
+) -> dict:
+    if specs_campana is None:
+        specs_campana = escenas_campaña()
+    if specs_salas is None:
+        specs_salas = escenas_salas()
     pw, ph = 680, 440
     px = (GAME_W - pw) // 2
     py = (GAME_H - ph) // 2
@@ -1912,33 +1934,23 @@ def escena_derrota() -> dict:
             reiniciar_partida,
             [
                 evento(
-                    [cond("NumberVariable", ["nivel_actual", "=", "1"])],
-                    [accion("Scene", ['"Nivel 1"', "no"])],
-                ),
-                evento(
-                    [cond("NumberVariable", ["nivel_actual", "=", "2"])],
-                    [accion("Scene", ['"Nivel 2"', "no"])],
-                ),
-                evento(
-                    [cond("NumberVariable", ["nivel_actual", "=", "3"])],
-                    [accion("Scene", ['"Nivel 3"', "no"])],
-                ),
-                evento(
                     [cond("NumberVariable", ["nivel_actual", "=", "0"])],
                     [accion("Scene", ['"Tutorial"', "no"])],
                 ),
-                evento(
-                    [cond("NumberVariable", ["nivel_actual", "=", "11"])],
-                    [accion("Scene", ['"Sala 1"', "no"])],
-                ),
-                evento(
-                    [cond("NumberVariable", ["nivel_actual", "=", "12"])],
-                    [accion("Scene", ['"Sala 2"', "no"])],
-                ),
-                evento(
-                    [cond("NumberVariable", ["nivel_actual", "=", "13"])],
-                    [accion("Scene", ['"Sala 3"', "no"])],
-                ),
+                *[
+                    evento(
+                        [cond("NumberVariable", ["nivel_actual", "=", str(i)])],
+                        [accion("Scene", [f'"{spec.nombre}"', "no"])],
+                    )
+                    for i, spec in enumerate(specs_campana, start=1)
+                ],
+                *[
+                    evento(
+                        [cond("NumberVariable", ["nivel_actual", "=", str(10 + i)])],
+                        [accion("Scene", [f'"{spec.nombre}"', "no"])],
+                    )
+                    for i, spec in enumerate(specs_salas, start=1)
+                ],
             ],
         ),
         evento(
@@ -2094,94 +2106,67 @@ def escena_pausa() -> dict:
     return pausa
 
 
-def escena_salas() -> dict:
+def escena_salas(specs_salas: list | None = None) -> dict:
+    if specs_salas is None:
+        specs_salas = escenas_salas()
+    n = len(specs_salas)
+
     objetos = [
         objeto_sprite("FondoSalas", "FondoPausa"),
         objeto_texto("Salas_Titulo", "SALAS DE PRUEBA", 46, ORO, "center"),
         objeto_texto("Salas_Sub", "MECÁNICAS AISLADAS PARA EVALUACIÓN", 17, NIEBLA, "center"),
-        objeto_texto("Salas_Opcion1", "", 24, HUESO, "center"),
-        objeto_texto("Salas_Opcion2", "", 24, HUESO, "center"),
-        objeto_texto("Salas_Opcion3", "", 24, HUESO, "center"),
+    ]
+    for i in range(1, n + 1):
+        objetos.append(objeto_texto(f"Salas_Opcion{i}", "", 22 if n > 4 else 24, HUESO, "center"))
+    objetos.extend([
         objeto_texto("Salas_Desc1", "", 15, CREMA, "center"),
         objeto_texto("Salas_Desc2", "", 15, CREMA, "center"),
         objeto_texto(
             "Salas_Ayuda",
-            "FLECHAS: ELEGIR · ENTER: ENTRAR · 1/2/3: DIRECTO · ESC: VOLVER",
+            f"FLECHAS: ELEGIR · ENTER: ENTRAR · 1..{min(n, 9)}: DIRECTO · ESC: VOLVER",
             14,
             NIEBLA,
             "center",
         ),
-    ]
+    ])
+
     instancias = [
         instancia("FondoSalas", 0, 0, 0, tam=(GAME_W, GAME_H)),
-        instancia("Salas_Titulo", 0, 74, 2, "UI", tam=(GAME_W, 60)),
-        instancia("Salas_Sub", 0, 132, 2, "UI", tam=(GAME_W, 30)),
-        instancia("Salas_Opcion1", 0, 214, 3, "UI", tam=(GAME_W, 40)),
-        instancia("Salas_Opcion2", 0, 274, 3, "UI", tam=(GAME_W, 40)),
-        instancia("Salas_Opcion3", 0, 334, 3, "UI", tam=(GAME_W, 40)),
-        instancia("Salas_Desc1", 0, 404, 3, "UI", tam=(GAME_W, 24)),
-        instancia("Salas_Desc2", 0, 428, 3, "UI", tam=(GAME_W, 24)),
-        instancia("Salas_Ayuda", 0, 494, 3, "UI", tam=(GAME_W, 26)),
+        instancia("Salas_Titulo", 0, 50, 2, "UI", tam=(GAME_W, 60)),
+        instancia("Salas_Sub", 0, 108, 2, "UI", tam=(GAME_W, 30)),
     ]
-    opcion_1 = [
-        accion("TextObject::String", ["Salas_Opcion1", "=", '">> 1 · SALA 1 · MOVIMIENTO <<"']),
-        accion("TextObject::String", ["Salas_Opcion2", "=", '"2 · SALA 2 · PALA Y ATAQUE"']),
-        accion("TextObject::String", ["Salas_Opcion3", "=", '"3 · SALA 3 · CUSTODIO"']),
-        accion(
-            "TextObject::String",
-            [
-                "Salas_Desc1",
-                "=",
-                '"MOVIMIENTO, SALTO Y DASH. SIN PALA: ESQUIVÁ PINCHOS Y MORADORES."',
-            ],
-        ),
-        accion(
-            "TextObject::String",
-            ["Salas_Desc2", "=", '"EL SEGUNDO ABISMO PIDE SALTO + SHIFT."'],
-        ),
-    ]
-    opcion_2 = [
-        accion("TextObject::String", ["Salas_Opcion1", "=", '"1 · SALA 1 · MOVIMIENTO"']),
-        accion("TextObject::String", ["Salas_Opcion2", "=", '">> 2 · SALA 2 · PALA Y ATAQUE <<"']),
-        accion("TextObject::String", ["Salas_Opcion3", "=", '"3 · SALA 3 · CUSTODIO"']),
-        accion(
-            "TextObject::String",
-            [
-                "Salas_Desc1",
-                "=",
-                '"RECOGÉ LA PALA, ATACÁ CON A Y CRUZÁ LAS PLATAFORMAS."',
-            ],
-        ),
-        accion(
-            "TextObject::String",
-            [
-                "Salas_Desc2",
-                "=",
-                '"EL GOLPE RECARGA EL DASH AÉREO: PROBÁ DASH + A + DASH."',
-            ],
-        ),
-    ]
-    opcion_3 = [
-        accion("TextObject::String", ["Salas_Opcion1", "=", '"1 · SALA 1 · MOVIMIENTO"']),
-        accion("TextObject::String", ["Salas_Opcion2", "=", '"2 · SALA 2 · PALA Y ATAQUE"']),
-        accion("TextObject::String", ["Salas_Opcion3", "=", '">> 3 · SALA 3 · CUSTODIO <<"']),
-        accion(
-            "TextObject::String",
-            [
-                "Salas_Desc1",
-                "=",
-                '"TENÉS LA PALA. SALTÁ LAS ONDAS DEL CUSTODIO Y GOLPEALO"',
-            ],
-        ),
-        accion(
-            "TextObject::String",
-            [
-                "Salas_Desc2",
-                "=",
-                '"CUANDO SE ARRODILLA. LA SALIDA SE ABRE AL VENCERLO."',
-            ],
-        ),
-    ]
+    row_h = 44 if n > 4 else 55
+    y_start = 145
+    for i in range(1, n + 1):
+        instancias.append(
+            instancia(f"Salas_Opcion{i}", 0, y_start + (i - 1) * row_h, 3, "UI", tam=(GAME_W, row_h - 6))
+        )
+    desc_y = y_start + n * row_h + 12
+    instancias.extend([
+        instancia("Salas_Desc1", 0, desc_y, 3, "UI", tam=(GAME_W, 24)),
+        instancia("Salas_Desc2", 0, desc_y + 26, 3, "UI", tam=(GAME_W, 24)),
+        instancia("Salas_Ayuda", 0, GAME_H - 45, 3, "UI", tam=(GAME_W, 26)),
+    ])
+
+    eventos_opciones = []
+    for k, spec in enumerate(specs_salas, start=1):
+        acciones_k = []
+        for j, s_other in enumerate(specs_salas, start=1):
+            if j == k:
+                texto_item = f'">> {j} · {s_other.titulo} <<"'
+            else:
+                texto_item = f'"{j} · {s_other.titulo}"'
+            acciones_k.append(accion("TextObject::String", [f"Salas_Opcion{j}", "=", texto_item]))
+        limpio_pista = spec.pista.replace('"', "'")
+        lines = textwrap.wrap(limpio_pista, width=86)
+        d1 = lines[0] if lines else ""
+        d2 = lines[1] if len(lines) > 1 else ""
+        acciones_k.append(accion("TextObject::String", ["Salas_Desc1", "=", f'"{d1}"']))
+        acciones_k.append(accion("TextObject::String", ["Salas_Desc2", "=", f'"{d2}"']))
+        eventos_opciones.append(
+            evento([cond("NumberVariable", ["menu_opcion", "=", str(k)])], acciones_k)
+        )
+
     arriba = cond_or(
         cond("KeyFromTextJustPressed", ['"Up"']),
         cond("KeyFromTextJustPressed", ['"w"']),
@@ -2194,6 +2179,7 @@ def escena_salas() -> dict:
         cond("KeyFromTextJustPressed", ['"Escape"']),
         cond("KeyFromTextJustPressed", ['"t"']),
     )
+
     eventos = [
         evento(
             [cond("SceneJustBegins", [""])],
@@ -2202,9 +2188,7 @@ def escena_salas() -> dict:
                 *acciones_camara_inicial(),
             ],
         ),
-        evento([cond("NumberVariable", ["menu_opcion", "=", "1"])], opcion_1),
-        evento([cond("NumberVariable", ["menu_opcion", "=", "2"])], opcion_2),
-        evento([cond("NumberVariable", ["menu_opcion", "=", "3"])], opcion_3),
+        *eventos_opciones,
         evento(
             [
                 arriba,
@@ -2212,7 +2196,7 @@ def escena_salas() -> dict:
             ],
             [
                 accion_sonido("UI"),
-                accion("SetNumberVariable", ["menu_opcion", "=", "3"]),
+                accion("SetNumberVariable", ["menu_opcion", "=", str(n)]),
             ],
         ),
         evento(
@@ -2228,7 +2212,7 @@ def escena_salas() -> dict:
         evento(
             [
                 abajo,
-                cond("NumberVariable", ["menu_opcion", "=", "3"]),
+                cond("NumberVariable", ["menu_opcion", "=", str(n)]),
             ],
             [
                 accion_sonido("UI"),
@@ -2238,64 +2222,36 @@ def escena_salas() -> dict:
         evento(
             [
                 abajo,
-                cond("NumberVariable", ["menu_opcion", "<", "3"]),
+                cond("NumberVariable", ["menu_opcion", "<", str(n)]),
             ],
             [
                 accion_sonido("UI"),
                 accion("SetNumberVariable", ["menu_opcion", "+", "1"]),
             ],
         ),
-        evento(
-            [
-                cond("KeyFromTextJustPressed", ['"Return"']),
-                cond("NumberVariable", ["menu_opcion", "=", "1"]),
-            ],
-            [
-                accion_sonido("UI"),
-                accion("Scene", ['"Sala 1"', "no"]),
-            ],
-        ),
-        evento(
-            [
-                cond("KeyFromTextJustPressed", ['"Return"']),
-                cond("NumberVariable", ["menu_opcion", "=", "2"]),
-            ],
-            [
-                accion_sonido("UI"),
-                accion("Scene", ['"Sala 2"', "no"]),
-            ],
-        ),
-        evento(
-            [
-                cond("KeyFromTextJustPressed", ['"Return"']),
-                cond("NumberVariable", ["menu_opcion", "=", "3"]),
-            ],
-            [
-                accion_sonido("UI"),
-                accion("Scene", ['"Sala 3"', "no"]),
-            ],
-        ),
-        evento(
-            [cond("KeyFromTextJustPressed", ['"1"'])],
-            [
-                accion_sonido("UI"),
-                accion("Scene", ['"Sala 1"', "no"]),
-            ],
-        ),
-        evento(
-            [cond("KeyFromTextJustPressed", ['"2"'])],
-            [
-                accion_sonido("UI"),
-                accion("Scene", ['"Sala 2"', "no"]),
-            ],
-        ),
-        evento(
-            [cond("KeyFromTextJustPressed", ['"3"'])],
-            [
-                accion_sonido("UI"),
-                accion("Scene", ['"Sala 3"', "no"]),
-            ],
-        ),
+        *[
+            evento(
+                [
+                    cond("KeyFromTextJustPressed", ['"Return"']),
+                    cond("NumberVariable", ["menu_opcion", "=", str(k)]),
+                ],
+                [
+                    accion_sonido("UI"),
+                    accion("Scene", [f'"{spec.nombre}"', "no"]),
+                ],
+            )
+            for k, spec in enumerate(specs_salas, start=1)
+        ],
+        *[
+            evento(
+                [cond("KeyFromTextJustPressed", [f'"{k}"'])],
+                [
+                    accion_sonido("UI"),
+                    accion("Scene", [f'"{spec.nombre}"', "no"]),
+                ],
+            )
+            for k, spec in enumerate(specs_salas[:9], start=1)
+        ],
         evento(
             [volver],
             [
@@ -2307,6 +2263,7 @@ def escena_salas() -> dict:
     salas = escena("Salas", objetos, instancias, eventos)
     salas["variables"] = [{"name": "menu_opcion", "type": "number", "value": 1}]
     return salas
+
 
 def escena_sala(escena_modelo: Escena) -> dict:
     """Sala de prueba: se construye igual que un nivel y vuelve al menú."""
@@ -2327,6 +2284,7 @@ def escena_sala(escena_modelo: Escena) -> dict:
         texto_dash_sin_pala=f'"{spec.hud_sin_pala}"',
         destino_muerte=spec.destino_muerte,
         reiniciar_vidas=spec.reiniciar_vidas,
+        nombres_objetos={obj["name"] for obj in objetos},
     )
     eventos.extend(reglas_escena(escena_modelo))
     return escena(spec.nombre, objetos, instancias, eventos)
@@ -2445,6 +2403,12 @@ def construir_proyecto(escenas: list[Escena]) -> dict:
     base["resources"] = {"resources": recursos}
     base["objects"] = []
     base["objectsGroups"] = []
+    specs_campana = [
+        e.spec
+        for e in escenas
+        if not e.spec.es_sala and not getattr(e.spec, "es_tutorial", False)
+    ]
+    specs_salas = [e.spec for e in escenas if e.spec.es_sala]
     base["variables"] = [
         {"name": "vidas", "type": "number", "value": VIDAS_INICIALES},
         {"name": "almas", "type": "number", "value": 0},
@@ -2461,17 +2425,16 @@ def construir_proyecto(escenas: list[Escena]) -> dict:
         {"name": "cam_y", "type": "number", "value": GAME_H // 2},
         {"name": "sacudida_f", "type": "number", "value": 0},
         {"name": "sacudida_t", "type": "number", "value": 0},
+        {"name": "rango_mejorado", "type": "number", "value": 0},
     ]
     base["layouts"] = [
-        escena_titulo(),
+        escena_titulo(specs_campana),
         escena_pausa(),
-        escena_derrota(),
+        escena_derrota(specs_campana, specs_salas),
         escena_victoria(),
-        escena_salas(),
+        escena_salas(specs_salas),
     ]
-    total_campana = sum(
-        1 for e in escenas if not e.spec.es_sala and not getattr(e.spec, "es_tutorial", False)
-    )
+    total_campana = len(specs_campana)
     indice = 0
     for escena_modelo in escenas:
         spec = escena_modelo.spec
@@ -2489,6 +2452,7 @@ def construir_proyecto(escenas: list[Escena]) -> dict:
                 texto_dash_sin_pala=f'"{spec.hud_sin_pala}"',
                 destino_muerte=spec.destino_muerte,
                 reiniciar_vidas=spec.reiniciar_vidas,
+                nombres_objetos={obj["name"] for obj in objetos},
             )
             eventos.extend(reglas_escena(escena_modelo))
             base["layouts"].append(escena(spec.nombre, objetos, instancias, eventos))
@@ -2504,6 +2468,7 @@ def construir_proyecto(escenas: list[Escena]) -> dict:
             texto_dash_sin_pala=f'"{spec.hud_sin_pala}"',
             destino_muerte=spec.destino_muerte,
             reiniciar_vidas=spec.reiniciar_vidas,
+            nombres_objetos={obj["name"] for obj in objetos},
         )
         eventos.extend(reglas_escena(escena_modelo))
         base["layouts"].append(escena(spec.nombre, objetos, instancias, eventos))

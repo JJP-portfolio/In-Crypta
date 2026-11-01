@@ -1,23 +1,38 @@
 #!/usr/bin/env python3
-"""Exporta IN CRYPTA a un JSON que consume el runtime de GDevelop."""
+"""Exporta IN CRYPTA completo a un JSON que consume el runtime JS de GDevelop.
+
+Versión 2: exporta TODAS las entidades del juego (plataformas, palas,
+power-ups, tótems, cuervos, polillas, arañas, enemigos melee, jefes)
+además de los tipos básicos.  Si el juego agrega una entidad nueva,
+bastará con agregarla en `exportar_nivel()`.
+
+Sin cambiar este archivo, el runtime JS en runtime_gdevelop.js
+también puede consumir el JSON extendido.
+"""
 
 from __future__ import annotations
 
 import argparse
 import json
 import math
+import os
 import sys
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ))
 
-import config
-from nivel import Nivel
-from niveles import NIVELES
+os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
+
+import pygame  # noqa: E402
+
+import config  # noqa: E402
+from nivel import Nivel  # noqa: E402
+from niveles import NIVELES, SALAS_PRUEBA, NIVEL_TUTORIAL  # noqa: E402
 
 FORMATO = "incrypta.gdevelop-levels"
-VERSION = 1
+VERSION = 2
 
 
 def color_hex(color):
@@ -37,6 +52,8 @@ def rect_dict(rect, sufijo, indice):
 def reglas():
     return {
         "vidas_iniciales": config.VIDAS_INICIALES,
+        "vidas_maximas": config.VIDAS_MAXIMAS,
+        "almas_por_vida": config.ALMAS_POR_VIDA,
         "gravedad": config.GRAVEDAD,
         "salto": config.SALTO,
         "velocidad": config.VELOCIDAD,
@@ -51,6 +68,14 @@ def reglas():
         "dash_duracion": config.DASH_DURACION,
         "dash_cooldown": config.DASH_COOLDOWN,
         "dash_usos_aire": config.DASH_USOS_AIRE,
+        "ataque_duracion": config.ATAQUE_DURACION,
+        "ataque_cooldown": config.ATAQUE_COOLDOWN,
+        "ataque_alcance": config.ATAQUE_ALCANCE,
+        "ataque_alto": config.ATAQUE_ALTO,
+        "ataque_alcance_mejorado": config.ATAQUE_ALCANCE_MEJORADO,
+        "jefe_vida": config.JEFE_VIDA,
+        "jefe_velocidad": config.JEFE_VELOCIDAD,
+        "jefe_onda_velocidad": config.JEFE_ONDA_VELOCIDAD,
         "fps": config.FPS,
     }
 
@@ -61,6 +86,8 @@ def tamanos():
         "jugador": {"w": config.JUGADOR_ANCHO, "h": config.JUGADOR_ALTO},
         "enemigo": {"w": config.ENEMIGO_ANCHO, "h": config.ENEMIGO_ALTO},
         "alma": {"w": 16, "h": 16},
+        "pala": {"w": 20, "h": 30},
+        "jefe": {"w": config.JEFE_ANCHO, "h": config.JEFE_ALTO},
     }
 
 
@@ -103,15 +130,24 @@ def diseno():
     }
 
 
-def exportar_nivel(indice, datos):
-    nivel = Nivel(
-        datos["mapa"],
-        datos["nombre"],
-        datos["pista"],
-        datos.get("tema", "camposanto"),
-    )
-    prefijo = f"n{indice + 1}"
+def _entidad_patrulla(entidad, prefijo, indice, tipo="enemigo"):
+    """Serializa una entidad con patrulla (mínimo-máximo X)."""
+    return {
+        "id": f"{prefijo}-{tipo}-{indice:03d}",
+        "kind": tipo,
+        "x": entidad.rect.x,
+        "y": entidad.rect.y,
+        "w": entidad.rect.width,
+        "h": entidad.rect.height,
+        "patrol_min_x": entidad.minimo_x,
+        "patrol_max_x": entidad.maximo_x,
+        "direction": entidad.direccion,
+        "speed": config.VELOCIDAD_ENEMIGO,
+    }
 
+
+def exportar_nivel(prefijo, nivel, pala_inicial=False):
+    """Exporta un nivel (o sala) a su representación JSON completa."""
     solidos = [
         rect_dict(rect, f"{prefijo}-solido", i + 1)
         for i, rect in enumerate(nivel.solidos)
@@ -129,27 +165,120 @@ def exportar_nivel(indice, datos):
         item = rect_dict(decoracion["rect"], f"{prefijo}-decoracion", i + 1)
         item["type"] = decoracion["tipo"]
         decoraciones.append(item)
+
+    # Enemigos básicos (E)
     enemigos = [
+        _entidad_patrulla(e, prefijo, i + 1, "enemigo")
+        for i, e in enumerate(nivel.enemigos)
+    ]
+    # Enemigos melee (L)
+    enemigos_melee = [
+        _entidad_patrulla(e, prefijo, i + 1, "enemigo_melee")
+        for i, e in enumerate(nivel.enemigos_melee)
+    ]
+    # Polillas (m)
+    polillas = [
+        _entidad_patrulla(e, prefijo, i + 1, "polilla")
+        for i, e in enumerate(nivel.polillas)
+    ]
+    # Arañas (A)
+    aranias = [
+        _entidad_patrulla(e, prefijo, i + 1, "arana")
+        for i, e in enumerate(nivel.aranias)
+    ]
+    # Cuervos (C)
+    cuervos = [
         {
-            "id": f"{prefijo}-enemigo-{i + 1:03d}",
-            "x": enemigo.rect.x,
-            "y": enemigo.rect.y,
-            "w": enemigo.rect.width,
-            "h": enemigo.rect.height,
-            "patrol_min_x": enemigo.minimo_x,
-            "patrol_max_x": enemigo.maximo_x,
-            "direction": enemigo.direccion,
-            "speed": config.VELOCIDAD_ENEMIGO,
+            "id": f"{prefijo}-cuervo-{i + 1:03d}",
+            "kind": "cuervo",
+            "x": e.rect.x,
+            "y": e.rect.y,
+            "w": e.rect.width,
+            "h": e.rect.height,
+            "center_x": e.centro_x,
+            "center_y": e.centro_y,
+            "radius": e.radio,
+            "speed": e.velocidad,
         }
-        for i, enemigo in enumerate(nivel.enemigos)
+        for i, e in enumerate(nivel.cuervos)
+    ]
+    # Tótems (O)
+    totems = [
+        {
+            "id": f"{prefijo}-totem-{i + 1:03d}",
+            "kind": "totem",
+            "x": t.rect.x,
+            "y": t.rect.y,
+            "w": t.rect.width,
+            "h": t.rect.height,
+        }
+        for i, t in enumerate(nivel.totems)
+    ]
+    # Palas recogibles (J)
+    palas = [
+        {
+            "id": f"{prefijo}-pala-{i + 1:03d}",
+            "kind": "pala",
+            "x": p.rect.x,
+            "y": p.rect.y,
+            "w": p.rect.width,
+            "h": p.rect.height,
+        }
+        for i, p in enumerate(nivel.palas)
+    ]
+    # Power-ups de rango (X)
+    power_ups_rango = [
+        {
+            "id": f"{prefijo}-powerup_rango-{i + 1:03d}",
+            "kind": "power_up_rango",
+            "x": p.rect.x,
+            "y": p.rect.y,
+            "w": p.rect.width,
+            "h": p.rect.height,
+        }
+        for i, p in enumerate(nivel.power_ups_rango)
+    ]
+    # Plataformas móviles (Q/V)
+    plataformas = [
+        {
+            "id": f"{prefijo}-plataforma-{i + 1:03d}",
+            "kind": "plataforma",
+            "x": p.rect.x,
+            "y": p.rect.y,
+            "w": p.rect.width,
+            "h": p.rect.height,
+            "origin_x": p.inicial_rect.x,
+            "origin_y": p.inicial_rect.y,
+            "amplitude": p.amplitud,
+            "speed": p.velocidad,
+            "phase": round(p.fase, 4),
+            "axis": "h" if p.eje == "h" else "v",
+        }
+        for i, p in enumerate(nivel.plataformas)
+    ]
+    # Jefe (K)
+    jefes = [
+        {
+            "id": f"{prefijo}-jefe-{i + 1:03d}",
+            "kind": "jefe",
+            "x": j.rect.x,
+            "y": j.rect.y,
+            "w": j.rect.width,
+            "h": j.rect.height,
+            "vida": j.vida,
+            "fase": j.fase,
+            "min_x": j.minimo_x,
+            "max_x": j.maximo_x,
+        }
+        for i, j in enumerate(nivel.jefes)
     ]
 
     return {
-        "index": indice + 1,
-        "id": f"nivel-{indice + 1}",
-        "name": datos["nombre"],
-        "theme": datos.get("tema", "camposanto"),
-        "hint": datos["pista"],
+        "id": prefijo,
+        "name": nivel.nombre,
+        "theme": nivel.tema,
+        "hint": nivel.pista,
+        "pala_inicial": pala_inicial,
         "size": {
             "columns": nivel.columnas,
             "rows": nivel.num_filas,
@@ -170,15 +299,57 @@ def exportar_nivel(indice, datos):
         },
         "solids": solidos,
         "souls": almas,
-        "enemies": enemigos,
         "hazards": peligros,
         "decorations": decoraciones,
-        "total_souls": len(nivel.almas),
+        "enemies": enemigos,
+        "enemies_melee": enemigos_melee,
+        "moths": polillas,
+        "spiders": aranias,
+        "crows": cuervos,
+        "totems": totems,
+        "shovels": palas,
+        "powerups_range": power_ups_rango,
+        "platforms": plataformas,
+        "bosses": jefes,
+        "total_souls": nivel.total_almas,
         "ascii": "\n".join(nivel.filas),
     }
 
 
 def construir_documento():
+    pygame.init()
+
+    # Tutorial
+    tutorial_nivel = Nivel(NIVEL_TUTORIAL, "Ritual del Sepulturero", "", "camposanto")
+    tutorial = exportar_nivel("tutorial", tutorial_nivel, pala_inicial=False)
+
+    # Niveles de campaña
+    niveles = []
+    for indice, datos in enumerate(NIVELES, start=1):
+        nivel = Nivel(
+            datos["mapa"],
+            datos["nombre"],
+            datos["pista"],
+            datos.get("tema", "camposanto"),
+        )
+        pala_inicial = indice >= 3  # igual que juego.py: tiene_pala = indice >= 2 (base 0)
+        niv = exportar_nivel(f"nivel_{indice}", nivel, pala_inicial=pala_inicial)
+        niv["index"] = indice
+        niveles.append(niv)
+
+    # Salas de prueba
+    salas = []
+    for indice, datos in enumerate(SALAS_PRUEBA, start=1):
+        nivel = Nivel(
+            datos["mapa"],
+            datos["nombre"],
+            datos["pista"],
+            datos.get("tema", "camposanto"),
+        )
+        sala = exportar_nivel(f"sala_{indice}", nivel, pala_inicial=bool(datos.get("pala")))
+        sala["index"] = indice
+        salas.append(sala)
+
     return {
         "format": FORMATO,
         "version": VERSION,
@@ -195,7 +366,9 @@ def construir_documento():
             "palette": paleta(),
             "design": diseno(),
         },
-        "levels": [exportar_nivel(i, datos) for i, datos in enumerate(NIVELES)],
+        "tutorial": tutorial,
+        "levels": niveles,
+        "rooms": salas,
     }
 
 
@@ -206,17 +379,51 @@ def _numero(valor, nombre):
         raise ValueError(f"{nombre} no es finito")
 
 
-def _rect_valido(rect, ancho, alto, nombre):
+def _rect_valido(rect, ancho, alto, nombre, relajado=False):
     for clave in ("x", "y", "w", "h"):
         if clave not in rect:
             raise ValueError(f"{nombre}: falta {clave}")
         _numero(rect[clave], f"{nombre}.{clave}")
     if rect["w"] <= 0 or rect["h"] <= 0:
         raise ValueError(f"{nombre}: tamaño inválido")
-    if rect["x"] < 0 or rect["y"] < 0:
-        raise ValueError(f"{nombre}: posición negativa")
-    if rect["x"] + rect["w"] > ancho or rect["y"] + rect["h"] > alto:
-        raise ValueError(f"{nombre}: fuera del nivel")
+    if not relajado:
+        if rect["x"] < 0 or rect["y"] < 0:
+            raise ValueError(f"{nombre}: posición negativa")
+        if rect["x"] + rect["w"] > ancho or rect["y"] + rect["h"] > alto:
+            raise ValueError(f"{nombre}: fuera del nivel")
+
+
+def _validar_escena(ids, escena, ancho, alto):
+    nombre = escena.get("id", "?")
+    _rect_valido(escena["spawn"], ancho, alto, f"{nombre}.spawn")
+    _rect_valido(escena["goal"], ancho, alto, f"{nombre}.goal")
+
+    for coleccion in ("solids", "souls", "hazards", "decorations"):
+        for rect in escena.get(coleccion, []):
+            _rect_valido(rect, ancho, alto, rect["id"])
+            if rect["id"] in ids:
+                raise ValueError(f"Id repetido: {rect['id']}")
+            ids.add(rect["id"])
+
+    for decoracion in escena.get("decorations", []):
+        if decoracion.get("type") not in {"t", "c", "r", "b", "s"}:
+            raise ValueError(f"{decoracion['id']}: tipo desconocido")
+
+    for enemigo in escena.get("enemies", []):
+        _rect_valido(enemigo, ancho, alto, enemigo["id"])
+        _numero(enemigo["patrol_min_x"], f"{enemigo['id']}.patrol_min_x")
+        _numero(enemigo["patrol_max_x"], f"{enemigo['id']}.patrol_max_x")
+        if enemigo["patrol_min_x"] >= enemigo["patrol_max_x"]:
+            raise ValueError(f"{enemigo['id']}: patrulla inválida")
+        if enemigo["id"] in ids:
+            raise ValueError(f"Id repetido: {enemigo['id']}")
+        ids.add(enemigo["id"])
+
+    for plataforma in escena.get("platforms", []):
+        _rect_valido(plataforma, ancho, alto, plataforma["id"], relajado=True)
+
+    for jefe in escena.get("bosses", []):
+        _rect_valido(jefe, ancho, alto, jefe["id"], relajado=True)
 
 
 def validar_documento(documento):
@@ -226,8 +433,8 @@ def validar_documento(documento):
         raise ValueError("Versión inesperada")
 
     niveles = documento.get("levels") or []
-    if len(niveles) != 3:
-        raise ValueError("IN CRYPTA debe tener exactamente 3 niveles")
+    if len(niveles) != len(NIVELES):
+        raise ValueError(f"Se esperaban {len(NIVELES)} niveles, hay {len(niveles)}")
 
     diseno_doc = documento["game"].get("design") or {}
     if len(diseno_doc.get("mechanics") or []) != 3:
@@ -235,78 +442,55 @@ def validar_documento(documento):
     if len(diseno_doc.get("aesthetics") or []) != 2:
         raise ValueError("Deben declararse exactamente 2 estéticas")
 
-    ids = set()
-    for nivel in niveles:
-        ancho = nivel["size"]["width"]
-        alto = nivel["size"]["height"]
+    ids: set[str] = set()
+    todas_las_escenas = [documento.get("tutorial")] + niveles + documento.get("rooms", [])
+    todas_las_escenas = [e for e in todas_las_escenas if e]
+
+    for escena in todas_las_escenas:
+        ancho = escena["size"]["width"]
+        alto = escena["size"]["height"]
         if ancho <= 0 or alto <= 0:
-            raise ValueError("Tamaño de nivel inválido")
-        if nivel["size"]["columns"] * documento["game"]["tile"] != ancho:
-            raise ValueError("Ancho de nivel inconsistente")
-        if nivel["size"]["rows"] * documento["game"]["tile"] != alto:
-            raise ValueError("Alto de nivel inconsistente")
+            raise ValueError("Tamaño de escena inválido")
+        _validar_escena(ids, escena, ancho, alto)
 
-        filas = nivel["ascii"].splitlines()
-        if len(filas) != nivel["size"]["rows"]:
-            raise ValueError(f"{nivel['name']}: filas inconsistentes")
-        if any(len(fila) != nivel["size"]["columns"] for fila in filas):
-            raise ValueError(f"{nivel['name']}: columnas inconsistentes")
-
-        _rect_valido(nivel["spawn"], ancho, alto, f"{nivel['id']}.spawn")
-        _rect_valido(nivel["goal"], ancho, alto, f"{nivel['id']}.goal")
-        for coleccion in ("solids", "souls", "hazards", "decorations"):
-            for rect in nivel[coleccion]:
-                _rect_valido(rect, ancho, alto, rect["id"])
-                if rect["id"] in ids:
-                    raise ValueError(f"Id repetido: {rect['id']}")
-                ids.add(rect["id"])
-
-        for decoracion in nivel["decorations"]:
-            if decoracion.get("type") not in {"t", "c", "r", "b", "s"}:
-                raise ValueError(f"{decoracion['id']}: tipo desconocido")
-
-        for enemigo in nivel["enemies"]:
-            _rect_valido(enemigo, ancho, alto, enemigo["id"])
-            _numero(enemigo["patrol_min_x"], f"{enemigo['id']}.patrol_min_x")
-            _numero(enemigo["patrol_max_x"], f"{enemigo['id']}.patrol_max_x")
-            if enemigo["patrol_min_x"] >= enemigo["patrol_max_x"]:
-                raise ValueError(f"{enemigo['id']}: patrulla inválida")
-            if enemigo["patrol_min_x"] < 0 or enemigo["patrol_max_x"] > ancho:
-                raise ValueError(f"{enemigo['id']}: patrulla fuera del nivel")
-            if enemigo["x"] < enemigo["patrol_min_x"]:
-                raise ValueError(f"{enemigo['id']}: fuera de patrulla")
-            if enemigo["x"] + enemigo["w"] > enemigo["patrol_max_x"]:
-                raise ValueError(f"{enemigo['id']}: fuera de patrulla")
-            if enemigo["id"] in ids:
-                raise ValueError(f"Id repetido: {enemigo['id']}")
-            ids.add(enemigo["id"])
-
+        # Reconstruir desde el ASCII y comparar
         reconstruido = Nivel(
-            nivel["ascii"],
-            nivel["name"],
-            nivel["hint"],
-            nivel.get("theme", "camposanto"),
+            escena["ascii"],
+            escena["name"],
+            escena["hint"],
+            escena.get("theme", "camposanto"),
         )
-        if len(reconstruido.solidos) != len(nivel["solids"]):
-            raise ValueError(f"{nivel['name']}: sólidos no coinciden")
-        if len(reconstruido.almas) != len(nivel["souls"]):
-            raise ValueError(f"{nivel['name']}: almas no coinciden")
-        if len(reconstruido.enemigos) != len(nivel["enemies"]):
-            raise ValueError(f"{nivel['name']}: enemigos no coinciden")
-        if len(reconstruido.decoraciones) != len(nivel["decorations"]):
-            raise ValueError(f"{nivel['name']}: decoraciones no coinciden")
-        if len(reconstruido.peligros) != len(nivel["hazards"]):
-            raise ValueError(f"{nivel['name']}: peligros no coinciden")
-        if reconstruido.total_almas != nivel["total_souls"]:
-            raise ValueError(f"{nivel['name']}: total de almas inconsistente")
+        checks = [
+            ("solids", len(reconstruido.solidos), len(escena["solids"])),
+            ("souls", len(reconstruido.almas), len(escena["souls"])),
+            ("enemies", len(reconstruido.enemigos), len(escena["enemies"])),
+            ("decorations", len(reconstruido.decoraciones), len(escena["decorations"])),
+            ("hazards", len(reconstruido.peligros), len(escena["hazards"])),
+            ("platforms", len(reconstruido.plataformas), len(escena["platforms"])),
+            ("enemies_melee", len(reconstruido.enemigos_melee), len(escena["enemies_melee"])),
+            ("totems", len(reconstruido.totems), len(escena["totems"])),
+            ("cuervos", len(reconstruido.cuervos), len(escena["crows"])),
+            ("polillas", len(reconstruido.polillas), len(escena["moths"])),
+            ("aranias", len(reconstruido.aranias), len(escena["spiders"])),
+            ("jefes", len(reconstruido.jefes), len(escena["bosses"])),
+            ("palas", len(reconstruido.palas), len(escena["shovels"])),
+            ("power_ups_rango", len(reconstruido.power_ups_rango), len(escena["powerups_range"])),
+        ]
+        for coleccion, esperado, actual in checks:
+            if esperado != actual:
+                raise ValueError(f"{escena['name']}: {coleccion} no coinciden ({esperado} vs {actual})")
 
+    # Resumen
     return {
-        "levels": len(niveles),
-        "solids": sum(len(n["solids"]) for n in niveles),
-        "souls": sum(len(n["souls"]) for n in niveles),
-        "enemies": sum(len(n["enemies"]) for n in niveles),
-        "hazards": sum(len(n["hazards"]) for n in niveles),
-        "decorations": sum(len(n["decorations"]) for n in niveles),
+        "escenas": len(todas_las_escenas),
+        "niveles": len(niveles),
+        "salas": len(documento.get("rooms", [])),
+        "solids": sum(len(e["solids"]) for e in todas_las_escenas),
+        "souls": sum(len(e["souls"]) for e in todas_las_escenas),
+        "enemies": sum(len(e["enemies"]) for e in todas_las_escenas),
+        "platforms": sum(len(e["platforms"]) for e in todas_las_escenas),
+        "hazards": sum(len(e["hazards"]) for e in todas_las_escenas),
+        "decorations": sum(len(e["decorations"]) for e in todas_las_escenas),
     }
 
 
@@ -341,10 +525,13 @@ def main():
 
     print(
         "EXPORT_OK "
-        f"levels={resumen['levels']} "
+        f"escenas={resumen['escenas']} "
+        f"niveles={resumen['niveles']} "
+        f"salas={resumen['salas']} "
         f"solids={resumen['solids']} "
         f"souls={resumen['souls']} "
         f"enemies={resumen['enemies']} "
+        f"platforms={resumen['platforms']} "
         f"hazards={resumen['hazards']} "
         f"decorations={resumen['decorations']}"
     )

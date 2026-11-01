@@ -467,7 +467,7 @@ def comportamiento_jugador() -> dict:
         "gravity": 1500,
         "ignoreDefaultControls": True,
         "jumpSpeed": 620,
-        "jumpSustainTime": 0,
+        "jumpSustainTime": 0.20,
         "ladderClimbingSpeed": 150,
         "maxFallingSpeed": 900,
         "maxSpeed": 250,
