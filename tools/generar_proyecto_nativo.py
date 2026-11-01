@@ -632,7 +632,27 @@ def acciones_sacudida(fuerza: float, duracion: float) -> list[dict]:
 def subeventos_reintento(destino_muerte: str = "Derrota") -> list[dict]:
     return [
         evento(
-            [cond("NumberVariable", ["vidas", ">", "0"])],
+            [
+                cond("NumberVariable", ["vidas", ">", "0"]),
+                cond("NumberVariable", ["checkpoint_activo", "=", "1"]),
+            ],
+            [
+                accion("SetX", ["Jugador", "=", "GlobalVariable(checkpoint_x)"]),
+                accion("SetY", ["Jugador", "=", "GlobalVariable(checkpoint_y)"]),
+                accion("PlatformBehavior::PlatformerObjectBehavior::SetCurrentSpeed", ["Jugador", "PlatformerObject", "=", "0"]),
+                accion("PlatformBehavior::PlatformerObjectBehavior::SetCurrentFallSpeed", ["Jugador", "PlatformerObject", "=", "0"]),
+                accion("SetNumberObjectVariable", ["Jugador", "dashing", "=", "0"]),
+                accion("SetNumberObjectVariable", ["Jugador", "dash_time", "=", "0"]),
+                accion("SetNumberObjectVariable", ["Jugador", "dash_aire", "=", "1"]),
+                accion("SetNumberObjectVariable", ["Jugador", "dash_cd", "=", "0"]),
+                accion("TextObject::String", ["HUD_Aviso", "=", '"¡REGRESO AL FAROL DE REPOSO!"']),
+            ],
+        ),
+        evento(
+            [
+                cond("NumberVariable", ["vidas", ">", "0"]),
+                cond("NumberVariable", ["checkpoint_activo", "=", "0"]),
+            ],
             [
                 accion("SetNumberVariable", ["almas", "=", "0"]),
                 accion("SetNumberVariable", ["almas_para_vida", "=", "0"]),
@@ -653,6 +673,7 @@ def subeventos_reintento(destino_muerte: str = "Derrota") -> list[dict]:
                 accion("SetNumberVariable", ["combo_almas", "=", "0"]),
                 accion("SetNumberVariable", ["combo_timer", "=", "0"]),
                 accion("SetNumberVariable", ["rango_mejorado", "=", "0"]),
+                accion("SetNumberVariable", ["checkpoint_activo", "=", "0"]),
                 accion_sonido("Muerte"),
                 accion("Scene", [f'"{destino_muerte}"', "no"]),
             ],
@@ -660,18 +681,22 @@ def subeventos_reintento(destino_muerte: str = "Derrota") -> list[dict]:
     ]
 
 
-def eventos_dano(alto: int, destino_muerte: str = "Derrota") -> list[dict]:
+def eventos_dano(alto: int, destino_muerte: str = "Derrota", tiene_pinchos: bool = True) -> list[dict]:
     subeventos = subeventos_reintento(destino_muerte)
-    return [
-        evento(
-            [cond("CollisionNP", ["Jugador", "Pinchos", "no"])],
-            [
-                accion("SetNumberVariable", ["vidas", "-", "1"]),
-                accion_sonido("Dano"),
-                *acciones_sacudida(9.0, 0.22),
-            ],
-            subeventos,
-        ),
+    evs = []
+    if tiene_pinchos:
+        evs.append(
+            evento(
+                [cond("CollisionNP", ["Jugador", "Pinchos", "no"])],
+                [
+                    accion("SetNumberVariable", ["vidas", "-", "1"]),
+                    accion_sonido("Dano"),
+                    *acciones_sacudida(9.0, 0.22),
+                ],
+                subeventos,
+            )
+        )
+    evs.append(
         evento(
             [cond("PosY", ["Jugador", ">", str(alto + 120)])],
             [
@@ -680,8 +705,9 @@ def eventos_dano(alto: int, destino_muerte: str = "Derrota") -> list[dict]:
                 *acciones_sacudida(9.0, 0.22),
             ],
             subeventos,
-        ),
-    ]
+        )
+    )
+    return evs
 
 
 PISTAS_NATIVAS = {
@@ -902,11 +928,12 @@ def eventos_jefe(siguiente: str) -> list[dict]:
             ],
         ),
 
-        # --- Golpe al jefe cuando es vulnerable ---
+        # --- Golpe al jefe en Fase 1 (vulnerable) ---
         evento(
             [
                 cond("CollisionNP", ["GolpePala", "Jefe", "no"]),
                 cond("NumberObjectVariable", ["Jefe", "vulnerable", "=", "1"]),
+                cond("NumberObjectVariable", ["Jefe", "fase", "<", "2"]),
             ],
             [
                 accion("SetNumberObjectVariable", ["Jefe", "vida", "-", "1"]),
@@ -916,6 +943,87 @@ def eventos_jefe(siguiente: str) -> list[dict]:
                 accion("SetNumberObjectVariable", ["Jefe", "timer", "=", "2.0"]),
                 accion_sonido("Golpe"),
                 accion("Delete", ["GolpePala"]),
+            ],
+        ),
+
+        # --- Golpe al jefe en Fase 2 (requiere Guadaña X) ---
+        evento(
+            [
+                cond("CollisionNP", ["GolpePala", "Jefe", "no"]),
+                cond("NumberObjectVariable", ["Jefe", "vulnerable", "=", "1"]),
+                cond("NumberObjectVariable", ["Jefe", "fase", ">=", "2"]),
+                cond("NumberVariable", ["rango_mejorado", "=", "1"]),
+            ],
+            [
+                accion("SetNumberObjectVariable", ["Jefe", "vida", "-", "1"]),
+                accion("SetNumberObjectVariable", ["Jefe", "golpes_fase", "+", "1"]),
+                accion("SetNumberObjectVariable", ["Jefe", "vulnerable", "=", "0"]),
+                accion("SetNumberObjectVariable", ["Jefe", "estado", "=", "0"]),
+                accion("SetNumberObjectVariable", ["Jefe", "timer", "=", "2.0"]),
+                accion_sonido("Golpe"),
+                accion("Delete", ["GolpePala"]),
+            ],
+        ),
+
+        # --- Golpe rebotado en Fase 2 sin Guadaña X ---
+        evento(
+            [
+                cond("CollisionNP", ["GolpePala", "Jefe", "no"]),
+                cond("NumberObjectVariable", ["Jefe", "fase", ">=", "2"]),
+                cond("NumberVariable", ["rango_mejorado", "=", "0"]),
+            ],
+            [
+                accion_sonido("Golpe"),
+                accion("Delete", ["GolpePala"]),
+                *acciones_sacudida(4.0, 0.12),
+                accion("TextObject::String", ["HUD_Aviso", "=", '"¡CORAZA CARMESÍ! Necesitas la Guadaña (X)"']),
+            ],
+        ),
+
+        # --- Pisotón al jefe en Fase 1 ---
+        evento(
+            [
+                cond("CollisionNP", ["Jugador", "Jefe", "no"]),
+                cond("PosY", ["Jugador", "<", "Jefe.Y() - 10"]),
+                cond("NumberObjectVariable", ["Jugador", "tiene_pala", "=", "1"]),
+                cond("NumberObjectVariable", ["Jefe", "vulnerable", "=", "1"]),
+                cond("NumberObjectVariable", ["Jefe", "fase", "<", "2"]),
+            ],
+            [
+                accion("SetNumberObjectVariable", ["Jefe", "vida", "-", "1"]),
+                accion("SetNumberObjectVariable", ["Jefe", "vulnerable", "=", "0"]),
+                accion("SetNumberObjectVariable", ["Jefe", "estado", "=", "0"]),
+                accion("SetNumberObjectVariable", ["Jefe", "timer", "=", "2.0"]),
+                accion("PlatformBehavior::SetCanJump", ["Jugador", "PlatformerObject"]),
+                accion("PlatformBehavior::SimulateJumpKey", ["Jugador", "PlatformerObject"]),
+                accion("SetNumberObjectVariable", ["Jugador", "dash_aire", "=", "1"]),
+                accion("SetNumberObjectVariable", ["Jugador", "dash_cd", "=", "0"]),
+                accion_sonido("Stomp"),
+                *acciones_sacudida(6.0, 0.18),
+            ],
+        ),
+
+        # --- Pisotón al jefe en Fase 2 (requiere Guadaña X) ---
+        evento(
+            [
+                cond("CollisionNP", ["Jugador", "Jefe", "no"]),
+                cond("PosY", ["Jugador", "<", "Jefe.Y() - 10"]),
+                cond("NumberObjectVariable", ["Jugador", "tiene_pala", "=", "1"]),
+                cond("NumberObjectVariable", ["Jefe", "vulnerable", "=", "1"]),
+                cond("NumberObjectVariable", ["Jefe", "fase", ">=", "2"]),
+                cond("NumberVariable", ["rango_mejorado", "=", "1"]),
+            ],
+            [
+                accion("SetNumberObjectVariable", ["Jefe", "vida", "-", "1"]),
+                accion("SetNumberObjectVariable", ["Jefe", "vulnerable", "=", "0"]),
+                accion("SetNumberObjectVariable", ["Jefe", "estado", "=", "0"]),
+                accion("SetNumberObjectVariable", ["Jefe", "timer", "=", "2.0"]),
+                accion("PlatformBehavior::SetCanJump", ["Jugador", "PlatformerObject"]),
+                accion("PlatformBehavior::SimulateJumpKey", ["Jugador", "PlatformerObject"]),
+                accion("SetNumberObjectVariable", ["Jugador", "dash_aire", "=", "1"]),
+                accion("SetNumberObjectVariable", ["Jugador", "dash_cd", "=", "0"]),
+                accion_sonido("Stomp"),
+                *acciones_sacudida(6.0, 0.18),
             ],
         ),
 
@@ -1046,6 +1154,10 @@ def eventos_nivel(
                     "SetNumberObjectVariable",
                     ["Jugador", "tiene_pala", "=", "1" if pala_inicial else "0"],
                 ),
+                accion(
+                    "SetNumberObjectVariable",
+                    ["Jugador", "tiene_dash", "=", "1" if (indice >= 2) else "0"],
+                ),
                 accion("SetNumberVariable", ["almas", "=", "0"]),
                 accion("SetNumberVariable", ["almas_para_vida", "=", "0"]),
                 accion("SetNumberVariable", ["combo_almas", "=", "0"]),
@@ -1057,6 +1169,19 @@ def eventos_nivel(
                     else []
                 ),
                 *acciones_camara_inicial(objetivo_x, objetivo_y),
+            ],
+        ),
+
+        # Al iniciar la escena: reubicar en checkpoint si está activo en esta escena
+        evento(
+            [
+                cond("SceneJustBegins", [""]),
+                cond("NumberVariable", ["checkpoint_activo", "=", "1"]),
+                cond("StringVariable", ["checkpoint_escena", "=", "CurrentSceneName()"]),
+            ],
+            [
+                accion("SetX", ["Jugador", "=", "GlobalVariable(checkpoint_x)"]),
+                accion("SetY", ["Jugador", "=", "GlobalVariable(checkpoint_y)"]),
             ],
         ),
 
@@ -1341,6 +1466,7 @@ def eventos_nivel(
         evento(
             [
                 dash_input,
+                cond("NumberObjectVariable", ["Jugador", "tiene_dash", "=", "1"]),
                 cond("NumberObjectVariable", ["Jugador", "dash_cd", "<=", "0"]),
                 cond("NumberObjectVariable", ["Jugador", "dashing", "=", "0"]),
                 cond("PlatformBehavior::IsOnFloor", ["Jugador", "PlatformerObject"]),
@@ -1372,6 +1498,7 @@ def eventos_nivel(
         evento(
             [
                 dash_input,
+                cond("NumberObjectVariable", ["Jugador", "tiene_dash", "=", "1"]),
                 cond("NumberObjectVariable", ["Jugador", "dash_cd", "<=", "0"]),
                 cond("NumberObjectVariable", ["Jugador", "dashing", "=", "0"]),
                 cond("PlatformBehavior::IsOnFloor", ["Jugador", "PlatformerObject"], invertida=True),
@@ -1571,6 +1698,7 @@ def eventos_nivel(
                 [
                     accion("Delete", ["PowerUpDash"]),
                     accion("SetNumberObjectVariable", ["Jugador", "tiene_dash", "=", "1"]),
+                    accion("SetNumberVariable", ["tiene_dash", "=", "1"]),
                     accion_sonido("Dash"),
                     *acciones_sacudida(4.0, 0.12),
                     accion("TextObject::String", ["HUD_Aviso", "=", '"¡AMULETO DE SOMBRAS: DASH EN EL AIRE!"']),
@@ -1584,8 +1712,10 @@ def eventos_nivel(
                 [cond("CollisionNP", ["Jugador", "FarolCheckpoint", "no"])],
                 [
                     accion("SetNumberObjectVariable", ["FarolCheckpoint", "activo", "=", "1"]),
+                    accion("SetNumberVariable", ["checkpoint_activo", "=", "1"]),
                     accion("SetNumberVariable", ["checkpoint_x", "=", "FarolCheckpoint.X()"]),
                     accion("SetNumberVariable", ["checkpoint_y", "=", "FarolCheckpoint.Y()"]),
+                    accion("SetStringVariable", ["checkpoint_escena", "=", "CurrentSceneName()"]),
                     accion_sonido("Alma"),
                     accion("TextObject::String", ["HUD_Aviso", "=", '"¡PUNTO DE CONTROL ALCANZADO!"']),
                 ],
@@ -1593,7 +1723,7 @@ def eventos_nivel(
         ] if "FarolCheckpoint" in nombres_objetos else []),
 
         # Pisotón: el jugador viene desde arriba y ya tiene la pala.
-        # Paridad audio.py: reproduce sfx_stomp + sacudida 6/0.18 (commit 020b19c).
+        # Paridad audio.py: reproduce sfx_stomp + rebote + sacudida 6/0.18.
         *[
             evento(
                 [
@@ -1603,6 +1733,8 @@ def eventos_nivel(
                 ],
                 [
                     accion("Delete", [enemigo_tipo]),
+                    accion("PlatformBehavior::SetCanJump", ["Jugador", "PlatformerObject"]),
+                    accion("PlatformBehavior::SimulateJumpKey", ["Jugador", "PlatformerObject"]),
                     accion("SetNumberObjectVariable", ["Jugador", "dash_aire", "=", "1"]),
                     accion("SetNumberObjectVariable", ["Jugador", "dash_cd", "=", "0"]),
                     accion_sonido("Stomp"),
@@ -1612,6 +1744,106 @@ def eventos_nivel(
             for enemigo_tipo in ("Enemy", "EnemyMelee", "Polilla", "Arana")
             if enemigo_tipo in nombres_objetos
         ],
+
+        # Pisotón sobre MiniJefe (3 HP)
+        *([
+            evento(
+                [
+                    cond("CollisionNP", ["Jugador", "MiniJefe", "no"]),
+                    cond("PosY", ["Jugador", "<", "MiniJefe.Y() - 10"]),
+                    cond("NumberObjectVariable", ["Jugador", "tiene_pala", "=", "1"]),
+                ],
+                [
+                    accion("SetNumberObjectVariable", ["MiniJefe", "vida", "-", "1"]),
+                    accion("PlatformBehavior::SetCanJump", ["Jugador", "PlatformerObject"]),
+                    accion("PlatformBehavior::SimulateJumpKey", ["Jugador", "PlatformerObject"]),
+                    accion("SetNumberObjectVariable", ["Jugador", "dash_aire", "=", "1"]),
+                    accion("SetNumberObjectVariable", ["Jugador", "dash_cd", "=", "0"]),
+                    accion_sonido("Stomp"),
+                    *acciones_sacudida(6.0, 0.18),
+                ],
+                [
+                    evento(
+                        [cond("NumberObjectVariable", ["MiniJefe", "vida", "<=", "0"])],
+                        [
+                            accion("Delete", ["MiniJefe"]),
+                            accion("SetNumberVariable", ["almas", "+", "5"]),
+                            accion_sonido("Meta"),
+                            accion("TextObject::String", ["HUD_Aviso", "=", '"¡CARCELERO DERROTADO!"']),
+                        ],
+                    ),
+                ],
+            )
+        ] if "MiniJefe" in nombres_objetos else []),
+
+        # Golpe de pala a MiniJefe
+        *([
+            evento(
+                [cond("CollisionNP", ["GolpePala", "MiniJefe", "no"])],
+                [
+                    accion("SetNumberObjectVariable", ["MiniJefe", "vida", "-", "1"]),
+                    accion("Delete", ["GolpePala"]),
+                    accion("SetNumberObjectVariable", ["Jugador", "dash_aire", "=", "1"]),
+                    accion("SetNumberObjectVariable", ["Jugador", "dash_cd", "=", "0"]),
+                    accion_sonido("Golpe"),
+                    *acciones_sacudida(5.0, 0.12),
+                ],
+                [
+                    evento(
+                        [cond("NumberObjectVariable", ["MiniJefe", "vida", "<=", "0"])],
+                        [
+                            accion("Delete", ["MiniJefe"]),
+                            accion("SetNumberVariable", ["almas", "+", "5"]),
+                            accion_sonido("Meta"),
+                            accion("TextObject::String", ["HUD_Aviso", "=", '"¡CARCELERO DERROTADO!"']),
+                        ],
+                    ),
+                ],
+            )
+        ] if "MiniJefe" in nombres_objetos else []),
+
+        # Daño por contacto lateral con MiniJefe
+        *([
+            evento(
+                [
+                    cond("CollisionNP", ["Jugador", "MiniJefe", "no"]),
+                    cond("PosY", ["Jugador", ">=", "MiniJefe.Y() - 10"]),
+                ],
+                [
+                    accion("SetNumberVariable", ["vidas", "-", "1"]),
+                    accion_sonido("Dano"),
+                    *acciones_sacudida(9.0, 0.22),
+                ],
+                subeventos_reintento(destino_muerte),
+            )
+        ] if "MiniJefe" in nombres_objetos else []),
+
+        # Patrulla horizontal de MiniJefe
+        *([
+            evento(
+                [
+                    cond("NumberObjectVariable", ["MiniJefe", "dir", "=", "1"]),
+                    cond("PosX", ["MiniJefe", ">=", "MiniJefe.Variable(max_x)"]),
+                ],
+                [accion("SetNumberObjectVariable", ["MiniJefe", "dir", "=", "-1"])],
+            ),
+            evento(
+                [
+                    cond("NumberObjectVariable", ["MiniJefe", "dir", "=", "-1"]),
+                    cond("PosX", ["MiniJefe", "<=", "MiniJefe.Variable(min_x)"]),
+                ],
+                [accion("SetNumberObjectVariable", ["MiniJefe", "dir", "=", "1"])],
+            ),
+            evento(
+                [],
+                [
+                    accion(
+                        "SetX",
+                        ["MiniJefe", "=", "MiniJefe.X() + MiniJefe.Variable(dir) * 70 * TimeDelta()"],
+                    ),
+                ],
+            ),
+        ] if "MiniJefe" in nombres_objetos else []),
 
         # Daño por enemigo: contacto lateral o sin pala.
         *[
@@ -1647,7 +1879,11 @@ def eventos_nivel(
         ],
 
         # Pinchos y caída al vacío.
-        *eventos_dano(nivel.alto, destino_muerte=destino_muerte),
+        *eventos_dano(
+            nivel.alto,
+            destino_muerte=destino_muerte,
+            tiene_pinchos="Pinchos" in nombres_objetos,
+        ),
 
         # Portón. En niveles con jefe el portón está sellado hasta vencerlo.
         evento(
@@ -1928,7 +2164,7 @@ def escena_titulo(specs_campana: list | None = None) -> dict:
         # Confirmación
         evento(
             [confirmar, cond("NumberVariable", ["menu_opcion", "=", "1"])],
-            [accion_sonido("UI"), accion("Scene", ['"Nivel 1"', "no"])],
+            [accion_sonido("UI"), accion("Scene", ['"Tutorial"', "no"])],
         ),
         evento(
             [confirmar, cond("NumberVariable", ["menu_opcion", "=", "2"])],
@@ -1946,7 +2182,7 @@ def escena_titulo(specs_campana: list | None = None) -> dict:
         # Clics de ratón en las opciones
         evento(
             [cond("SourisSurObjet", ["Menu_Op1", "", "", ""]), cond("MouseButtonReleased", ["", "Left"])],
-            [accion_sonido("UI"), accion("Scene", ['"Nivel 1"', "no"])],
+            [accion_sonido("UI"), accion("Scene", ['"Tutorial"', "no"])],
         ),
         evento(
             [cond("SourisSurObjet", ["Menu_Op2", "", "", ""]), cond("MouseButtonReleased", ["", "Left"])],
@@ -2539,7 +2775,7 @@ def construir_proyecto(escenas: list[Escena]) -> dict:
             "windowHeight": RENDER_H,
             "sizeOnStartupMode": "adaptWidth",
             "orientation": "landscape",
-            "scaleMode": "linear",
+            "scaleMode": "nearest",
             "pixelsRounding": True,
             "adaptGameResolutionAtRuntime": False,
             "projectUuid": uid(),
