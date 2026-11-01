@@ -1797,6 +1797,7 @@ def eventos_nivel(
             ],
             [
                 accion("SetNumberObjectVariable", ["Jugador", "dashing", "=", "0"]),
+                accion("SetNumberObjectVariable", ["Jugador", "post_dash", "=", str(POST_DASH_DURACION)]),
                 accion("SetNumberObjectVariable", ["Jugador", "dash_time", "=", "0"]),
                 accion("PlatformBehavior::Gravity", ["Jugador", "PlatformerObject", "=", str(int(GRAVEDAD))]),
                 accion("PlatformBehavior::MaxSpeed", ["Jugador", "PlatformerObject", "=", str(int(VELOCIDAD * DASH_JUMP_IMPULSO_X))]),
@@ -1903,6 +1904,7 @@ def eventos_nivel(
             ],
             [
                 accion("SetNumberObjectVariable", ["Jugador", "dashing", "=", "0"]),
+                accion("SetNumberObjectVariable", ["Jugador", "post_dash", "=", str(POST_DASH_DURACION)]),
                 accion(
                     "PlatformBehavior::Gravity",
                     ["Jugador", "PlatformerObject", "=", str(int(GRAVEDAD))],
@@ -1920,6 +1922,9 @@ def eventos_nivel(
                     ["Jugador", "PlatformerObject", "=", "Jugador.Variable(dir) * " + str(int(VELOCIDAD))],
                 ),
             ],
+        evento(
+            [cond("NumberObjectVariable", ["Jugador", "post_dash", ">", "0"])],
+            [accion("SetNumberObjectVariable", ["Jugador", "post_dash", "-", "TimeDelta()"])]),
         ),
 
         # Recarga del dash.
