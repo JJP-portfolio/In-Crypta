@@ -850,6 +850,39 @@ def probar_tutorial():
     print("tutorial: OK")
 
 
+# --- Prueba: menú de pausa interactivo y campaña continua (Prioridad 3) --- #
+def probar_menu_pausa_y_campana():
+    juego = Juego()
+    juego.cargar_nivel(0)
+    assert juego.estado == "jugando"
+
+    # Pausar juego
+    juego.estado = "pausa"
+    juego.pausa_opcion = 0
+    juego.dibujar()
+    assert juego.estado == "pausa"
+
+    # Navegar por las 4 opciones de pausa
+    for op in range(4):
+        juego.pausa_opcion = op
+        juego.dibujar()
+
+    # Campaña continua: desde Preludio pasa a Nivel 1 sin menú
+    juego.iniciar_campaña()
+    assert juego.es_tutorial
+    assert juego.en_campaña
+    # Colisionar con la meta del tutorial
+    juego.jugador.rect.topleft = juego.nivel.meta.topleft
+    juego.jugador.x = float(juego.jugador.rect.x)
+    juego.jugador.y = float(juego.jugador.rect.y)
+    juego.actualizar(1 / 60)
+    # Debe haber pasado automáticamente a Nivel 0 (El Camposanto)
+    assert not juego.es_tutorial
+    assert juego.nivel_indice == 0
+    assert juego.estado == "jugando"
+    print("pausa y campaña continua: OK")
+
+
 # --- Prueba: las almas se reinician al cambiar de nivel, las vidas no --- #
 def probar_transicion_almas_vidas():
     juego = Juego()
@@ -1067,6 +1100,7 @@ if __name__ == "__main__":
     probar_salas_prueba()
     probar_menu_principal_y_navegacion()
     probar_tutorial()
+    probar_menu_pausa_y_campana()
     probar_transicion_almas_vidas()
     probar_feedback_derrota_y_reintento()
     probar_accesibilidad()

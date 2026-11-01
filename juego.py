@@ -189,6 +189,8 @@ class Juego:
         self.almas_combo_timer = 0.0
         self.test_opcion = 0
         self.menu_opcion = 0
+        self.pausa_opcion = 0
+        self.en_campaña = False
         self.nivel_seleccionado = 0
         self.tiempo_menu = 0.0
         self.superficie_mundo = pygame.Surface((VIRTUAL_ANCHO, VIRTUAL_ALTO))
@@ -336,6 +338,15 @@ class Juego:
         self.test_opcion = 0
         self.audio.reproducir("ui")
 
+    # --- Función iniciar_campaña --- #
+    def iniciar_campaña(self):
+        """Inicia la campaña narrativa completa comenzando en el Preludio."""
+        self.almas_totales = 0
+        self.tiempo_total = 0.0
+        self.jugador = None
+        self.en_campaña = True
+        self.iniciar_tutorial()
+
     # --- Función iniciar_partida --- #
     def iniciar_partida(self):
         self.almas_totales = 0
@@ -376,7 +387,7 @@ class Juego:
                     elif evento.key in (pygame.K_RETURN, pygame.K_SPACE):
                         self.audio.reproducir("ui")
                         if self.menu_opcion == 0:
-                            self.iniciar_partida()
+                            self.iniciar_campaña()
                         elif self.menu_opcion == 1:
                             self.abrir_seleccion_nivel()
                         elif self.menu_opcion == 2:
@@ -386,6 +397,43 @@ class Juego:
                     elif evento.key == pygame.K_ESCAPE:
                         self.estado = "titulo"
                         self.audio.reproducir("ui")
+                    continue
+
+                elif self.estado == "pausa":
+                    if evento.key in (pygame.K_UP, pygame.K_w):
+                        self.pausa_opcion = (self.pausa_opcion - 1) % 4
+                        self.audio.reproducir("ui")
+                    elif evento.key in (pygame.K_DOWN, pygame.K_s):
+                        self.pausa_opcion = (self.pausa_opcion + 1) % 4
+                        self.audio.reproducir("ui")
+                    elif evento.key in (pygame.K_RETURN, pygame.K_SPACE):
+                        self.audio.reproducir("ui")
+                        if self.pausa_opcion == 0:
+                            self.estado = "jugando"
+                        elif self.pausa_opcion == 1:
+                            if self.punto_reintento:
+                                self.reintentar_nivel()
+                            else:
+                                if self.sala_prueba:
+                                    self.cargar_sala_prueba(self.sala_prueba_indice)
+                                elif self.es_tutorial:
+                                    self.iniciar_tutorial()
+                                else:
+                                    self.cargar_nivel(self.nivel_indice, vidas=VIDAS_INICIALES)
+                            self.estado = "jugando"
+                        elif self.pausa_opcion == 2:
+                            if self.sala_prueba:
+                                self.cargar_sala_prueba(self.sala_prueba_indice)
+                            elif self.es_tutorial:
+                                self.iniciar_tutorial()
+                            else:
+                                self.cargar_nivel(self.nivel_indice, vidas=VIDAS_INICIALES)
+                            self.estado = "jugando"
+                        elif self.pausa_opcion == 3:
+                            self.abrir_menu()
+                    elif evento.key in (pygame.K_ESCAPE, pygame.K_p):
+                        self.audio.reproducir("ui")
+                        self.estado = "jugando"
                     continue
 
                 elif self.estado == "seleccion_nivel":
@@ -425,6 +473,7 @@ class Juego:
                 if evento.key == pygame.K_ESCAPE:
                     if self.estado == "jugando":
                         self.audio.reproducir("ui")
+                        self.pausa_opcion = 0
                         self.estado = "pausa"
                     elif self.estado == "pausa":
                         self.abrir_menu()
@@ -457,6 +506,7 @@ class Juego:
                 elif evento.key == pygame.K_p:
                     if self.estado == "jugando":
                         self.audio.reproducir("ui")
+                        self.pausa_opcion = 0
                         self.estado = "pausa"
                     elif self.estado == "pausa":
                         self.audio.reproducir("ui")
@@ -579,7 +629,12 @@ class Juego:
             self.audio.reproducir("meta")
             self.particulas.meta(self.nivel.meta.centerx, self.nivel.meta.centery)
             if self.es_tutorial:
-                self.estado = "tutorial_completado"
+                if getattr(self, "en_campaña", False):
+                    self.almas_totales += self.jugador.almas
+                    self.cargar_nivel(0, vidas=self.jugador.vidas)
+                    self.hud.mostrar_mensaje("¡UMBRAL SUPERADO! · Adentrándose en El Camposanto", 2, 4.0)
+                else:
+                    self.estado = "tutorial_completado"
             elif self.sala_prueba:
                 self.estado = "sala_completada"
             elif self.nivel_indice + 1 >= len(NIVELES):
@@ -1640,10 +1695,10 @@ class Juego:
 
         # Opciones del menú
         opciones = [
-            ("JUGAR", "Comenzar la travesía desde el Camposanto"),
-            ("SELECCIÓN DE PANTALLA", "Elegir nivel para descender a la cripta"),
+            ("JUGAR CAMPAÑA", "Preludio / Tutorial + 3 Niveles continuos"),
+            ("SELECCIÓN DE NIVEL", "Elegir nivel para descender a la cripta"),
             ("TUTORIAL", "El Ritual del Sepulturero · Aprende las mecánicas"),
-            ("CRÉDITOS", "Equipo de desarrollo y referencias"),
+            ("CRÉDITOS & MARCO TEÓRICO", "Equipo UNAHUR y Matriz MDA"),
         ]
 
         ancho_caja = 560
@@ -1815,15 +1870,20 @@ class Juego:
         self.dibujar_texto("Universidad Nacional de Hurlingham (UNAHUR)", 0, y_m + 268, 14, (140, 130, 150), centrado=True)
         pygame.draw.line(self.pantalla, (*HUD_BORDE, 120), (ANCHO // 2 - 160, y_m + 300), (ANCHO // 2 + 160, y_m + 300), 1)
 
+        # Matriz MDA
+        self.dibujar_texto("MATRIZ MDA & SISTEMAS (UNAHUR)", 0, y_m + 312, 17, HUD_ORO, centrado=True)
+        ref_texto = "Mecánicas (Salto, Dash, Pala) → Dinámicas (Riesgo/Recompensa, Stomp-Dash) → Estéticas (Desafío, Sensación)"
+        self.dibujar_texto(ref_texto, 0, y_m + 340, 13, CREMA, centrado=True)
+
         # Referencias
-        self.dibujar_texto("INSPIRACIONES & HOMENAJES", 0, y_m + 322, 17, HUD_ORO, centrado=True)
-        ref_texto = "Blasphemous (penitencia y pala) · Castlevania (criptas y portones) · Ender Lilies (atmósfera y melancolía)"
-        self.dibujar_texto(ref_texto, 0, y_m + 352, 14, CREMA, centrado=True)
+        self.dibujar_texto("INSPIRACIONES & HOMENAJES", 0, y_m + 372, 16, HUD_ORO, centrado=True)
+        ref_texto2 = "Blasphemous (penitencia y pala) · Castlevania (criptas) · Ender Lilies (atmósfera y melancolía)"
+        self.dibujar_texto(ref_texto2, 0, y_m + 398, 13, HUD_MUTED, centrado=True)
 
         # Tecnología
-        self.dibujar_texto("TECNOLOGÍA & ARTE", 0, y_m + 396, 17, HUD_ORO, centrado=True)
-        tec_texto = "Motor Python 3 + pygame-ce · Arte procedimental vectorial pygame.draw · Tipografía Noto Serif Display"
-        self.dibujar_texto(tec_texto, 0, y_m + 424, 14, HUD_MUTED, centrado=True)
+        self.dibujar_texto("TECNOLOGÍA & ARTE", 0, y_m + 430, 16, HUD_ORO, centrado=True)
+        tec_texto = "Motor Python 3 + pygame-ce · Arte procedimental vectorial · Exportador 1:1 GDevelop 5.6"
+        self.dibujar_texto(tec_texto, 0, y_m + 456, 13, HUD_MUTED, centrado=True)
 
         # Pie
         self.dibujar_texto("ESC o ENTER: VOLVER AL MENÚ", 0, y_m + 500, 16, TURQUESA, centrado=True, sombra=True)
@@ -1870,6 +1930,7 @@ class Juego:
             con_pala=self.jugador.tiene_pala,
         )
         self.particulas.dibujar(destino, self.camara)
+        self.dibujar_ui_espacial(destino, self.camara)
 
         # Penumbra gótica y claroscuro sutil (alpha 65 / 255)
         self.mascara_penumbra.fill((9, 8, 13, 65))
@@ -1922,10 +1983,7 @@ class Juego:
             self.pantalla.blit(self.superficie_flash, (0, 0))
 
         if self.estado == "pausa":
-            self.dibujar_overlay(
-                "PAUSA",
-                "P continuar · R reiniciar nivel · F1 reducir movimiento · ESC volver al menú principal",
-            )
+            self.dibujar_menu_pausa()
         elif self.estado == "nivel_completado":
             self.dibujar_overlay("LA CRIPTA SE ABRE", "ENTER para descender")
         elif self.estado == "sala_completada":
@@ -2228,6 +2286,122 @@ class Juego:
             centrado=True,
             interlineado=30,
         )
+
+    # --- Función dibujar_menu_pausa --- #
+    def dibujar_menu_pausa(self):
+        """Menú de Pausa litúrgico e interactivo navegable con opciones claras."""
+        overlay = pygame.Surface((ANCHO, ALTO), pygame.SRCALPHA)
+        overlay.fill((8, 6, 12, 195))
+        self.pantalla.blit(overlay, (0, 0))
+
+        ancho_panel = 540
+        alto_panel = 370
+        px = (ANCHO - ancho_panel) // 2
+        py = (ALTO - alto_panel) // 2
+
+        panel = pygame.Surface((ancho_panel, alto_panel), pygame.SRCALPHA)
+        pygame.draw.rect(panel, (14, 12, 18, 235), (0, 0, ancho_panel, alto_panel), border_radius=12)
+        pygame.draw.rect(panel, (*HUD_BORDE, 220), (0, 0, ancho_panel, alto_panel), 2, border_radius=12)
+        pygame.draw.line(panel, (*HUD_ORO, 180), (20, 2), (ancho_panel - 20, 2), 1)
+
+        for vx, vy, vdx, vdy in ((0, 0, 1, 1), (ancho_panel, 0, -1, 1),
+                                 (0, alto_panel, 1, -1), (ancho_panel, alto_panel, -1, -1)):
+            pygame.draw.line(panel, HUD_ORO, (vx + 4 * vdx, vy), (vx + 18 * vdx, vy), 2)
+            pygame.draw.line(panel, HUD_ORO, (vx, vy + 4 * vdy), (vx, vy + 18 * vdy), 2)
+        self.pantalla.blit(panel, (px, py))
+
+        self.dibujar_texto("PAUSA LITÚRGICA", 0, py + 22, 28, HUD_ORO, centrado=True, sombra=True)
+        self.dibujar_texto("EL RESPIRO DEL SEPULTURERO", 0, py + 56, 14, HUD_MUTED, centrado=True)
+        pygame.draw.line(self.pantalla, (*HUD_ORO, 120), (ANCHO // 2 - 100, py + 78), (ANCHO // 2 + 100, py + 78), 1)
+
+        opciones_pausa = [
+            ("CONTINUAR", "Reanudar la vigilia en la cripta"),
+            ("REINICIAR DESDE FAROL", "Volver al último farol de reposo consagrado"),
+            ("REINICIAR NIVEL", "Comenzar el nivel actual desde el inicio"),
+            ("VOLVER AL MENÚ", "Regresar a la selección y menú principal"),
+        ]
+
+        y_op = py + 98
+        for i, (nombre_op, desc_op) in enumerate(opciones_pausa):
+            activa = (i == self.pausa_opcion)
+            rect_op = pygame.Rect(px + 36, y_op, ancho_panel - 72, 48)
+            surf_op = pygame.Surface((rect_op.w, rect_op.h), pygame.SRCALPHA)
+            color_bg = (28, 22, 34, 220) if activa else (18, 14, 22, 160)
+            pygame.draw.rect(surf_op, color_bg, (0, 0, rect_op.w, rect_op.h), border_radius=6)
+            color_border = HUD_ORO if activa else (*HUD_BORDE, 120)
+            pygame.draw.rect(surf_op, color_border, (0, 0, rect_op.w, rect_op.h), 1, border_radius=6)
+            self.pantalla.blit(surf_op, rect_op.topleft)
+
+            prefijo = "▸ " if activa else "   "
+            color_txt = HUD_ORO if activa else HUD_TEXTO
+            self.dibujar_texto(f"{prefijo}{nombre_op}", rect_op.x + 16, rect_op.y + 6, 16, color_txt, sombra=activa)
+            self.dibujar_texto(desc_op, rect_op.x + 36, rect_op.y + 27, 12, HUD_MUTED)
+            y_op += 56
+
+        self.dibujar_texto("[↑/↓] Elegir · [ENTER] Confirmar · [ESC / P] Continuar", 0, py + alto_panel - 26, 12, (150, 140, 155), centrado=True)
+
+    # --- Función dibujar_ui_espacial --- #
+    def dibujar_ui_espacial(self, destino, camara):
+        """UI Espacial: carteles de enseñanza anclados a coordenadas del mundo virtual."""
+        if not self.jugador or not self.nivel:
+            return
+
+        jx = self.jugador.rect.centerx
+        jy = self.jugador.rect.centery
+        tiempo = pygame.time.get_ticks() / 1000.0
+        bobbing = math.sin(tiempo * 4.0) * 3
+
+        puntos_clave = []
+
+        # 1. Dash Power-ups en el nivel
+        for dp in getattr(self.nivel, "power_ups_dash", []):
+            if not getattr(dp, "recogido", False):
+                puntos_clave.append((dp.rect.centerx, dp.rect.top, "[SHIFT] Dash en el aire"))
+
+        # 2. Palas en el nivel
+        for p in getattr(self.nivel, "palas", []):
+            if not getattr(p, "recogida", False):
+                puntos_clave.append((p.rect.centerx, p.rect.top, "[A / J] Atacar · ¡Pisotón recarga Dash!"))
+
+        # 3. Power-Up X de Rango / Guadaña en el nivel
+        for pr in getattr(self.nivel, "power_ups_rango", []):
+            if not getattr(pr, "recogido", False):
+                puntos_clave.append((pr.rect.centerx, pr.rect.top, "[X] Guadaña Consagrada · Alcance ampliado"))
+
+        # 4. En el Preludio / Tutorial: puntos pedagógicos específicos
+        if getattr(self, "es_tutorial", False):
+            puntos_clave.append((20 * TILE, 9 * TILE, "[ESPACIO] Mantener para salto alto"))
+            puntos_clave.append((40 * TILE, 8 * TILE, "[A / J] Atacar · ¡Saltá encima para rebotar!"))
+            puntos_clave.append((76 * TILE, 8 * TILE, "[M] Plataforma móvil hacia el portón"))
+
+        if 13 not in self.fuentes:
+            try:
+                self.fuentes[13] = pygame.font.Font(self._ruta_fuente_gotica, 13)
+            except Exception:
+                self.fuentes[13] = pygame.font.Font(None, 13)
+        fuente = self.fuentes[13]
+
+        for wx, wy, texto in puntos_clave:
+            dist = math.hypot(jx - wx, jy - wy)
+            if dist <= 140:
+                alfa = int(min(240, max(0, (140 - dist) / 40.0 * 240)))
+                vx = int(wx - camara.x)
+                vy = int(wy - camara.y - 32 + bobbing)
+
+                if -150 <= vx <= VIRTUAL_ANCHO + 150 and -50 <= vy <= VIRTUAL_ALTO + 50:
+                    img_txt = fuente.render(texto, True, (245, 235, 220))
+                    tw, th = img_txt.get_size()
+                    bw, bh = tw + 20, th + 10
+                    bx = vx - bw // 2
+                    by = vy - bh
+
+                    burbuja = pygame.Surface((bw, bh), pygame.SRCALPHA)
+                    pygame.draw.rect(burbuja, (12, 10, 16, min(alfa, 215)), (0, 0, bw, bh), border_radius=6)
+                    pygame.draw.rect(burbuja, (198, 156, 62, min(alfa, 235)), (0, 0, bw, bh), 1, border_radius=6)
+                    pygame.draw.polygon(burbuja, (198, 156, 62, min(alfa, 235)), [(bw // 2 - 4, bh), (bw // 2 + 4, bh), (bw // 2, bh + 4)])
+
+                    burbuja.blit(img_txt, (10, 5))
+                    destino.blit(burbuja, (bx, by))
 
     # --- Función dibujar_victoria --- #
     def dibujar_victoria(self):
