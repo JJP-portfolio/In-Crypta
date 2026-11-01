@@ -1003,7 +1003,23 @@ def generar_todos_los_assets() -> list[str]:
 # ============================================================
 # ACTUALIZACIÓN DEL PROYECTO GDEVELOP (JSON)
 # ============================================================
-def _animacion_dict(nombre: str, imagenes: list[str], looping: bool, tiempo: float) -> dict:
+# Máscara de colisión 24x30 en coordenadas 2x (textura 64x64) para paridad exacta con Pygame
+MASK_COLISION_JUGADOR = [[
+    {"x": 8, "y": 4},
+    {"x": 56, "y": 4},
+    {"x": 56, "y": 64},
+    {"x": 8, "y": 64},
+]]
+
+
+def _animacion_dict(
+    nombre: str,
+    imagenes: list[str],
+    looping: bool,
+    tiempo: float,
+    custom_mask: list[list[dict]] | None = None,
+) -> dict:
+    has_custom = custom_mask is not None
     return {
         "name": nombre,
         "useMultipleDirections": False,
@@ -1013,7 +1029,8 @@ def _animacion_dict(nombre: str, imagenes: list[str], looping: bool, tiempo: flo
                 "timeBetweenFrames": tiempo,
                 "sprites": [
                     {
-                        "hasCustomCollisionMask": False,
+                        "hasCustomCollisionMask": has_custom,
+                        "customCollisionMask": custom_mask or [],
                         "image": imagen,
                         "points": [],
                         "originPoint": {"name": "origine", "x": 0, "y": 0},
@@ -1099,22 +1116,22 @@ def actualizar_proyecto_gdevelop(ruta_json: Path) -> bool:
                 # 9: CaidaIzqSinPala (2 frames)
                 # 10+: Run, Jump, Dash
                 obj["animations"] = [
-                    _animacion_dict("Idle", [f"Jugador_Idle_{i}" for i in range(1, 5)], True, 0.14),
-                    _animacion_dict("Caida", [f"Jugador_Caida_{i}" for i in range(1, 3)], True, 0.12),
-                    _animacion_dict("Ataque", [f"Jugador_Ataque_{i}" for i in range(1, 4)], False, 0.06),
-                    _animacion_dict("IdleIzq", [f"Jugador_Idle_Izq_{i}" for i in range(1, 5)], True, 0.14),
-                    _animacion_dict("CaidaIzq", [f"Jugador_Caida_Izq_{i}" for i in range(1, 3)], True, 0.12),
-                    _animacion_dict("AtaqueIzq", [f"Jugador_Ataque_Izq_{i}" for i in range(1, 4)], False, 0.06),
-                    _animacion_dict("IdleSinPala", [f"Jugador_Idle_SinPala_{i}" for i in range(1, 5)], True, 0.14),
-                    _animacion_dict("CaidaSinPala", [f"Jugador_Caida_SinPala_{i}" for i in range(1, 3)], True, 0.12),
-                    _animacion_dict("IdleIzqSinPala", [f"Jugador_Idle_Izq_SinPala_{i}" for i in range(1, 5)], True, 0.14),
-                    _animacion_dict("CaidaIzqSinPala", [f"Jugador_Caida_Izq_SinPala_{i}" for i in range(1, 3)], True, 0.12),
-                    _animacion_dict("Run", [f"Jugador_Run_{i}" for i in range(1, 7)], True, 0.09),
-                    _animacion_dict("RunIzq", [f"Jugador_Run_Izq_{i}" for i in range(1, 7)], True, 0.09),
-                    _animacion_dict("Jump", [f"Jugador_Jump_{i}" for i in range(1, 3)], False, 0.10),
-                    _animacion_dict("JumpIzq", [f"Jugador_Jump_Izq_{i}" for i in range(1, 3)], False, 0.10),
-                    _animacion_dict("Dash", [f"Jugador_Dash_{i}" for i in range(1, 4)], False, 0.06),
-                    _animacion_dict("DashIzq", [f"Jugador_Dash_Izq_{i}" for i in range(1, 4)], False, 0.06),
+                    _animacion_dict("Idle", [f"Jugador_Idle_{i}" for i in range(1, 5)], True, 0.14, custom_mask=MASK_COLISION_JUGADOR),
+                    _animacion_dict("Caida", [f"Jugador_Caida_{i}" for i in range(1, 3)], True, 0.12, custom_mask=MASK_COLISION_JUGADOR),
+                    _animacion_dict("Ataque", [f"Jugador_Ataque_{i}" for i in range(1, 4)], False, 0.06, custom_mask=MASK_COLISION_JUGADOR),
+                    _animacion_dict("IdleIzq", [f"Jugador_Idle_Izq_{i}" for i in range(1, 5)], True, 0.14, custom_mask=MASK_COLISION_JUGADOR),
+                    _animacion_dict("CaidaIzq", [f"Jugador_Caida_Izq_{i}" for i in range(1, 3)], True, 0.12, custom_mask=MASK_COLISION_JUGADOR),
+                    _animacion_dict("AtaqueIzq", [f"Jugador_Ataque_Izq_{i}" for i in range(1, 4)], False, 0.06, custom_mask=MASK_COLISION_JUGADOR),
+                    _animacion_dict("IdleSinPala", [f"Jugador_Idle_SinPala_{i}" for i in range(1, 5)], True, 0.14, custom_mask=MASK_COLISION_JUGADOR),
+                    _animacion_dict("CaidaSinPala", [f"Jugador_Caida_SinPala_{i}" for i in range(1, 3)], True, 0.12, custom_mask=MASK_COLISION_JUGADOR),
+                    _animacion_dict("IdleIzqSinPala", [f"Jugador_Idle_Izq_SinPala_{i}" for i in range(1, 5)], True, 0.14, custom_mask=MASK_COLISION_JUGADOR),
+                    _animacion_dict("CaidaIzqSinPala", [f"Jugador_Caida_Izq_SinPala_{i}" for i in range(1, 3)], True, 0.12, custom_mask=MASK_COLISION_JUGADOR),
+                    _animacion_dict("Run", [f"Jugador_Run_{i}" for i in range(1, 7)], True, 0.09, custom_mask=MASK_COLISION_JUGADOR),
+                    _animacion_dict("RunIzq", [f"Jugador_Run_Izq_{i}" for i in range(1, 7)], True, 0.09, custom_mask=MASK_COLISION_JUGADOR),
+                    _animacion_dict("Jump", [f"Jugador_Jump_{i}" for i in range(1, 3)], False, 0.10, custom_mask=MASK_COLISION_JUGADOR),
+                    _animacion_dict("JumpIzq", [f"Jugador_Jump_Izq_{i}" for i in range(1, 3)], False, 0.10, custom_mask=MASK_COLISION_JUGADOR),
+                    _animacion_dict("Dash", [f"Jugador_Dash_{i}" for i in range(1, 4)], False, 0.06, custom_mask=MASK_COLISION_JUGADOR),
+                    _animacion_dict("DashIzq", [f"Jugador_Dash_Izq_{i}" for i in range(1, 4)], False, 0.06, custom_mask=MASK_COLISION_JUGADOR),
                 ]
             elif name == "Enemy":
                 obj["animations"] = [
