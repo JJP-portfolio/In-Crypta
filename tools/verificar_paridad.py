@@ -351,18 +351,21 @@ def comparar_globales_y_recursos(informe: Informe, proyecto: dict) -> None:
         else:
             informe.mal(f"Variable global obligatoria '{var}' falta en el proyecto")
 
-    # 2. Zoom de la cámara (CAMARA_ZOOM == 1.25)
+    # 2. Zoom de la cámara (CAMARA_ZOOM == 1.25) — parámetro numérico de la acción ZoomCamera
     from config import CAMARA_ZOOM
 
-    escenas = {e["name"]: e for e in proyecto.get("layouts", [])}
-    tutorial = escenas.get("Tutorial") or escenas.get("Nivel 1")
-    if tutorial:
-        eventos_str = eventos_de(tutorial)
-        zoom_esperado = f'"{CAMARA_ZOOM}"'
-        if '"ZoomCamera"' in eventos_str and (zoom_esperado in eventos_str or str(CAMARA_ZOOM) in eventos_str):
-            informe.ok(f"Zoom de cámara {CAMARA_ZOOM} coincide con config.CAMARA_ZOOM")
-        else:
-            informe.mal(f"Zoom de cámara no coincide con config.CAMARA_ZOOM ({CAMARA_ZOOM})")
+    zoom_camara = []
+    for escena in proyecto.get("layouts", []):
+        for params in iter_acciones(escena.get("events", []), "ZoomCamera"):
+            if len(params) >= 2:
+                try:
+                    zoom_camara.append(float(params[1]))
+                except (ValueError, TypeError):
+                    pass
+    if any(abs(v - CAMARA_ZOOM) < 1e-6 for v in zoom_camara):
+        informe.ok(f"Zoom de cámara {CAMARA_ZOOM} coincide con config.CAMARA_ZOOM")
+    else:
+        informe.mal(f"Zoom de cámara no coincide con config.CAMARA_ZOOM ({CAMARA_ZOOM}); valores hallados: {zoom_camara}")
 
     # 3. Integridad de recursos de imágenes en disco
     recursos_img = [
@@ -382,6 +385,89 @@ def comparar_globales_y_recursos(informe: Informe, proyecto: dict) -> None:
         informe.mal(f"Integridad de assets: {faltantes} imágenes faltan en disco")
 
 
+def iter_acciones(eventos_arbol, tipo):
+    """Yields parameter lists of actions of the given type in an events tree."""
+    if isinstance(eventos_arbol, dict):
+        t = eventos_arbol.get("type")
+        tk = t if isinstance(t, str) else (t.get("value") if isinstance(t, dict) else None)
+        if tk == tipo and "parameters" in eventos_arbol:
+            params = eventos_arbol["parameters"]
+            yield [p.get("value", "") if isinstance(p, dict) else p for p in params]
+        for v in eventos_arbol.values():
+            yield from iter_acciones(v, tipo)
+    elif isinstance(eventos_arbol, list):
+        for v in eventos_arbol:
+            yield from iter_acciones(v, tipo)
+
+
+def comparar_comportamiento_jugador(informe, proyecto):
+    """Comportamiento PlatformerObject del Jugador: gravedad, salto, caída y velocidad."""
+    from config import GRAVEDAD, MAX_CAIDA, SALTO, VELOCIDAD
+
+    hecho = False
+    for escena in proyecto.get("layouts", []):
+        for obj in escena.get("objects", []):
+            if obj.get("name") != "Jugador":
+                continue
+            for b in obj.get("behaviors", []):
+                if b.get("name") != "PlatformerObject":
+                    continue
+                grav = b.get("gravity")
+                if grav is not None and abs(float(grav) - GRAVEDAD) < 1e-6:
+                    informe.ok(f"Jugador gravedad {grav} == config.GRAVEDAD {GRAVEDAD}")
+                else:
+                    informe.mal(f"Jugador gravedad {grav} != config.GRAVEDAD {GRAVEDAD}")
+                jump = b.get("jumpSpeed")
+                if jump is not None and abs(float(jump) - float(-SALTO)) < 1e-6:
+                    informe.ok(f"Jugador jumpSpeed {jump} == -config.SALTO {-SALTO}")
+                else:
+                    informe.mal(f"Jugador jumpSpeed {jump} != -config.SALTO {-SALTO}")
+                mfs = b.get("maxFallingSpeed")
+                if mfs is not None and abs(float(mfs) - MAX_CAIDA) < 1e-6:
+                    informe.ok(f"Jugador maxFallingSpeed {mfs} == config.MAX_CAIDA {MAX_CAIDA}")
+                else:
+                    informe.mal(f"Jugador maxFallingSpeed {mfs} != config.MAX_CAIDA {MAX_CAIDA}")
+                ms = b.get("maxSpeed")
+                if ms is not None and abs(float(ms) - VELOCIDAD) < 1e-6:
+                    informe.ok(f"Jugador maxSpeed {ms} == config.VELOCIDAD {VELOCIDAD}")
+                else:
+                    informe.mal(f"Jugador maxSpeed {ms} != config.VELOCIDAD {VELOCIDAD}")
+                hecho = True
+                break
+        if hecho:
+            break
+    if not hecho:
+        informe.mal("Jugador.PlatformerObject no encontrado en el export")
+
+
+def comparar_animaciones_jugador(informe, proyecto):
+    """Jugador tiene 16 animaciones y sus ChangeAnimation usan índices [0,15]."""
+    anims_len = None
+    indices = []
+    for escena in proyecto.get("layouts", []):
+        for obj in escena.get("objects", []):
+            if obj.get("name") == "Jugador" and anims_len is None:
+                anims_len = len(obj.get("animations", []))
+        for params in iter_acciones(escena.get("events", []), "ChangeAnimation"):
+            if len(params) >= 3 and params[0] == "Jugador":
+                try:
+                    indices.append(int(params[2]))
+                except (ValueError, TypeError):
+                    pass
+    if anims_len is None:
+        informe.mal("Objeto Jugador no encontrado en el export")
+        return
+    if anims_len == 16:
+        informe.ok(f"Jugador tiene {anims_len} animaciones")
+    else:
+        informe.mal(f"Jugador tiene {anims_len} animaciones (se esperan 16)")
+    malos = [i for i in indices if i < 0 or i >= 16]
+    if malos:
+        informe.mal(f"ChangeAnimation(Jugador) usa índices fuera de rango [0,15]: {sorted(set(malos))}")
+    elif indices:
+        informe.ok(f"ChangeAnimation(Jugador) usa {len(indices)} índices, todos dentro de [0,15]")
+
+
 # ------------------------------------------------------------
 # main
 # ------------------------------------------------------------
@@ -398,6 +484,8 @@ def main() -> int:
     informe = Informe()
     print(f"Verificando paridad: {args.proyecto}")
     comparar_globales_y_recursos(informe, proyecto)
+    comparar_comportamiento_jugador(informe, proyecto)
+    comparar_animaciones_jugador(informe, proyecto)
     for nombre, nivel in escenas_del_juego():
         comparar_escena(informe, proyecto, nombre, nivel)
 
