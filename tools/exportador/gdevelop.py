@@ -92,7 +92,7 @@ def recurso_imagen(nombre: str, archivo: str) -> dict:
         "kind": "image",
         "metadata": "",
         "name": nombre,
-        "smoothed": True,
+        "smoothed": False,
         "userAdded": True,
     }
 
@@ -415,6 +415,22 @@ def objeto_golpe() -> dict:
     return data
 
 
+def variables_minijefe() -> list[dict]:
+    return [
+        {"name": "vida", "type": "number", "value": 3},
+        {"name": "dir", "type": "number", "value": 1},
+        {"name": "min_x", "type": "number", "value": 0},
+        {"name": "max_x", "type": "number", "value": 0},
+        {"name": "estado", "type": "number", "value": 0},
+        {"name": "timer", "type": "number", "value": 2.0},
+        {"name": "vulnerable", "type": "number", "value": 0},
+    ]
+
+
+def objeto_minijefe() -> dict:
+    return objeto_sprite("MiniJefe", "MiniJefe", variables_minijefe())
+
+
 def variables_jefe() -> list[dict]:
     return [
         {"name": "vida", "type": "number", "value": JEFE_VIDA},
@@ -499,6 +515,7 @@ def variables_jugador() -> list[dict]:
     return [
         {"name": "dir", "type": "number", "value": 1},
         {"name": "tiene_pala", "type": "number", "value": 0},
+        {"name": "tiene_dash", "type": "number", "value": 0},
         {"name": "dashing", "type": "number", "value": 0},
         {"name": "dash_time", "type": "number", "value": 0},
         {"name": "dash_cd", "type": "number", "value": 0},
