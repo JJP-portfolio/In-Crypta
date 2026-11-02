@@ -8,7 +8,15 @@
 #   2. SELECCIÓN DE PANTALLA (Selector de los 3 niveles del juego)
 #   3. CRÉDITOS (Reconocimientos y referencias de diseño)
 # ============================================================
+import os
 import sys
+from pathlib import Path
+
+# Asegurar que el directorio de trabajo y sys.path apunten siempre a la raíz del juego
+RAIZ = Path(__file__).resolve().parent
+os.chdir(RAIZ)
+if str(RAIZ) not in sys.path:
+    sys.path.insert(0, str(RAIZ))
 
 from juego import Juego
 

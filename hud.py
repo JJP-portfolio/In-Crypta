@@ -62,7 +62,12 @@ FUENTE_CONTADOR = 14
 FUENTE_NOMBRE = 18
 
 # Ruta absoluta de la fuente gótica
-_RUTA_FUENTE = Path(__file__).resolve().parent / "export/gdevelop_nativo/assets/NotoSerifDisplay-Bold.ttf"
+_RAIZ_HUD = Path(__file__).resolve().parent
+_RUTA_FUENTE = (
+    _RAIZ_HUD / "assets/NotoSerifDisplay-Bold.ttf"
+    if (_RAIZ_HUD / "assets/NotoSerifDisplay-Bold.ttf").exists()
+    else _RAIZ_HUD / "export/gdevelop_nativo/assets/NotoSerifDisplay-Bold.ttf"
+)
 
 DEBUG_HUD = False
 
@@ -119,12 +124,14 @@ class TextoCache:
             fuente = self.cargar_fuente(tamano)
             imagen = fuente.render(texto, True, color)
             if sombra:
+                s_sombra = fuente.render(texto, True, (8, 6, 12))
                 base = pygame.Surface(
-                    (imagen.get_width() + 3, imagen.get_height() + 3),
+                    (imagen.get_width() + 4, imagen.get_height() + 4),
                     pygame.SRCALPHA,
                 )
-                base.blit(fuente.render(texto, True, (0, 0, 0)), (3, 3))
-                base.blit(imagen, (0, 0))
+                for ox, oy in ((-1, 0), (1, 0), (0, -1), (0, 1), (1, 1)):
+                    base.blit(s_sombra, (2 + ox, 2 + oy))
+                base.blit(imagen, (2, 2))
                 imagen = base
             self.cache[clave] = imagen
         return imagen
