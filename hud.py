@@ -8,6 +8,8 @@
 # grilla 2×2 a la derecha, canal de mensajes único debajo del riel.
 # ============================================================
 
+from __future__ import annotations
+
 import math
 from dataclasses import dataclass, field
 from pathlib import Path

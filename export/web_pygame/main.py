@@ -1,3 +1,8 @@
+# /// script
+# dependencies = [
+#   "pygame-ce",
+# ]
+# ///
 # ============================================================
 # main.py — Arranque del plataformero IN CRYPTA
 # ============================================================
@@ -12,6 +17,11 @@ import asyncio
 import os
 import sys
 from pathlib import Path
+
+# Import directo a nivel módulo. El escáner de Pygbag (PEP 723) sólo analiza
+# los imports del archivo de entrada; no entra en juego.py ni en hud.py.
+# Sin esta línea, Pygbag no descarga el wheel de pygame-ce para WebAssembly.
+import pygame
 
 # Asegurar que el directorio de trabajo y sys.path apunten siempre a la raíz del juego
 RAIZ = Path(__file__).resolve().parent
@@ -40,4 +50,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-

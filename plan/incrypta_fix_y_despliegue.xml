@@ -1,0 +1,500 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<incrypta_fix_y_despliegue version="1.0" fecha="2026-11-02">
+
+  <metadata>
+    <proyecto>IN CRYPTA</proyecto>
+    <origen_diagnostico>diagnostico_problema_y_enfoque.xml</origen_diagnostico>
+    <destino_despliegue>Render Static Site, sirviendo la rama gh-pages que genera GitHub Actions</destino_despliegue>
+    <estado>CODIGO_LISTO__NO_DESPLEGADO</estado>
+  </metadata>
+
+  <estado_de_ejecucion>
+    <no_desplegado motivo="El entorno de ejecución no tiene salida de red (network Enabled: false), así que no se pudo llamar a la API de Render. El token no se usó ni se guardó en ningún archivo."/>
+    <verificado_localmente>
+      <item>main.py, hud.py y tools/exportar_web_pygame.py compilan con CPython 3.12.</item>
+      <item>El bloque PEP 723 se detecta con la regex de Pygbag y se parsea con tomllib: dependencies = ["pygame-ce"].</item>
+      <item>La sincronización corre sobre una copia del repo original.</item>
+      <item>El botón de inicio se inserta antes de &lt;/body&gt;, es idempotente y la build aborta si no encuentra &lt;/body&gt;.</item>
+      <item>La build aborta antes de llamar a Pygbag si main.py pierde el bloque PEP 723 o el import de pygame.</item>
+    </verificado_localmente>
+    <pendiente_de_verificar motivo="Requiere red y navegador">
+      Compilación real con Pygbag, descarga del wheel pygame-ce, canvas en 1280x720 y arranque del juego en Chromium. Lo cubre el sub-agente D del prompt de orquestación.
+    </pendiente_de_verificar>
+  </estado_de_ejecucion>
+
+  <hallazgos>
+    <hallazgo id="1">main.py no declara pygame-ce en bloque PEP 723 y no importa pygame a nivel módulo. Esta es la causa raíz: Pygbag no descarga el wheel.</hallazgo>
+    <hallazgo id="2">hud.py ya tiene import pygame en la línea 15. El AttributeError ocurre porque el módulo cargado es el stub. Agregar from __future__ import annotations solo mueve el error a la primera llamada a pygame.Rect(...) dentro de HudLayout.construir(). Se aplica como protección adicional, no como solución.</hallazgo>
+    <hallazgo id="3">tools/exportar_web_pygame.py no personaliza index.html. El botón gótico se inyecta después de compilar, porque Pygbag regenera el archivo en cada build.</hallazgo>
+    <hallazgo id="4">export/web_pygame/main.py y hud.py son copias que sincronizar_archivos() regenera desde la raíz. Se edita solo la raíz. El .gitignore excluye export/web_pygame/build/, pero no las copias fuente.</hallazgo>
+    <hallazgo id="5">ARCHIVOS_CORE incluye todos los módulos locales que importa el juego. No hace falta cambiar la lista.</hallazgo>
+    <hallazgo id="6">El plan original sugería hacer push directo a gh-pages. No lo recomiendo: deploy-pages.yml publica esa rama y un push manual puede pisar su resultado.</hallazgo>
+  </hallazgos>
+
+  <cambios>
+    <cambio id="1" archivo="main.py" accion="reemplazar_archivo_completo">
+      <razon>Declara pygame-ce en bloque PEP 723 e importa pygame a nivel módulo, para que Pygbag descargue el wheel WebAssembly.</razon>
+      <contenido><![CDATA[# /// script
+# dependencies = [
+#   "pygame-ce",
+# ]
+# ///
+# ============================================================
+# main.py — Arranque del plataformero IN CRYPTA
+# ============================================================
+# Al ejecutar `python main.py` se inicia directamente la ventana de Pygame,
+# comenzando por la pantalla de presentación gótica (Intro), la cual da paso
+# al Menú Principal diegético con tres opciones:
+#   1. JUGAR (Inicia la campaña desde el Nivel 1)
+#   2. SELECCIÓN DE PANTALLA (Selector de los 3 niveles del juego)
+#   3. CRÉDITOS (Reconocimientos y referencias de diseño)
+# ============================================================
+import asyncio
+import os
+import sys
+from pathlib import Path
+
+# Import directo a nivel módulo. El escáner de Pygbag (PEP 723) sólo analiza
+# los imports del archivo de entrada; no entra en juego.py ni en hud.py.
+# Sin esta línea, Pygbag no descarga el wheel de pygame-ce para WebAssembly.
+import pygame
+
+# Asegurar que el directorio de trabajo y sys.path apunten siempre a la raíz del juego
+RAIZ = Path(__file__).resolve().parent
+os.chdir(RAIZ)
+if str(RAIZ) not in sys.path:
+    sys.path.insert(0, str(RAIZ))
+
+from juego import Juego
+
+
+async def main():
+    nivel_inicio = None
+    if len(sys.argv) >= 3 and sys.argv[1] in ("--nivel", "-n"):
+        try:
+            val = int(sys.argv[2])
+            if 1 <= val <= 3:
+                nivel_inicio = val - 1
+        except ValueError:
+            pass
+
+    juego = Juego()
+    if nivel_inicio is not None:
+        juego.seleccionar_nivel(nivel_inicio)
+    await juego.run_async()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+]]></contenido>
+    </cambio>
+
+    <cambio id="2" archivo="hud.py" accion="parche">
+      <razon>Protección adicional frente a la evaluación temprana de anotaciones. No reemplaza al cambio 1.</razon>
+      <antes><![CDATA[import math
+from dataclasses import dataclass, field
+]]></antes>
+      <despues><![CDATA[from __future__ import annotations
+
+import math
+from dataclasses import dataclass, field
+]]></despues>
+    </cambio>
+
+    <cambio id="3" archivo="tools/exportar_web_pygame.py" accion="reemplazar_archivo_completo">
+      <razon>Verifica el bloque PEP 723 antes de compilar, e inyecta el botón de inicio gótico en index.html después de la build. Los cambios de lógica son solo estos dos; el resto del script queda igual.</razon>
+      <contenido><![CDATA[#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+tools/exportar_web_pygame.py
+============================
+Prepara, limpia y compila la versión WebAssembly de IN CRYPTA usando Pygbag.
+Asegura paridad de código, assets limpios (sin dependencias ML / Torch),
+compatibilidad estricta con nombres ASCII y presencia de .nojekyll para GitHub Pages.
+
+Además:
+  - Verifica que main.py declare pygame-ce en bloque PEP 723 (sin esto, Pygbag
+    no descarga el wheel y el juego queda en pantalla gris).
+  - Reemplaza el aviso #infobox de Pygbag por un botón de inicio gótico.
+"""
+
+import argparse
+import os
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import sys
+
+RAIZ = Path(__file__).resolve().parent.parent
+DIR_WEB = RAIZ / "export" / "web_pygame"
+DIR_BUILD_WEB = DIR_WEB / "build" / "web"
+
+ARCHIVOS_CORE = (
+    "main.py",
+    "juego.py",
+    "config.py",
+    "audio.py",
+    "camara.py",
+    "efectos.py",
+    "entidades.py",
+    "hud.py",
+    "nivel.py",
+    "niveles.py",
+    "niveles_redisenados.py",
+    "particulas.py",
+    "assets_loader.py",
+    "requirements.txt",
+)
+
+MARCADOR_INICIO = "<!-- incrypta:inicio-gotico -->"
+
+BLOQUE_INICIO = """
+<!-- incrypta:inicio-gotico -->
+<style>
+  #infobox { display: none !important; }
+  #incrypta-inicio {
+    position: fixed; inset: 0; z-index: 9999;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(8, 5, 4, 0.82);
+  }
+  #incrypta-inicio button {
+    cursor: pointer;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(16px, 3vw, 28px);
+    letter-spacing: 0.08em;
+    color: #e5c158;
+    background: #120c0a;
+    border: 3px solid #e5c158;
+    border-radius: 2px;
+    padding: 18px 36px;
+    box-shadow: 0 0 0 4px #120c0a, 0 0 0 6px #5a4520, 0 0 28px rgba(229, 193, 88, 0.35);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  #incrypta-inicio button:hover,
+  #incrypta-inicio button:focus-visible {
+    outline: none;
+    transform: scale(1.04);
+    box-shadow: 0 0 0 4px #120c0a, 0 0 0 6px #8a6a2c, 0 0 40px rgba(229, 193, 88, 0.6);
+  }
+</style>
+<div id="incrypta-inicio">
+  <button type="button" id="incrypta-inicio-btn">&#9876;&#65039; IN CRYPTA &#9876;&#65039; — Haz click para comenzar</button>
+</div>
+<script>
+  (function () {
+    var overlay = document.getElementById("incrypta-inicio");
+    var boton = document.getElementById("incrypta-inicio-btn");
+    if (!overlay || !boton) { return; }
+    // El click burbujea hasta window, donde Pygbag registra el gesto de usuario (UME).
+    boton.addEventListener("click", function () {
+      overlay.remove();
+    });
+  })();
+</script>
+"""
+
+
+def verificar_main_pep723():
+    """Corta antes de compilar si main.py perdió la declaración que Pygbag necesita."""
+    texto = (RAIZ / "main.py").read_text(encoding="utf-8")
+    if "# /// script" not in texto or '"pygame-ce"' not in texto:
+        print(
+            "✘ main.py no declara pygame-ce en un bloque PEP 723. "
+            "Pygbag no descargaría el wheel y el juego quedaría en pantalla gris.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    if not re.search(r"^import pygame\b", texto, re.M):
+        print("✘ main.py necesita 'import pygame' a nivel módulo.", file=sys.stderr)
+        sys.exit(1)
+    print("✔ main.py declara pygame-ce (PEP 723) e importa pygame.")
+
+
+def sincronizar_archivos():
+    """Copia los archivos fuente limpios hacia export/web_pygame/."""
+    DIR_WEB.mkdir(parents=True, exist_ok=True)
+
+    # 1. Copiar scripts Python core
+    for nombre in ARCHIVOS_CORE:
+        origen = RAIZ / nombre
+        destino = DIR_WEB / nombre
+        if origen.exists():
+            shutil.copy2(origen, destino)
+        else:
+            print(f"  [AVISO] No se encontró {origen}")
+
+    # 2. Copiar assets/
+    dir_assets_origen = RAIZ / "assets"
+    dir_assets_dest = DIR_WEB / "assets"
+    if dir_assets_origen.exists():
+        if dir_assets_dest.exists():
+            shutil.rmtree(dir_assets_dest)
+        shutil.copytree(dir_assets_origen, dir_assets_dest, ignore=shutil.ignore_patterns("*.pyc", "__pycache__"))
+
+    # 3. Copiar assets_pixelart/
+    dir_px_origen = RAIZ / "assets_pixelart"
+    dir_px_dest = DIR_WEB / "assets_pixelart"
+    if dir_px_origen.exists():
+        if dir_px_dest.exists():
+            shutil.rmtree(dir_px_dest)
+        shutil.copytree(dir_px_origen, dir_px_dest, ignore=shutil.ignore_patterns("*.pyc", "__pycache__"))
+
+    # 4. Copiar audio desde assets_in_crypta/entrega/ (excluyendo ML, logs, work y wavs pesados redundantes)
+    dir_audio_origen = RAIZ / "assets_in_crypta" / "entrega"
+    dir_audio_dest = DIR_WEB / "assets_in_crypta" / "entrega"
+    if dir_audio_origen.exists():
+        dir_audio_dest.mkdir(parents=True, exist_ok=True)
+
+        # Manifiesto
+        manifiesto = dir_audio_origen / "manifest_entrega.json"
+        if manifiesto.exists():
+            shutil.copy2(manifiesto, dir_audio_dest / "manifest_entrega.json")
+
+        # Música (.ogg)
+        musica_orig = dir_audio_origen / "musica"
+        musica_dest = dir_audio_dest / "musica"
+        if musica_orig.exists():
+            musica_dest.mkdir(parents=True, exist_ok=True)
+            for f in musica_orig.glob("*.ogg"):
+                if not f.name.endswith("-pygbag.ogg"):
+                    shutil.copy2(f, musica_dest / f.name)
+
+        # SFX (.ogg y .wav, omitiendo dron_catacumbas.wav de 3.5MB por su version .ogg ligera)
+        sfx_orig = dir_audio_origen / "sfx"
+        sfx_dest = dir_audio_dest / "sfx"
+        if sfx_orig.exists():
+            sfx_dest.mkdir(parents=True, exist_ok=True)
+            for f in sfx_orig.glob("*.*"):
+                if f.name.endswith("-pygbag.ogg") or f.suffix not in (".wav", ".ogg"):
+                    continue
+                if f.name == "dron_catacumbas.wav":
+                    continue  # usar dron_catacumbas.ogg
+                shutil.copy2(f, sfx_dest / f.name)
+
+    # 5. Limpieza de archivos obsoletos o conflictivos
+    for basura in (
+        DIR_WEB / "pipeline_in_crypta.py",
+        DIR_WEB / "pipeline_in_crypta-pygbag.py",
+        DIR_WEB / "audio-pygbag.py",
+        DIR_WEB / "niveles_rediseñados.py",
+    ):
+        if basura.exists():
+            basura.unlink()
+
+    # Eliminar posibles __pycache__ dentro de DIR_WEB
+    for pyc in DIR_WEB.rglob("__pycache__"):
+        if "build" not in str(pyc):
+            shutil.rmtree(pyc, ignore_errors=True)
+
+    print(f"✔ Sincronización limpia completada en: {DIR_WEB}")
+
+
+def personalizar_index_html():
+    """Reemplaza el aviso #infobox de Pygbag por un botón de inicio gótico.
+
+    Pygbag regenera index.html en cada build, así que el parche se reaplica
+    siempre. Falla en voz alta si no encuentra el punto de inserción, para no
+    publicar una página sin botón de inicio.
+    """
+    index = DIR_BUILD_WEB / "index.html"
+    if not index.exists():
+        print(f"✘ No se encontró {index} para personalizar.", file=sys.stderr)
+        sys.exit(1)
+
+    html = index.read_text(encoding="utf-8")
+    if MARCADOR_INICIO in html:
+        print("✔ index.html ya contenía el botón de inicio gótico.")
+        return
+
+    if "</body>" not in html:
+        print("✘ index.html no contiene </body>; no se puede insertar el botón.", file=sys.stderr)
+        sys.exit(1)
+
+    html = html.replace("</body>", BLOQUE_INICIO + "\n</body>", 1)
+    index.write_text(html, encoding="utf-8")
+    print(f"✔ Botón de inicio gótico insertado en: {index}")
+
+
+def compilar_pygbag():
+    """Ejecuta pygbag --build sobre export/web_pygame/."""
+    cmd = [sys.executable, "-m", "pygbag", "--build", str(DIR_WEB)]
+    print(f"▶ Compilando WebAssembly con Pygbag: {' '.join(cmd)}")
+    res = subprocess.run(cmd)
+    if res.returncode != 0:
+        print("✘ Error al compilar con Pygbag.", file=sys.stderr)
+        sys.exit(res.returncode)
+
+    # Asegurar .nojekyll en la carpeta compilada
+    DIR_BUILD_WEB.mkdir(parents=True, exist_ok=True)
+    nojekyll = DIR_BUILD_WEB / ".nojekyll"
+    nojekyll.touch()
+    print(f"✔ Archivo .nojekyll verificado en: {nojekyll}")
+
+    personalizar_index_html()
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Pipeline de preparación y compilación web Pygbag")
+    parser.add_argument("--sync-only", action="store_true", help="Solo sincroniza archivos sin compilar")
+    parser.add_argument("--build", action="store_true", help="Sincroniza y compila con Pygbag")
+    args = parser.parse_args()
+
+    verificar_main_pep723()
+    sincronizar_archivos()
+
+    if args.build or not args.sync_only:
+        compilar_pygbag()
+
+
+if __name__ == "__main__":
+    main()
+]]></contenido>
+    </cambio>
+
+    <cambio id="4" archivo="render.yaml" accion="crear">
+      <razon>Blueprint opcional para crear el Static Site en Render desde el repo, sin compilar nada en Render.</razon>
+      <contenido><![CDATA[# render.yaml — Blueprint opcional para publicar IN CRYPTA como Static Site en Render.
+#
+# Render sirve la rama gh-pages que ya genera GitHub Actions (deploy-pages.yml).
+# Así Render no necesita Python 3.12 ni compilar Pygbag: sólo sirve archivos estáticos.
+# Requisito: el workflow deploy-pages.yml debe haber corrido al menos una vez con estos cambios.
+services:
+  - type: web
+    name: in-crypta
+    runtime: static
+    repo: https://github.com/jjp-portfolio/In-Crypta
+    branch: gh-pages
+    buildCommand: exit 0
+    staticPublishPath: .
+]]></contenido>
+    </cambio>
+  </cambios>
+
+  <despliegue_render>
+    <paso_previo>Hacer push a main para que deploy-pages.yml regenere gh-pages. Confirmar en la pestaña Actions que el workflow termine en verde.</paso_previo>
+    <opcion id="A" recomendada="true" titulo="Static Site desde el dashboard, sin token">
+      <paso n="1">En Render: New → Static Site → conectar el repo jjp-portfolio/In-Crypta.</paso>
+      <paso n="2">Branch: gh-pages.</paso>
+      <paso n="3">Build Command: exit 0. Si el campo es obligatorio. Los artefactos ya los genera GitHub Actions.</paso>
+      <paso n="4">Publish Directory: . (raíz de gh-pages).</paso>
+      <paso n="5">Create Static Site. Desde entonces, cada push a gh-pages redespliega solo.</paso>
+    </opcion>
+    <opcion id="B" titulo="Blueprint versionado">
+      <paso n="1">Con render.yaml en la raíz de main: New → Blueprint → elegir el repo.</paso>
+      <paso n="2">Render crea el servicio in-crypta con los valores del archivo.</paso>
+    </opcion>
+    <nota>No recomiendo que Render compile Pygbag desde main. Requiere Python 3.12 en el entorno de build y repite la compilación que ya hace GitHub Actions.</nota>
+  </despliegue_render>
+
+  <comandos_usuario>
+    <comando descripcion="Probar la build localmente (opcional; requiere Python 3.12 y red)">python tools/exportar_web_pygame.py --build</comando>
+    <comando descripcion="Commit y push a main">git add main.py hud.py tools/exportar_web_pygame.py render.yaml
+git commit -m "Fix web: declarar pygame-ce (PEP 723) y botón de inicio gótico"
+git push origin main</comando>
+    <nota>Si git status muestra export/web_pygame/main.py o hud.py como modificados, son copias regeneradas. Incluilas en el commit si Git las rastrea.</nota>
+  </comandos_usuario>
+
+  <verificacion_final>
+    <criterio>La URL de GitHub Pages y la de Render no muestran pantalla gris.</criterio>
+    <criterio>El wheel de pygame-ce responde HTTP 200 en la pestaña de red.</criterio>
+    <criterio>La consola del navegador no muestra AttributeError.</criterio>
+    <criterio>El canvas mide 1280x720.</criterio>
+    <criterio>Se ve el botón "⚔️ IN CRYPTA ⚔️ — Haz click para comenzar". Al hacer click desaparece y el juego avanza.</criterio>
+  </verificacion_final>
+
+  <seguridad>
+    <accion prioridad="alta">Revocá el token de Render que pegaste en el chat (Account Settings → API Keys). Ya quedó registrado en esta conversación. Generá uno nuevo solo si lo necesitás para automatizar.</accion>
+    <accion>No lo guardes en el repo ni en este XML. Para automatizar, usalo como secreto de GitHub Actions (RENDER_API_KEY) o como variable de entorno local.</accion>
+  </seguridad>
+
+  <prompt_orquestador modelo="flash 3.8"><![CDATA[# PROMPT DE ORQUESTACIÓN — IN CRYPTA: corrección y despliegue web
+
+Modelo del orquestador: flash 3.8 (cambiar esta línea si el identificador de API es otro).
+
+## Rol
+Sos el agente orquestador. Delegás el trabajo en sub-agentes, validás sus salidas y decidís el siguiente paso. No escribís código de juego por tu cuenta: si un sub-agente falla, reintentás o escalás.
+
+## Objetivo
+Dejar IN CRYPTA jugable en una URL pública servida por Render (Static Site desde la rama gh-pages). Criterio de éxito: al abrir la URL no aparece pantalla gris; el canvas mide 1280x720; se ve el botón de inicio gótico; al hacer click, el juego avanza a la intro/menú.
+
+## Contexto verificado
+- Repo: `jjp-portfolio/In-Crypta`. Pygame-ce + Pygbag (WebAssembly, CPython 3.12).
+- Causa raíz confirmada: `main.py` no declaraba pygame-ce en bloque PEP 723 y no importaba pygame a nivel módulo. Pygbag no descargó el wheel. `hud.py` (línea 181, `HudLayout`) evalúa `pygame.Rect` en tiempo de importación, el módulo es el stub y lanza `AttributeError`.
+- `from __future__ import annotations` en `hud.py` NO resuelve el problema por sí solo: solo mueve el error a la primera llamada a `pygame.Rect(...)` dentro de `construir()`. Es una protección adicional, no la solución.
+- Los cambios ya están preparados en la sección `<cambios>` del XML entregable. Aplicalos tal cual; no los reinventes.
+- `export/` y `export/web_pygame/build/` son artefactos de compilación. No los edites a mano.
+
+## Reglas duras
+1. Nunca escribas el token de Render en archivos, commits, logs, capturas ni mensajes a otros agentes. Leelo solo de la variable de entorno `RENDER_API_KEY`. Si no existe, detenete y pedí al humano que la configure. No pidas el token en texto plano.
+2. No hagas force-push. No escribas en `gh-pages` a mano: la publica GitHub Actions (`deploy-pages.yml`).
+3. Tocá solo estos archivos: `main.py`, `hud.py`, `tools/exportar_web_pygame.py`, `render.yaml`. Las copias `export/web_pygame/main.py` y `export/web_pygame/hud.py` se regeneran desde la raíz; se commitean solo si Git las rastrea, y nunca se editan a mano. Cualquier otro cambio requiere aprobación humana.
+4. Si el traceback del navegador no es el de `hud.py:181` o aparece un error nuevo, detenete y reportá. No improvises parches.
+5. Máximo 2 reintentos por sub-agente. Después, escalá al humano con el motivo.
+6. Todas las salidas de los sub-agentes van en JSON. Si una salida no parsea, se considera fallida.
+
+## Sub-agentes
+
+### A — parche_codigo
+- Entrada: cambios 1 (`main.py`) y 2 (`hud.py`) del XML.
+- Tareas: aplicar; `python -m py_compile main.py hud.py`; comprobar que el bloque PEP 723 de `main.py` es válido (parsear con `tomllib` el contenido de `# /// script`); correr `pytest tests/test_hud.py tests/test_logica.py` si `pygame-ce` está instalado.
+- Salida: `{"archivos_modificados": [], "compila": bool, "tests": "ok|fallo|omitido", "notas": ""}`.
+
+### B — plantilla_web
+- Entrada: cambio 3 (`tools/exportar_web_pygame.py`).
+- Tareas: reemplazar el archivo; probar `personalizar_index_html()` con un `index.html` de prueba: caso con `</body>`, caso sin `</body>` (debe fallar), caso ya parcheado (debe ser idempotente).
+- Salida: `{"archivos_modificados": [], "pruebas": {"con_body": bool, "sin_body": bool, "idempotente": bool}, "notas": ""}`.
+
+### C — compilacion (depende de A y B)
+- Tareas: `python tools/exportar_web_pygame.py --build`. Confirmar que `export/web_pygame/build/web/` contiene `index.html`, `web_pygame.apk` y `.nojekyll`, y que `index.html` contiene `incrypta-inicio-btn`.
+- Salida: `{"build_ok": bool, "archivos": [], "errores": []}`.
+
+### D — verificacion_navegador (depende de C)
+- Tareas: servir `export/web_pygame/build/web/` en localhost. Abrirlo en Chromium headless con CDP (puerto 9222). Registrar:
+  1. Respuestas HTTP de todos los recursos de red. El wheel de `pygame-ce` debe responder 200.
+  2. Consola de CPython WASM: no debe aparecer `AttributeError` ni `no pep 723 block found`.
+  3. `canvas.width == 1280` y `canvas.height == 720` tras el arranque.
+  4. Overlay `#incrypta-inicio` visible antes del click.
+  5. Tras el click: el overlay desaparece y el juego avanza (captura a los 3 s del click).
+  6. Captura de pantalla inicial y post-click, guardadas en `verificacion/`.
+- Criterios de aceptación: los 6 puntos en `true`.
+- Salida: `{"criterios": {"wheel_200": bool, "sin_traceback": bool, "canvas_1280x720": bool, "overlay_visible": bool, "avanza_tras_click": bool, "capturas": true}, "capturas": [], "traceback": null}`.
+- Si algún criterio es `false`, no avances a E. Reportá con el traceback o el detalle.
+
+### E — despliegue (depende de D con todos los criterios en true)
+- Tareas:
+  1. `git add` de los archivos permitidos (no `export/web_pygame/build/`, ya está en `.gitignore`), `git commit`, `git push origin main`.
+  2. Esperar el workflow: `gh run watch` sobre `deploy-pages.yml`.
+  3. Confirmar que la rama `gh-pages` cambió y que `https://jjp-portfolio.github.io/In-Crypta/` responde 200.
+  4. Si el Static Site de Render existe, consultar el estado del último deploy con `RENDER_API_KEY` (solo lectura: listar servicios y deploys). Si no existe, dejar la instrucción manual del XML.
+  5. Repetir el criterio de D sobre la URL de Render.
+- Salida: `{"commit": "", "workflow": "success|failure", "gh_pages_actualizado": bool, "url_github_pages": "", "url_render": "", "render_deploy": "live|no_configurado|fallido"}`.
+
+### F — revision (en paralelo con E, sobre el diff final)
+- Tareas: revisar el diff y buscar:
+  - Tokens, claves o secretos en cualquier archivo.
+  - Cambios fuera de la lista permitida.
+  - Regresiones en la ejecución nativa: `python main.py` debe comportarse igual que antes (el bloque PEP 723 es solo un comentario).
+  - Que ocultar `#infobox` no impida el gesto de usuario que Pygbag necesita (UME).
+- Salida: `{"veredicto": "APROBADO|RECHAZADO", "hallazgos": []}`.
+
+## Orden de ejecución
+`A ∥ B` → `C` → `D` → (si todo está en true) `E ∥ F` → reporte final.
+
+## Reporte final del orquestador
+Devolvé un único XML:
+
+```xml
+<reporte>
+  <estado>DEPLOYED | BLOCKED | NEEDS_HUMAN</estado>
+  <url_github_pages></url_github_pages>
+  <url_render></url_render>
+  <criterios_D></criterios_D>
+  <revision_F></revision_F>
+  <pendientes_para_humano></pendientes_para_humano>
+</reporte>
+```
+
+Si el estado es `BLOCKED` o `NEEDS_HUMAN`, incluí en `<pendientes_para_humano>` el motivo exacto y el siguiente paso sugerido. No marques `DEPLOYED` si D o F no aprobaron.
+]]></prompt_orquestador>
+</incrypta_fix_y_despliegue>

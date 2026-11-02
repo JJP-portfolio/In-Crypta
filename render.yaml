@@ -1,0 +1,13 @@
+# render.yaml — Blueprint opcional para publicar IN CRYPTA como Static Site en Render.
+#
+# Render sirve la rama gh-pages que ya genera GitHub Actions (deploy-pages.yml).
+# Así Render no necesita Python 3.12 ni compilar Pygbag: sólo sirve archivos estáticos.
+# Requisito: el workflow deploy-pages.yml debe haber corrido al menos una vez con estos cambios.
+services:
+  - type: web
+    name: in-crypta
+    runtime: static
+    repo: https://github.com/jjp-portfolio/In-Crypta
+    branch: gh-pages
+    buildCommand: exit 0
+    staticPublishPath: .

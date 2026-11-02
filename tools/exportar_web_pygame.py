@@ -6,11 +6,17 @@ tools/exportar_web_pygame.py
 Prepara, limpia y compila la versión WebAssembly de IN CRYPTA usando Pygbag.
 Asegura paridad de código, assets limpios (sin dependencias ML / Torch),
 compatibilidad estricta con nombres ASCII y presencia de .nojekyll para GitHub Pages.
+
+Además:
+  - Verifica que main.py declare pygame-ce en bloque PEP 723 (sin esto, Pygbag
+    no descarga el wheel y el juego queda en pantalla gris).
+  - Reemplaza el aviso #infobox de Pygbag por un botón de inicio gótico.
 """
 
 import argparse
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -35,6 +41,69 @@ ARCHIVOS_CORE = (
     "assets_loader.py",
     "requirements.txt",
 )
+
+MARCADOR_INICIO = "<!-- incrypta:inicio-gotico -->"
+
+BLOQUE_INICIO = """
+<!-- incrypta:inicio-gotico -->
+<style>
+  #infobox { display: none !important; }
+  #incrypta-inicio {
+    position: fixed; inset: 0; z-index: 9999;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(8, 5, 4, 0.82);
+  }
+  #incrypta-inicio button {
+    cursor: pointer;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(16px, 3vw, 28px);
+    letter-spacing: 0.08em;
+    color: #e5c158;
+    background: #120c0a;
+    border: 3px solid #e5c158;
+    border-radius: 2px;
+    padding: 18px 36px;
+    box-shadow: 0 0 0 4px #120c0a, 0 0 0 6px #5a4520, 0 0 28px rgba(229, 193, 88, 0.35);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  #incrypta-inicio button:hover,
+  #incrypta-inicio button:focus-visible {
+    outline: none;
+    transform: scale(1.04);
+    box-shadow: 0 0 0 4px #120c0a, 0 0 0 6px #8a6a2c, 0 0 40px rgba(229, 193, 88, 0.6);
+  }
+</style>
+<div id="incrypta-inicio">
+  <button type="button" id="incrypta-inicio-btn">&#9876;&#65039; IN CRYPTA &#9876;&#65039; — Haz click para comenzar</button>
+</div>
+<script>
+  (function () {
+    var overlay = document.getElementById("incrypta-inicio");
+    var boton = document.getElementById("incrypta-inicio-btn");
+    if (!overlay || !boton) { return; }
+    // El click burbujea hasta window, donde Pygbag registra el gesto de usuario (UME).
+    boton.addEventListener("click", function () {
+      overlay.remove();
+    });
+  })();
+</script>
+"""
+
+
+def verificar_main_pep723():
+    """Corta antes de compilar si main.py perdió la declaración que Pygbag necesita."""
+    texto = (RAIZ / "main.py").read_text(encoding="utf-8")
+    if "# /// script" not in texto or '"pygame-ce"' not in texto:
+        print(
+            "✘ main.py no declara pygame-ce en un bloque PEP 723. "
+            "Pygbag no descargaría el wheel y el juego quedaría en pantalla gris.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    if not re.search(r"^import pygame\b", texto, re.M):
+        print("✘ main.py necesita 'import pygame' a nivel módulo.", file=sys.stderr)
+        sys.exit(1)
+    print("✔ main.py declara pygame-ce (PEP 723) e importa pygame.")
 
 
 def sincronizar_archivos():
@@ -116,6 +185,32 @@ def sincronizar_archivos():
     print(f"✔ Sincronización limpia completada en: {DIR_WEB}")
 
 
+def personalizar_index_html():
+    """Reemplaza el aviso #infobox de Pygbag por un botón de inicio gótico.
+
+    Pygbag regenera index.html en cada build, así que el parche se reaplica
+    siempre. Falla en voz alta si no encuentra el punto de inserción, para no
+    publicar una página sin botón de inicio.
+    """
+    index = DIR_BUILD_WEB / "index.html"
+    if not index.exists():
+        print(f"✘ No se encontró {index} para personalizar.", file=sys.stderr)
+        sys.exit(1)
+
+    html = index.read_text(encoding="utf-8")
+    if MARCADOR_INICIO in html:
+        print("✔ index.html ya contenía el botón de inicio gótico.")
+        return
+
+    if "</body>" not in html:
+        print("✘ index.html no contiene </body>; no se puede insertar el botón.", file=sys.stderr)
+        sys.exit(1)
+
+    html = html.replace("</body>", BLOQUE_INICIO + "\n</body>", 1)
+    index.write_text(html, encoding="utf-8")
+    print(f"✔ Botón de inicio gótico insertado en: {index}")
+
+
 def compilar_pygbag():
     """Ejecuta pygbag --build sobre export/web_pygame/."""
     cmd = [sys.executable, "-m", "pygbag", "--build", str(DIR_WEB)]
@@ -131,6 +226,8 @@ def compilar_pygbag():
     nojekyll.touch()
     print(f"✔ Archivo .nojekyll verificado en: {nojekyll}")
 
+    personalizar_index_html()
+
 
 def main():
     parser = argparse.ArgumentParser(description="Pipeline de preparación y compilación web Pygbag")
@@ -138,6 +235,7 @@ def main():
     parser.add_argument("--build", action="store_true", help="Sincroniza y compila con Pygbag")
     args = parser.parse_args()
 
+    verificar_main_pep723()
     sincronizar_archivos()
 
     if args.build or not args.sync_only:

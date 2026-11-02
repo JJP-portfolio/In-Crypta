@@ -1,0 +1,58 @@
+# Carpeta de salida de Repomix
+repomix/
+**/repomix/
+repomix-output.*
+
+# Capturas e imágenes binarias
+capturas/
+assets/
+assets_in_crypta/
+assets_pixelart/
+**/*.png
+**/*.jpg
+**/*.jpeg
+**/*.ico
+**/*.gif
+**/*.bmp
+**/*.webp
+**/*.svg
+
+# Audio y fuentes binarias
+**/*.wav
+**/*.ogg
+**/*.mp3
+**/*.m4a
+**/*.ttf
+**/*.woff
+**/*.woff2
+**/*.eot
+**/*.otf
+
+# Builds y exports grandes
+export/
+**/*.zip
+**/*.jar
+**/*.exe
+**/*.dmg
+**/*.app
+
+# Cache y entornos virtuales
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.tox/
+
+# Logs y temporales
+*.log
+*.bak
+*.tmp
+.DS_Store
+Thumbs.db
+
+# Archivos de entorno con posibles secretos
+.env
+.env.*
+!.env.example

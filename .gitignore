@@ -13,4 +13,6 @@ Thumbs.db
 export/web_pygame/build/
 build/
 *-pygbag.*
+scratch/
+verificacion/
 
