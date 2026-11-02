@@ -526,7 +526,7 @@ class Juego:
         self.audio.iniciar_dron()
         cita = CITAS_POE.get("tutorial", "")
         if cita:
-            self.hud.mostrar_mensaje(cita, 2, 5.5)
+            self.hud.mostrar_mensaje(cita, 1, 5.0)
         else:
             self.hud.mostrar_mensaje(
                 "EL RITUAL DEL SEPULTURERO · Aprende las mecánicas básicas", 1, 5.0
@@ -1387,7 +1387,6 @@ class Juego:
                 # Pisotón limpio: posicionar sobre la cabeza y dar invulnerabilidad temporal
                 self.jugador.rect.bottom = jefe.rect.top
                 self.jugador.y = float(self.jugador.rect.y)
-                self.jugador.vy = -REBOTE_ENEMIGO
                 self.jugador.en_suelo = False
                 self.jugador.invulnerable = 0.40
                 self.dañar_jefe_pisaton()
@@ -1412,8 +1411,9 @@ class Juego:
         return self.dañar_jefe_pala()
 
     def _rebotar_jefe_coraza(self):
-        self.jugador.vx = -self.jugador.direccion * 220
-        self.jugador.vy = -160
+        self.jugador.vx = -self.jugador.direccion * 240
+        self.jugador.vy = -180
+        self.jugador.retroceso_tiempo = 0.20
         self.jugador.invulnerable = 0.25
         self.camara.sacudir(5.0, 0.12, dir_x=-self.jugador.direccion, dir_y=0.0)
         self.flash = 0.08
@@ -1438,32 +1438,65 @@ class Juego:
         if not self.jefe.recibir_golpe_pala(rango_mejorado=rango_mejorado):
             self._rebotar_jefe_coraza()
             return False
-        return self._aplicar_golpe_jefe()
+        res = self._aplicar_golpe_jefe()
+        # Ráfaga de rechazo al dañar con pala frontal
+        dir_empuje = 1 if self.jugador.rect.centerx >= self.jefe.rect.centerx else -1
+        self.jugador.vx = dir_empuje * 220.0
+        self.jugador.retroceso_tiempo = 0.16
+        return res
 
     # --- Función dañar_jefe_pisaton --- #
     def dañar_jefe_pisaton(self):
         """Pisotón: daña en Fase 1; en Fase 2 exige la Guadaña Consagrada (X)."""
         if self.jefe is None or not self.jefe.vivo:
             return False
+
+        # Dirección de expulsión: hacia el lateral relativo al centro del jefe
+        dir_empuje = 1 if self.jugador.rect.centerx >= self.jefe.rect.centerx else -1
         rango_mejorado = getattr(self.jugador, "rango_ataque_mejorado", False)
+
         if self.jefe.fase >= 2 and not rango_mejorado:
-            self.jugador.vy = -REBOTE_ENEMIGO
+            # Coraza en Fase 2 sin guadaña: rebote oblicuo defensivo que expulsa al jugador
+            self.jugador.vx = dir_empuje * 280.0
+            self.jugador.vy = -220.0
+            self.jugador.retroceso_tiempo = 0.22
             self.jugador.dash_usos_aire = DASH_USOS_AIRE
             self.jugador.dash_cooldown = 0.0
             self.audio.reproducir("rebote_pala")
-            self.particulas.chispas_rebote(self.jefe.rect.centerx, self.jefe.rect.top, 0)
-            self.camara.sacudir(5.0, 0.12)
+            self.particulas.chispas_rebote(self.jefe.rect.centerx, self.jefe.rect.top, dir_empuje)
+            self.camara.sacudir(5.0, 0.12, dir_x=dir_empuje, dir_y=0.0)
             self.hud.mostrar_mensaje("¡CORAZA ESPECTRAL! Necesitás la Guadaña Consagrada (X)", 2, 2.5)
             return False
+
         if not self.jefe.recibir_pisaton(rango_mejorado=rango_mejorado):
-            # Fuera de la ventana de vulnerabilidad: rebota sin dañar.
+            # Fuera de la ventana de vulnerabilidad: yelmo blindado desvía oblicuamente al jugador
+            self.jugador.vx = dir_empuje * 280.0
+            self.jugador.vy = -220.0
+            self.jugador.retroceso_tiempo = 0.22
             self.audio.reproducir("rebote_pala")
-            self.particulas.chispas_rebote(self.jefe.rect.centerx, self.jefe.rect.top, 0)
+            self.particulas.chispas_rebote(self.jefe.rect.centerx, self.jefe.rect.top, dir_empuje)
+            self.camara.sacudir(4.0, 0.10, dir_x=dir_empuje, dir_y=0.0)
             return False
+
+        # Impacto exitoso en ventana vulnerable: daño y ráfaga de expulsión cinética
         res = self._aplicar_golpe_jefe()
         self.audio.reproducir("stomp")
         self.particulas.stomp(self.jefe.rect.centerx, self.jefe.rect.top)
-        self.camara.sacudir(9.0, 0.20, dir_x=0.0, dir_y=1.0)
+        # Ráfaga defensiva de energía del Custodio que repele fuertemente al sepulturero
+        self.particulas.emitir(
+            self.jefe.rect.centerx,
+            self.jefe.rect.top,
+            16,
+            (CARMESÍ_SANGRE, ORO_LITÚRGICO, BLANCO),
+            200,
+            0.4,
+            3.5,
+            350,
+        )
+        self.jugador.vx = dir_empuje * 340.0
+        self.jugador.vy = -260.0
+        self.jugador.retroceso_tiempo = 0.25
+        self.camara.sacudir(9.0, 0.20, dir_x=dir_empuje, dir_y=0.5)
         return res
 
     # --- Función _aplicar_golpe_jefe (efectos comunes) --- #
@@ -1753,7 +1786,7 @@ class Juego:
 
                 self.almas_consagradas = self.jugador.almas
                 self.almas_vida_consagradas = self.jugador.almas_para_vida
-                self.hud.mostrar_mensaje(" · ".join(msg_partes), 1, 3.5)
+                self.hud.mostrar_mensaje(" · ".join(msg_partes), 2, 4.5)
 
     # --- Función actualizar_tutorial_contextual --- #
     def actualizar_tutorial_contextual(self):
@@ -1773,7 +1806,7 @@ class Juego:
 
         if getattr(self, "tutorial_zona_actual", None) != zona:
             self.tutorial_zona_actual = zona
-            self.hud.mostrar_mensaje(msg, 2, 4.0)
+            self.hud.mostrar_mensaje(msg, 2, 5.5, forzar=True)
 
     # --- Función actualizar_power_ups_rango --- #
     def actualizar_power_ups_rango(self):
@@ -3030,9 +3063,9 @@ class Juego:
 
         # 6. Puntos pedagógicos del Preludio / Tutorial:
         if getattr(self, "es_tutorial", False):
-            puntos_clave.append((18 * TILE, 8 * TILE, f"[{tecla_jmp}] Mantener para salto alto"))
-            puntos_clave.append((40 * TILE, 8 * TILE, f"[{tecla_atk}] Atacar · ¡Saltá sobre enemigos para rebotar y recargar Dash!"))
-            puntos_clave.append((74 * TILE, 8 * TILE, "[ENTER] Portón hacia el Camposanto"))
+            puntos_clave.append((18 * TILE, 8 * TILE, f"[{tecla_jmp}] Salto variable (tap corto / mantener alto)"))
+            puntos_clave.append((40 * TILE, 8 * TILE, "Foso de salto · Si caés, usá los escalones de la trinchera"))
+            puntos_clave.append((74 * TILE, 8 * TILE, "[G] Portón del Umbral hacia El Camposanto"))
 
         if 13 not in self.fuentes:
             try:

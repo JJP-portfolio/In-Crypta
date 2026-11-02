@@ -235,6 +235,7 @@ class Jugador:
         self.squash_timer = 0.0
         self.squash_tipo = None
         self.aterrizaje_recien = False
+        self.retroceso_tiempo = 0.0
 
         self.ataque_tiempo = 0.0
         self.ataque_cooldown = 0.0
@@ -360,6 +361,8 @@ class Jugador:
             self.ataque_tiempo = max(0.0, self.ataque_tiempo - dt)
         if self.post_dash_tiempo > 0:
             self.post_dash_tiempo = max(0.0, self.post_dash_tiempo - dt)
+        if self.retroceso_tiempo > 0:
+            self.retroceso_tiempo = max(0.0, self.retroceso_tiempo - dt)
 
         # Actualizar siempre temporizadores (buffer_salto, coyote) antes del chequeo de dash
         self.actualizar_temporizadores(dt)
@@ -466,14 +469,16 @@ class Jugador:
         derecha = any(_tecla_activa(teclas, k) for k in teclas_d)
 
         if izquierda and not derecha:
-            self.vx = -VELOCIDAD
-            self.direccion = -1
+            if getattr(self, "retroceso_tiempo", 0.0) <= 0:
+                self.vx = -VELOCIDAD
+                self.direccion = -1
         elif derecha and not izquierda:
-            self.vx = VELOCIDAD
-            self.direccion = 1
+            if getattr(self, "retroceso_tiempo", 0.0) <= 0:
+                self.vx = VELOCIDAD
+                self.direccion = 1
         else:
-            if self.post_dash_tiempo > 0:
-                # Conserva impulso horizontal durante la ventana post-dash float
+            if self.post_dash_tiempo > 0 or getattr(self, "retroceso_tiempo", 0.0) > 0:
+                # Conserva impulso horizontal durante la ventana post-dash float o retroceso cinético
                 pass
             else:
                 self.vx = 0.0
@@ -588,6 +593,7 @@ class Jugador:
         self.squash_timer = 0.0
         self.squash_tipo = None
         self.aterrizaje_recien = False
+        self.retroceso_tiempo = 0.0
         self.ataque_tiempo = 0.0
         self.ataque_cooldown = 0.0
         self.ataque_golpeado = False

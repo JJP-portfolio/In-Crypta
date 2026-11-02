@@ -679,12 +679,17 @@ def probar_jefe_final():
     juego.jugador.rango_ataque_mejorado = True
     # …pero solo dentro de la ventana de vulnerabilidad.
     jefe.vulnerable = False
+    # Verificación de la expulsión cinética: el jefe repele al jugador para que no acampe en su cabeza
+    juego.jugador.rect.centerx = jefe.rect.centerx + 4
     assert not juego.dañar_jefe_pisaton()
     assert jefe.vida == 3
+    assert juego.jugador.vx > 0, "El yelmo del Custodio debe expulsar al jugador hacia el lateral"
+    assert juego.jugador.retroceso_tiempo > 0
     for _ in range(3):
         jefe.estado = "recuperacion"
         jefe.vulnerable = True
         assert juego.dañar_jefe_pisaton()
+        assert juego.jugador.retroceso_tiempo > 0, "Cada impacto exitoso debe generar ráfaga de expulsión"
     assert not jefe.vivo
     assert jefe.fase == 2  # Muere en Fase 2
     assert not juego.ondas_jefe

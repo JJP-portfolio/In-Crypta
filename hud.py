@@ -328,12 +328,12 @@ class MensajeHUD:
         self.prioridad = 0
         self.hold = 0.0
         self.t_entrada = 0.2
-        self.t_salida = 0.15
+        self.t_salida = 0.30
 
-    def mostrar(self, texto, prioridad, hold):
-        # Solo reemplaza si hay prioridad mayor, o si está oculto.
-        # Un mensaje entrando/visible/saliendo con prioridad >= se respeta.
-        if self.esta_visible() and prioridad <= self.prioridad:
+    def mostrar(self, texto, prioridad, hold, forzar=False):
+        # Solo reemplaza si hay prioridad mayor, si se fuerza, o si está oculto.
+        # Un mensaje entrando/visible/saliendo con prioridad >= se respeta salvo que forzar=True.
+        if self.esta_visible() and not forzar and prioridad <= self.prioridad:
             return
         self.texto = texto
         self.prioridad = prioridad
@@ -517,8 +517,10 @@ class HudRenderer:
                              surf.get_rect(), 1, border_radius=12)
             pygame.draw.line(surf, self.tema.linea_oro, (12, 1), (ancho - 12, 1), 1)
             # Vértices góticos
-            for vx, vy, vdx, vdy in ((0, 0, 1, 1), (ancho, 0, -1, 1),
-                                     (0, alto, 1, -1), (ancho, alto, -1, -1)):
+            w_lim = ancho - 1
+            h_lim = alto - 1
+            for vx, vy, vdx, vdy in ((0, 0, 1, 1), (w_lim, 0, -1, 1),
+                                     (0, h_lim, 1, -1), (w_lim, h_lim, -1, -1)):
                 pygame.draw.line(surf, HUD_ORO, (vx + 4 * vdx, vy),
                                  (vx + 16 * vdx, vy), 1)
                 pygame.draw.line(surf, HUD_ORO, (vx, vy + 4 * vdy),
@@ -725,7 +727,7 @@ class HudRenderer:
             pulso = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() / 1000.0 * 1.2 * math.tau)
         escala_corazon = 1.0 + 0.12 * pulso if modelo.vidas == 1 and not reducir_movimiento else 1.0
         for i in range(modelo.vidas_max):
-            cx = c.x + i * self.tema.corazon_pitch
+            cx = c.x + 12 + i * self.tema.corazon_pitch
             cy = c.y + 30
             lleno = i < modelo.vidas
             self.dibujar_corazon(pantalla, cx, cy, lleno, escala_corazon)
@@ -785,10 +787,12 @@ class HudRenderer:
                 nivel_txt = f"NIVEL {modelo.nivel_indice + 1}/{modelo.nivel_total} · {modelo.nivel_nombre.upper()}"
                 nombre_txt = "CAMPOSANTO" if "CAMPOSANTO" in modelo.nivel_nombre.upper() else ("LA CRIPTA" if "CRIPTA" in modelo.nivel_nombre.upper() else "EL OSARIO")
             img_n = self._texto(nivel_txt, self.tema.fuente_label, self.tema.oro)
-            pantalla.blit(img_n, (c.x, c.y))
             img_nom = self._texto(nombre_txt, self.tema.fuente_nombre,
                                   self.tema.texto_secundario, sombra=True)
-            pantalla.blit(img_nom, (c.x, c.y + 18))
+            x_n = c.x + (c.w - img_n.get_width()) // 2
+            x_nom = c.x + (c.w - img_nom.get_width()) // 2
+            pantalla.blit(img_n, (x_n, c.y))
+            pantalla.blit(img_nom, (x_nom, c.y + 18))
 
     # --- Zona derecha: grilla 2×2 (almas, vida extra, dash, pala) ---
     def _dibujar_derecha(self, pantalla, modelo, reducir_movimiento, dt):
@@ -858,37 +862,43 @@ class HudRenderer:
         alpha = mensajes.alpha()
         if alpha <= 0:
             return
+
+        # Superficie compuesta con canal alfa propio: garantiza orden z correcto y nitidez total
         caja = pygame.Surface((m.w, m.h), pygame.SRCALPHA)
-        pygame.draw.rect(caja, (*self.tema.panel_bg[:3], min(240, alpha)),
+        caja.fill((0, 0, 0, 0))
+
+        # 1. Fondo y marcos góticos del panel
+        pygame.draw.rect(caja, (*self.tema.panel_bg[:3], 230),
                          caja.get_rect(), border_radius=10)
-        pygame.draw.rect(caja, (*self.tema.panel_border,
-                                min(self.tema.panel_border_alpha, alpha)),
+        pygame.draw.rect(caja, (*self.tema.panel_border, self.tema.panel_border_alpha),
                          caja.get_rect(), 1, border_radius=10)
-        pygame.draw.rect(caja, (*self.tema.oro, min(180, alpha)), (0, 0, 4, m.h), border_radius=2)
-        # Icono pequeño según prioridad
-        icono_x = m.x + 8
-        icono_y = m.y + 4 + mensajes.offset_y()
+        pygame.draw.rect(caja, (*self.tema.oro, 220), (0, 0, 4, m.h), border_radius=2)
+
+        # 2. Icono verticalmente centrado
+        icono_x = 8
         color_icono = self.tema.rojo if mensajes.prioridad >= 3 else self.tema.oro
+        icono_y = (m.h - 16) // 2
         if mensajes.prioridad >= 3:
-            self._icono_calavera(pantalla, icono_x, icono_y, color_icono)
+            self._icono_calavera(caja, icono_x, icono_y, color_icono)
         else:
-            self._icono_reloj(pantalla, icono_x, icono_y, color_icono)
-        # Texto
-        texto_x = m.x + 32
-        texto_y = m.y + 4 + mensajes.offset_y()
-        ancho_util = 520
+            self._icono_reloj(caja, icono_x, icono_y, color_icono)
+
+        # 3. Texto verticalmente centrado sobre el fondo
+        texto_x = 32
+        ancho_util = m.w - 40
         fuente = self._fuente(self.tema.fuente_contador)
         lineas = envolver(mensajes.texto, fuente, ancho_util, max_lineas=2)
+        alto_bloque = len(lineas) * 18
+        texto_y = max(4, (m.h - alto_bloque) // 2)
+
         for i, linea in enumerate(lineas):
             img = self._texto(linea, self.tema.fuente_contador, self.tema.texto, sombra=True)
-            if alpha < 255:
-                copia = img.copy()
-                copia.set_alpha(alpha)
-                pantalla.blit(copia, (texto_x, texto_y + i * 20))
-            else:
-                pantalla.blit(img, (texto_x, texto_y + i * 20))
-        pantalla.blit(caja, (m.x, m.y + mensajes.offset_y()),
-                      special_flags=pygame.BLEND_RGBA_ADD if alpha < 255 else 0)
+            caja.blit(img, (texto_x, texto_y + i * 18))
+
+        # 4. Blit único con alfa global suave (sin BLEND_RGBA_ADD que quema colores)
+        if alpha < 255:
+            caja.set_alpha(alpha)
+        pantalla.blit(caja, (m.x, m.y + mensajes.offset_y()))
 
     # --- Utilidad ---
     def muted_color(self):
@@ -1004,5 +1014,5 @@ class HudOrquestador:
                               modo_hud=self.modo_hud,
                               timer_inmersivo=self.timer_inmersivo)
 
-    def mostrar_mensaje(self, texto, prioridad, hold):
-        self.mensajes.mostrar(texto, prioridad, hold)
+    def mostrar_mensaje(self, texto, prioridad, hold, forzar=False):
+        self.mensajes.mostrar(texto, prioridad, hold, forzar=forzar)
