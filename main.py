@@ -8,6 +8,7 @@
 #   2. SELECCIÓN DE PANTALLA (Selector de los 3 niveles del juego)
 #   3. CRÉDITOS (Reconocimientos y referencias de diseño)
 # ============================================================
+import asyncio
 import os
 import sys
 from pathlib import Path
@@ -21,7 +22,7 @@ if str(RAIZ) not in sys.path:
 from juego import Juego
 
 
-def main():
+async def main():
     nivel_inicio = None
     if len(sys.argv) >= 3 and sys.argv[1] in ("--nivel", "-n"):
         try:
@@ -34,8 +35,8 @@ def main():
     juego = Juego()
     if nivel_inicio is not None:
         juego.seleccionar_nivel(nivel_inicio)
-    juego.run()
+    await juego.run_async()
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

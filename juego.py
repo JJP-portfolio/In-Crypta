@@ -6,6 +6,7 @@
 # separados para poder probarlos sin abrir una ventana.
 # ============================================================
 
+import asyncio
 import math
 from pathlib import Path
 import random
@@ -3370,6 +3371,25 @@ class Juego:
             self.hud.actualizar(dt)
             self.dibujar()
             pygame.display.flip()
+
+        pygame.quit()
+        sys.exit()
+
+    async def run_async(self):
+        """Bucle asíncrono para WebAssembly (Pygbag / Pyodide en navegador)."""
+        while self.corriendo:
+            dt = min(self.reloj.tick(FPS) / 1000, MAX_DT)
+            self.procesar_eventos()
+            if self.hitstop > 0:
+                self.hitstop = max(0.0, self.hitstop - dt)
+                self.camara.actualizar_sacudida(dt)
+            else:
+                self.actualizar(dt)
+            self.dt = dt
+            self.hud.actualizar(dt)
+            self.dibujar()
+            pygame.display.flip()
+            await asyncio.sleep(0)
 
         pygame.quit()
         sys.exit()
