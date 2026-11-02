@@ -38,6 +38,9 @@ from config import (
     DASH_DASHTURQUESA,
     DASH_VELOCIDAD,
     EQUIPO,
+    ES_WEB,
+    PERFIL_WEB_CALIDAD,
+    PERFIL_WEB_SHADER,
     FAROL_CÁLIDO,
     FILO_ANIMA_ALCANCE,
     FILO_ANIMA_DASH_FACTOR,
@@ -405,8 +408,10 @@ class Juego:
         # Configuración del santuario: Presets de teclado, shaders, calidad y modo de HUD
         self.preset_teclado_idx = 0
         self.config_opcion = 0
-        self.config_shader_idx = 0   # 0: Gótico (Bloom + CRT), 1: Suave (Solo Bloom), 2: Puro
-        self.config_calidad_idx = 0  # 0: Alta, 1: Media, 2: Baja
+        # En navegador (Pygbag/WASM) arranca con el perfil ligero; en PC, con el completo.
+        self.config_shader_idx = PERFIL_WEB_SHADER if ES_WEB else 0   # 0: Gótico (Bloom + CRT), 1: Suave, 2: Puro
+        self.config_calidad_idx = PERFIL_WEB_CALIDAD if ES_WEB else 0  # 0: Alta, 1: Media, 2: Baja
+        self.particulas.factor_calidad = {0: 1.0, 1: 0.5, 2: 0.25}[self.config_calidad_idx]
         self.config_hud_idx = 0      # 0: Completo, 1: Compacto, 2: Inmersivo
         self.origen_configuracion = "menu"
         self._superficie_scanlines = self._crear_scanlines_goticas(ANCHO, ALTO)

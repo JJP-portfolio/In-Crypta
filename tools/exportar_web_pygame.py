@@ -11,6 +11,9 @@ Además:
   - Verifica que main.py declare pygame-ce en bloque PEP 723 (sin esto, Pygbag
     no descarga el wheel y el juego queda en pantalla gris).
   - Reemplaza el aviso #infobox de Pygbag por un botón de inicio gótico.
+  - Reduce el peso de la build: no copia WAV que tengan versión OGG y recodifica
+    el audio a OGG Vorbis (con ffmpeg) solo cuando el resultado es más liviano.
+    Los originales no se tocan.
 """
 
 import argparse
@@ -90,6 +93,68 @@ BLOQUE_INICIO = """
 """
 
 
+# --- Optimización de peso (solo para la copia web) ---
+# Escala de ffmpeg/libvorbis (-q:a): 3 ≈ 112 kbps y 5 ≈ 160 kbps estéreo aprox.
+CALIDAD_VORBIS_MUSICA = 3
+CALIDAD_VORBIS_SFX = 5
+# Cloudflare Pages rechaza archivos estáticos de más de 25 MiB.
+LIMITE_ARCHIVO_CLOUDFLARE = 25 * 1024 * 1024
+
+
+def _ffmpeg_disponible():
+    return shutil.which("ffmpeg") is not None
+
+
+def optimizar_a_ogg(origen, destino, calidad):
+    """Codifica origen como OGG Vorbis en destino. Devuelve True si salió bien."""
+    cmd = [
+        "ffmpeg", "-y", "-loglevel", "error", "-i", str(origen),
+        "-vn", "-c:a", "libvorbis", "-q:a", str(calidad), str(destino),
+    ]
+    res = subprocess.run(cmd, capture_output=True, text=True)
+    return res.returncode == 0 and destino.exists()
+
+
+def copiar_audio_web(origen, carpeta_destino, calidad, optimizar):
+    """Copia un audio a la build web y devuelve la ruta final.
+
+    Con optimizar=True intenta recodificar a OGG y conserva la versión nueva solo
+    si pesa menos que el original; si no, copia el original tal cual.
+    """
+    carpeta_destino.mkdir(parents=True, exist_ok=True)
+    if optimizar:
+        destino = carpeta_destino / (origen.stem + ".ogg")
+        tmp = carpeta_destino / (origen.stem + ".tmp.ogg")
+        if optimizar_a_ogg(origen, tmp, calidad) and tmp.stat().st_size < origen.stat().st_size:
+            tmp.replace(destino)
+            return destino
+        if tmp.exists():
+            tmp.unlink()
+    destino = carpeta_destino / origen.name
+    shutil.copy2(origen, destino)
+    return destino
+
+
+def reporte_tamanos(carpeta, titulo, excluir_build=False, top=8):
+    """Imprime el peso total y los archivos más pesados de una carpeta."""
+    archivos = []
+    for p in carpeta.rglob("*"):
+        if not p.is_file():
+            continue
+        if excluir_build and "build" in p.relative_to(carpeta).parts:
+            continue
+        archivos.append(p)
+    if not archivos:
+        print(f"  [AVISO] {titulo}: no hay archivos para medir en {carpeta}")
+        return
+    total = sum(p.stat().st_size for p in archivos)
+    print(f"\n📦 {titulo}: {total / 1024 / 1024:.2f} MiB en {len(archivos)} archivos")
+    for p in sorted(archivos, key=lambda x: x.stat().st_size, reverse=True)[:top]:
+        tam = p.stat().st_size
+        aviso = "  ⚠ supera 25 MiB (límite de Cloudflare Pages)" if tam > LIMITE_ARCHIVO_CLOUDFLARE else ""
+        print(f"   {tam / 1024 / 1024:8.2f} MiB  {p.relative_to(carpeta)}{aviso}")
+
+
 def verificar_main_pep723():
     """Corta antes de compilar si main.py perdió la declaración que Pygbag necesita."""
     texto = (RAIZ / "main.py").read_text(encoding="utf-8")
@@ -106,7 +171,7 @@ def verificar_main_pep723():
     print("✔ main.py declara pygame-ce (PEP 723) e importa pygame.")
 
 
-def sincronizar_archivos():
+def sincronizar_archivos(optimizar_audio=False):
     """Copia los archivos fuente limpios hacia export/web_pygame/."""
     DIR_WEB.mkdir(parents=True, exist_ok=True)
 
@@ -138,6 +203,9 @@ def sincronizar_archivos():
     # 4. Copiar audio desde assets_in_crypta/entrega/ (excluyendo ML, logs, work y wavs pesados redundantes)
     dir_audio_origen = RAIZ / "assets_in_crypta" / "entrega"
     dir_audio_dest = DIR_WEB / "assets_in_crypta" / "entrega"
+    # Se vacía la carpeta de audio: evita arrastrar copias viejas de builds anteriores.
+    if dir_audio_dest.exists():
+        shutil.rmtree(dir_audio_dest)
     if dir_audio_origen.exists():
         dir_audio_dest.mkdir(parents=True, exist_ok=True)
 
@@ -148,24 +216,23 @@ def sincronizar_archivos():
 
         # Música (.ogg)
         musica_orig = dir_audio_origen / "musica"
-        musica_dest = dir_audio_dest / "musica"
         if musica_orig.exists():
-            musica_dest.mkdir(parents=True, exist_ok=True)
             for f in musica_orig.glob("*.ogg"):
                 if not f.name.endswith("-pygbag.ogg"):
-                    shutil.copy2(f, musica_dest / f.name)
+                    copiar_audio_web(f, dir_audio_dest / "musica", CALIDAD_VORBIS_MUSICA, optimizar_audio)
 
-        # SFX (.ogg y .wav, omitiendo dron_catacumbas.wav de 3.5MB por su version .ogg ligera)
+        # SFX (.ogg y .wav). Un .wav con .ogg hermano no se copia: audio.py ya prefiere el .ogg.
         sfx_orig = dir_audio_origen / "sfx"
-        sfx_dest = dir_audio_dest / "sfx"
         if sfx_orig.exists():
-            sfx_dest.mkdir(parents=True, exist_ok=True)
+            ogg_sfx = {f.stem for f in sfx_orig.glob("*.ogg") if not f.name.endswith("-pygbag.ogg")}
             for f in sfx_orig.glob("*.*"):
                 if f.name.endswith("-pygbag.ogg") or f.suffix not in (".wav", ".ogg"):
                     continue
                 if f.name == "dron_catacumbas.wav":
                     continue  # usar dron_catacumbas.ogg
-                shutil.copy2(f, sfx_dest / f.name)
+                if f.suffix == ".wav" and f.stem in ogg_sfx:
+                    continue  # versión OGG ya presente
+                copiar_audio_web(f, dir_audio_dest / "sfx", CALIDAD_VORBIS_SFX, optimizar_audio)
 
     # 5. Limpieza de archivos obsoletos o conflictivos
     for basura in (
@@ -233,13 +300,26 @@ def main():
     parser = argparse.ArgumentParser(description="Pipeline de preparación y compilación web Pygbag")
     parser.add_argument("--sync-only", action="store_true", help="Solo sincroniza archivos sin compilar")
     parser.add_argument("--build", action="store_true", help="Sincroniza y compila con Pygbag")
+    parser.add_argument(
+        "--sin-optimizar-audio",
+        action="store_true",
+        help="Copia el audio tal cual, sin recodificar a OGG (más pesado, mismo sonido base)",
+    )
     args = parser.parse_args()
 
     verificar_main_pep723()
-    sincronizar_archivos()
+
+    optimizar = not args.sin_optimizar_audio
+    if optimizar and not _ffmpeg_disponible():
+        print("⚠ ffmpeg no está instalado: el audio se copia sin recodificar.")
+        optimizar = False
+
+    sincronizar_archivos(optimizar_audio=optimizar)
+    reporte_tamanos(DIR_WEB, "Fuentes web (sin build/)", excluir_build=True)
 
     if args.build or not args.sync_only:
         compilar_pygbag()
+        reporte_tamanos(DIR_BUILD_WEB, "Build final (lo que se publica)")
 
 
 if __name__ == "__main__":
