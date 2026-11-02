@@ -213,7 +213,7 @@ def personalizar_index_html():
 
 def compilar_pygbag():
     """Ejecuta pygbag --build sobre export/web_pygame/."""
-    cmd = [sys.executable, "-m", "pygbag", "--build", str(DIR_WEB)]
+    cmd = [sys.executable, "-m", "pygbag", "--build", "--disable-sound-format-error", str(DIR_WEB)]
     print(f"▶ Compilando WebAssembly con Pygbag: {' '.join(cmd)}")
     res = subprocess.run(cmd)
     if res.returncode != 0:
