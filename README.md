@@ -29,8 +29,10 @@ El juego cuenta con soporte para teclado con dos configuraciones disponibles en 
 
 ## 🚀 Cómo Jugar
 
+> 📖 **Guía Completa para Jugadores:** Consultá la [**Guía de Instalación y Juego (Windows y Linux)**](GUIA_JUEGO.md) para instrucciones paso a paso, configuración de shaders y resolución de dudas frecuentes.
+
 ### En Windows
-Simplemente hacé doble click en **`jugar_windows.bat`** o ejecutalo desde la consola:
+Simplemente hacé doble click en **`jugar_windows.bat`** (o `jugar_pygame.bat`), o ejecutalo desde la consola:
 ```cmd
 jugar_windows.bat
 ```
