@@ -7,6 +7,7 @@
 # ============================================================
 
 import math
+import random
 import sys
 import textwrap
 
@@ -188,6 +189,126 @@ def _obtener_luz_calida(radio, color=(240, 196, 90), factor_mult=0.16):
     return surf
 
 
+_CACHE_HAZ_LUNAR = None
+
+
+def _obtener_haz_lunar(h):
+    """Caché de haz diagonal de luz lunar proyectada desde ventanales góticos (60 FPS sin asignación)."""
+    global _CACHE_HAZ_LUNAR
+    if _CACHE_HAZ_LUNAR is None or _CACHE_HAZ_LUNAR.get_height() != h:
+        surf = pygame.Surface((180, h), pygame.SRCALPHA)
+        # Haz diagonal exterior translúcido
+        puntos_ext = [(10, 0), (60, 0), (170, h), (80, h)]
+        pygame.draw.polygon(surf, (140, 185, 230, 20), puntos_ext)
+        # Núcleo interior más concentrado
+        puntos_core = [(22, 0), (48, 0), (145, h), (105, h)]
+        pygame.draw.polygon(surf, (190, 225, 255, 18), puntos_core)
+        _CACHE_HAZ_LUNAR = surf.convert_alpha()
+    return _CACHE_HAZ_LUNAR
+
+
+class ParticulaBioma:
+    """Partícula ambiental ligera reciclada en pantalla (máx 25, 60 FPS cero lag)."""
+
+    def __init__(self, pantalla_w=VIRTUAL_ANCHO, pantalla_h=VIRTUAL_ALTO, tema="camposanto"):
+        self.w = pantalla_w
+        self.h = pantalla_h
+        self.tema = tema
+        self.reset(random_y=True)
+
+    def reset(self, random_y=False):
+        self.x = random.uniform(0, self.w)
+        self.fase = random.uniform(0, math.tau)
+        self.fase_vel = random.uniform(1.2, 2.5)
+
+        if self.tema == "camposanto":
+            # 60% fuegos fatuos ascendentes, 40% niebla rastrera a ras de suelo
+            self.tipo = "fatuo" if random.random() < 0.6 else "niebla"
+            if self.tipo == "fatuo":
+                self.y = random.uniform(0, self.h) if random_y else self.h + random.uniform(2, 10)
+                self.vx = random.uniform(-10, 10)
+                self.vy = random.uniform(-18, -32)
+                self.tamano = random.uniform(1.5, 3.0)
+                self.color = random.choice(((70, 235, 220), (140, 240, 255), (90, 190, 220)))
+                self.alfa = random.randint(80, 160)
+            else:
+                self.y = random.uniform(self.h - 50, self.h - 4) if random_y else self.h - random.uniform(4, 45)
+                self.vx = random.uniform(15, 35)
+                self.vy = random.uniform(-2, 2)
+                self.tamano = random.uniform(8.0, 16.0)
+                self.color = (35, 55, 75)
+                self.alfa = random.randint(30, 65)
+
+        elif self.tema == "cripta":
+            # Motas de polvo gris/plata suspendidas en el aire con suave flotación
+            self.tipo = "polvo"
+            self.y = random.uniform(0, self.h) if random_y else (0 if random.random() < 0.5 else self.h)
+            self.vx = random.uniform(-8, 8)
+            self.vy = random.uniform(-6, 6)
+            self.tamano = random.uniform(1.2, 2.4)
+            self.color = random.choice(((210, 215, 225), (180, 185, 200), (235, 240, 250)))
+            self.alfa = random.randint(70, 150)
+
+        else:  # "osario"
+            # Brasas carmesí y cenizas de hueso ascendiendo desde el abismo
+            self.tipo = "brasa" if random.random() < 0.55 else "ceniza"
+            self.y = random.uniform(0, self.h) if random_y else self.h + random.uniform(2, 15)
+            self.vx = random.uniform(-15, 15)
+            if self.tipo == "brasa":
+                self.vy = random.uniform(-35, -65)
+                self.tamano = random.uniform(1.8, 3.2)
+                self.color = random.choice(((255, 80, 40), (255, 140, 50), (220, 50, 50), (255, 210, 80)))
+                self.alfa = random.randint(110, 210)
+            else:
+                self.vy = random.uniform(-20, -45)
+                self.tamano = random.uniform(1.4, 2.5)
+                self.color = random.choice(((190, 175, 160), (140, 130, 125), (210, 200, 190)))
+                self.alfa = random.randint(70, 140)
+
+    def actualizar(self, dt, intensificar=False):
+        self.fase += self.fase_vel * dt
+        mult_vel = 1.6 if intensificar else 1.0
+
+        if self.tipo == "niebla":
+            self.x += self.vx * dt
+            self.y += math.sin(self.fase) * 4.0 * dt
+        elif self.tipo == "fatuo":
+            self.x += (self.vx + math.sin(self.fase) * 12.0) * dt
+            self.y += self.vy * dt
+        elif self.tipo == "polvo":
+            self.x += (self.vx + math.sin(self.fase) * 8.0) * dt
+            self.y += (self.vy + math.cos(self.fase * 0.8) * 6.0) * dt
+        else:  # brasa / ceniza
+            self.x += (self.vx + math.sin(self.fase) * 14.0) * dt
+            self.y += self.vy * mult_vel * dt
+
+        # Wrap-around o reset al salir de pantalla
+        if self.y < -15 or self.y > self.h + 15 or self.x < -25 or self.x > self.w + 25:
+            self.reset(random_y=False)
+
+    def dibujar(self, surface):
+        px = int(self.x)
+        py = int(self.y)
+        if px < -20 or px > self.w + 20 or py < -20 or py > self.h + 20:
+            return
+
+        if self.tipo == "niebla":
+            w_n = int(self.tamano * 2)
+            h_n = int(self.tamano)
+            s_niebla = pygame.Surface((w_n, h_n), pygame.SRCALPHA)
+            pygame.draw.ellipse(s_niebla, (*self.color, self.alfa), (0, 0, w_n, h_n))
+            surface.blit(s_niebla, (px - w_n // 2, py - h_n // 2))
+        elif self.tipo == "fatuo":
+            pygame.draw.circle(surface, self.color, (px, py), int(self.tamano))
+            pygame.draw.circle(surface, (255, 255, 255), (px, py), max(1, int(self.tamano * 0.5)))
+        elif self.tipo == "brasa":
+            pygame.draw.circle(surface, self.color, (px, py), int(self.tamano))
+            if self.tamano > 2.0:
+                pygame.draw.circle(surface, (255, 240, 180), (px, py), 1)
+        else:
+            pygame.draw.circle(surface, self.color, (px, py), max(1, int(self.tamano)))
+
+
 # --- Clase Juego --- #
 class Juego:
     def __init__(self, sala_inicial=None):
@@ -251,15 +372,19 @@ class Juego:
         self.tiempo_menu = 0.0
         self.superficie_mundo = pygame.Surface((VIRTUAL_ANCHO, VIRTUAL_ALTO))
 
-        # Configuración del santuario: Presets de teclado y esqueleto de opciones
+        # Configuración del santuario: Presets de teclado, calidad y modo de HUD
         self.preset_teclado_idx = 0
         self.config_opcion = 0
         self.config_calidad_idx = 0  # 0: Alta, 1: Media, 2: Baja
         self.config_hud_idx = 0      # 0: Completo, 1: Compacto, 2: Inmersivo
         self.origen_configuracion = "menu"
+        self.destello_manto = 0.0
+        self._superficie_destello_manto = None
         self.teclas_salto = PRESETS_TECLADO[0]["teclas_salto"]
         self.teclas_dash = PRESETS_TECLADO[0]["teclas_dash"]
         self.teclas_ataque = PRESETS_TECLADO[0]["teclas_ataque"]
+        self.particulas_bioma = []
+        self.reiniciar_particulas_bioma("camposanto")
 
         if sala_inicial is not None:
             self.cargar_sala_prueba(sala_inicial)
@@ -267,6 +392,15 @@ class Juego:
             self.cargar_nivel(0, vidas=VIDAS_INICIALES)
             self.estado = "titulo"
             self.mostrar_ayuda = 0.0
+
+    def reiniciar_particulas_bioma(self, tema="camposanto"):
+        """Inicializa o recicla las partículas ambientales según la calidad gráfica (60 FPS sin lag)."""
+        if getattr(self, "config_calidad_idx", 0) == 2:
+            self.particulas_bioma = []
+        elif getattr(self, "config_calidad_idx", 0) == 1:
+            self.particulas_bioma = [ParticulaBioma(VIRTUAL_ANCHO, VIRTUAL_ALTO, tema) for _ in range(12)]
+        else:
+            self.particulas_bioma = [ParticulaBioma(VIRTUAL_ANCHO, VIRTUAL_ALTO, tema) for _ in range(25)]
 
     # --- Función cargar_nivel --- #
     def cargar_nivel(self, indice, vidas=None, sala=None):
@@ -294,6 +428,7 @@ class Juego:
             datos["pista"],
             datos.get("tema", "camposanto"),
         )
+        self.reiniciar_particulas_bioma(self.nivel.tema)
         vidas_iniciales = VIDAS_INICIALES if vidas is None else vidas
         self.jugador = Jugador(*self.nivel.spawn, vidas=vidas_iniciales)
         self.jugador.tiene_pala = tiene_pala
@@ -339,6 +474,7 @@ class Juego:
             ),
             "camposanto",
         )
+        self.reiniciar_particulas_bioma("camposanto")
         vidas_iniciales = VIDAS_INICIALES
         self.jugador = Jugador(*self.nivel.spawn, vidas=vidas_iniciales)
         self.jugador.tiene_pala = False
@@ -416,27 +552,24 @@ class Juego:
         nombre_preset = PRESETS_TECLADO[self.preset_teclado_idx]["etiqueta"]
         self.hud.mostrar_mensaje(f"CONTROL: {nombre_preset.upper()}", 1, 3.0)
 
-    # --- Esqueleto de Calidad Gráfica --- #
-    # Opciones: Alta (partículas + halos completos), Media (partículas reducidas), Baja (rendimiento)
-    # Comentario arquitectónico:
-    # Para conectar en el motor de renderizado:
-    # - En self.particulas.agregar(...): if self.config_calidad_idx == 2: return
-    # - En self.mascara_penumbra: if self.config_calidad_idx == 2: omitir blit compuesto
+    # --- Calidad Gráfica con Impacto Real --- #
+    # Opciones: Alta (0: 100% partículas + halos + penumbra), Media (1: 50% partículas + penumbra), Baja (2: 60 FPS sin penumbra)
     def alternar_calidad_grafica(self, delta=1):
         self.config_calidad_idx = (self.config_calidad_idx + delta) % len(OPCIONES_CALIDAD)
         self.audio.reproducir("ui")
+        factores = {0: 1.0, 1: 0.5, 2: 0.25}
+        self.particulas.factor_calidad = factores.get(self.config_calidad_idx, 1.0)
+        tema = self.nivel.tema if self.nivel and hasattr(self.nivel, "tema") else "camposanto"
+        self.reiniciar_particulas_bioma(tema)
         calidad = OPCIONES_CALIDAD[self.config_calidad_idx]
         self.hud.mostrar_mensaje(f"CALIDAD GRÁFICA: {calidad.upper()}", 1, 3.0)
 
-    # --- Esqueleto de Modo de HUD / Interfaz --- #
-    # Opciones: Completo (riel superior de 3 zonas), Compacto (solo orbes y farol), Inmersivo (sin HUD no-diegético)
-    # Comentario arquitectónico:
-    # Para conectar en hud.py / HudOrquestador:
-    # - if self.config_hud_idx == 2 (Inmersivo): self.hud.dibujar(...) solo dibuja avisos flotantes y omite el riel superior
-    # - if self.config_hud_idx == 1 (Compacto): omite el panel central de título de sala y combo
+    # --- Modo de HUD / Interfaz con Impacto Real --- #
+    # Opciones: Completo (0: riel superior 100%), Compacto (1: riel con opacidad alpha 140), Inmersivo (2: UI diegética pura, riel ante jefes o eventos)
     def alternar_modo_hud(self, delta=1):
         self.config_hud_idx = (self.config_hud_idx + delta) % len(OPCIONES_HUD)
         self.audio.reproducir("ui")
+        self.hud.modo_hud = self.config_hud_idx
         modo = OPCIONES_HUD[self.config_hud_idx]
         self.hud.mostrar_mensaje(f"MODO DE HUD: {modo.upper()}", 1, 3.0)
 
@@ -777,6 +910,8 @@ class Juego:
     def actualizar(self, dt):
         if self.flash > 0:
             self.flash = max(0.0, self.flash - dt)
+        if getattr(self, "destello_manto", 0.0) > 0:
+            self.destello_manto = max(0.0, self.destello_manto - dt)
         if self.aviso_jefe > 0:
             self.aviso_jefe = max(0.0, self.aviso_jefe - dt)
         if self.hud_aviso_altar > 0:
@@ -792,6 +927,8 @@ class Juego:
 
         if self.estado != "jugando":
             self.particulas.actualizar(dt)
+            for p in getattr(self, "particulas_bioma", []):
+                p.actualizar(dt)
             self.camara.actualizar_sacudida(dt)
             return
 
@@ -820,6 +957,14 @@ class Juego:
         self.procesar_feedback_jugador()
         self.actualizar_ataque()
         self.actualizar_incensarios(dt)
+
+        # Partículas ambientales de bioma (fuegos fatuos, polvo de cripta, cenizas/brasas de osario)
+        intensificar_bioma = False
+        if getattr(self.nivel, "tema", "") == "osario" and self.jugador:
+            if self.jefe is not None and (getattr(self.jefe, "salud", 0) < getattr(self.jefe, "salud_maxima", 5) or self.jugador.rect.x >= 268 * TILE):
+                intensificar_bioma = True
+        for p in getattr(self, "particulas_bioma", []):
+            p.actualizar(dt, intensificar=intensificar_bioma)
 
         if self.actualizar_jefe(dt):
             return
@@ -900,17 +1045,23 @@ class Juego:
             ):
                 losa.pisar()
 
+            # Mientras tiembla (0.40s): caen piedritas y polvo hacia abajo
+            if getattr(losa, "activa", False) and getattr(losa, "pisada", False) and getattr(losa, "tiempo_quiebre", 0.0) > 0:
+                if random.random() < 0.45:
+                    self.particulas.emitir(
+                        losa.rect.left + random.uniform(2, losa.rect.width - 2),
+                        losa.rect.bottom - 2,
+                        1,
+                        (SALITRE_CRIPTA, PIEDRA_FRIA, HUESO),
+                        50,
+                        0.35,
+                        2.0,
+                        480,
+                    )
+
             if losa.recien_quebrada:
-                self.audio.reproducir("stomp")
-                self.particulas.emitir(
-                    losa.rect.centerx,
-                    losa.rect.centery,
-                    16,
-                    (HUESO_MARFIL, SALITRE_CRIPTA, PIEDRA_FRIA),
-                    140,
-                    0.5,
-                    3,
-                )
+                self.audio.reproducir("losa_romper")
+                self.particulas.losa_romper(losa.rect.centerx, losa.rect.centery, w=losa.rect.width)
                 self.camara.sacudir(3.5, 0.12)
             elif losa.recien_reconstruida:
                 self.particulas.emitir(
@@ -942,16 +1093,8 @@ class Juego:
                 self.jugador.en_suelo = False
                 self.jugador.dash_usos_aire = DASH_USOS_AIRE
                 self.jugador.dash_cooldown = 0.0
-                self.audio.reproducir("alma_6")
-                self.particulas.emitir(
-                    incensario.rect.centerx,
-                    incensario.rect.centery,
-                    20,
-                    (TURQUESA_ÁNIMA, BLANCO, ORO_LITÚRGICO),
-                    180,
-                    0.5,
-                    4,
-                )
+                self.audio.reproducir("campana_repique")
+                self.particulas.campana_repique(incensario.rect.centerx, incensario.rect.centery)
                 self.camara.sacudir(5.0, 0.12, dir_x=0.0, dir_y=1.0)
                 self.hitstop = 0.08
 
@@ -973,6 +1116,21 @@ class Juego:
         if self.jugador.salto_recien:
             self.audio.reproducir("salto")
             self.particulas.salto(self.jugador.rect.centerx, self.jugador.rect.bottom)
+
+        if getattr(self.jugador, "aterrizaje_recien", False):
+            # 4 partículas de polvo suave al aterrizar en pies
+            pies_x = self.jugador.rect.centerx
+            pies_y = self.jugador.rect.bottom
+            self.particulas.emitir(
+                pies_x,
+                pies_y,
+                4,
+                (SALITRE_CRIPTA, PIEDRA_FRIA, HUESO, BLANCO),
+                48,
+                0.24,
+                2.5,
+                320,
+            )
 
         if self.jugador.dash_recien:
             self.audio.reproducir("dash")
@@ -1013,16 +1171,8 @@ class Juego:
                 self.jugador.en_suelo = False
                 self.jugador.dash_usos_aire = DASH_USOS_AIRE
                 self.jugador.dash_cooldown = 0.0
-                self.audio.reproducir("alma_6")
-                self.particulas.emitir(
-                    incensario.rect.centerx,
-                    incensario.rect.centery,
-                    20,
-                    (TURQUESA_ÁNIMA, BLANCO, ORO_LITÚRGICO),
-                    180,
-                    0.5,
-                    4,
-                )
+                self.audio.reproducir("campana_repique")
+                self.particulas.campana_repique(incensario.rect.centerx, incensario.rect.centery)
                 self.camara.sacudir(6.0, 0.14, dir_x=self.jugador.direccion, dir_y=-0.5)
                 self.hitstop = 0.08
                 self.flash = 0.08
@@ -1548,10 +1698,12 @@ class Juego:
                     checkpoint.tier = 3
                     self.jugador.escudo_farol = True
                     self.jugador.filo_anima = True
+                    self.destello_manto = 0.45
                     msg_partes.append("Fuego Fatuo (Filo de Ánima y Manto)")
                 elif almas_tramo >= ALMAS_MANTO_FAROL:
                     checkpoint.tier = 2
                     self.jugador.escudo_farol = True
+                    self.destello_manto = 0.40
                     msg_partes.append("Bendición del Manto")
                 elif almas_tramo >= 1:
                     checkpoint.tier = 1
@@ -1559,6 +1711,15 @@ class Juego:
                 else:
                     checkpoint.tier = 0
                     msg_partes.append("Punto de control registrado")
+
+                if checkpoint.tier > 0:
+                    self.particulas.consagracion_farol(checkpoint.rect.centerx, checkpoint.rect.bottom, checkpoint.tier)
+                    if checkpoint.tier == 1:
+                        self.audio.reproducir("farol_tier_1")
+                    elif checkpoint.tier == 2:
+                        self.audio.reproducir("farol_tier_2")
+                    elif checkpoint.tier >= 3:
+                        self.audio.reproducir("farol_tier_3")
 
                 if self.jugador.vidas < VIDAS_INICIALES:
                     self.jugador.vidas += 1
@@ -1645,6 +1806,7 @@ class Juego:
             )
             self.flash = 0.15
             self.flash_color = (120, 220, 255)
+            self.destello_manto = 0.38
             self.hud.mostrar_mensaje("¡MANTO DEL FAROL CONSUMIDO! · Daño absorbido", 2, 2.5)
             return
 
@@ -1954,7 +2116,27 @@ class Juego:
         if destino is None:
             destino = self.pantalla
         w, h = destino.get_width(), destino.get_height()
-        
+
+        # Ventanales góticos ojivales con haz de luz lunar diagonal (paralaje 0.18)
+        win_w = 320
+        offset_w = int(self.camara.x * 0.18) % win_w
+        haz_lunar = _obtener_haz_lunar(h)
+        for i in range(-1, int(w / win_w) + 2):
+            wx = i * win_w - offset_w + 80
+            wy = 24
+            ww, wh = 38, 86
+            # Marco exterior de piedra oscura
+            pygame.draw.rect(destino, (20, 18, 28), (wx - 2, wy + 16, ww + 4, wh - 16))
+            pygame.draw.arc(destino, (20, 18, 28), (wx - 2, wy, ww + 4, 36), 0.0, 3.14, 3)
+            # Cristal lunar translúcido
+            pygame.draw.rect(destino, (32, 45, 64), (wx, wy + 18, ww, wh - 18))
+            pygame.draw.arc(destino, (32, 45, 64), (wx, wy + 2, ww, 34), 0.0, 3.14, 2)
+            # Tracería gótica (cruz de plomo)
+            pygame.draw.line(destino, (22, 26, 36), (wx + ww // 2, wy + 6), (wx + ww // 2, wy + wh), 1)
+            pygame.draw.line(destino, (22, 26, 36), (wx, wy + 42), (wx + ww, wy + 42), 1)
+            # Haz de luz lunar diagonal proyectado hacia el suelo
+            destino.blit(haz_lunar, (wx - 10, wy + 10), special_flags=pygame.BLEND_RGBA_ADD)
+
         # Columnas de piedra gótica en bucle continuo (paralaje 0.28)
         col_w = 230
         offset_c = int(self.camara.x * 0.28) % col_w
@@ -2365,10 +2547,21 @@ class Juego:
         acc_activa = "Activada" if self.reducir_movimiento else "Desactivada"
         audio_activo = "Activado" if getattr(self.audio, "activo", False) else "Silenciado"
 
+        desc_calidad = (
+            "Halos de luz completos, penumbra y 100% de partículas" if self.config_calidad_idx == 0 else
+            "Máscara de penumbra activa y 50% de partículas de bioma" if self.config_calidad_idx == 1 else
+            "Sin penumbra pesada para 60 FPS garantizados en PCs modestos"
+        )
+        desc_hud = (
+            "Riel superior completo + canal único de mensajes con 100% opacidad" if self.config_hud_idx == 0 else
+            "Riel superior con opacidad translúcida (alpha 140) y canal sutil" if self.config_hud_idx == 1 else
+            "HUD oculto en exploración; emerge ante jefes, daño o recolección"
+        )
+
         opciones = [
             ("CONTROLES / TECLADO", preset_activo["etiqueta"], preset_activo["desc"]),
-            ("CALIDAD GRÁFICA", calidad_activa, "Esqueleto: Partículas completas, halos aditivos y penumbra"),
-            ("MODO DE HUD", hud_activo, "Esqueleto: Estilo de interfaz (Completo / Compacto / Inmersivo)"),
+            ("CALIDAD GRÁFICA", calidad_activa, desc_calidad),
+            ("MODO DE HUD", hud_activo, desc_hud),
             ("ACCESIBILIDAD", acc_activa, "Reducir movimiento: elimina sacudidas de cámara bruscas"),
             ("AUDIO Y SONIDO", audio_activo, "Música litúrgica, dron ambiental y efectos fúnebres"),
             ("VOLVER AL MENÚ", "Guardar y regresar", "Aplicar cambios y regresar a la pantalla anterior"),
@@ -2467,47 +2660,57 @@ class Juego:
             con_pala=self.jugador.tiene_pala,
         )
         self.particulas.dibujar(destino, self.camara)
+        for p in getattr(self, "particulas_bioma", []):
+            p.dibujar(destino)
         self.dibujar_ui_espacial(destino, self.camara)
 
         # Penumbra gótica y claroscuro sutil (alpha 65 / 255)
-        self.mascara_penumbra.fill((9, 8, 13, 65))
-        if self.jugador:
-            px = int(self.jugador.rect.centerx - self.camara.x)
-            py = int(self.jugador.rect.centery - self.camara.y)
-            radio_farol = 90
-            luz_sub = _obtener_luz_perforacion(radio_farol)
-            self.mascara_penumbra.blit(
-                luz_sub,
-                (px - radio_farol, py - radio_farol),
-                special_flags=pygame.BLEND_RGBA_SUB,
-            )
-        for cp in self.nivel.checkpoints:
-            if cp.activo and self.camara.is_on_screen(cp.rect):
-                cpx = int(cp.rect.centerx - self.camara.x)
-                cpy = int(cp.rect.centery - self.camara.y)
+        # Calidad Alta (0) y Media (1): activa máscara de penumbra.
+        # Calidad Baja (2): omite el blit de mascara_penumbra pesada para PCs antiguos (60 FPS garantizados).
+        if getattr(self, "config_calidad_idx", 0) != 2:
+            self.mascara_penumbra.fill((9, 8, 13, 65))
+            if self.jugador:
+                px = int(self.jugador.rect.centerx - self.camara.x)
+                py = int(self.jugador.rect.centery - self.camara.y)
+                radio_farol = 90
+                luz_sub = _obtener_luz_perforacion(radio_farol)
                 self.mascara_penumbra.blit(
-                    _obtener_luz_perforacion(60),
-                    (cpx - 60, cpy - 60),
+                    luz_sub,
+                    (px - radio_farol, py - radio_farol),
                     special_flags=pygame.BLEND_RGBA_SUB,
                 )
-        destino.blit(self.mascara_penumbra, (0, 0))
+            for cp in self.nivel.checkpoints:
+                if cp.activo and self.camara.is_on_screen(cp.rect):
+                    cpx = int(cp.rect.centerx - self.camara.x)
+                    cpy = int(cp.rect.centery - self.camara.y)
+                    self.mascara_penumbra.blit(
+                        _obtener_luz_perforacion(60),
+                        (cpx - 60, cpy - 60),
+                        special_flags=pygame.BLEND_RGBA_SUB,
+                    )
+            destino.blit(self.mascara_penumbra, (0, 0))
 
-        # Halo cálido aditivo del farol de bronce o violeta consagrado
-        if self.jugador:
-            px = int(self.jugador.rect.centerx - self.camara.x)
-            py = int(self.jugador.rect.centery - self.camara.y)
-            color_luz = (195, 80, 255) if getattr(self.jugador, "rango_ataque_mejorado", False) else (240, 196, 90)
-            factor_luz = 0.20 if getattr(self.jugador, "rango_ataque_mejorado", False) else 0.16
-            luz_add = _obtener_luz_calida(85, color_luz, factor_luz)
-            destino.blit(luz_add, (px - 85, py - 85), special_flags=pygame.BLEND_RGB_ADD)
+        # Halos de luz aditivos según calidad:
+        # Alta (0): Halos completos. Media (1): Halos suaves. Baja (2): Omitidos.
+        calidad = getattr(self, "config_calidad_idx", 0)
+        if calidad in (0, 1):
+            if self.jugador:
+                px = int(self.jugador.rect.centerx - self.camara.x)
+                py = int(self.jugador.rect.centery - self.camara.y)
+                color_luz = (195, 80, 255) if getattr(self.jugador, "rango_ataque_mejorado", False) else (240, 196, 90)
+                factor_base = 0.20 if getattr(self.jugador, "rango_ataque_mejorado", False) else 0.16
+                factor_luz = factor_base if calidad == 0 else factor_base * 0.7
+                radio_luz = 85 if calidad == 0 else 65
+                luz_add = _obtener_luz_calida(radio_luz, color_luz, factor_luz)
+                destino.blit(luz_add, (px - radio_luz, py - radio_luz), special_flags=pygame.BLEND_RGB_ADD)
 
-        # Halo aditivo turquesa de faroles de checkpoint activos
-        for cp in self.nivel.checkpoints:
-            if cp.activo and self.camara.is_on_screen(cp.rect):
-                cpx = int(cp.rect.centerx - self.camara.x)
-                cpy = int(cp.rect.centery - self.camara.y)
-                luz_cp = _obtener_luz_calida(65, (90, 200, 255), 0.18)
-                destino.blit(luz_cp, (cpx - 65, cpy - 65), special_flags=pygame.BLEND_RGB_ADD)
+            if calidad == 0:
+                for cp in self.nivel.checkpoints:
+                    if cp.activo and self.camara.is_on_screen(cp.rect):
+                        cpx = int(cp.rect.centerx - self.camara.x)
+                        cpy = int(cp.rect.centery - self.camara.y)
+                        luz_cp = _obtener_luz_calida(65, (90, 200, 255), 0.18)
+                        destino.blit(luz_cp, (cpx - 65, cpy - 65), special_flags=pygame.BLEND_RGB_ADD)
 
         # Escalar mundo virtual a pantalla (zoom 1.25x cinematográfico)
         pygame.transform.scale(self.superficie_mundo, (ANCHO, ALTO), self.pantalla)
@@ -2523,17 +2726,37 @@ class Juego:
             self.vineta_carmesi.set_alpha(alfa_vineta)
             self.pantalla.blit(self.vineta_carmesi, (0, 0))
 
+        # Destello celeste periférico reactivo al activar o consumir el Manto del Farol
+        if getattr(self, "destello_manto", 0.0) > 0:
+            alfa_manto = int(min(180, (self.destello_manto / 0.35) * 180))
+            if getattr(self, "reducir_movimiento", False):
+                alfa_manto = min(40, int(alfa_manto * 0.3))
+            if getattr(self, "_superficie_destello_manto", None) is None:
+                self._superficie_destello_manto = pygame.Surface((ANCHO, ALTO), pygame.SRCALPHA)
+            self._superficie_destello_manto.fill((0, 0, 0, 0))
+            for step in range(12):
+                a_step = int(alfa_manto * (1.0 - step / 12.0))
+                pygame.draw.rect(
+                    self._superficie_destello_manto,
+                    (110, 215, 255, a_step),
+                    (step * 2, step * 2, ANCHO - step * 4, ALTO - step * 4),
+                    2,
+                )
+            self.pantalla.blit(self._superficie_destello_manto, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
+
         self.hud.dibujar(self.pantalla, self, self.dt)
 
         if self.flash > 0:
             alfa = int(110 * (self.flash / 0.16))
+            if getattr(self, "reducir_movimiento", False):
+                alfa = min(28, int(alfa * 0.25))
             self.superficie_flash.fill((*self.flash_color, max(0, min(255, alfa))))
             self.pantalla.blit(self.superficie_flash, (0, 0))
 
         if self.estado == "pausa":
             self.dibujar_menu_pausa()
         elif self.estado == "nivel_completado":
-            self.dibujar_overlay("LA CRIPTA SE ABRE", "ENTER para descender")
+            self.dibujar_relicario_fin_nivel()
         elif self.estado == "sala_completada":
             self.dibujar_overlay(
                 "DESAFÍO COMPLETADO",
@@ -2601,6 +2824,71 @@ class Juego:
         self.dibujar_texto("GUÍA DEL SEPULTURERO", x + 16, y + 5, 11, HUD_ORO)
         for i, linea in enumerate(lineas):
             self.dibujar_texto(linea, x + 16, y + 21 + i * 20, 13, HUD_TEXTO)
+
+    # --- Función dibujar_relicario_fin_nivel --- #
+    def dibujar_relicario_fin_nivel(self):
+        """Relicario de fin de nivel: resumen litúrgico de almas consagradas, vidas, tiempo y cita poeana."""
+        overlay = pygame.Surface((ANCHO, ALTO), pygame.SRCALPHA)
+        overlay.fill((5, 4, 10, 215))
+        self.pantalla.blit(overlay, (0, 0))
+
+        pw, ph = 740, 480
+        px = (ANCHO - pw) // 2
+        py = (ALTO - ph) // 2
+        self.dibujar_marco_heraldico(self.pantalla, px, py, pw, ph)
+
+        nombre_nivel = self.nivel.nombre.upper() if self.nivel and hasattr(self.nivel, "nombre") else f"NIVEL {self.nivel_indice + 1}"
+        self.dibujar_texto(f"¡{nombre_nivel} SUPERADO!", 0, py + 22, 34, HUD_ORO, centrado=True, sombra=True)
+
+        cita = CITAS_POE.get(self.nivel_indice, "«Los límites entre la Vida y la Muerte son borrosos e indefinidos.» — E. A. Poe")
+        self.dibujar_texto(cita, 0, py + 66, 13, CREMA, centrado=True)
+        pygame.draw.line(self.pantalla, (*HUD_ORO, 140), (px + 30, py + 92), (px + pw - 30, py + 92), 1)
+
+        # Estadísticas del nivel
+        min_n = int(self.tiempo_nivel) // 60
+        seg_n = int(self.tiempo_nivel) % 60
+        dec_n = int((self.tiempo_nivel - int(self.tiempo_nivel)) * 10)
+        tiempo_str = f"{min_n:02d}:{seg_n:02d}.{dec_n}"
+
+        total_almas_nivel = self.nivel.total_almas if self.nivel else 0
+        almas_jugador = self.jugador.almas if self.jugador else 0
+        vidas_jugador = self.jugador.vidas if self.jugador else 0
+
+        stats = [
+            ("ALMAS CONSAGRADAS EN EL NIVEL", f"{almas_jugador} / {total_almas_nivel}", TURQUESA_ÁNIMA),
+            ("VIDAS CONSERVADAS", f"{vidas_jugador} / {VIDAS_MAXIMAS}", HUD_VERDE),
+            ("TIEMPO DEL NIVEL", tiempo_str, CREMA),
+        ]
+
+        # Rango del nivel
+        if self.tiempo_nivel < 90 and almas_jugador >= total_almas_nivel:
+            rango_nivel, col_r = "S+ · REQUÍEM PERFECTO", (255, 230, 110)
+        elif self.tiempo_nivel < 130:
+            rango_nivel, col_r = "S · PURIFICACIÓN VELOZ", HUD_ORO
+        elif self.tiempo_nivel < 200:
+            rango_nivel, col_r = "A · TRAVESÍA SACRA", (195, 205, 220)
+        elif self.tiempo_nivel < 300:
+            rango_nivel, col_r = "B · PENITENCIA SUPERADA", CREMA
+        else:
+            rango_nivel, col_r = "C · SUPERVIVENCIA EN PENUMBRA", HUESO
+
+        y_stat = py + 116
+        for etiqueta, valor, color in stats:
+            self.dibujar_texto(etiqueta, px + 50, y_stat, 14, HUD_MUTED)
+            self.dibujar_texto(valor, px + pw - 50, y_stat, 20, color, sombra=True, derecha=True)
+            pygame.draw.line(self.pantalla, (*HUD_BORDE, 90), (px + 30, y_stat + 28), (px + pw - 30, y_stat + 28), 1)
+            y_stat += 54
+
+        # Caja de Rango de Nivel
+        y_rango = y_stat + 10
+        pygame.draw.rect(self.pantalla, (20, 16, 26), (px + 40, y_rango, pw - 80, 42), border_radius=8)
+        pygame.draw.rect(self.pantalla, (*col_r, 180), (px + 40, y_rango, pw - 80, 42), 1, border_radius=8)
+        self.dibujar_texto(f"RANGO DEL NIVEL: {rango_nivel}", 0, y_rango + 10, 16, col_r, centrado=True, sombra=True)
+
+        # Prompt claro
+        pygame.draw.line(self.pantalla, (*HUD_ORO, 140), (px + 30, py + ph - 48), (px + pw - 30, py + ph - 48), 1)
+        self.dibujar_texto("[ENTER] Descender al siguiente nivel · [ESC] Menú Principal",
+                           0, py + ph - 30, 13, HUD_ORO, centrado=True, sombra=True)
 
     # --- Función dibujar_overlay --- #
     def dibujar_overlay(self, titulo, subtitulo):
@@ -2677,25 +2965,41 @@ class Juego:
         es_retro = getattr(self, "preset_teclado_idx", 0) == 1
         tecla_atk = "C / J" if es_retro else "J / Z"
         tecla_dsh = "X / SHIFT" if es_retro else "SHIFT / X"
+        tecla_jmp = "Z / ESPACIO" if es_retro else "ESPACIO / W"
 
-        # 1. Dash Power-ups en el nivel
+        # 1. Dash Power-ups en el nivel (Altar D)
         for dp in getattr(self.nivel, "power_ups_dash", []):
             if not getattr(dp, "recogida", False) and not getattr(dp, "recogido", False):
-                puntos_clave.append((dp.rect.centerx, dp.rect.top, f"[{tecla_dsh}] Dash en el aire"))
+                puntos_clave.append((dp.rect.centerx, dp.rect.top, f"[{tecla_dsh}] Altar de Sombras · Desbloquea el Dash"))
 
-        # 2. Palas en el nivel
+        # 2. Palas en el nivel (Altar W)
         for p in getattr(self.nivel, "palas", []):
             if not getattr(p, "recogida", False) and not getattr(p, "recogido", False):
-                puntos_clave.append((p.rect.centerx, p.rect.top, f"[{tecla_atk}] Atacar · ¡Saltá sobre enemigos para rebotar y recargar Dash!"))
+                puntos_clave.append((p.rect.centerx, p.rect.top, f"[{tecla_atk}] Pala de Hierro · Atacar y rebotar"))
 
-        # 3. Power-Up X de Rango / Guadaña en el nivel
+        # 3. Power-Up X de Rango / Guadaña en el nivel (Altar X)
         for pr in getattr(self.nivel, "power_ups_rango", []):
             if not getattr(pr, "recogida", False) and not getattr(pr, "recogido", False):
-                puntos_clave.append((pr.rect.centerx, pr.rect.top, "[X] Guadaña Consagrada · Alcance ampliado"))
+                if getattr(pr, "sellado", False):
+                    puntos_clave.append((pr.rect.centerx, pr.rect.top, "[X] Altar de Guadaña Sellado · Vence al Carcelero"))
+                else:
+                    puntos_clave.append((pr.rect.centerx, pr.rect.top, "[X] Guadaña Consagrada · Alcance y filo ampliado"))
 
-        # 4. En el Preludio / Tutorial: puntos pedagógicos específicos
+        # 4. Faroles de Checkpoint (F)
+        for cp in getattr(self.nivel, "checkpoints", []):
+            if not getattr(cp, "activo", False):
+                puntos_clave.append((cp.rect.centerx, cp.rect.top, "[F] Farol de Reposo · Consagrar almas y curar"))
+            else:
+                tier_txt = {1: "Tier 1: Purificación", 2: "Tier 2: Bendición del Manto", 3: "Tier 3: Filo de Ánima y Manto"}.get(cp.tier, "Consagrado")
+                puntos_clave.append((cp.rect.centerx, cp.rect.top, f"[F] Farol Consagrado · {tier_txt}"))
+
+        # 5. Campanas de Resonancia / Incensarios (I)
+        for inc in getattr(self.nivel, "incensarios", []):
+            puntos_clave.append((inc.rect.centerx, inc.rect.top, f"[{tecla_atk}] Campana · Repicar para rebotar y recargar Dash"))
+
+        # 6. Puntos pedagógicos del Preludio / Tutorial:
         if getattr(self, "es_tutorial", False):
-            puntos_clave.append((18 * TILE, 8 * TILE, "[ESPACIO / W] Mantener para salto alto"))
+            puntos_clave.append((18 * TILE, 8 * TILE, f"[{tecla_jmp}] Mantener para salto alto"))
             puntos_clave.append((40 * TILE, 8 * TILE, f"[{tecla_atk}] Atacar · ¡Saltá sobre enemigos para rebotar y recargar Dash!"))
             puntos_clave.append((74 * TILE, 8 * TILE, "[ENTER] Portón hacia el Camposanto"))
 
@@ -2732,9 +3036,26 @@ class Juego:
                     burbuja.blit(img_txt, (10, 5))
                     destino.blit(burbuja, rect_pantalla.topleft)
 
+    def calcular_rango_liturgico(self):
+        """Calcula el rango litúrgico de la campaña (S+, S, A, B, C) con base en tiempo, vidas y caídas."""
+        t = getattr(self, "tiempo_total", 0.0)
+        vidas = self.jugador.vidas if getattr(self, "jugador", None) else 0
+        muertes = getattr(self, "muertes_totales", 0)
+
+        if t < 240 or (t < 320 and muertes == 0 and vidas >= 4):
+            return "S+ · REQUÍEM SUPREMO", (255, 230, 110)
+        elif t < 420 and muertes <= 1:
+            return "S · MAESTRO DEL OSARIO", ORO
+        elif t < 600 and muertes <= 3:
+            return "A · SEPULTURERO SACRO", (195, 205, 220)
+        elif t < 900:
+            return "B · EXPLORADOR DE CRIPTAS", CREMA
+        else:
+            return "C · EL OSARIO TE PUSO A PRUEBA", HUESO
+
     # --- Función dibujar_victoria --- #
     def dibujar_victoria(self):
-        """Pantalla de victoria estilizada con panel gótico y estadísticas completas."""
+        """Pantalla de victoria estilizada con panel gótico y estadísticas litúrgicas completas."""
         import math as _math
 
         # Oscurecer el fondo
@@ -2755,55 +3076,54 @@ class Juego:
             self.pantalla.blit(s, (rx - radio - 1, ry - radio - 1))
 
         # Panel central
-        pw, ph = 680, 440
+        pw, ph = 740, 500
         px = (ANCHO - pw) // 2
         py = (ALTO - ph) // 2
         self.dibujar_marco_heraldico(self.pantalla, px, py, pw, ph)
 
         # Título
-        self.dibujar_texto("¡EL SEPULTURERO ESCAPÓ!", 0, py + 24, 38, ORO, centrado=True, sombra=True)
-        self.dibujar_texto("IN CRYPTA · COMPLETADO", 0, py + 68, 15, CREMA, centrado=True)
+        self.dibujar_texto("¡EL SEPULTURERO ESCAPÓ!", 0, py + 22, 36, ORO, centrado=True, sombra=True)
+        self.dibujar_texto("IN CRYPTA · CAMPAÑA COMPLETADA", 0, py + 62, 14, CREMA, centrado=True)
         pygame.draw.line(self.pantalla, (*ORO, 140),
-                         (px + 30, py + 94), (px + pw - 30, py + 94), 1)
+                         (px + 30, py + 86), (px + pw - 30, py + 86), 1)
 
-        # Stats
+        # Stats (4 estadísticas de campaña)
         tiempo_min = int(self.tiempo_total) // 60
         tiempo_seg = int(self.tiempo_total) % 60
         tiempo_dec = int((self.tiempo_total - int(self.tiempo_total)) * 10)
+        vidas_j = self.jugador.vidas if self.jugador else 0
         stats = [
-            ("ALMAS TOTALES",   f"{self.almas_totales}",                         HUD_ORO),
-            ("TIEMPO TOTAL",    f"{tiempo_min:02d}:{tiempo_seg:02d}.{tiempo_dec}", CREMA),
-            ("VIDAS RESTANTES", f"{self.jugador.vidas if self.jugador else 0}",    HUD_VERDE),
+            ("ALMAS TOTALES COSECHADAS", f"{self.almas_totales}", HUD_ORO),
+            ("TIEMPO TOTAL DE CAMPAÑA",  f"{tiempo_min:02d}:{tiempo_seg:02d}.{tiempo_dec}", CREMA),
+            ("VIDAS CONSERVADAS",        f"{vidas_j} / {VIDAS_MAXIMAS}", HUD_VERDE),
+            ("CAÍDAS TOTALES",           f"{self.muertes_totales}", HUD_ROJO if self.muertes_totales > 0 else HUD_VERDE),
         ]
 
-        y_stat = py + 114
+        y_stat = py + 100
         for etiqueta, valor, color in stats:
             self.dibujar_texto(etiqueta, px + 50, y_stat, 14, HUD_MUTED)
             self.dibujar_texto(valor, px + pw - 50, y_stat, 20, color, sombra=True, derecha=True)
             pygame.draw.line(self.pantalla, (*HUD_BORDE, 90),
                              (px + 30, y_stat + 26), (px + pw - 30, y_stat + 26), 1)
-            y_stat += 52
+            y_stat += 46
 
-        # Calificación / rango (dorado, plata, hueso según tiempo)
-        if self.tiempo_total < 300:
-            rango, color_rango = "S · MAESTRO DEL OSARIO", ORO
-        elif self.tiempo_total < 540:
-            rango, color_rango = "A · SEPULTURERO EXPERTO", (192, 192, 192)
-        elif self.tiempo_total < 840:
-            rango, color_rango = "B · EXPLORADOR DE CRIPTAS", CREMA
-        else:
-            rango, color_rango = "C · EL OSARIO TE PUSO A PRUEBA", HUESO
+        # Calificación / rango litúrgico (S+, S, A, B, C)
+        rango, color_rango = self.calcular_rango_liturgico()
 
-        y_rango = y_stat + 10
+        y_rango = y_stat + 8
         pygame.draw.rect(self.pantalla, (20, 16, 26),
-                         (px + 30, y_rango, pw - 60, 44), border_radius=8)
+                         (px + 40, y_rango, pw - 80, 44), border_radius=8)
         pygame.draw.rect(self.pantalla, (*color_rango, 180),
-                         (px + 30, y_rango, pw - 60, 44), 1, border_radius=8)
-        self.dibujar_texto(f"RANGO {rango}", 0, y_rango + 11, 17, color_rango, centrado=True, sombra=True)
+                         (px + 40, y_rango, pw - 80, 44), 1, border_radius=8)
+        self.dibujar_texto(f"RANGO LITÚRGICO: {rango}", 0, y_rango + 11, 16, color_rango, centrado=True, sombra=True)
+
+        # Cita litúrgica final
+        self.dibujar_texto("«Y el alma, redimida del osario, halló su eterno reposo.»", 0, py + ph - 54, 13, CREMA, centrado=True)
+        pygame.draw.line(self.pantalla, (*HUD_ORO, 120), (px + 30, py + ph - 38), (px + pw - 30, py + ph - 38), 1)
 
         # Pie constante (Principio 2 UX)
         self.dibujar_texto("[ENTER] Confirmar · [ESC] Volver al Menú",
-                           0, py + ph - 30, 13, HUD_MUTED, centrado=True)
+                           0, py + ph - 24, 13, HUD_MUTED, centrado=True)
 
     # --- Función dibujar_derrota --- #
     def dibujar_derrota(self):

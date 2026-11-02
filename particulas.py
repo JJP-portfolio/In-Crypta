@@ -102,10 +102,12 @@ class SistemaParticulas:
     def __init__(self):
         self.particulas = []
         self.plumas = []
+        self.factor_calidad = 1.0
 
     # --- Función emitir genérica --- #
     def emitir(self, x, y, cantidad, colores, velocidad=180.0, vida=0.45, tamano=4.0, gravedad=700.0):
-        for _ in range(cantidad):
+        cant = max(1, int(round(cantidad * getattr(self, "factor_calidad", 1.0))))
+        for _ in range(cant):
             angulo = random.uniform(0, math.tau)
             fuerza = random.uniform(0.35, 1.0) * velocidad
             self.particulas.append(Particula(

@@ -9,7 +9,9 @@
 # ============================================================
 
 import array
+import json
 import math
+from pathlib import Path
 import random
 
 import pygame
@@ -170,6 +172,31 @@ def sintetizar_dron_funebre(duracion=4.0, volumen=0.10):
 
 # --- Clase Audio --- #
 class Audio:
+    DIR_SFX_WAV = Path(__file__).resolve().parent / "assets" / "audio" / "sfx"
+
+    def _nombre_archivo_sfx(self, clave: str) -> str:
+        """Nombre de archivo de SFX en disco. 'daño' (con enie) se mapea a dano.wav."""
+        if clave == "daño":
+            return "dano.wav"
+        return f"{clave}.wav"
+
+    def _cargar_sfx(self, clave: str):
+        """Carga assets/audio/sfx/<clave>.wav si existe; si no, devuelve None."""
+        ruta = self.DIR_SFX_WAV / self._nombre_archivo_sfx(clave)
+        if ruta.exists():
+            try:
+                return pygame.mixer.Sound(str(ruta))
+            except pygame.error:
+                return None
+        return None
+
+    def _sonido(self, clave: str, fn_sintesis):
+        """Devuelve el WAV de disco si existe, si no sintetiza el sonido actual."""
+        cargado = self._cargar_sfx(clave)
+        if cargado is not None:
+            return cargado
+        return fn_sintesis()
+
     def __init__(self):
         self.activo = False
         self.sonidos = {}
@@ -425,6 +452,12 @@ class Audio:
         ]
         self.sonidos["farol_tier_3"] = sintetizar_sfx(0.72, capas_tier3, adsr=(0.02, 0.15, 0.7, 0.55), volumen=0.26)
 
+        # Si existen WAVs en disco para las claves, reemplazamos la síntesis procedural
+        for clave in list(self.sonidos.keys()):
+            wav = self._cargar_sfx(clave)
+            if wav is not None:
+                self.sonidos[clave] = wav
+
     # --- Función reproducir --- #
     def reproducir(self, nombre):
         if not self.activo:
@@ -471,3 +504,48 @@ class Audio:
         self.activo = not self.activo
         if not self.activo:
             self.detener_dron()
+            self.detener_musica()
+
+    # --- Función reproducir_musica / detener_musica (F2-2) --- #
+    def _ruta_musica_por_id(self, id_musica: str):
+        """Resuelve assets/audio/musica/<archivo> para un id de música del manifiesto."""
+        manifiesto_path = Path(__file__).resolve().parent / "plan" / "manifest_assets.json"
+        if not manifiesto_path.exists():
+            return None
+        try:
+            datos = json.loads(manifiesto_path.read_text(encoding="utf-8"))
+            for m in datos.get("musica", []):
+                if m.get("id") == id_musica:
+                    archivo = m.get("archivo", "")
+                    ruta = Path(__file__).resolve().parent / "assets" / "audio" / "musica" / archivo
+                    if ruta.exists():
+                        return ruta
+        except Exception:
+            pass
+        return None
+
+    def reproducir_musica(self, id_musica: str, bucle: bool = True, fade_ms: int = 800):
+        """Reproduce música con pygame.mixer.music. No toca el canal del dron."""
+        if not self.activo:
+            return
+        ruta = self._ruta_musica_por_id(id_musica)
+        if ruta is None:
+            for ext in (".ogg", ".wav", ".mp3"):
+                cand = Path(__file__).resolve().parent / "assets" / "audio" / "musica" / f"{id_musica}{ext}"
+                if cand.exists():
+                    ruta = cand
+                    break
+        if ruta and ruta.exists():
+            try:
+                loops = -1 if bucle else 0
+                pygame.mixer.music.load(str(ruta))
+                pygame.mixer.music.play(loops=loops, fade_ms=fade_ms)
+            except pygame.error:
+                pass
+
+    def detener_musica(self, fade_ms: int = 800):
+        """Detiene la música con fade out. No toca el canal del dron."""
+        try:
+            pygame.mixer.music.fadeout(fade_ms)
+        except pygame.error:
+            pass

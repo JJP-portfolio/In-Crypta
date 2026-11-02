@@ -1867,6 +1867,118 @@ def probar_farol_3_tiers():
     print("farol 3 tiers: OK")
 
 
+# --- Prueba: Prioridad 4 UI/UX Completa (Interfaces, Menús, Calidad, HUD, Rango Litúrgico y Relicario) --- #
+def probar_prioridad_4_ui_ux_completa():
+    juego = Juego()
+
+    # 1. Rango Litúrgico y Pantalla de Victoria
+    juego.tiempo_total = 210.0
+    juego.muertes_totales = 0
+    juego.jugador.vidas = 5
+    rango, _ = juego.calcular_rango_liturgico()
+    assert "S+" in rango, f"Esperado S+, obtenido {rango}"
+
+    juego.tiempo_total = 310.0
+    juego.muertes_totales = 0
+    juego.jugador.vidas = 4
+    rango, _ = juego.calcular_rango_liturgico()
+    assert "S+" in rango, f"Esperado S+ con 0 muertes y >=4 vidas, obtenido {rango}"
+
+    juego.tiempo_total = 350.0
+    juego.muertes_totales = 1
+    rango, _ = juego.calcular_rango_liturgico()
+    assert "S " in rango or rango.startswith("S ·"), f"Esperado S, obtenido {rango}"
+
+    juego.tiempo_total = 550.0
+    juego.muertes_totales = 2
+    rango, _ = juego.calcular_rango_liturgico()
+    assert "A" in rango, f"Esperado A, obtenido {rango}"
+
+    juego.tiempo_total = 700.0
+    juego.muertes_totales = 5
+    rango, _ = juego.calcular_rango_liturgico()
+    assert "B" in rango, f"Esperado B, obtenido {rango}"
+
+    juego.tiempo_total = 1200.0
+    juego.muertes_totales = 8
+    rango, _ = juego.calcular_rango_liturgico()
+    assert "C" in rango, f"Esperado C, obtenido {rango}"
+
+    # Render de victoria sin fallos
+    juego.dibujar_victoria()
+
+    # 2. Relicario de Fin de Nivel (Transición nivel_completado)
+    juego.estado = "nivel_completado"
+    juego.tiempo_nivel = 45.2
+    juego.dibujar()  # Debe invocar dibujar_relicario_fin_nivel sin error
+
+    # Evento ENTER en nivel_completado avanza de nivel
+    nivel_antes = juego.nivel_indice
+    evento_enter = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_RETURN)
+    pygame.event.post(evento_enter)
+    juego.procesar_eventos()
+    assert juego.nivel_indice == nivel_antes + 1 or juego.estado == "victoria", "ENTER debe avanzar nivel"
+
+    # Evento ESC en nivel_completado vuelve al menú principal
+    juego.estado = "nivel_completado"
+    evento_esc = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE)
+    pygame.event.post(evento_esc)
+    juego.procesar_eventos()
+    assert juego.estado == "menu", f"ESC debe volver al menú, actual: {juego.estado}"
+
+    # 3. Destello Manto (Meta UI)
+    juego.estado = "jugando"
+    juego.destello_manto = 0.0
+    juego.jugador.escudo_farol = True
+    juego.jugador.invulnerable = 0
+    juego.perder_vida(causa="Golpe de prueba Manto")
+    assert juego.destello_manto > 0.3, f"Manto consumido debe activar destello_manto, actual: {juego.destello_manto}"
+
+    # Decaimiento del destello
+    antes_dt = juego.destello_manto
+    juego.actualizar(0.1)
+    assert 0.0 <= juego.destello_manto < antes_dt, "destello_manto debe decaer suavemente con dt"
+
+    # 4. Calidad Gráfica y Escalado de Partículas
+    # Inicialmente Alta (0)
+    juego.config_calidad_idx = 0
+    assert juego.particulas.factor_calidad == 1.0
+
+    # Alternar a Media (1)
+    juego.alternar_calidad_grafica()
+    assert juego.config_calidad_idx == 1
+    assert juego.particulas.factor_calidad == 0.5
+    assert len(juego.particulas_bioma) == 12
+
+    # Alternar a Baja (2)
+    juego.alternar_calidad_grafica()
+    assert juego.config_calidad_idx == 2
+    assert juego.particulas.factor_calidad == 0.25
+    assert len(juego.particulas_bioma) == 0
+
+    # Alternar vuelve a Alta (0)
+    juego.alternar_calidad_grafica()
+    assert juego.config_calidad_idx == 0
+    assert juego.particulas.factor_calidad == 1.0
+    assert len(juego.particulas_bioma) == 25
+
+    # 5. Modos de HUD
+    juego.config_hud_idx = 0
+    juego.alternar_modo_hud()
+    assert juego.config_hud_idx == 1
+    assert juego.hud.modo_hud == 1
+
+    juego.alternar_modo_hud()
+    assert juego.config_hud_idx == 2
+    assert juego.hud.modo_hud == 2
+
+    juego.alternar_modo_hud()
+    assert juego.config_hud_idx == 0
+    assert juego.hud.modo_hud == 0
+
+    print("prioridad 4 UI/UX completa: OK")
+
+
 if __name__ == "__main__":
     probar_niveles()
     probar_parser()
@@ -1918,5 +2030,6 @@ if __name__ == "__main__":
     probar_losa_quebradiza()
     probar_incensario_rebote()
     probar_farol_3_tiers()
+    probar_prioridad_4_ui_ux_completa()
     probar_juego_headless()
     print("\nTESTS_INCRYPTA_OK")

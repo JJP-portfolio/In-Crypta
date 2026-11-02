@@ -54,6 +54,9 @@ El marco MDA desglosa el sistema lúdico en tres capas interconectadas:
 | **Golpe de Pala / Guadaña** | `Z` / `J` | Sablazo frontal (rango 46 px con pala; 72 px con Guadaña Mística en Nivel 3). Cooldown de 0.28 s. Destruye moradores melee, cuervos y arañas. | Arco cortante relampagueante (plateado o púrpura místico), chispas doradas/carmesí, sacudida media y sonido de impacto. |
 | **Pisotón Aéreo (Stomp)** | Caer sobre un enemigo | Al impactar la cabeza de un enemigo desde arriba mientras `vy > 0`, se elimina la entidad, se otorga rebote vertical ascendente (-360 px/s) y se restaura el dash aéreo. | Explosión radial de esquirlas, sacudida de pantalla y sonido de percusión ósea. |
 | **Relicario de Ánimas** | Recoger gemas celestes | Cada 10 almas espectrales se consagra un corazón extra de salud (máximo 5 vidas). Contador se reinicia al morir para evitar farmeo abusivo. | Destello lumínico celeste, partícula estelar y repique litúrgico ascendente. |
+| **Pacto del Farol (3 Tiers)** | Contacto con Farol (`F`) | Consagra las almas del tramo acumuladas. Tier 1 (1 alma): Checkpoint fijado. Tier 2 (3 almas): **Manto del Farol** (aura celeste que absorbe 1 impacto letal). Tier 3 (6 almas): **Filo de Ánima** (+12 px alcance de ataque) + Manto. | Llama azul progresiva en el farol; destello periférico celeste; acordes litúrgicos ascendentes. |
+| **Losa Quebradiza (`~`)** | Pisar baldosa inestable | Baldosa de roca húmeda que vibra con advertencia táctil y sonora durante 0.40 s antes de colapsar. Permanece destruida por 2.5 s y se reconstruye sola. | Vibración vertical oscilante (`bobbing`); crujido de piedra fracturada y partículas de esquirlas. |
+| **Campana de Resonancia (`I`)** | Golpe aéreo de pala/guadaña | Incensario o campana suspendida. Al golpearla en el aire genera rebote vertical ascendente (`vy = -440 px/s`) y **recarga instantáneamente el dash aéreo**. | Tañido broncíneo profundo, destello de ondas concéntricas y chispas doradas en el punto de impacto. |
 
 ### 3.2 Dinámicas Emergentes
 - **Encadenamiento Aéreo Pogo-Dash:** El jugador salta un abismo con pinchos, ejecuta un dash horizontal, cae con pisotón sobre un cuervo espectral, rebota ganando altura, recupera su dash aéreo y cruza un segundo abismo inalcanzable de otra forma.
@@ -151,7 +154,7 @@ El enfrentamiento se divide en dos fases secuenciales de dificultad creciente:
 
 ---
 
-## 6. Sistema de Menús y Navegación
+## 6. Sistema de Menús, Configuración y Rejugabilidad Comercial
 
 El flujo de pantallas ha sido completamente depurado de consolas y pruebas temporales:
 
@@ -172,39 +175,100 @@ El flujo de pantallas ha sido completamente depurado de consolas y pruebas tempo
    - `JUGAR`: Inicia la odisea desde el Camposanto.
    - `SELECCIÓN DE PANTALLA`: Selector de 3 niveles con preview de nombre, tema y descripción.
    - `TUTORIAL`: Acceso directo al Prólogo didáctico ("El Ritual del Sepulturero") con remates turquesa.
+   - `CONFIGURACIÓN DEL SANTUARIO`: Ajustes en tiempo real de Controles, Calidad Gráfica y Modos de Interfaz.
    - `CRÉDITOS`: Detalle del Equipo 6, tecnología (pygame-ce) y homenajes (Blasphemous, Castlevania, Ender Lilies).
-3. **Flujo In-Game:** `ESC` pausa instantáneamente o regresa al Menú Principal con total solidez de estados.
-4. **Pantalla de Victoria Litúrgica:** Al derrotar al Custodio y cruzar el portón final, se despliega el relicario ceremonial de victoria que computa almas totales consagradas, cronómetro de precisión, vidas residuales y calificación de rango litúrgico (`S`, `A`, `B` o `C`).
+3. **Configuración del Santuario (Conexión Real):**
+   - **Controles / Teclado:** Alterna entre `Preset 1: WASD Moderno` (Espacio para saltar, Shift/X para Dash, J/Z para atacar) y `Preset 2: Retro Arcada Z-X-C` (Z para saltar, X para dash, C para atacar). Los carteles espaciales actualizan sus glifos en tiempo real.
+   - **Calidad Gráfica:**
+     - *Alta (0):* Halos de luz aditivos completos, máscara de penumbra suave y 100% de partículas ambientales y de impacto.
+     - *Media (1):* Máscara de penumbra activa, halos ligeros y 50% de partículas ambientales.
+     - *Baja (2):* Omisión completa de la pesada `mascara_penumbra` y halos complejos; garantiza 60 FPS estables incluso en hardware modesto.
+   - **Modo de HUD:**
+     - *Completo (0):* Riel superior al 100% de opacidad y canal de mensajes activo.
+     - *Compacto (1):* Riel superior translúcido (`alpha = 140`) y canal sutil.
+     - *Inmersivo (2):* Oculta el riel durante la exploración tranquila para sumergir al jugador en el mundo; emerge suavemente ante jefes activos o durante 3 segundos tras recibir daño o cosechar almas/ítems.
+4. **Relicario de Fin de Nivel (`nivel_completado`):**
+   Al cruzar el Portón (`G`) de los Niveles 1 y 2, se despliega un relicario solemne enmarcado en oro que expone:
+   - Cita poética de Edgar Allan Poe adaptada al descenso del sepulturero.
+   - **Almas Consagradas en el Nivel:** Conteo de almas rescatadas frente al total (`X / Total`).
+   - **Vidas Conservadas:** Estado vital preservado (`X / 5`).
+   - **Tiempo del Nivel:** Cronómetro de precisión en formato `MM:SS.d`.
+   - **Rango del Nivel:** Calificación litúrgica del tramo (`S+`, `S`, `A`, `B`, `C`).
+   - Navegación clara: `[ENTER] Descender al siguiente nivel · [ESC] Menú Principal`.
+5. **Pantalla de Victoria Litúrgica y Rango de Campaña:**
+   Al abatir al Custodio del Osario en el Nivel 3 y cruzar el portón final hacia la superficie, se revela el balance litúrgico global:
+   - **Almas Totales Cosechadas** a lo largo de toda la campaña.
+   - **Tiempo Total de Campaña** en minutos, segundos y décimas (`MM:SS.d`).
+   - **Vidas Conservadas** al culminar la odisea (`X / 5`).
+   - **Caídas Totales (`muertes_totales`):** Registro de sacrificios en la cripta.
+   - **Rango Litúrgico de Campaña:**
+     - `S+ · REQUÍEM SUPREMO`: Tiempo < 240 s (o < 320 s con 0 muertes y $\ge 4$ vidas).
+     - `S · MAESTRO DEL OSARIO`: Tiempo < 420 s y $\le 1$ muerte.
+     - `A · SEPULTURERO SACRO`: Tiempo < 600 s y $\le 3$ muertes.
+     - `B · EXPLORADOR DE CRIPTAS`: Tiempo < 900 s.
+     - `C · EL OSARIO TE PUSO A PRUEBA`: Tiempo $\ge 900$ s o persistencia reiterada.
 
 ---
 
-## 7. Rediseño Diegético del HUD
+## 7. Las 4 Interfaces (Fagerholt & Lorentzon) y 5 Principios UX
 
-Abandonando los rectángulos genéricos no diegéticos, el nuevo HUD se integra armónicamente como reliquias de la liturgia del sepulturero:
+Siguiendo la taxonomía de diseño de interfaces de Erik Fagerholt y Mathias Lorentzon, **IN CRYPTA** distribuye su información a través de los cuatro cuadrantes para maximizar la inmersión sin sacrificar la legibilidad táctica:
 
 ```
-┌──────────────────────────────────────┐  ┌──────────────────────────────┐
-│ ✠ SEPULTURERO · EL CAMPOSANTO        │  │ ❖ ÁNIMAS ESPECTRALES   07/10 │
-│  [♥]  [♥]  [♥]  [♡]  [♡]             │  │  ● ● ● ● ● ● ● ○ ○ ○         │
-└──────────────────────────────────────┘  └──────────────────────────────┘
-  (Relicario de Vidas: Corazones            (Relicario de Ánimas: Rosario
-   Góticos con latido de emergencia)         de 10 cuentas para Vida Extra)
-
-┌──────────────────────────────────────┐
-│ [ DASH: LISTO ]  │  [ GUADAÑA + ]    │
-└──────────────────────────────────────┘
-  (Sellos Tácticos de Habilidades)
+                      EN EL MUNDO (Diegético)
+                                ▲
+                                │
+              DIEGÉTICA         │         ESPACIAL
+         · Llama del Farol      │   · Burbujas heráldicas
+         · Checkpoints (Tiers)  │     sobre Altares y Faroles
+         · Cadenas del Altar X  │   · Glifos de teclas dinámicos
+                                │
+    ────────────────────────────┼────────────────────────────► EN EL ESPACIO 2D
+                                │
+                 META           │       NO DIEGÉTICA
+         · Viñeta Carmesí 1 HP  │   · Riel superior 1232×72 px
+         · Destello Manto Farol │   · Grilla 2×2 panel derecho
+         · Flash de daño        │   · Canal de mensajes único
+                                │
+                                ▼
+                    EN LA PANTALLA (No Diegético)
 ```
 
-1. **Relicario de Vidas (Superior Izquierda):** Marco de hierro forjado con remaches de oro. Corazones carmesí con reflejos especulares de rubí. Si el jugador desciende a 1 vida, el corazón entra en **pulsación de emergencia por latido cardíaco**, generando advertencia visual limpia sin invadir la visión.
-2. **Relicario de Ánimas Espectrales (Superior Derecha):** Caja de marfil y obsidiana con 10 cuentas de rosario. Cada alma recogida ilumina una cuenta en fulgor turquesa. Al completar 10 cuentas, se produce una fanfarria y se añade un corazón al relicario de vidas.
-3. **Sellos de Habilidades (Inferior Izquierda):**
-   - *Sello de Dash:* Glifo turquesa que muestra barra de recarga en tiempo real o el estado "LISTO".
-   - *Sello de Arma:* Muestra la Pala de sepulturero plateada en Nivel 1 y 2, y conmuta automáticamente a la **Guadaña Imperial Púrpura** al recoger el artefacto en Nivel 3.
-4. **Corona Imperial del Custodio (Superior Centro, Solo Jefe):**
-   - Marco de 500 px de ancho con corona de oro.
-   - 6 celdas de salud con rubíes que se pulverizan al dañarlo.
-   - Indicador de estado dinámico: "FASE I: VULNERABLE A PALA Y PISOTÓN" conmuta a "FASE II: ¡LA PALA REBOTA! SOLO PISOTÓN" en rojo ardiente.
+### 7.1 Matriz de las 4 Interfaces
+
+1. **Interfaz Diegética (Existe en la ficción y el mundo físico del personaje):**
+   - **El Farol del Sepulturero:** Su llama conmuta de color e intensidad: fulgor turquesa cuando el Dash está listo y ámbar apagado durante el enfriamiento. Exhibe auras místicas al portar el *Manto del Farol* (halo celeste) y el *Filo de Ánima* (chispas doradas).
+   - **Faroles de Checkpoint (`F`):** Encienden su fuego azul con tres alturas e intensidades distintas según el Tier alcanzado (Tier 1 tenue, Tier 2 brillante, Tier 3 fuego fatuo celestial).
+   - **Cadenas del Altar de la Guadaña (`X`):** Cadenas físicas de hierro rodean el pedestal de la guadaña en el Nivel 3 mientras el Carcelero (`K`) permanezca con vida; al derrotarlo, las cadenas caen al vacío pulverizándose.
+
+2. **Interfaz Espacial (Existe en las coordenadas 2D del mundo, visible al jugador):**
+   - **Burbujas Heráldicas Contextuales (`dibujar_ui_espacial`):** Aparecen suavemente mediante interpolación alfa cuando el sepulturero se aproxima a $\le 140\text{ px}$ de altares (`D`, `W`, `X`), faroles (`F`), campanas (`I`) y puntos clave.
+   - **Adaptación Dinámica de Presets:** Los textos instructivos leen en tiempo real el mapeo de teclas (`[SHIFT / X]` vs `[X / SHIFT]`, `[ESPACIO / W]` vs `[Z / ESPACIO]`).
+
+3. **Interfaz Meta (Existe en la lente de la cámara / plano de visión):**
+   - **Viñeta Carmesí Reactiva:** Al quedar a 1 punto de vida, los bordes de la pantalla proyectan una viñeta roja profunda pulsando rítmicamente en sincronía con el latido cardíaco de 55 Hz.
+   - **Destello del Manto del Farol (`destello_manto`):** Al consagrar el manto o absorber un golpe mortal, la periferia de la pantalla destella en cian celeste aditivo, comunicando la protección divina sin tapar la acción central.
+
+4. **Interfaz No Diegética (Riel Superior Gótico en `hud.py`):**
+   - Geometría inmutable de $1232 \times 72\text{ px}$ anclada en el borde superior, dividida en:
+     - **Zona Izquierda (336 px):** Relicario de corazones de vida y distintivos de bendiciones activas (`MANTO`, `FILO`, `MANTO · FILO`).
+     - **Zona Centro (512 px):** Corona y barra segmentada del jefe en combate, o nombre heráldico del nivel en exploración.
+     - **Zona Derecha (360 px):** Grilla táctica $2 \times 2$ con celdas de $164 \times 22\text{ px}$ para Almas consagradas, Almas Volátiles en riesgo `(+X)`, estado del Dash y estado del Arma.
+     - **Canal Único de Mensajes:** Caja de pergamino de $560 \times 48\text{ px}$ en $y = 96$ con interpolación sinusoidal y desvanecimiento suave.
+
+### 7.2 Los 5 Principios de UX
+
+1. **Principio 1 — Cero Solapamientos e Invarianza:** La geometría del HUD se calcula mediante cálculo estricto de regiones no superpuestas (`layout.solapamientos() == []`).
+2. **Principio 2 — Consistencia y Ubicuidad de Feedback:** Prompts universales (`[ENTER] Confirmar · [ESC] Volver`) presentes en todas las pantallas de navegación, relicarios y diálogos.
+3. **Principio 3 — Claridad Jerárquica y Semántica Cromática:**
+   - **Oro Litúrgico (`#D4AF37`):** Altares, títulos, rango S y divinidad.
+   - **Turquesa Ánima (`#48CAE4`):** Almas espectrales, dash de sombras y bendiciones del farol.
+   - **Carmesí Rubí (`#E63946`):** Salud, peligro, pulsación crítica y furia del custodio.
+   - **Verde Santuario (`#52B788`):** Vidas conservadas y confirmación exitosa.
+4. **Principio 4 — Asistencias Invisibles y Accesibilidad:**
+   - 100 ms de *coyote time* y 120 ms de *jump buffering*.
+   - Modo de reducción de sacudidas de pantalla (`F1`), configurable desde el menú.
+5. **Principio 5 — Escalabilidad Gráfica y 60 FPS Garantizados:** Presets visuales calibrados para mantener 60 FPS ininterrumpidos en cualquier gama de hardware.
 
 ---
 
@@ -218,18 +282,27 @@ Para garantizar la estética de **Sensación**, cada interacción física produc
 | **Dash** | Silueta translúcida con cloning espectral | Estela de cometa turquesa | Sacudida leve (4 px) | Silbido de viento espectral |
 | **Pala / Guadaña** | Haz curvo luminoso (oro / violeta) | Chispas metálicas en cono | Sacudida media (7 px) | Impacto seco de metal y hueso |
 | **Pisotón Exitoso** | Compresión horizontal de impacto | Explosión radial de esquirlas | Sacudida media (8 px) | Percusión profunda de tumba |
+| **Manto Consumido** | Viñeta celeste periférica aditiva | Estallido radial celeste (24 partículas) | Flash celeste sutil | Tono de escudo quebrado |
+| **Campana / Incensario** | Onda concéntrica expansiva | Chispas doradas ascendentes | Impulso ascendente | Tañido litúrgico solemne |
+| **Losa Fracturada** | Desplazamiento oscilante 0.40s | Esquirlas de roca cayendo | Sacudida micro | Crujido de piedra quebrandose |
 | **Daño Recibido** | Parpadeo de invulnerabilidad (1.2 s) | Salpicadura de sangre carmesí | Sacudida fuerte (14 px) + Flash rojo | Tono grave descendente |
 | **Fase 2 Jefe** | Ojos fulgurantes y silueta en llamas | Torbellino de humo rojo constante | Sacudida prolongada | Alarido ritual de ultratumba |
 
 ---
 
-## 9. Verificación y Suite de Calidad
+## 9. Verificación y Suite de Calidad Total
 
-El proyecto cuenta con una batería de pruebas de integración continua automatizadas en `tests/test_logica.py` y `tests/test_hud.py` (56 tests unitarios en total):
-- `probar_niveles`: Integridad de los mapas de baldosa y dimensiones exactas.
-- `probar_salto_ventana_nivel_2`: Simulación física del salto, dash aéreo rasante y aterrizaje a través de la ventana alta sin tocar pinchos.
-- `probar_jefe_final`: Verificación de ambas fases del Custodio, absorción de daño, transición de furia e inmunidad a la pala en fase 2.
-- `probar_menu_principal_y_navegacion`: Transiciones libres de excepciones entre Intro, Menú Principal, Selección de Niveles, Créditos y Game Loop.
-- `probar_tutorial`: Integridad didáctica de "El Ritual del Sepulturero", etiquetas diegéticas del HUD y reinicio limpio.
-- `probar_juego_headless`: Renderizado exhaustivo de frames, overlays de victoria y HUD sin dispositivos gráficos reales.
-- `tests/test_hud.py`: Verificación de la arquitectura modular del HUD, renderizado 2x2 sin solapamiento, canal de mensajes con fade y formato dinámico de vidas/almas/cooldowns.
+El proyecto cuenta con una batería integral de pruebas unitarias, de integración y de estrés gráfico ejecutables en entornos headless (CI/CD):
+- **`tests/test_logica.py` (48 pruebas lógicas exhaustivas):**
+  - Físicas de salto, coyote time, jump buffer, dash, corte de gravedad, colisiones, losas quebradizas, incensarios y checkpoints de 3 tiers.
+  - Combate con pala, guadaña mística, Carcelero, Custodio (fases I y II) y rebotes por pisotón.
+  - Rango Litúrgico de campaña (`S+`, `S`, `A`, `B`, `C`), Relicario de fin de nivel y navegación.
+  - Modos de HUD, calidad gráfica y destello periférico del manto.
+- **`tests/test_hud.py` (35 pruebas unitarias de UI/UX):**
+  - Modos de HUD (Completo, Compacto alpha 140, Inmersivo con despertar por eventos).
+  - Cero solapamientos en riel superior e invarianzas de layout.
+  - Contadores dinámicos de almas volátiles y distintivos de bendiciones activas.
+- **`pytest tests/` (47 pruebas automatizadas en verde):**
+  - Carga y verificación de assets de audio, lógica de HUD y módulos auxiliares.
+- **`./jugar_pygame.sh --headless`:**
+  - Inicialización limpia de la ventana de juego, ciclo de actualización y renderizado de frames sin errores de display.

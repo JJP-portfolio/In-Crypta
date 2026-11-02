@@ -416,6 +416,126 @@ class TestPrioridad3UIUX(unittest.TestCase):
         self.assertEqual(rect_pantalla.x, 200)
         self.assertEqual(rect_pantalla.y, 250)
 
+    def test_layout_cero_solapamientos(self):
+        """UI No Diegética: garantiza cero colisiones ni solapamientos en el riel superior."""
+        layout = HudLayout.construir()
+        self.assertEqual(layout.solapamientos(), [])
+        self.assertTrue(layout.riel.width <= ANCHO)
+        self.assertTrue(layout.riel.height <= ALTO)
+
+    def test_modos_hud(self):
+        """Verifica renderizado en los 3 modos de HUD (Completo=0, Compacto=1, Inmersivo=2)."""
+        pantalla = pygame.Surface((ANCHO, ALTO))
+        layout = HudLayout.construir()
+        tema = HudTheme()
+        cache = TextoCache(lambda t: pygame.font.Font(None, t))
+        renderer = HudRenderer(layout, tema, cache)
+        mensajes = MensajeHUD(layout, tema, cache)
+        modelo = HudModel(vidas=3, almas=10, almas_total=25)
+
+        # Modo 0: Completo
+        renderer.dibujar(pantalla, modelo, mensajes, False, 0.016, modo_hud=0)
+        self.assertEqual(layout.solapamientos(), [])
+
+        # Modo 1: Compacto (alpha 140)
+        renderer.dibujar(pantalla, modelo, mensajes, False, 0.016, modo_hud=1)
+
+        # Modo 2: Inmersivo — oculto en calma, visible ante jefe o timer activo
+        modelo.jefe_vivo = False
+        renderer.dibujar(pantalla, modelo, mensajes, False, 0.016, modo_hud=2, timer_inmersivo=0.0)
+
+        # Inmersivo con Jefe
+        modelo.jefe_vivo = True
+        renderer.dibujar(pantalla, modelo, mensajes, False, 0.016, modo_hud=2, timer_inmersivo=0.0)
+
+        # Inmersivo con Timer activo (daño o recolección)
+        modelo.jefe_vivo = False
+        renderer.dibujar(pantalla, modelo, mensajes, False, 0.016, modo_hud=2, timer_inmersivo=2.5)
+
+    def test_hud_orquestador_timer_inmersivo_eventos(self):
+        """Verifica que el HUD despierte durante 3s en modo inmersivo al perder vida o ganar almas."""
+        orq = HudOrquestador()
+        pantalla = pygame.Surface((ANCHO, ALTO))
+
+        class MockJugador:
+            vidas = 4
+            almas = 5
+            tiene_dash = True
+            dash_cooldown = 0.0
+            dash_usos_aire = 1
+            en_suelo = True
+            ataque_cooldown = 0.0
+            tiene_pala = True
+            rango_ataque_mejorado = False
+            almas_para_vida = 2
+            escudo_farol = False
+            filo_anima = False
+
+        class MockNivel:
+            total_almas = 20
+            nombre = "Cripta"
+            pista = "Avanza"
+            jefe = None
+
+        class MockJuego:
+            jugador = MockJugador()
+            nivel = MockNivel()
+            jefe = None
+            nivel_indice = 0
+            tiempo_total = 10.0
+            estado = "jugando"
+            texto_ayuda = ""
+            aviso_jefe = 0.0
+            config_hud_idx = 2
+            almas_consagradas = 0
+
+        juego = MockJuego()
+        orq.dibujar(pantalla, juego, 0.016)
+        # Inicialmente el timer inmersivo está en 0
+        orq.timer_inmersivo = 0.0
+
+        # Evento: pérdida de vida
+        juego.jugador.vidas = 3
+        orq.dibujar(pantalla, juego, 0.016)
+        self.assertAlmostEqual(orq.timer_inmersivo, 3.0)
+
+        # Decremento por dt
+        orq.actualizar(1.0)
+        self.assertAlmostEqual(orq.timer_inmersivo, 2.0)
+
+        # Evento: recolección de alma
+        juego.jugador.almas = 6
+        orq.dibujar(pantalla, juego, 0.016)
+        self.assertAlmostEqual(orq.timer_inmersivo, 3.0)
+
+    def test_almas_volatiles_y_distintivos_bendiciones(self):
+        """Verifica la visualización de almas volátiles y badges de bendiciones (Manto / Filo)."""
+        pantalla = pygame.Surface((ANCHO, ALTO))
+        layout = HudLayout.construir()
+        tema = HudTheme()
+        cache = TextoCache(lambda t: pygame.font.Font(None, t))
+        renderer = HudRenderer(layout, tema, cache)
+        mensajes = MensajeHUD(layout, tema, cache)
+
+        # 1. Almas volátiles
+        m = HudModel(almas=12, almas_total=25, almas_volatiles=5)
+        renderer.dibujar(pantalla, m, mensajes, False, 0.016)
+
+        # 2. Bendiciones: Manto activo
+        m.escudo_farol = True
+        m.filo_anima = False
+        renderer.dibujar(pantalla, m, mensajes, False, 0.016)
+
+        # 3. Bendiciones: Filo activo
+        m.escudo_farol = False
+        m.filo_anima = True
+        renderer.dibujar(pantalla, m, mensajes, False, 0.016)
+
+        # 4. Ambas bendiciones activas
+        m.escudo_farol = True
+        m.filo_anima = True
+        renderer.dibujar(pantalla, m, mensajes, False, 0.016)
+
 
 if __name__ == "__main__":
     unittest.main()

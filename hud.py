@@ -251,6 +251,7 @@ class HudModel:
     rango_ataque_mejorado: bool = False
     escudo_farol: bool = False
     filo_anima: bool = False
+    almas_volatiles: int = 0
     # Jefe
     jefe_vivo: bool = False
     jefe_vida: int = 0
@@ -489,6 +490,7 @@ class HudRenderer:
         self._paneles_cache = {}
         self._iconos_cache = {}
         self._panel_der_surface = None
+        self._surf_riel_buffer = None
 
     def _fuente(self, tamano):
         if tamano not in self._fuentes:
@@ -635,29 +637,58 @@ class HudRenderer:
 
     # --- Dibujo principal ---
     def dibujar(self, pantalla, modelo: HudModel, mensajes: MensajeHUD,
-                reducir_movimiento=False, dt=0.0):
-        # Fondo del riel
-        panel_riel = self._panel(self.layout.riel.w, self.layout.riel.h)
-        pantalla.blit(panel_riel, self.layout.riel.topleft)
+                reducir_movimiento=False, dt=0.0, modo_hud=0, timer_inmersivo=0.0):
+        # Modo de HUD: 0: Completo, 1: Compacto (alpha 140), 2: Inmersivo (oculto salvo jefe o evento)
+        if modo_hud == 0:
+            alpha_riel = 255
+        elif modo_hud == 1:
+            alpha_riel = 140
+        elif modo_hud == 2:
+            if modelo.jefe_vivo:
+                alpha_riel = 255
+            elif timer_inmersivo > 0:
+                alpha_riel = int(min(255, max(0, min(1.0, timer_inmersivo / 0.4) * 255)))
+            else:
+                alpha_riel = 0
+        else:
+            alpha_riel = 255
 
-        # Divisores góticos entre zonas
-        x_div1 = self.layout.zona_izq.right + HUD_GAP // 2
-        x_div2 = self.layout.zona_centro.right + HUD_GAP // 2
-        pygame.draw.line(pantalla, (*HUD_BORDE, 100),
-                         (x_div1, self.layout.riel.top + 8),
-                         (x_div1, self.layout.riel.bottom - 8), 1)
-        pygame.draw.line(pantalla, (*HUD_BORDE, 100),
-                         (x_div2, self.layout.riel.top + 8),
-                         (x_div2, self.layout.riel.bottom - 8), 1)
+        if alpha_riel > 0:
+            destino_riel = pantalla
+            if alpha_riel < 255:
+                buf_h = self.layout.riel.bottom + 16
+                if self._surf_riel_buffer is None or self._surf_riel_buffer.get_size() != (ANCHO, buf_h):
+                    self._surf_riel_buffer = pygame.Surface((ANCHO, buf_h), pygame.SRCALPHA)
+                self._surf_riel_buffer.fill((0, 0, 0, 0))
+                destino_riel = self._surf_riel_buffer
 
-        if DEBUG_HUD:
-            for rect in (self.layout.zona_izq, self.layout.zona_centro,
-                         self.layout.zona_der, self.layout.canal_mensajes):
-                pygame.draw.rect(pantalla, (255, 0, 255), rect, 1)
+            # Fondo del riel
+            panel_riel = self._panel(self.layout.riel.w, self.layout.riel.h)
+            destino_riel.blit(panel_riel, self.layout.riel.topleft)
 
-        self._dibujar_izquierda(pantalla, modelo, reducir_movimiento, dt)
-        self._dibujar_centro(pantalla, modelo, reducir_movimiento, dt)
-        self._dibujar_derecha(pantalla, modelo, reducir_movimiento, dt)
+            # Divisores góticos entre zonas
+            x_div1 = self.layout.zona_izq.right + HUD_GAP // 2
+            x_div2 = self.layout.zona_centro.right + HUD_GAP // 2
+            pygame.draw.line(destino_riel, (*HUD_BORDE, 100),
+                             (x_div1, self.layout.riel.top + 8),
+                             (x_div1, self.layout.riel.bottom - 8), 1)
+            pygame.draw.line(destino_riel, (*HUD_BORDE, 100),
+                             (x_div2, self.layout.riel.top + 8),
+                             (x_div2, self.layout.riel.bottom - 8), 1)
+
+            if DEBUG_HUD:
+                for rect in (self.layout.zona_izq, self.layout.zona_centro,
+                             self.layout.zona_der, self.layout.canal_mensajes):
+                    pygame.draw.rect(destino_riel, (255, 0, 255), rect, 1)
+
+            self._dibujar_izquierda(destino_riel, modelo, reducir_movimiento, dt)
+            self._dibujar_centro(destino_riel, modelo, reducir_movimiento, dt)
+            self._dibujar_derecha(destino_riel, modelo, reducir_movimiento, dt)
+
+            if alpha_riel < 255:
+                self._surf_riel_buffer.set_alpha(alpha_riel)
+                pantalla.blit(self._surf_riel_buffer, (0, 0))
+
         self._dibujar_mensajes(pantalla, modelo, mensajes, reducir_movimiento, dt)
 
     # --- Zona izquierda: vida, corazones, tiempo ---
@@ -672,6 +703,22 @@ class HudRenderer:
         img_t = self._texto(texto_tiempo, self.tema.fuente_contador,
                             self.tema.texto_secundario, sombra=True)
         pantalla.blit(img_t, (c.right - img_t.get_width(), c.y))
+
+        # Bendición activa sutil (MANTO / FILO / MANTO · FILO)
+        txt_bend = ""
+        col_bend = self.tema.oro
+        if getattr(modelo, "escudo_farol", False) and getattr(modelo, "filo_anima", False):
+            txt_bend = "MANTO · FILO"
+            col_bend = (160, 230, 255)
+        elif getattr(modelo, "escudo_farol", False):
+            txt_bend = "MANTO"
+            col_bend = (120, 220, 255)
+        elif getattr(modelo, "filo_anima", False):
+            txt_bend = "FILO"
+            col_bend = (255, 215, 100)
+        if txt_bend:
+            img_b = self._texto(txt_bend, self.tema.fuente_label, col_bend, sombra=True)
+            pantalla.blit(img_b, (c.x + 82, c.y + 2))
         # Corazones (2ª fila)
         pulso = 0.0
         if modelo.vidas == 1 and not reducir_movimiento:
@@ -756,6 +803,12 @@ class HudRenderer:
         txt_alma = f"[ALMA] {modelo.almas}/{modelo.almas_total}"
         img_a = self._texto(txt_alma, self.tema.fuente_contador, self.tema.oro)
         pantalla.blit(img_a, (x0 + 24, y0))
+        # Almas volátiles (en riesgo hasta consagrar en el próximo Farol)
+        volatiles = getattr(modelo, "almas_volatiles", 0)
+        if volatiles > 0:
+            txt_vol = f"(+{volatiles})"
+            img_vol = self._texto(txt_vol, self.tema.fuente_label, (120, 220, 255), sombra=True)
+            pantalla.blit(img_vol, (x0 + 24 + img_a.get_width() + 4, y0 + 1))
         # Col 1: Dash
         x1 = x0 + celda_w + gap_x
         txt_dash = fmt_dash(modelo)
@@ -856,27 +909,50 @@ class HudOrquestador:
         self.mensajes = MensajeHUD(self.layout, self.tema, self.texto_cache)
         self.modelo = HudModel()
         self.reducir_movimiento = False
+        self.modo_hud = 0
+        self.timer_inmersivo = 0.0
 
     def actualizar(self, dt):
         self.mensajes.actualizar(dt)
+        if self.timer_inmersivo > 0:
+            self.timer_inmersivo = max(0.0, self.timer_inmersivo - dt)
 
     def armar_modelo(self, juego):
         j = juego.jugador
         n = juego.nivel
         jefe = juego.jefe
-        self.modelo.vidas = j.vidas if j else VIDAS_MAXIMAS
+
+        self.modo_hud = getattr(juego, "config_hud_idx", 0)
+
+        # Despertar HUD en modo inmersivo ante eventos clave (3 segundos)
+        nueva_vida = j.vidas if j else VIDAS_MAXIMAS
+        nuevas_almas = j.almas if j else 0
+        nuevo_dash = getattr(j, "tiene_dash", False) if j else False
+        nueva_pala = j.tiene_pala if j else False
+        nuevo_manto = getattr(j, "escudo_farol", False) if j else False
+
+        if self.modelo.vidas_prev > 0:
+            if (nueva_vida < self.modelo.vidas or
+                nuevas_almas > self.modelo.almas or
+                (nuevo_dash and not self.modelo.tiene_dash) or
+                (nueva_pala and not self.modelo.tiene_pala) or
+                (nuevo_manto and not self.modelo.escudo_farol)):
+                self.timer_inmersivo = 3.0
+
+        self.modelo.vidas = nueva_vida
         self.modelo.vidas_max = VIDAS_MAXIMAS
-        self.modelo.almas = j.almas if j else 0
+        self.modelo.almas = nuevas_almas
         self.modelo.almas_total = n.total_almas if n else 0
+        self.modelo.almas_volatiles = max(0, nuevas_almas - getattr(juego, "almas_consagradas", 0))
         self.modelo.almas_para_vida = j.almas_para_vida if j else 0
         self.modelo.dash_cooldown = j.dash_cooldown if j else 0.0
         self.modelo.dash_usos_aire = j.dash_usos_aire if j else DASH_USOS_AIRE
-        self.modelo.tiene_dash = getattr(j, "tiene_dash", False) if j else False
+        self.modelo.tiene_dash = nuevo_dash
         self.modelo.en_suelo = j.en_suelo if j else True
         self.modelo.ataque_cooldown = j.ataque_cooldown if j else 0.0
-        self.modelo.tiene_pala = j.tiene_pala if j else False
+        self.modelo.tiene_pala = nueva_pala
         self.modelo.rango_ataque_mejorado = getattr(j, "rango_ataque_mejorado", False) if j else False
-        self.modelo.escudo_farol = getattr(j, "escudo_farol", False) if j else False
+        self.modelo.escudo_farol = nuevo_manto
         self.modelo.filo_anima = getattr(j, "filo_anima", False) if j else False
 
         minijefe_activo = None
@@ -919,11 +995,14 @@ class HudOrquestador:
         self.modelo.estado = juego.estado
         self.modelo.pista = getattr(juego, "texto_ayuda", "") or (n.pista if n and hasattr(n, "pista") else "")
         self.modelo.aviso_jefe = juego.aviso_jefe
+        self.modelo.snapshot_prev()
 
     def dibujar(self, pantalla, juego, dt):
         self.armar_modelo(juego)
         self.renderer.dibujar(pantalla, self.modelo, self.mensajes,
-                              self.reducir_movimiento, dt)
+                              self.reducir_movimiento, dt,
+                              modo_hud=self.modo_hud,
+                              timer_inmersivo=self.timer_inmersivo)
 
     def mostrar_mensaje(self, texto, prioridad, hold):
         self.mensajes.mostrar(texto, prioridad, hold)
