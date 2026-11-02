@@ -29,6 +29,9 @@ El juego cuenta con soporte para teclado con dos configuraciones disponibles en 
 
 ## 🚀 Cómo Jugar
 
+> 🌐 **Jugar Online (Navegador Web):** Podés jugar directamente en tu navegador sin instalar nada en:  
+> 👉 **[https://jjp-portfolio.github.io/In-Crypta/](https://jjp-portfolio.github.io/In-Crypta/)**
+
 > 📖 **Guía Completa para Jugadores:** Consultá la [**Guía de Instalación y Juego (Windows y Linux)**](GUIA_JUEGO.md) para instrucciones paso a paso, configuración de shaders y resolución de dudas frecuentes.
 
 ### En Windows
