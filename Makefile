@@ -17,10 +17,10 @@ help: ## Muestra esta ayuda con los comandos disponibles
 	@echo "========================================================"
 	@echo "  make run       Inicia la versión Desktop (Pygame-CE)"
 	@echo "  make web       Inicia el servidor Web (GDevelop JS / PixiJS) en PORT=$(PORT)"
-	@echo "  make docs      Abre la página explicativa del proyecto y el laboratorio visual"
+	@echo "  make docs      Muestra la documentación del proyecto (README.md)"
 	@echo "  make export    Ejecuta el pipeline completo de exportación, paridad y tests"
 	@echo "  make test      Ejecuta todas las suites de pruebas en modo headless (SDL dummy)"
-	@echo "  make validate  Verifica los 4 scripts (.sh --check), eventos GD y paridad"
+	@echo "  make validate  Verifica los scripts (.sh --check), eventos GD y paridad"
 	@echo "========================================================"
 
 run: ## Inicia el juego en versión Desktop (Pygame)
@@ -29,8 +29,8 @@ run: ## Inicia el juego en versión Desktop (Pygame)
 web: ## Levanta el runtime Web en http://localhost:$(PORT)/export/gdevelop/index.html
 	@PORT=$(PORT) ./jugar_web.sh
 
-docs: ## Abre la documentación interactiva y el laboratorio de propuestas visuales
-	@./ver_propuestas.sh
+docs: ## Muestra la documentación del proyecto
+	@cat README.md
 
 export: ## Sincroniza exportadores GDevelop, valida paridad y ejecuta pruebas
 	@./exportar_todo.sh
@@ -47,4 +47,3 @@ validate: ## Ejecuta la validación no interactiva de ejecutables, exportadores 
 	@./jugar_pygame.sh --check
 	@./exportar_todo.sh --check
 	@./jugar_web.sh --check
-	@./ver_propuestas.sh --check

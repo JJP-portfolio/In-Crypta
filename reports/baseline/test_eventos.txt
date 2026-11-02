@@ -1,1 +1,0 @@
-EVENTOS_OK: los eventos matchean la API de GDevelop 5.6 (766 metadatos reales)

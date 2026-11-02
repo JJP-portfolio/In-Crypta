@@ -1074,7 +1074,7 @@ def eventos_jefe(siguiente: str) -> list[dict]:
         evento(
             [
                 cond("CollisionNP", ["Jugador", "Jefe", "no"]),
-                cond("PosY", ["Jugador", "<", "Jefe.Y() - 10"]),
+                cond("PosY", ["Jugador", "<", "Jefe.Y()"]),
                 cond("NumberObjectVariable", ["Jugador", "tiene_pala", "=", "1"]),
                 cond("NumberObjectVariable", ["Jefe", "vulnerable", "=", "1"]),
                 cond("NumberObjectVariable", ["Jefe", "fase", "<", "2"]),
@@ -1098,7 +1098,7 @@ def eventos_jefe(siguiente: str) -> list[dict]:
         evento(
             [
                 cond("CollisionNP", ["Jugador", "Jefe", "no"]),
-                cond("PosY", ["Jugador", "<", "Jefe.Y() - 10"]),
+                cond("PosY", ["Jugador", "<", "Jefe.Y()"]),
                 cond("NumberObjectVariable", ["Jugador", "tiene_pala", "=", "1"]),
                 cond("NumberObjectVariable", ["Jefe", "vulnerable", "=", "1"]),
                 cond("NumberObjectVariable", ["Jefe", "fase", ">=", "2"]),
@@ -3218,6 +3218,7 @@ def escena_sala(escena_modelo: Escena) -> dict:
 # ------------------------------------------------------------
 def construir_proyecto(escenas: list[Escena]) -> dict:
     base: dict = {
+        "gdVersion": {"build": 0, "major": 5, "minor": 6, "revision": 0},
         "properties": {},
         "firstLayout": "",
         "resources": {"resources": []},
@@ -3337,6 +3338,7 @@ def construir_proyecto(escenas: list[Escena]) -> dict:
             "scaleMode": "nearest",
             "pixelsRounding": True,
             "adaptGameResolutionAtRuntime": False,
+            "currentPlatform": "GDevelop JS platform",
             "projectUuid": uid(),
             "version": "1.0.0",
         }
