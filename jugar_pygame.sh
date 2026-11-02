@@ -88,15 +88,19 @@ if [[ ! -x "$VENV_PYTHON" ]]; then
     }
 fi
 
-# 4. Reinstalación/Verificación obligatoria de requerimientos (requirements.txt)
-echo "▶ Verificando e instalando requerimientos (pygame-ce)..."
-if [[ -f "$SCRIPT_DIR/requirements.txt" ]]; then
-    "$VENV_PYTHON" -m pip install -r "$SCRIPT_DIR/requirements.txt" --upgrade || {
-        echo "⚠ Aviso: pip install -r requirements.txt tuvo advertencias, asegurando pygame-ce..."
-        "$VENV_PYTHON" -m pip install "pygame-ce>=2.5,<3"
-    }
-else
-    "$VENV_PYTHON" -m pip install "pygame-ce>=2.5,<3"
+# 4. Verificación obligatoria de motor gráfico (pygame-ce)
+echo "▶ Verificando motor gráfico (pygame-ce)..."
+if ! "$VENV_PYTHON" -c "import pygame; assert getattr(pygame, 'IS_CE', False)" >/dev/null 2>&1; then
+    echo "▶ Instalando / configurando pygame-ce (Community Edition)..."
+    "$VENV_PYTHON" -m pip uninstall -y pygame >/dev/null 2>&1 || true
+    if [[ -f "$SCRIPT_DIR/requirements.txt" ]]; then
+        "$VENV_PYTHON" -m pip install -r "$SCRIPT_DIR/requirements.txt" --upgrade || {
+            echo "⚠ Aviso: pip install -r requirements.txt tuvo advertencias, asegurando pygame-ce..."
+            "$VENV_PYTHON" -m pip install "pygame-ce>=2.5,<3" --upgrade
+        }
+    else
+        "$VENV_PYTHON" -m pip install "pygame-ce>=2.5,<3" --upgrade
+    fi
 fi
 
 echo "  Intérprete : $VENV_PYTHON"

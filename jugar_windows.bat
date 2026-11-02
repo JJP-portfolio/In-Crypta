@@ -19,11 +19,11 @@ set "PYTHON_SYS="
 if exist "%SCRIPT_DIR%.venv\Scripts\python.exe" (
     set "PYTHON_SYS=%SCRIPT_DIR%.venv\Scripts\python.exe"
 ) else (
-    where py >nul 2>nul
+    py -3 --version >nul 2>nul
     if !errorlevel! equ 0 (
         set "PYTHON_SYS=py -3"
     ) else (
-        where python >nul 2>nul
+        python --version >nul 2>nul
         if !errorlevel! equ 0 (
             set "PYTHON_SYS=python"
         )
@@ -56,16 +56,21 @@ if not exist "%VENV_PYTHON%" (
     )
 )
 
-:: 3. Reinstalacion obligatoria de requerimientos (requirements.txt / pygame-ce)
-echo [IN CRYPTA] Verificando e instalando requerimientos (pygame-ce)...
-if exist "%SCRIPT_DIR%requirements.txt" (
-    "%VENV_PYTHON%" -m pip install -r "%SCRIPT_DIR%requirements.txt" --upgrade
-    if !errorlevel! neq 0 (
-        echo [AVISO] pip install -r requirements.txt tuvo advertencias, asegurando pygame-ce...
-        "%VENV_PYTHON%" -m pip install "pygame-ce>=2.5,<3"
+:: 3. Verificacion obligatoria de motor grafico (pygame-ce)
+echo [IN CRYPTA] Verificando motor grafico (pygame-ce)...
+"%VENV_PYTHON%" -c "import pygame; assert getattr(pygame, 'IS_CE', False)" >nul 2>nul
+if !errorlevel! neq 0 (
+    echo [IN CRYPTA] Instalando / configurando pygame-ce (Community Edition)...
+    "%VENV_PYTHON%" -m pip uninstall -y pygame >nul 2>nul
+    if exist "%SCRIPT_DIR%requirements.txt" (
+        "%VENV_PYTHON%" -m pip install -r "%SCRIPT_DIR%requirements.txt" --upgrade
+        if !errorlevel! neq 0 (
+            echo [AVISO] pip install -r requirements.txt tuvo advertencias, asegurando pygame-ce...
+            "%VENV_PYTHON%" -m pip install "pygame-ce>=2.5,<3" --upgrade
+        )
+    ) else (
+        "%VENV_PYTHON%" -m pip install "pygame-ce>=2.5,<3" --upgrade
     )
-) else (
-    "%VENV_PYTHON%" -m pip install "pygame-ce>=2.5,<3"
 )
 
 echo   Interprete : %VENV_PYTHON%
