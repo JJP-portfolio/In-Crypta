@@ -74,6 +74,7 @@ def test_wav_no_44100_o_no_16bits_se_rechaza(tmp_path):
 # F1-6: cuantizacion a 16 colores como maximo (fixture en memoria con PIL).
 # --------------------------------------------------------------------------- #
 def test_cuantizacion_a_16_colores_o_menos(tmp_path):
+    pytest.importorskip("PIL")
     from PIL import Image  # PIL disponible en el interprete del sistema
 
     img = Path(tmp_path) / "colores.png"
@@ -95,6 +96,7 @@ def test_cuantizacion_a_16_colores_o_menos(tmp_path):
 # F1-6: espejo horizontal correcto.
 # --------------------------------------------------------------------------- #
 def test_espejo_horizontal_correcto(tmp_path):
+    pytest.importorskip("PIL")
     from PIL import Image  # noqa: F811
 
     img = Path(tmp_path) / "espejo.png"
@@ -129,6 +131,7 @@ def _contar_celdas_strip(ruta, cuadros):
 
 
 def test_strip_con_n_cuadros_incorrecto_es_rechazado(tmp_path):
+    pytest.importorskip("PIL")
     from PIL import Image  # noqa: F811
 
     img = Path(tmp_path) / "strip.png"
