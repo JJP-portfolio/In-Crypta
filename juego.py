@@ -591,9 +591,10 @@ class Juego:
         return surf
 
     def _aplicar_bloom(self, origen, destino, intensidad=0.12):
-        sw, sh = ANCHO // 4, ALTO // 4
+        pw, ph = destino.get_size()
+        sw, sh = max(1, pw // 4), max(1, ph // 4)
         mini = pygame.transform.smoothscale(origen, (sw, sh))
-        bloom = pygame.transform.smoothscale(mini, (ANCHO, ALTO))
+        bloom = pygame.transform.smoothscale(mini, (pw, ph))
         bloom.set_alpha(int(255 * intensidad))
         destino.blit(bloom, (0, 0), special_flags=pygame.BLEND_RGB_ADD)
 
@@ -2814,7 +2815,8 @@ class Juego:
                         destino.blit(luz_cp, (cpx - 70, cpy - 70), special_flags=pygame.BLEND_RGB_ADD)
 
         # Escalar mundo virtual a pantalla (zoom 1.25x cinematográfico)
-        pygame.transform.scale(self.superficie_mundo, (ANCHO, ALTO), self.pantalla)
+        pw, ph = self.pantalla.get_size()
+        pygame.transform.scale(self.superficie_mundo, (pw, ph), self.pantalla)
 
         # Filtros de post-procesado / Shaders (0: Gótico Bloom+CRT, 1: Suave Bloom, 2: Puro)
         shader_modo = getattr(self, "config_shader_idx", 0)
@@ -2826,13 +2828,19 @@ class Juego:
 
         # 2. Scanlines CRT góticas tenues (integración óptica que evita el look "crudo")
         if shader_modo == 0 and calidad_modo != 2:
+            if not hasattr(self, "_superficie_scanlines") or self._superficie_scanlines.get_size() != (pw, ph):
+                self._superficie_scanlines = self._crear_scanlines_goticas(pw, ph)
             self.pantalla.blit(self._superficie_scanlines, (0, 0))
 
         # Viñeta gótica en resolución nativa
+        if self.vineta.get_size() != (pw, ph):
+            self.vineta = pygame.transform.smoothscale(self.vineta, (pw, ph))
         self.pantalla.blit(self.vineta, (0, 0))
 
         # Viñeta reactiva carmesí sutil en salud crítica (1 HP) en sincronía con el corazón (55 Hz)
         if self.jugador and self.jugador.vidas == 1 and not self.reducir_movimiento:
+            if self.vineta_carmesi.get_size() != (pw, ph):
+                self.vineta_carmesi = pygame.transform.smoothscale(self.vineta_carmesi, (pw, ph))
             ciclo = (self.timer_corazon / (1.0 / 1.2)) * math.pi
             pulso = math.sin(ciclo)
             alfa_vineta = int(30 + 45 * pulso)
@@ -2844,20 +2852,20 @@ class Juego:
             alfa_manto = int(min(180, (self.destello_manto / 0.35) * 180))
             if getattr(self, "reducir_movimiento", False):
                 alfa_manto = min(40, int(alfa_manto * 0.3))
-            if getattr(self, "_superficie_destello_manto", None) is None:
-                self._superficie_destello_manto = pygame.Surface((ANCHO, ALTO), pygame.SRCALPHA)
+            if getattr(self, "_superficie_destello_manto", None) is None or self._superficie_destello_manto.get_size() != (pw, ph):
+                self._superficie_destello_manto = pygame.Surface((pw, ph), pygame.SRCALPHA)
             self._superficie_destello_manto.fill((0, 0, 0, 0))
             for step in range(12):
                 a_step = int(alfa_manto * (1.0 - step / 12.0))
                 pygame.draw.rect(
                     self._superficie_destello_manto,
                     (110, 215, 255, a_step),
-                    (step * 2, step * 2, ANCHO - step * 4, ALTO - step * 4),
+                    (step * 2, step * 2, pw - step * 4, ph - step * 4),
                     2,
                 )
             self.pantalla.blit(self._superficie_destello_manto, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
 
-        # 3. UI Espacial en resolución nativa (1280x720) — carteles nítidos con sombra litúrgica
+        # 3. UI Espacial en resolución nativa — carteles nítidos con sombra litúrgica
         self.dibujar_ui_espacial(self.pantalla, self.camara)
 
         self.hud.dibujar(self.pantalla, self, self.dt)
@@ -2866,6 +2874,8 @@ class Juego:
             alfa = int(110 * (self.flash / 0.16))
             if getattr(self, "reducir_movimiento", False):
                 alfa = min(28, int(alfa * 0.25))
+            if self.superficie_flash.get_size() != (pw, ph):
+                self.superficie_flash = pygame.Surface((pw, ph), pygame.SRCALPHA)
             self.superficie_flash.fill((*self.flash_color, max(0, min(255, alfa))))
             self.pantalla.blit(self.superficie_flash, (0, 0))
 
