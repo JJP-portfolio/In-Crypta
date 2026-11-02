@@ -2817,6 +2817,9 @@ class Juego:
         # Escalar mundo virtual a pantalla (zoom 1.25x cinematográfico)
         pw, ph = self.pantalla.get_size()
         pygame.transform.scale(self.superficie_mundo, (pw, ph), self.pantalla)
+        # Asegurar canal alfa completamente opaco (255) en la superficie de pantalla
+        # para evitar que blits posteriores con SRCALPHA (viñetas/shaders) borren el mundo en Pygame 2.6 clásico
+        self.pantalla.fill((0, 0, 0, 255), special_flags=pygame.BLEND_RGBA_MAX)
 
         # Filtros de post-procesado / Shaders (0: Gótico Bloom+CRT, 1: Suave Bloom, 2: Puro)
         shader_modo = getattr(self, "config_shader_idx", 0)

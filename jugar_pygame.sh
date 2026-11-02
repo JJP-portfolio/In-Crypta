@@ -12,7 +12,7 @@ cd "$SCRIPT_DIR"
 # 1. Si se ejecuta por doble clic desde entorno gráfico sin terminal interactiva,
 #    intentar re-lanzar dentro de un emulador de terminal para que el usuario
 #    pueda ver la instalación de requerimientos y posibles errores.
-if [ ! -t 1 ] && [ -z "${IN_CRYPTA_TERMINAL_SPAWNED:-}" ]; then
+if [ ! -t 1 ] && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ] && [ -z "${IN_CRYPTA_TERMINAL_SPAWNED:-}" ]; then
     for term in x-terminal-emulator gnome-terminal konsole xfce4-terminal alacritty kitty xterm; do
         if command -v "$term" >/dev/null 2>&1; then
             export IN_CRYPTA_TERMINAL_SPAWNED=1

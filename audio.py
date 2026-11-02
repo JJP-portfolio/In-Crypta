@@ -172,26 +172,31 @@ def sintetizar_dron_funebre(duracion=4.0, volumen=0.10):
 
 # --- Clase Audio --- #
 class Audio:
-    DIR_SFX_WAV = Path(__file__).resolve().parent / "assets" / "audio" / "sfx"
+    _raiz = Path(__file__).resolve().parent
+    _dir_entrega = _raiz / "assets_in_crypta" / "entrega" / "sfx"
+    DIR_SFX_WAV = _dir_entrega if _dir_entrega.exists() else (_raiz / "assets" / "audio" / "sfx")
 
     def _nombre_archivo_sfx(self, clave: str) -> str:
         """Nombre de archivo de SFX en disco. 'daño' (con enie) se mapea a dano.wav."""
         if clave == "daño":
             return "dano.wav"
+        if clave == "alma":
+            return "alma_ref.wav"
         return f"{clave}.wav"
 
     def _cargar_sfx(self, clave: str):
-        """Carga assets/audio/sfx/<clave>.wav si existe; si no, devuelve None."""
-        ruta = self.DIR_SFX_WAV / self._nombre_archivo_sfx(clave)
+        """Carga el WAV pregrabado desde DIR_SFX_WAV si existe; si no, devuelve None."""
+        archivo = self._nombre_archivo_sfx(clave)
+        ruta = self.DIR_SFX_WAV / archivo
         if ruta.exists():
             try:
                 return pygame.mixer.Sound(str(ruta))
             except pygame.error:
-                return None
+                pass
         return None
 
     def _sonido(self, clave: str, fn_sintesis):
-        """Devuelve el WAV de disco si existe, si no sintetiza el sonido actual."""
+        """Devuelve el WAV de disco si existe, si no sintetiza proceduralmente."""
         cargado = self._cargar_sfx(clave)
         if cargado is not None:
             return cargado
@@ -220,55 +225,73 @@ class Audio:
             self.activo = False
 
     def _construir_banco(self):
+        # 0. Precarga rápida de SFX desde disco (si existen .wav en assets o entrega)
+        claves_wav = (
+            "salto", "dash", "ataque", "pala", "rebote_pala", "stomp",
+            "onda", "jefe_aviso", "jefe_fase", "pala_recoger", "dash_recoger",
+            "checkpoint", "vida_extra", "ui", "daño", "muerte", "meta",
+            "corazon_latido", "dron_catacumbas", "alma"
+        )
+        for c_wav in claves_wav:
+            snd_disco = self._cargar_sfx(c_wav)
+            if snd_disco is not None:
+                self.sonidos[c_wav] = snd_disco
+
         # 1. Salto: swoop ascendente + roce de abrigo
-        capas_salto = [
-            ("seno", 210, 160, 0.7, None),
-            ("ruido", 0, 0, 0.2, None),
-            ("fm", 320, 80, 0.2, (640, 0.6)),
-        ]
-        self.sonidos["salto"] = sintetizar_sfx(0.14, capas_salto, adsr=(0.01, 0.04, 0.5, 0.09), volumen=0.18)
+        if "salto" not in self.sonidos:
+            capas_salto = [
+                ("seno", 210, 160, 0.7, None),
+                ("ruido", 0, 0, 0.2, None),
+                ("fm", 320, 80, 0.2, (640, 0.6)),
+            ]
+            self.sonidos["salto"] = sintetizar_sfx(0.14, capas_salto, adsr=(0.01, 0.04, 0.5, 0.09), volumen=0.18)
         self.variaciones["salto"] = [
-            sintetizar_sfx(0.14, capas_salto, adsr=(0.01, 0.04, 0.5, 0.09), volumen=0.18, detune=0.96),
             self.sonidos["salto"],
-            sintetizar_sfx(0.14, capas_salto, adsr=(0.01, 0.04, 0.5, 0.09), volumen=0.18, detune=1.04),
+            self.sonidos["salto"],
+            self.sonidos["salto"],
         ]
 
         # 2. Dash de sombras: torbellino espectral
-        capas_dash = [
-            ("ruido", 0, 0, 0.45, None),
-            ("sierra", 140, 320, 0.4, None),
-            ("seno", 90, 180, 0.35, None),
-        ]
-        self.sonidos["dash"] = sintetizar_sfx(0.18, capas_dash, adsr=(0.02, 0.06, 0.4, 0.10), volumen=0.18)
+        if "dash" not in self.sonidos:
+            capas_dash = [
+                ("ruido", 0, 0, 0.45, None),
+                ("sierra", 140, 320, 0.4, None),
+                ("seno", 90, 180, 0.35, None),
+            ]
+            self.sonidos["dash"] = sintetizar_sfx(0.18, capas_dash, adsr=(0.02, 0.06, 0.4, 0.10), volumen=0.18)
         self.variaciones["dash"] = [
-            sintetizar_sfx(0.18, capas_dash, adsr=(0.02, 0.06, 0.4, 0.10), volumen=0.18, detune=0.96),
             self.sonidos["dash"],
-            sintetizar_sfx(0.18, capas_dash, adsr=(0.02, 0.06, 0.4, 0.10), volumen=0.18, detune=1.04),
+            self.sonidos["dash"],
+            self.sonidos["dash"],
         ]
 
         # 3. Ataque sablazo de pala / guadaña
-        capas_ataque = [
-            ("fm", 280, 480, 0.65, (560, 1.2)),
-            ("ruido", 0, 0, 0.35, None),
-        ]
-        self.sonidos["ataque"] = sintetizar_sfx(0.11, capas_ataque, adsr=(0.005, 0.03, 0.4, 0.075), volumen=0.18)
+        if "ataque" not in self.sonidos:
+            capas_ataque = [
+                ("fm", 280, 480, 0.65, (560, 1.2)),
+                ("ruido", 0, 0, 0.35, None),
+            ]
+            self.sonidos["ataque"] = sintetizar_sfx(0.11, capas_ataque, adsr=(0.005, 0.03, 0.4, 0.075), volumen=0.18)
         self.variaciones["ataque"] = [
-            sintetizar_sfx(0.11, capas_ataque, adsr=(0.005, 0.03, 0.4, 0.075), volumen=0.18, detune=0.96),
             self.sonidos["ataque"],
-            sintetizar_sfx(0.11, capas_ataque, adsr=(0.005, 0.03, 0.4, 0.075), volumen=0.18, detune=1.04),
+            self.sonidos["ataque"],
+            self.sonidos["ataque"],
         ]
 
         # 4. Golpe con la pala de hierro (impacto seco de tumba)
-        capas_pala = [
-            ("ruido", 0, 0, 0.45, None),
-            ("seno", 115, -60, 0.5, None),
-            ("fm", 440, -180, 0.35, (880, 1.8)),
-        ]
-        self.sonidos["pala"] = sintetizar_sfx(0.20, capas_pala, adsr=(0.005, 0.05, 0.3, 0.145), volumen=0.26)
+        if "pala" not in self.sonidos:
+            capas_pala = [
+                ("ruido", 0, 0, 0.45, None),
+                ("seno", 115, -60, 0.5, None),
+                ("fm", 440, -180, 0.35, (880, 1.8)),
+            ]
+            self.sonidos["pala"] = sintetizar_sfx(0.20, capas_pala, adsr=(0.005, 0.05, 0.3, 0.145), volumen=0.26)
+        if "rebote_pala" not in self.sonidos:
+            self.sonidos["rebote_pala"] = self.sonidos["pala"]
         self.variaciones["pala"] = [
-            sintetizar_sfx(0.20, capas_pala, adsr=(0.005, 0.05, 0.3, 0.145), volumen=0.26, detune=0.96),
             self.sonidos["pala"],
-            sintetizar_sfx(0.20, capas_pala, adsr=(0.005, 0.05, 0.3, 0.145), volumen=0.26, detune=1.04),
+            self.sonidos["pala"],
+            self.sonidos["pala"],
         ]
 
         # 5. Pisotón aéreo (stomp): impacto óseo con quiebre
@@ -388,12 +411,12 @@ class Audio:
         self.sonidos["rebote_metalico"] = self.sonidos["rebote_pala"]
 
         # 14. Corazón delator a 55 Hz
-        self.sonido_latido = sintetizar_corazon_delator(volumen=0.34)
+        self.sonido_latido = self._sonido("corazon_latido", lambda: sintetizar_corazon_delator(volumen=0.34))
         self.sonidos["corazon_latido"] = self.sonido_latido
         self.sonidos["corazon"] = self.sonido_latido
 
         # 15. Dron fúnebre ambiental
-        self.sonido_dron = sintetizar_dron_funebre(duracion=4.0, volumen=0.08)
+        self.sonido_dron = self._sonido("dron_catacumbas", lambda: sintetizar_dron_funebre(duracion=4.0, volumen=0.08))
         self.sonidos["dron_catacumbas"] = self.sonido_dron
 
         # 16. Losa quebradiza: crujido y fractura ósea seca
