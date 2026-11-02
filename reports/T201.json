@@ -1,0 +1,11 @@
+{
+  "tarea": "T201",
+  "estado": "ok",
+  "decision_ref": "D2",
+  "archivos_modificados": ["entidades.py", "tests/test_logica.py"],
+  "comandos": [
+    {"cmd": "CMD_LOGICA", "codigo": 0, "esperado_encontrado": true, "salida_resumen": "apex no se activa con Z: OK y TESTS_INCRYPTA_OK"}
+  ],
+  "commit": "",
+  "notas": "Ancla 'or _tecla_activa(teclas, pygame.K_z)' (1 ocurrencia, línea 361) eliminada de salto_mantenido en Jugador.actualizar, dejando el paréntesis de cierre correcto. Agregada prueba probar_apex_no_se_activa_con_z en tests/test_logica.py (antes de probar_juego_headless). GRAVEDAD ya estaba importada. Prueba nueva pasa y test_logica sigue en verde. D2 aplicado: Z ya no cuenta para el ápice en el preset moderno."
+}

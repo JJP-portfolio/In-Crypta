@@ -18,6 +18,8 @@ from config import (
     FAROL_CÁLIDO,
     HUESO,
     HUESO_MARFIL,
+    INCENSARIO_ALTO,
+    INCENSARIO_ANCHO,
     JEFE_ALTO,
     JEFE_ANCHO,
     MARRON,
@@ -51,6 +53,8 @@ from entidades import (
     Enemigo,
     EnemigoMelee,
     FarolCheckpoint,
+    IncensarioRebote,
+    LosaQuebradiza,
     MiniJefe,
     PalaRecogible,
     Polilla,
@@ -155,6 +159,8 @@ class Nivel:
         self.power_ups_rango = self._crear_power_ups_rango()
         self.checkpoints = self._crear_checkpoints()
         self.plataformas = self._crear_plataformas()
+        self.losas_quebradizas = self._crear_losas_quebradizas()
+        self.incensarios = self._crear_incensarios()
         self.jefes = self._crear_jefes()
         self.minijefes = self._crear_minijefes()
         self.cuervos = self._crear_cuervos()
@@ -321,6 +327,34 @@ class Nivel:
                     30,
                 )))
         return checkpoints
+
+    # --- Función _crear_losas_quebradizas --- #
+    def _crear_losas_quebradizas(self):
+        losas = []
+        for fila, texto in enumerate(self.filas):
+            for columna, simbolo in enumerate(texto):
+                if simbolo == "~":
+                    losas.append(LosaQuebradiza(pygame.Rect(
+                        columna * TILE,
+                        fila * TILE,
+                        TILE,
+                        TILE,
+                    )))
+        return losas
+
+    # --- Función _crear_incensarios --- #
+    def _crear_incensarios(self):
+        incensarios = []
+        for fila, texto in enumerate(self.filas):
+            for columna, simbolo in enumerate(texto):
+                if simbolo == "I":
+                    incensarios.append(IncensarioRebote(pygame.Rect(
+                        columna * TILE + (TILE - INCENSARIO_ANCHO) // 2,
+                        fila * TILE + (TILE - INCENSARIO_ALTO) // 2,
+                        INCENSARIO_ANCHO,
+                        INCENSARIO_ALTO,
+                    )))
+        return incensarios
 
     # --- Función _crear_cuervos --- #
     def _crear_cuervos(self):
@@ -534,10 +568,18 @@ class Nivel:
     def actualizar(self, dt):
         for plataforma in self.plataformas:
             plataforma.actualizar(dt)
+        for losa in getattr(self, "losas_quebradizas", []):
+            losa.actualizar(dt)
+        for incensario in getattr(self, "incensarios", []):
+            incensario.actualizar(dt)
 
     # --- Función solidos_actuales --- #
     def solidos_actuales(self):
-        return self.solidos + [plataforma.rect for plataforma in self.plataformas]
+        return (
+            self.solidos
+            + [plataforma.rect for plataforma in self.plataformas]
+            + [losa.rect for losa in getattr(self, "losas_quebradizas", []) if losa.activa]
+        )
 
     # --- Función reiniciar --- #
     def reiniciar(self):
@@ -570,6 +612,10 @@ class Nivel:
             minijefe.reiniciar()
         for jefe in self.jefes:
             jefe.reiniciar()
+        for losa in getattr(self, "losas_quebradizas", []):
+            losa.reiniciar()
+        for incensario in getattr(self, "incensarios", []):
+            incensario.reiniciar()
 
     # --- Función dibujar --- #
     def dibujar(self, surface, camara):
@@ -579,6 +625,10 @@ class Nivel:
         self.dibujar_peligros(surface, camara)
 
         tiempo = pygame.time.get_ticks() / 1000
+        for losa in getattr(self, "losas_quebradizas", []):
+            losa.dibujar(surface, camara, tiempo)
+        for incensario in getattr(self, "incensarios", []):
+            incensario.dibujar(surface, camara, tiempo)
         for alma in self.almas:
             alma.dibujar(surface, camara, tiempo)
         for pala in self.palas:

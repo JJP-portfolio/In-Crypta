@@ -1,0 +1,11 @@
+{
+  "tarea": "T203",
+  "estado": "ok",
+  "decision_ref": "D4",
+  "archivos_modificados": ["tests/test_logica.py"],
+  "comandos": [
+    {"cmd": "CMD_LOGICA", "codigo": 0, "esperado_encontrado": true, "salida_resumen": "TESTS_INCRYPTA_OK"}
+  ],
+  "commit": "",
+  "notas": "Agregado comentario encima de la aserción assert jugador.vx == jugador.dash_direccion * VELOCIDAD: \"Criterio D4: al terminar el dash, vx pasa a VELOCIDAD (250). Cambiar esto es un cambio de diseño.\". Solo se agregó un comentario; las pruebas siguen en verde."
+}

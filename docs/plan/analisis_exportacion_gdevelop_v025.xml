@@ -1,0 +1,449 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Versión 2 del análisis. Cambios respecto de la versión 1: investigación externa con fuentes (ver investigacion_externa), verificación de la semántica de PlatformBehavior de GDevelop, hallazgo crítico de gravedad persistente en el exportador nativo, corrección del destino de FIX-GD-03 y nuevos enfoques E4 y E5. Las líneas citadas son del archivo fuente indicado, no del repomix. Los hallazgos de física en GDevelop son predicciones a partir del código: deben confirmarse en la vista previa o en pruebas de gameplay antes de aplicar cambios. -->
+<analisis_exportacion_gdevelop_v025 estado="completo_con_limitaciones" version="2">
+
+  <estado_actual_exportacion_gdevelop>
+    <tuberias>
+      <tuberia id="A" script="tools/generar_proyecto_nativo.py" salida="export/gdevelop_nativo/IN_CRYPTA_NATIVO.json">
+        Monolito de unas 3.570 líneas. Contiene eventos_nivel (unas 1.380 líneas), eventos_jefe (unas 380) y los constructores de escena. Sólo delega en tools/exportador/ la geometría, las texturas, el manifiesto y las primitivas de formato. docs/EXPORTADOR_GDEVELOP.md lo describe como CLI delgado: no es así.
+        BASE_PROJECT (línea aprox. 125) apunta a una ruta del usuario fuera del repo: Documentos/GDevelop projects/My project/Cryptus - Copy.json.
+        main() (línea aprox. 3499) escribe también In_Crypta_V0.9.9.json, un espejo en /home/sanodesu/In-Crypta y open-projects.json en la configuración del IDE. La integración de assets va en un try/except que sólo imprime el error.
+      </tuberia>
+      <tuberia id="B" script="tools/export_gdevelop.py" salida="export/gdevelop/game_data.json">
+        Exportador a JSON para el runtime JavaScript propio (export/gdevelop/runtime_gdevelop.js). Tiene un segundo motor de física con otros valores.
+      </tuberia>
+      <tuberia id="C" script="tools/exportador/ (manifiesto, modelo, adaptadores, sprites, reglas, pipeline, gdevelop)">
+        Modularización parcial. El __init__.py exporta sólo 5 de los 9 módulos. gdevelop.py define comportamiento_jugador (PlatformerObject, gravedad 1500, salto 620, caída máxima 900, aceleración y desaceleración 20000) y las variables del jugador.
+      </tuberia>
+      <tuberia id="D" script="tools/integrar_assets_gdevelop.py">
+        Genera los PNG pixel-art y reemplaza las animaciones de cada objeto en el JSON ya escrito por la tubería A. Deja 16 animaciones de Jugador (índices 0 a 15, incluidas Run, Jump y Dash). La máscara MASK_COLISION_JUGADOR (línea 1007: rectángulo de 48x60 en la imagen de 2x, es decir 24x30 en 1x) vive sólo aquí.
+      </tuberia>
+    </tuberias>
+    <orquestacion>
+      tools/exportar_todo.py ejecuta B, luego A y luego verificar_paridad.py. No ejecuta validar_eventos_gd.py, test_logica.py, test_hud.py ni ningún compilador de GDevelop, aunque la especificación los incluye en la suite de certificación. Su opción --check sólo se pasa a B; A siempre escribe archivos, así que --check no cumple lo que promete su documentación.
+    </orquestacion>
+    <verificacion>
+      tools/verificar_paridad.py compara geometría (spawn, portón, sólidos, enemigos, jefes, checkpoints, proporciones de texturas). No compara constantes físicas, teclas, número de animaciones ni máscara de colisión. La comprobación de zoom (comparar_globales_y_recursos, línea aprox. 336) busca la subcadena "1.25" dentro de los eventos del tutorial, así que puede dar falsos positivos.
+      tools/validar_eventos_gd.py contrasta la forma de cada evento con la tabla de metadatos extraída del núcleo real de GDevelop. Es una buena práctica, pero no valida la semántica: no detecta variables leídas y nunca escritas.
+      tools/compilar_proyecto_gd.js usa el núcleo real de GDevelop compilado a WebAssembly, pero toma por defecto una ruta de flatpak y /home/sanodesu.
+      Ninguna prueba ejecuta la física del proyecto nativo.
+    </verificacion>
+
+    <hallazgos_verificados_en_codigo>
+      <hallazgo id="H1" severidad="critica" confianza="alta_por_analisis_estatico">
+        <titulo>La gravedad reducida de ápice queda persistente en GDevelop y produce saltos aproximadamente 1,8 veces más altos</titulo>
+        <evidencia>En generar_proyecto_nativo.py, las acciones PlatformBehavior::Gravity que fijan 825 (1500 x 0,55) están en las líneas 1284, 1299, 1312, 1324 y 1337. Las únicas acciones que vuelven a 1500 están en el dash-salto (línea 1799) y al terminar el dash (línea 1905). El evento de la línea 1299 se cumple al saltar desde el suelo, porque buffer_salto es mayor que 0 y coyote es mayor que 0 en el mismo frame del salto. Después del salto, ninguna condición vuelve a ejecutar la acción de restablecimiento, así que la gravedad queda en 825 hasta el próximo dash.</evidencia>
+        <efecto>Con JumpSpeed 620, la altura máxima aproximada (cinemática simple, sin ápice ni corte) es 620 al cuadrado dividido 2 por 825, unos 233 px. En Pygame, con gravedad 1500, es unos 128 px. Además, el juego caería a 55 por ciento de gravedad durante casi todo el tiempo de juego.</efecto>
+        <verificacion_pendiente>Confirmar en la vista previa del proyecto (previsualizar_nativo.py o un test de gameplay) leyendo la gravedad y la altura de un salto desde el suelo.</verificacion_pendiente>
+      </hallazgo>
+      <hallazgo id="H2" severidad="alta">
+        <titulo>post_dash se lee en tres condiciones pero nunca se escribe</titulo>
+        <evidencia>generar_proyecto_nativo.py líneas 1279, 1294 y 1344 leen post_dash. No hay ninguna SetNumberObjectVariable que la asigne. En Pygame, POST_DASH_DURACION se fija al terminar el dash y en el dash-salto.</evidencia>
+        <efecto>El post-dash float (gravedad 750 durante 0,06 s) no ocurre en GDevelop. La rama de gravedad 0,50 (línea 1347) es código muerto.</efecto>
+      </hallazgo>
+      <hallazgo id="H3" severidad="alta">
+        <titulo>velocidad_vertical y velocidad_vertical_abs sólo se inicializan y nunca se actualizan</titulo>
+        <evidencia>Aparecen sólo en SceneJustBegins (líneas 1207-1209) y en condiciones (líneas 1295-1332). Las ramas que dependen de ellas no pueden cumplir sus condiciones: velocidad_vertical siempre vale 0, así que las ramas de velocidad menor que 0 y mayor que 0 nunca se disparan.</evidencia>
+        <solucion_disponible>La documentación oficial de PlatformBehavior expone Object.PlatformerObject::CurrentFallSpeed() y Object.PlatformerObject::CurrentJumpSpeed(), ambas con valor positivo. La velocidad vertical con signo sería CurrentFallSpeed menos CurrentJumpSpeed. Hay que verificar esta convención en la vista previa.</solucion_disponible>
+      </hallazgo>
+      <hallazgo id="H4" severidad="media">
+        <titulo>Coyote time y jump buffer tienen literales distintos de config.py</titulo>
+        <evidencia>generar_proyecto_nativo.py línea aprox. 1468: buffer_salto = 0,15 (Pygame JUMP_BUFFER = 0,12). Línea aprox. 1473: coyote = 0,18 (Pygame COYOTE_TIME = 0,10). Ataque: ataque_time = 0,18 y ataque_cd = 0,40 (Pygame ATAQUE_DURACION = 0,20 y ATAQUE_COOLDOWN = 0,35).</evidencia>
+      </hallazgo>
+      <hallazgo id="H5" severidad="alta">
+        <titulo>El corte de salto no es equivalente</titulo>
+        <evidencia>Pygame (entidades.py, soltar_salto) multiplica vy por CORTE_SALTO = 0,45 una sola vez al soltar la tecla mientras sube. GDevelop (generar_proyecto_nativo.py líneas aprox. 1260-1272 y 1497-1509) usa PlatformBehavior::AbortJump en cada frame en que la tecla no está presionada. La documentación oficial describe AbortJump como "abort the current jump and stop the object vertically", es decir, detener el movimiento vertical en lugar de reducirlo a 45 por ciento.</evidencia>
+        <efecto>Los saltos cortados en GDevelop caen mucho antes que en Pygame.</efecto>
+      </hallazgo>
+      <hallazgo id="H6" severidad="media">
+        <titulo>La tecla Z es a la vez salto y ataque en GDevelop y además cuenta para el ápice en Pygame</titulo>
+        <evidencia>GDevelop: la lista de salto incluye z y Z (líneas aprox. 1240-1250) y la lista de ataque también (líneas aprox. 1196-1210). Pygame: entidades.py incluye _tecla_activa(teclas, pygame.K_z) en salto_mantenido (línea aprox. 362). En el preset moderno, Z es ataque (juego.py, PRESET_MODERNO, teclas_ataque = (K_j, K_z, K_k)), por lo que mantener Z activa el ápice sin que haya salto.</evidencia>
+      </hallazgo>
+      <hallazgo id="H7" severidad="media">
+        <titulo>El pisotón al jefe usa 10 px en GDevelop y 32 px en Pygame</titulo>
+        <evidencia>GDevelop: PosY(Jugador) menor que Jefe.Y() menos 10 (líneas aprox. 1075 y 1099). Pygame: viene_desde_arriba, dentro de actualizar_jefe (juego.py), usa rect.bottom menor o igual que jefe.top más 32.</evidencia>
+      </hallazgo>
+      <hallazgo id="H8" severidad="alta">
+        <titulo>El runtime JavaScript (ruta B) es otra física y está desactualizado</titulo>
+        <evidencia>runtime_gdevelop.js: ANCHO = 960 y ALTO = 540 (no 1280x720 ni 1024x576). No tiene ápice ni post-dash. La salida del dash usa 0,55 fijo (línea aprox. 870). reglas() de export_gdevelop.py (líneas 51-79) no exporta APEX_*, POST_DASH_*, DASH_JUMP_IMPULSO_X, APEX_VY_UMBRAL ni CORNER_NUDGE_TECHO.</evidencia>
+      </hallazgo>
+      <hallazgo id="H9" severidad="baja" estado="correcto_con_dependencia">
+        <titulo>FIX-GD-03 (máscara 24x30) está implementado en integrar_assets, no en la tubería A</titulo>
+        <evidencia>MASK_COLISION_JUGADOR (integrar_assets, línea 1007) usa x de 8 a 56 e y de 4 a 64 en la imagen de 2x. Escalada a 0,5 por el customSize de 32x32 de la instancia, da 24x30 con desplazamiento (4,2) dentro de los 32x32, que coincide con el rect de Pygame. Esto sólo es correcto si integrar_assets se ejecuta después de generar.</evidencia>
+      </hallazgo>
+      <hallazgo id="H10" severidad="media">
+        <titulo>Las 16 animaciones de Jugador dependen de un segundo script y las de generar se sobrescriben</titulo>
+        <evidencia>objeto_jugador() (gdevelop.py, línea aprox. 357) define 10 animaciones. integrar_assets (función actualizar_proyecto_gdevelop, línea aprox. 1046) las reemplaza por 16 (índices 0 a 15). Los ChangeAnimation de los eventos usan índices hasta 15. Hay dos fuentes para lo mismo.</evidencia>
+      </hallazgo>
+      <hallazgo id="H11" severidad="alta">
+        <titulo>La integración de assets puede fallar sin que la exportación lo note</titulo>
+        <evidencia>generar_proyecto_nativo.py, main(): la llamada a integrar_assets_gdevelop va en try/except Exception que sólo imprime el error. El script sigue y termina con código 0.</evidencia>
+      </hallazgo>
+      <hallazgo id="H12" severidad="media">
+        <titulo>Rutas y efectos secundarios específicos de una máquina</titulo>
+        <evidencia>BASE_PROJECT (línea aprox. 125); espejo en /home/sanodesu/In-Crypta (main, aprox. 3517-3525); escritura en ~/.var/app/io.gdevelop.ide/config/GDevelop 5/open-projects.json (main, aprox. 3530-3535); compilar_proyecto_gd.js y previsualizar_nativo.py usan rutas flatpak y /home/sanodesu por defecto.</evidencia>
+      </hallazgo>
+      <hallazgo id="H13" severidad="media">
+        <titulo>La especificación contradice el código en varios puntos</titulo>
+        <evidencia>FIX-PHYS-01 y REV-04 dicen APEX_VY_UMBRAL 95; config.py y test_logica.py usan 70. FIX-GD-04 apunta a tools/exportador/hoja_eventos.py, que no existe. REV-01 pide el SFX escudo_parry, que no existe: juego.py usa rebote_pala (audio.py tiene el alias rebote_metalico). FIX-PHYS-02 dice "conservando el 100%" de la velocidad, pero el código baja vx de 560 a 250 al terminar el dash, y test_logica.py asserta vx == VELOCIDAD.</evidencia>
+      </hallazgo>
+      <hallazgo id="H14" severidad="baja">
+        <titulo>Documentación desactualizada o inventada</titulo>
+        <evidencia>docs/ARQUITECTURA_EXPORTADOR_GDEVELOP.md describe un paquete pip (pygame_gdevelop_exporter) y un CLI que no existen en el repo. docs/EXPORTADOR_GDEVELOP.md dice GAME_ZOOM = 1,5; el código usa CAMARA_ZOOM = 1,25.</evidencia>
+      </hallazgo>
+      <hallazgo id="H15" severidad="media">
+        <titulo>Cobertura de pruebas de física incompleta</titulo>
+        <evidencia>test_logica.py ya prueba apex (vy = -50), post-dash (vx == VELOCIDAD), dash-salto y corner correction (probar_fisica_salto_dash_game_feel, líneas aprox. 1448-1502). No hay ningún test de coyote time. El buffer se prueba sólo de forma indirecta (línea aprox. 1306).</evidencia>
+      </hallazgo>
+    </hallazgos_verificados_en_codigo>
+
+    <correcciones_a_version_anterior>
+      <correccion id="K1">En la versión 1 dije que FIX-GD-03 apuntaba a la tubería A. La especificación lo asigna a tools/integrar_assets_gdevelop.py, y ahí está implementado (H9).</correccion>
+      <correccion id="K2">En la versión 1 afirmé que AbortJump "corta el salto". La documentación oficial confirma que detiene el movimiento vertical, lo que es más drástico que el 0,45 de Pygame (H5).</correccion>
+      <correccion id="K3">La versión 1 no identificó la persistencia de la gravedad reducida (H1). Es el hallazgo de mayor impacto.</correccion>
+      <correccion id="K4">En la versión 1 indiqué que el ápice de GDevelop se aplicaba en suelo en dos eventos. Es correcto, y además esos eventos se disparan en el frame del salto y dejan la gravedad en 825 después (H1).</correccion>
+    </correcciones_a_version_anterior>
+  </estado_actual_exportacion_gdevelop>
+
+  <investigacion_externa estado="parcial_con_fuentes">
+    <fuente id="F1" url="https://wiki.gdevelop.io/gdevelop5/all-features/platform-behavior/reference/">
+      <titulo>Platform behavior Reference (documentación oficial de GDevelop 5)</titulo>
+      <aporte>AbortJump: "Abort the current jump and stop the object vertically". Hay que tratarlo como corte total, no como factor. JumpSustainTime (por defecto 0,2 s) mantiene la velocidad de salto mientras la tecla está presionada, lo que da saltos de altura variable de forma nativa, aunque no es el mismo modelo que el corte de Pygame. MaxFallingSpeed tiene un cuarto parámetro (preservar la velocidad en el aire, sí o no). Las expresiones CurrentFallSpeed() y CurrentJumpSpeed() devuelven valores positivos, así que la velocidad vertical con signo se construye restando una de otra. SetCurrentFallSpeed no tiene efecto en la primera fase del salto. SetCanJump no es permanente: hay que llamarla cada vez. La documentación advierte que un objeto puede estar saltando y cayendo a la vez (condición IsFalling). Los valores por defecto son gravedad 1000, aceleración 1500, velocidad de salto 600 y caída máxima 700.</aporte>
+    </fuente>
+    <fuente id="F2" url="https://wiki.gdevelop.io/gdevelop5/extensions/advanced-jump/">
+      <titulo>Advanced platformer movements (extensión de comunidad)</titulo>
+      <aporte>Ofrece coyote time configurable (por defecto 0,25 s, con SetCoyoteTime), saltos en el aire, dash horizontal con fase sostenida y desaceleración propias, dive dash, wall jump y un PlatformerConfigurationStack. Su dash no es de velocidad fija como el de Pygame. Usarla implica una dependencia extra para quien abra el proyecto.</aporte>
+    </fuente>
+    <fuente id="F3" url="https://maddymakesgames.com/articles/celeste_and_forgiveness/">
+      <titulo>Celeste and Forgiveness (Maddy Thorson)</titulo>
+      <aporte>Referencia de diseño para las técnicas que el juego ya implementa: coyote time, jump buffering, reducción de gravedad en el pico del salto y jump corner correction. El autor aclara que no inventó estas técnicas. Sirve como referencia conceptual para definir la semántica del ápice, no para valores numéricos.</aporte>
+    </fuente>
+    <fuente id="F4" url="https://wiki.gdevelop.io/gdevelop5/objects/tilemap/">
+      <titulo>External Tilemap (LDtk/Tiled)</titulo>
+      <aporte>Objeto para mapas de tiles externos, orientado a usuarios avanzados. Las colisiones sólo se soportan con mapas exportados desde Tiled en JSON. Se recomienda el objeto Tilemap integrado para la mayoría de los casos.</aporte>
+    </fuente>
+    <fuente id="F5" url="https://wiki.gdevelop.io/gdevelop5/all-features/tilemap/reference/">
+      <titulo>Tilemap reference</titulo>
+      <aporte>Confirma que LDtk todavía no soporta colisiones en el objeto externo. Un mapa de LDtk requeriría construir colisiones con objetos, con una pérdida de precisión.</aporte>
+    </fuente>
+    <fuente id="F6" url="https://www.npmjs.org/package/gdexporter">
+      <titulo>gdexporter (paquete npm, CLI de exportación sin el IDE)</titulo>
+      <aporte>Exporta un proyecto de GDevelop a HTML5 desde la línea de comandos, pensado para CI. Acepta un game.json y una versión de GDevelop por tag de GitHub. Es la alternativa más directa a compilar_proyecto_gd.js, que depende de una instalación flatpak local. No revisé su mantenimiento, su licencia ni la última versión: verificar antes de adoptarlo.</aporte>
+    </fuente>
+    <fuente id="F7" url="https://docs.gdevelop.io/GDJS%20Documentation/d5/d93/_exporter_8h_source.html">
+      <titulo>Documentación de la API C++ de exportación de GDJS</titulo>
+      <aporte>Muestra las funciones ExportWholePixiProject, ExportProjectForPixiPreview y SerializeProjectData. Indica que la exportación headless existe a nivel de API, lo que permite una vía de CI alternativa sin IDE.</aporte>
+    </fuente>
+    <fuente id="F8" url="https://github.com/4ian/GDevelop/issues/2002">
+      <titulo>Integración de LDtk en GDevelop (issue y discusión 2352)</titulo>
+      <aporte>El formato JSON de LDtk es distinto del de Tiled y no se importa de forma nativa. Confirma que un intermedio LDtk tendría que pasar por Tiled o por un adaptador propio.</aporte>
+    </fuente>
+    <fuente id="F9" url="https://github.com/GDevelopApp/GDevelop-extensions">
+      <titulo>Repositorio de extensiones comunitarias</titulo>
+      <aporte>Las extensiones se distribuyen como archivos JSON exportados desde GDevelop. Relevante sólo si se decide crear un comportamiento propio.</aporte>
+    </fuente>
+    <no_encontrado>
+      Durante esta búsqueda no encontré exportadores open source de proyectos Pygame a GDevelop 5.6, ni exportadores de otros motores que generen directamente el JSON de proyecto. Tampoco encontré un esquema formal (ProjectFile) de GDevelop 5.6; sólo se observó su forma en el código del repo. Tampoco revisé en detalle la sección de pruebas de gameplay con línea de comandos que aparece en el índice de la wiki (Gameplay tests), que podría servir para pruebas automatizadas de física dentro de GDevelop.
+    </no_encontrado>
+  </investigacion_externa>
+
+  <enfoques_alternativos estado="verificados_parcialmente">
+    <enfoque id="E1">
+      <nombre>Consolidar la tubería nativa con una única decisión de gravedad por frame y expresiones de PlatformerObject</nombre>
+      <descripcion>Mantener generar_proyecto_nativo.py como único generador. Reemplazar los seis eventos de gravedad por un evento de decisión con prioridad: dash igual a 0; post-dash igual a 750 (1500 por 0,5) mientras post_dash sea mayor que 0; ápice igual a 825 sólo en el aire, con tecla de salto mantenida y velocidad vertical absoluta menor que APEX_VY_UMBRAL; en otro caso, 1500. Leer la velocidad vertical con CurrentFallSpeed y CurrentJumpSpeed. Tomar todas las constantes de config.py.</descripcion>
+      <ventajas>Mantiene el proyecto nativo editable. Una sola fuente de gravedad por frame, lo que elimina H1. Usa las velocidades reales del motor en lugar de variables muertas. Los cambios están acotados a un bloque de eventos.</ventajas>
+      <desventajas>La corrección de esquinas no es nativa. El corte de salto no es equivalente exacto (H5): queda una aproximación con JumpSustainTime o una pérdida de paridad documentada. Requiere verificación en vista previa porque no hay pruebas de física del proyecto nativo.</desventajas>
+      <complejidad>media</complejidad>
+      <paridad_alcanzable>Alta en geometría, gravedad, caída, dash y velocidades. Media en sensación de salto (corte y esquinas).</paridad_alcanzable>
+      <ejemplo_o_referencia>Expresiones y acciones documentadas en F1. Bloques actuales a reemplazar en generar_proyecto_nativo.py, líneas aprox. 1260-1350.</ejemplo_o_referencia>
+    </enfoque>
+    <enfoque id="E2">
+      <nombre>Runtime JavaScript propio como física (ruta B)</nombre>
+      <descripcion>Ejecutar la física en runtime_gdevelop.js sobre game_data.json, en lugar de PlatformBehavior.</descripcion>
+      <ventajas>Control total de la física, incluidas las esquinas, si el runtime estuviera al día.</ventajas>
+      <desventajas>Ya está desactualizado (960x540, sin ápice ni post-dash, 0,55 fijo). El proyecto deja de ser un proyecto GDevelop nativo editable. Es una tercera física que mantener, además de la de Pygame y la de GDevelop.</desventajas>
+      <complejidad>alta</complejidad>
+      <paridad_alcanzable>Alta en física; baja en editabilidad nativa.</paridad_alcanzable>
+      <ejemplo_o_referencia>export/gdevelop/runtime_gdevelop.js; tools/export_gdevelop.py.</ejemplo_o_referencia>
+    </enfoque>
+    <enfoque id="E3">
+      <nombre>Mapa intermedio en Tiled y objeto External Tilemap para la geometría</nombre>
+      <descripcion>Exportar la geometría de los niveles a Tiled (JSON) y usar el objeto External Tilemap de GDevelop, dejando la física en E1.</descripcion>
+      <ventajas>Los mapas se editan en Tiled, con colisiones desde el JSON de Tiled. Reduce la cantidad de objetos sólidos.</ventajas>
+      <desventajas>LDtk no soporta colisiones (F4, F5). El objeto está pensado para usuarios avanzados. Las colisiones por tiles pueden no coincidir al píxel con los sólidos de Pygame. Requiere validar el límite de tiles de la versión instalada.</desventajas>
+      <complejidad>media-alta</complejidad>
+      <paridad_alcanzable>Alta en geometría si la colisión se valida contra Pygame; sin efecto en la física.</paridad_alcanzable>
+      <ejemplo_o_referencia>F4 y F5. Entrada posible: los mismos datos de nivel.py que ya usa modelo.py.</ejemplo_o_referencia>
+    </enfoque>
+    <enfoque id="E4">
+      <nombre>Extensión comunitaria Advanced platformer movements para coyote y dash</nombre>
+      <descripcion>Usar la extensión de F2 para coyote time (SetCoyoteTime con 0,10 s) y para el dash horizontal.</descripcion>
+      <ventajas>Reduce código propio para coyote time y saltos en el aire.</ventajas>
+      <desventajas>Dependencia de una extensión comunitaria que el usuario tiene que instalar. Su dash tiene fase sostenida y desaceleración, que no coinciden con el dash de velocidad fija de Pygame. No resuelve ápice ni corte de salto. Su coyote por defecto es 0,25 s, así que hay que sobrescribirlo.</desventajas>
+      <complejidad>media</complejidad>
+      <paridad_alcanzable>Media: coyote time sí, dash no sin parámetros ajustados.</paridad_alcanzable>
+      <ejemplo_o_referencia>F2.</ejemplo_o_referencia>
+    </enfoque>
+    <enfoque id="E5">
+      <nombre>Exportación y validación headless para CI (gdexporter o API GDJS) en lugar de la ruta flatpak</nombre>
+      <descripcion>Reemplazar compilar_proyecto_gd.js y previsualizar_nativo.py por una exportación headless con gdexporter o la API de GDJS, fijando la versión de GDevelop, y ejecutar en CI las pruebas de gameplay disponibles.</descripcion>
+      <ventajas>Reproducible en otra máquina y en CI. Quita las rutas de flatpak y de /home/sanodesu. Permite detectar errores de eventos y de física sin abrir el IDE.</ventajas>
+      <desventajas>Dependencia de npm con su propia cadena de suministro. Hay que igualar la versión de GDevelop (el proyecto usa 5.6.285; las docs en línea pueden ser de otra versión). No verificado: mantenimiento y compatibilidad de gdexporter.</desventajas>
+      <complejidad>media</complejidad>
+      <paridad_alcanzable>No afecta la paridad, pero permite medirla automáticamente.</paridad_alcanzable>
+      <ejemplo_o_referencia>F6, F7 y la sección Gameplay tests de la wiki (no revisada).</ejemplo_o_referencia>
+    </enfoque>
+  </enfoques_alternativos>
+
+  <recomendacion_de_enfoque>
+    Recomiendo E1 como base, con E5 para validación automatizada. E3 sólo si se quiere sacar la geometría de los eventos; no cambia la física. Descartar E2: ya está desactualizado y añade una tercera física. E4 queda opcional, sin usarla para la lógica que debe ser paritaria, porque su dash no coincide con el de Pygame.
+
+    Razones: la tubería A ya es la que se usa y la mayor parte de la geometría está verificada. Los defectos de física son de lógica de eventos, no de arquitectura, así que se corrigen en un bloque. Además, el proyecto nativo es editable en el IDE, lo que importa para el trabajo de diseño.
+
+    Cambios de arquitectura:
+    1) Una sola tubería nativa. Quitar o aislar la tubería B (export_gdevelop.py y runtime_gdevelop.js), y dejar un único generador con CLI real.
+    2) Un único evento de decisión de gravedad por frame, con prioridad dash, post-dash, ápice y normal. Cada rama fija exactamente un valor.
+    3) Todas las variables leídas deben escribirse en un lugar conocido: post_dash, coyote, buffer_salto, dash_time, dashing, velocidad vertical.
+    4) Constantes exportadas desde config.py a un JSON de constantes que generar_proyecto_nativo.py lee. Sin literales en los eventos.
+    5) integrar_assets_gdevelop pasa a ser un paso obligatorio del pipeline, con errores que hagan fallar la exportación. Las animaciones se definen en un solo lugar.
+    6) BASE_PROJECT se reemplaza por una plantilla versionada en el repo (export/gdevelop_nativo/plantilla_base.json) o por una plantilla generada en código.
+    7) Eliminar las escrituras fuera del repo (espejo, configuración del IDE).
+  </recomendacion_de_enfoque>
+
+  <cambios_recomendados>
+    <cambio id="C1">
+      <archivo>config.py y docs/especificaci_n_t_cnica_v0_2_4.md</archivo>
+      <tipo>modificar</tipo>
+      <justificacion>Hay una contradicción entre el umbral de ápice del código (70) y la especificación (95) (H13). Hay que decidir el valor y dejar una sola fuente.</justificacion>
+      <enfoque_relacionado>E1</enfoque_relacionado>
+      <pasos_de_implementacion>Mantener APEX_VY_UMBRAL = 70 (es lo que usan el código y los tests) y corregir la especificación. Si se prefiere 95, cambiar config.py y ajustar test_logica.py. En cualquier caso, generar_proyecto_nativo.py debe leer el valor de config.py.</pasos_de_implementacion>
+    </cambio>
+    <cambio id="C2">
+      <archivo>entidades.py (Jugador.actualizar, salto_mantenido, línea aprox. 362)</archivo>
+      <tipo>modificar</tipo>
+      <justificacion>El ápice se activa con K_z aunque en el preset moderno Z es ataque (H6). Esto también rompe la paridad con GDevelop.</justificacion>
+      <enfoque_relacionado>E1</enfoque_relacionado>
+      <pasos_de_implementacion>Usar las teclas de salto del preset activo (self.teclas_salto o equivalente) en lugar de las teclas fijas. Eliminar K_z de la condición en el preset moderno. Añadir un atributo teclas_salto al Jugador que el preset actualice.</pasos_de_implementacion>
+    </cambio>
+    <cambio id="C3">
+      <archivo>tools/generar_proyecto_nativo.py (bloques de gravedad, líneas aprox. 1275-1350)</archivo>
+      <tipo>modificar</tipo>
+      <justificacion>Corrige H1: la gravedad queda en 825 después del primer salto.</justificacion>
+      <enfoque_relacionado>E1</enfoque_relacionado>
+      <pasos_de_implementacion>Eliminar los cinco eventos de ápice y el de post-dash. Agregar un evento por frame que fije la gravedad según la prioridad: dash igual a 0 (ya existe en el dash); post_dash mayor que 0 igual a GRAVEDAD por POST_DASH_GRAVEDAD_FACTOR; ápice igual a GRAVEDAD por APEX_GRAVEDAD_FACTOR cuando el jugador no está en el suelo, la tecla de salto está mantenida y la velocidad vertical absoluta es menor que APEX_VY_UMBRAL; en otro caso, GRAVEDAD. Este evento debe ir al final de la lista de eventos del jugador para que gane sobre los demás.</pasos_de_implementacion>
+    </cambio>
+    <cambio id="C4">
+      <archivo>tools/generar_proyecto_nativo.py (líneas aprox. 1465-1475 y 1196-1210)</archivo>
+      <tipo>modificar</tipo>
+      <justificacion>Corrige H4: los literales de buffer, coyote y ataque no coinciden con config.py.</justificacion>
+      <enfoque_relacionado>E1</enfoque_relacionado>
+      <pasos_de_implementacion>Reemplazar 0,15 por JUMP_BUFFER, 0,18 por COYOTE_TIME, 0,18 por ATAQUE_DURACION y 0,40 por ATAQUE_COOLDOWN. Leer los valores desde el JSON de constantes generado desde config.py.</pasos_de_implementacion>
+    </cambio>
+    <cambio id="C5">
+      <archivo>tools/generar_proyecto_nativo.py (eventos de dash y dash-salto, líneas aprox. 1790-1910)</archivo>
+      <tipo>modificar</tipo>
+      <justificacion>Corrige H2: post_dash nunca se escribe.</justificacion>
+      <enfoque_relacionado>E1</enfoque_relacionado>
+      <pasos_de_implementacion>Al terminar el dash y en el dash-salto, asignar post_dash igual a POST_DASH_DURACION. Agregar un evento que decremente post_dash con TimeDelta() mientras sea mayor que 0 y lo deje en 0 al llegar a 0 o menos.</pasos_de_implementacion>
+    </cambio>
+    <cambio id="C6">
+      <archivo>tools/generar_proyecto_nativo.py (variables velocidad_vertical y velocidad_vertical_abs, líneas aprox. 1207-1209 y 1295-1335)</archivo>
+      <tipo>modificar</tipo>
+      <justificacion>Corrige H3: las variables nunca se actualizan y las ramas que dependen de ellas no se disparan.</justificacion>
+      <enfoque_relacionado>E1</enfoque_relacionado>
+      <pasos_de_implementacion>Actualizar cada frame: velocidad_vertical igual a Jugador.PlatformerObject::CurrentFallSpeed() menos Jugador.PlatformerObject::CurrentJumpSpeed(), y velocidad_vertical_abs igual a su valor absoluto. Verificar el signo en la vista previa antes de usarlo en el ápice. Si no se puede verificar, eliminar las variables y usar dos condiciones: IsJumping con CurrentJumpSpeed, e IsFalling con CurrentFallSpeed.</pasos_de_implementacion>
+    </cambio>
+    <cambio id="C7">
+      <archivo>tools/generar_proyecto_nativo.py (corte de salto, líneas aprox. 1260-1272 y 1497-1509)</archivo>
+      <tipo>modificar</tipo>
+      <justificacion>Corrige H5 en lo posible. AbortJump detiene el movimiento vertical, mientras que Pygame reduce vy a 45 por ciento una sola vez.</justificacion>
+      <enfoque_relacionado>E1</enfoque_relacionado>
+      <pasos_de_implementacion>Opción A: quitar el AbortJump y usar JumpSustainTime con un valor calibrado para que la altura de salto corta se aproxime a la de Pygame; documentar la diferencia. Opción B: aceptar la pérdida y registrarla en paridad_fisica_y_logica como divergencia aceptada. Decidir después de medir la altura en la vista previa.</pasos_de_implementacion>
+    </cambio>
+    <cambio id="C8">
+      <archivo>tools/generar_proyecto_nativo.py (pisotón al jefe, líneas aprox. 1071-1115)</archivo>
+      <tipo>modificar</tipo>
+      <justificacion>Corrige H7: el umbral de 10 px no coincide con los 32 px de Pygame.</justificacion>
+      <enfoque_relacionado>E1</enfoque_relacionado>
+      <pasos_de_implementacion>Usar la misma condición que juego.py (bottom del jugador menor o igual que top del jefe más 32, con velocidad vertical positiva), o definir una constante compartida en config.py.</pasos_de_implementacion>
+    </cambio>
+    <cambio id="C9">
+      <archivo>tools/integrar_assets_gdevelop.py y tools/generar_proyecto_nativo.py (main, línea aprox. 3530)</archivo>
+      <tipo>modificar</tipo>
+      <justificacion>Corrige H10 y H11: la integración puede fallar en silencio y hay animaciones definidas en dos lugares.</justificacion>
+      <enfoque_relacionado>E1</enfoque_relacionado>
+      <pasos_de_implementacion>Quitar el try/except de la llamada a integrar_assets y dejar que el error se propague con código de salida distinto de cero. Quitar las animaciones de objeto_jugador() en gdevelop.py o las de integrar_assets, según cuál se quiera conservar; dejar sólo una fuente, con los 16 índices que usan los eventos.</pasos_de_implementacion>
+    </cambio>
+    <cambio id="C10">
+      <archivo>tools/generar_proyecto_nativo.py (BASE_PROJECT, main, espejo y open-projects.json)</archivo>
+      <tipo>modificar</tipo>
+      <justificacion>Corrige H12: la exportación depende de rutas de una máquina y modifica la configuración del IDE del usuario.</justificacion>
+      <enfoque_relacionado>E1</enfoque_relacionado>
+      <pasos_de_implementacion>Reemplazar BASE_PROJECT por export/gdevelop_nativo/plantilla_base.json versionado en el repo, o generar la plantilla en código. Eliminar el espejo a /home/sanodesu y la escritura en ~/.var/app/io.gdevelop.ide. Eliminar In_Crypta_V0.9.9.json o documentar por qué existe.</pasos_de_implementacion>
+    </cambio>
+    <cambio id="C11">
+      <archivo>tools/exportar_todo.py</archivo>
+      <tipo>modificar</tipo>
+      <justificacion>La suite de certificación no es automática, y --check escribe archivos (ver orquestacion en estado_actual).</justificacion>
+      <enfoque_relacionado>E5</enfoque_relacionado>
+      <pasos_de_implementacion>Agregar los pasos validar_eventos_gd.py, test_logica.py, test_hud.py y la validación headless elegida en E5. Hacer que --check escriba en un directorio temporal y compare con la salida existente, o que falle si detecta cambios. Hacer que el script devuelva código distinto de cero ante cualquier paso fallido.</pasos_de_implementacion>
+    </cambio>
+    <cambio id="C12">
+      <archivo>tools/verificar_paridad.py</archivo>
+      <tipo>modificar</tipo>
+      <justificacion>No verifica física ni animaciones, y la comprobación de zoom usa subcadenas.</justificacion>
+      <enfoque_relacionado>E1</enfoque_relacionado>
+      <pasos_de_implementacion>Comparar propiedades del PlatformerObject del JSON (gravedad, velocidad de salto, caída máxima, velocidad máxima) con config.py. Comparar el número de animaciones de Jugador y sus máscaras. Validar la expresión de ZoomCamera parseando el JSON, no buscando subcadenas. Verificar que cada variable leída tenga al menos una acción que la escriba.</pasos_de_implementacion>
+    </cambio>
+    <cambio id="C13">
+      <archivo>tests/test_logica.py</archivo>
+      <tipo>modificar</tipo>
+      <justificacion>Cubre REV-04 y añade los casos que faltan: coyote time, buffer y ápice con umbral negativo.</justificacion>
+      <enfoque_relacionado>E1</enfoque_relacionado>
+      <pasos_de_implementacion>Ver la sección tests_sugeridos. Usar APEX_VY_UMBRAL y COYOTE_TIME desde config.py, nunca literales.</pasos_de_implementacion>
+    </cambio>
+    <cambio id="C14">
+      <archivo>tools/export_gdevelop.py, export/gdevelop/runtime_gdevelop.js, tests/test_runtime_gdevelop.js, export/gdevelop/LEEME.md</archivo>
+      <tipo>eliminar (o mover a un directorio legacy/ con aviso)</tipo>
+      <justificacion>Corrige H8: es una segunda física desactualizada.</justificacion>
+      <enfoque_relacionado>E1</enfoque_relacionado>
+      <pasos_de_implementacion>Quitar el paso 1 de exportar_todo.py y los archivos de la ruta B. Si se conserva por algún motivo, que lea las mismas constantes que la ruta A.</pasos_de_implementacion>
+    </cambio>
+    <cambio id="C15">
+      <archivo>tools/compilar_proyecto_gd.js, tools/previsualizar_nativo.py, tools/instalar_gdevelop.py</archivo>
+      <tipo>modificar</tipo>
+      <justificacion>Corrige H12 en las herramientas de validación: rutas fijas de flatpak y de /home/sanodesu.</justificacion>
+      <enfoque_relacionado>E5</enfoque_relacionado>
+      <pasos_de_implementacion>Recibir la ruta del IDE o del paquete como variable de entorno o argumento obligatorio. Eliminar los valores por defecto con rutas de usuario. Si se adopta E5, reemplazar la ruta de compilación por gdexporter o la API de GDJS con la versión fijada.</pasos_de_implementacion>
+    </cambio>
+    <cambio id="C16">
+      <archivo>docs/especificaci_n_t_cnica_v0_2_4.md</archivo>
+      <tipo>modificar</tipo>
+      <justificacion>Corrige H13: varias afirmaciones no coinciden con el código.</justificacion>
+      <enfoque_relacionado>E1</enfoque_relacionado>
+      <pasos_de_implementacion>FIX-GD-03: el target correcto es tools/integrar_assets_gdevelop.py, implementado (H9). FIX-GD-04: el target tools/exportador/hoja_eventos.py no existe; la implementación está en integrar_assets. REV-01: el SFX de parry real es rebote_pala (o rebote_metalico); o bien se agrega un SFX escudo_parry. FIX-PHYS-01 y REV-04: umbral 70 según C1. FIX-PHYS-02: describir como "la velocidad horizontal pasa de DASH_VELOCIDAD a VELOCIDAD al terminar el dash", no como conservación del 100 por ciento.</pasos_de_implementacion>
+    </cambio>
+    <cambio id="C17">
+      <archivo>docs/ARQUITECTURA_EXPORTADOR_GDEVELOP.md y docs/EXPORTADOR_GDEVELOP.md</archivo>
+      <tipo>modificar</tipo>
+      <justificacion>Corrige H14: arquitectura con paquete pip inexistente; zoom 1,5 incorrecto; número de líneas desactualizado.</justificacion>
+      <enfoque_relacionado>E1</enfoque_relacionado>
+      <pasos_de_implementacion>Reescribir la arquitectura con el flujo real (manifiesto, modelo, adaptadores, reglas, generador, integración de assets, paridad). Corregir GAME_ZOOM a 1,25 y eliminar las instrucciones de pip.</pasos_de_implementacion>
+    </cambio>
+    <cambio id="C18">
+      <archivo>tools/exportador/__init__.py</archivo>
+      <tipo>modificar</tipo>
+      <justificacion>__all__ omite pipeline, reglas y metadatos.</justificacion>
+      <enfoque_relacionado>E1</enfoque_relacionado>
+      <pasos_de_implementacion>Completar __all__ o eliminarlo si no se usa.</pasos_de_implementacion>
+    </cambio>
+  </cambios_recomendados>
+
+  <paridad_fisica_y_logica>
+    <item nombre="gravedad_normal" estado="divergente_critico" referencia_pygame="GRAVEDAD = 1500" referencia_gdevelop="1500 de inicio; 825 tras el primer salto desde el suelo y hasta el próximo dash (H1)">
+      Corregir con C3. Verificar en vista previa que la gravedad vuelve a 1500 en el aire y tras aterrizar.
+    </item>
+    <item nombre="altura_de_salto" estado="divergente_critico" referencia_pygame="aprox. 128 px (620 al cuadrado sobre 2 por 1500), sin ápice ni corte" referencia_gdevelop="aprox. 233 px (620 al cuadrado sobre 2 por 825) mientras dura la gravedad persistente">
+      Es el mismo defecto que H1, visto desde el jugador. Medir en vista previa una vez corregido H1.
+    </item>
+    <item nombre="apex_hang_time" estado="divergente" referencia_pygame="gravedad por 0,55 en el aire, con velocidad vertical absoluta menor que APEX_VY_UMBRAL (70) y tecla de salto mantenida (entidades.py)" referencia_gdevelop="cinco eventos, dos de ellos en suelo; sin mirar la tecla mantenida; ramas de velocidad muertas (H3)">
+      Corregir con C3, C6 y C2. Definición acordada: ápice = en el aire, tecla de salto mantenida (del preset activo, sin Z en el moderno), velocidad vertical absoluta menor que 70.
+    </item>
+    <item nombre="coyote_time" estado="divergente" referencia_pygame="0,10 s" referencia_gdevelop="0,18 s (H4)">Corregir con C4.</item>
+    <item nombre="jump_buffer" estado="divergente" referencia_pygame="0,12 s" referencia_gdevelop="0,15 s (H4)">Corregir con C4.</item>
+    <item nombre="corte_de_salto" estado="divergente_aceptable_o_corregible" referencia_pygame="vy multiplicado por 0,45 una vez al soltar" referencia_gdevelop="AbortJump: detiene el movimiento vertical (H5)">
+      Decidir entre JumpSustainTime calibrado (C7, opción A) y divergencia documentada (opción B).
+    </item>
+    <item nombre="post_dash_float" estado="ausente_en_gdevelop" referencia_pygame="POST_DASH_DURACION 0,06 s; gravedad por 0,50; vx conservada" referencia_gdevelop="post_dash nunca se escribe (H2)">Corregir con C5.</item>
+    <item nombre="dash_salida_velocidad" estado="coherente_con_codigo_contradice_spec" referencia_pygame="vx pasa de 560 a 250 al terminar el dash (actualizar_dash)" referencia_gdevelop="mismo valor: MaxSpeed y SetCurrentSpeed a 250 (evento de fin de dash en generar_proyecto_nativo.py)">
+      Coherente entre motores. Lo que hay que decidir es si el criterio de REV-04 acepta 250 (recomendado: sí, y documentar) o pide conservar 560 con decaimiento (cambio de diseño, no de paridad).
+    </item>
+    <item nombre="dash_salto" estado="parcial" referencia_pygame="vx igual a dash_dir por VELOCIDAD por 1,18 (295); vy igual a SALTO; post_dash activo" referencia_gdevelop="MaxSpeed y velocidad a 295 y JumpSpeed 620; sin post_dash (H2)">Corregir con C5.</item>
+    <item nombre="pisoton_a_jefe" estado="divergente" referencia_pygame="32 px de ventana vertical (juego.py)" referencia_gdevelop="10 px (H7)">Corregir con C8.</item>
+    <item nombre="recarga_de_dash_por_pisoton" estado="coherente" referencia_pygame="dash_usos_aire igual a 1 y dash_cooldown igual a 0" referencia_gdevelop="dash_aire igual a 1 y dash_cd igual a 0 (eventos de pisotón)">Sin cambios.</item>
+    <item nombre="esquinas_salto_y_dash" estado="no_replicable_sin_logica_extra" referencia_pygame="corrección de esquina de 5 px al saltar y de 6 px en dash (entidades.py, mover_x y mover_y)" referencia_gdevelop="no existe en PlatformerObject (F1)">
+      Aceptar como divergencia documentada, o implementar con eventos de corrección de posición. Consejo: empezar con divergencia documentada y medir la sensación en vista previa.
+    </item>
+    <item nombre="teclas" estado="divergente" referencia_pygame="preset moderno: salto Espacio, W, Arriba; ataque J, Z, K y clic. Preset retro: salto Z, Espacio, Arriba" referencia_gdevelop="salto y ataque con Z a la vez; ataque con C, J, Z, K (H6)">
+      Decidir un preset de referencia para GDevelop (recomendado: moderno) y quitar Z del salto y del ápice en ese preset.
+    </item>
+    <item nombre="velocidad_vertical_para_condiciones" estado="ausente" referencia_pygame="vy con signo (entidades.py)" referencia_gdevelop="variables sin actualizar (H3)">Corregir con C6.</item>
+    <item nombre="animaciones_jugador" estado="parcial" referencia_pygame="caminata de 4 poses, salto, caída, dash, ataque" referencia_gdevelop="16 animaciones tras integrar_assets (H10); los índices 10 a 15 existen sólo si integrar corre después de generar">Corregir con C9. Verificar índices en vista previa.</item>
+    <item nombre="hitbox_jugador" estado="coherente_con_dependencia" referencia_pygame="24x30 centrada en el sprite de 32x32 (desplazamiento 4,2)" referencia_gdevelop="máscara de 24x30 en animaciones desde integrar_assets (H9)">Sin cambios; depende del orden del pipeline (C9).</item>
+    <item nombre="zoom_y_mundo_visible" estado="coherente" referencia_pygame="CAMARA_ZOOM 1,25; 1024x576 virtuales" referencia_gdevelop="GAME_ZOOM igual a CAMARA_ZOOM (1,25)">Sin cambios. Corregir la documentación (C17) y la verificación (C12).</item>
+    <item nombre="camara_suavizado_y_sacudida" estado="coherente" referencia_pygame="CAMARA_SUAVIZADO 7,0; sacudida con los mismos disparadores" referencia_gdevelop="eventos de cámara y sacudida con RandomInRange y factor de accesibilidad">Sin cambios.</item>
+    <item nombre="checkpoint_y_respawn" estado="pendiente_de_verificar" referencia_pygame="respawn() reinicia rango_ataque_mejorado y escudo_farol (entidades.py, línea aprox. 516)" referencia_gdevelop="checkpoint sin reinicio de escena (FIX-GD-02)">Decidir si la Guadaña X se pierde al morir también en GDevelop; comprobar que coincida.</item>
+  </paridad_fisica_y_logica>
+
+  <tests_sugeridos>
+    <test id="REV-04-a" tipo="unitario" fichero="tests/test_logica.py">
+      Ápice: en el aire, con vy igual a -50, tecla de salto mantenida y sin Z, comprobar que vy nuevo es igual a vy más GRAVEDAD por APEX_GRAVEDAD_FACTOR por dt. Caso negativo: con velocidad absoluta igual a 80 la gravedad es la normal. Caso Z: sólo Z presionada en el preset moderno no activa el ápice (tras C2). Usar APEX_VY_UMBRAL de config.py.
+    </test>
+    <test id="REV-04-b" tipo="unitario" fichero="tests/test_logica.py">
+      Post-dash: al terminar el dash, vx es igual a dash_direccion por VELOCIDAD (criterio actual, 250); post_dash_tiempo es igual a POST_DASH_DURACION; durante esos 0,06 s la gravedad efectiva es la de post-dash, y después vuelve a la normal. Si el criterio de REV-04 pide conservar 560, este test cambia de forma explícita.
+    </test>
+    <test id="coyote-a" tipo="unitario" fichero="tests/test_logica.py">
+      Caminar fuera de una plataforma y saltar en un instante menor que COYOTE_TIME (0,10 s): el salto ocurre. Saltar después de ese instante: no ocurre. Ausente hoy.
+    </test>
+    <test id="buffer-a" tipo="unitario" fichero="tests/test_logica.py">
+      Pulsar salto JUMP_BUFFER menos 0,01 s antes de aterrizar: el salto ocurre al aterrizar. Pulsarlo JUMP_BUFFER más 0,02 s antes: no ocurre.
+    </test>
+    <test id="gd-gravedad-unica" tipo="integracion_gdevelop" requisito="gameplay test o vista previa">
+      Durante un salto desde el suelo, muestrear la gravedad del PlatformerObject en cada frame y comprobar que es 1500 salvo en el ápice y el post-dash. Después de aterrizar, la gravedad debe volver a 1500 en menos de un frame. Esto cubre H1.
+    </test>
+    <test id="gd-altura-salto" tipo="integracion_gdevelop" requisito="gameplay test o vista previa">
+      Medir la altura máxima de un salto sin ápice ni corte, con JumpSpeed 620 y gravedad 1500: debe estar en 128 px con tolerancia de 10 por ciento. Después, medir con el ápice activado y comparar con la misma medición en Pygame.
+    </test>
+    <test id="gd-variables-escritas" tipo="estatico" fichero="tools/verificar_paridad.py">
+      Para cada variable de objeto leída en eventos (post_dash, coyote, buffer_salto, dash_time, dashing, velocidad_vertical), comprobar que hay al menos una acción que la escriba. Esto cubre H2 y H3 de forma automática.
+    </test>
+    <test id="gd-constantes" tipo="estatico" fichero="tools/verificar_paridad.py">
+      Comparar gravedad, velocidad de salto, caída máxima, velocidad máxima, coyote, buffer, post-dash, ápice y dash del JSON nativo con config.py. Fallar si difieren. Cubre H4 y H8.
+    </test>
+    <test id="gd-teclas" tipo="estatico" fichero="tools/verificar_paridad.py">
+      Verificar que la lista de salto no contiene Z en el preset de referencia y que el ataque tiene J, Z, K y clic. Cubre H6.
+    </test>
+    <test id="gd-animaciones" tipo="estatico" fichero="tools/verificar_paridad.py">
+      Comprobar que el objeto Jugador tiene 16 animaciones y que cada índice usado en ChangeAnimation existe. Cubre H10.
+    </test>
+    <test id="gd-compilado" tipo="integracion" fichero="tools/exportar_todo.py">
+      Exportación headless (E5) con código de salida 0 y sin diagnósticos de eventos.
+    </test>
+    <test id="export-falla-si-integracion-falla" tipo="integracion" fichero="tools/exportar_todo.py">
+      Simular un error en integrar_assets (por ejemplo, un PNG faltante) y comprobar que la exportación termina con código distinto de cero. Cubre H11.
+    </test>
+    <test id="check-no-escribe" tipo="integracion" fichero="tools/exportar_todo.py">
+      Ejecutar exportar_todo.py --check y comprobar que la fecha de modificación de los archivos de export/ no cambia. Cubre H12.
+    </test>
+  </tests_sugeridos>
+
+  <riesgos>
+    <riesgo id="R1" severidad="critica" probabilidad="alta">La gravedad persistente (H1) hace que el juego en GDevelop no se parezca al de Pygame. Si el proyecto se publica tal como está, el defecto se nota de inmediato.</riesgo>
+    <riesgo id="R2" severidad="alta" probabilidad="alta">Variables leídas y nunca escritas (H2, H3). Parecen implementadas y no lo están. La validación actual (validar_eventos_gd) no las detecta.</riesgo>
+    <riesgo id="R3" severidad="alta" probabilidad="media">La integración de assets falla en silencio (H11): el export termina bien sin animaciones de Run, Jump y Dash.</riesgo>
+    <riesgo id="R4" severidad="media" probabilidad="alta">La exportación depende de rutas de una máquina (H12). No es reproducible en otro equipo ni en CI.</riesgo>
+    <riesgo id="R5" severidad="media" probabilidad="alta">Tres físicas (Pygame, GDevelop nativo y runtime JS) con valores distintos (H8).</riesgo>
+    <riesgo id="R6" severidad="media" probabilidad="alta">Documentación y especificación contradictorias (H13, H14). Se pueden aprobar cambios contra un criterio que no es el del código.</riesgo>
+    <riesgo id="R7" severidad="media" probabilidad="alta">El corte de salto no es equivalente (H5). Aunque se corrija el resto, la sensación de salto corto diferirá.</riesgo>
+    <riesgo id="R8" severidad="baja" probabilidad="alta">La corrección de esquinas no es nativa (F1). Algunas situaciones de borde (cabeza contra esquina) se comportarán distinto.</riesgo>
+    <riesgo id="R9" severidad="media" probabilidad="media">Si se adopta E4, el proyecto depende de una extensión comunitaria que el usuario debe instalar. Su dash tiene semántica distinta.</riesgo>
+    <riesgo id="R10" severidad="media" probabilidad="media">Versión de GDevelop: el proyecto usa 5.6.285, pero la documentación en línea corresponde a versiones posteriores. Las acciones y expresiones pueden diferir (por ejemplo, la convención de signo de CurrentJumpSpeed). Fijar la versión y verificar contra ella.</riesgo>
+    <riesgo id="R11" severidad="alta" probabilidad="alta">Ninguna prueba ejecuta la física del proyecto nativo. Todo lo verificado en GDevelop hasta ahora es estático o de forma de eventos. Sin E5 o pruebas de gameplay, cada cambio sólo puede validarse a ojo.</riesgo>
+    <riesgo id="R12" severidad="baja" probabilidad="baja">Límite de tiles en versiones antiguas de GDevelop (F4 y foros). Hoy los niveles son pequeños, así que no es urgente, pero limita E3.</riesgo>
+  </riesgos>
+
+  <recomendaciones_de_seguridad>
+    <item>Quitar de los scripts y del repo las rutas de usuario (/home/sanodesu, ~/Documentos, ~/.var/app). Usar variables de entorno o argumentos explícitos.</item>
+    <item>No escribir en la configuración del IDE ni en directorios fuera del repo desde el exportador.</item>
+    <item>No silenciar excepciones en el pipeline: cualquier fallo debe terminar con código distinto de cero.</item>
+    <item>Si se adopta gdexporter (E5): fijar la versión exacta, usar un lockfile y revisar el código del paquete antes de ejecutarlo en CI. Es código de terceros con acceso a los archivos del proyecto.</item>
+    <item>compilar_proyecto_gd.js lee el app.asar del IDE instalado. Documentar que requiere ese IDE y no ejecutarlo sobre rutas no confiables.</item>
+    <item>Antes de compartir el repomix, revisar que no contenga rutas de equipo, nombres de usuario ni datos personales. Este archivo incluye la ruta del usuario y el nombre de su equipo en los scripts.</item>
+    <item>Los archivos de export/ son artefactos generados: no deben editarse a mano ni subirse con datos de máquina. Añadir a .gitignore lo que corresponda.</item>
+  </recomendaciones_de_seguridad>
+
+  <pendiente_para_completar>
+    1) Confirmar en la vista previa del proyecto nativo H1 (gravedad persistente) y H3 (convención de signo de CurrentJumpSpeed y CurrentFallSpeed). Es el paso que más cambia el plan. 2) Decidir C7 (corte de salto) midiendo la altura en vista previa. 3) Revisar la sección Gameplay tests de la wiki de GDevelop para decidir si sirve para pruebas automatizadas de física (no revisada). 4) Evaluar gdexporter (mantenimiento, licencia, versión compatible con 5.6.285) antes de adoptar E5. 5) Buscar exportadores open source de Pygame a GDevelop, que no encontré en esta búsqueda. 6) Confirmar contra la versión instalada el esquema de ProjectFile, que aquí sólo se observó en el código.
+  </pendiente_para_completar>
+
+</analisis_exportacion_gdevelop_v025>

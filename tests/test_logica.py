@@ -24,23 +24,34 @@ pygame.init()
 
 from camara import Camara
 from config import (
+    ALMAS_FILO_ANIMA,
+    ALMAS_MANTO_FAROL,
     ALTO,
     ALMAS_POR_VIDA,
     ANCHO,
     APEX_GRAVEDAD_FACTOR,
     APEX_VY_UMBRAL,
+    ATAQUE_ALCANCE,
     CORTE_SALTO,
     COYOTE_TIME,
+    DASH_COOLDOWN,
     DASH_JUMP_IMPULSO_X,
     DASH_USOS_AIRE,
+    FILO_ANIMA_ALCANCE,
+    FILO_ANIMA_DASH_FACTOR,
     GRAVEDAD,
+    INCENSARIO_COOLDOWN,
     JUGADOR_ALTO,
     JUMP_BUFFER,
+    LOSA_TIEMPO_QUIEBRE,
+    LOSA_TIEMPO_RECONSTRUCCION,
     POST_DASH_DURACION,
     POST_DASH_GRAVEDAD_FACTOR,
     MINIJEFE_TELEGRAFO,
     MINIJEFE_VULNERABLE,
+    REBOTE_ENEMIGO,
     SALTO,
+    TOLERANCIA_PISOTON,
     VELOCIDAD,
     VIRTUAL_ALTO,
     VIRTUAL_ANCHO,
@@ -49,7 +60,7 @@ from config import (
     VIDAS_INICIALES,
     VIDAS_MAXIMAS,
 )
-from entidades import Alma, Enemigo, Jugador
+from entidades import Alma, Enemigo, FarolCheckpoint, IncensarioRebote, Jugador, LosaQuebradiza
 from juego import Juego, OPCIONES_CALIDAD, OPCIONES_HUD
 from nivel import Nivel
 from niveles import NIVEL_1, NIVEL_2, NIVEL_3, NIVELES, SALAS_PRUEBA
@@ -748,15 +759,15 @@ def probar_salto_ventana_nivel_2():
     juego.cargar_nivel(1)  # Nivel 2 (índice 1)
     nivel = juego.nivel
 
-    # Verificar existencia de la pared vertical con ventana (cols 170-171)
+    # Verificar existencia de la pared vertical con ventana (cols 240-241)
     filas = NIVEL_2.strip("\n").splitlines()
-    assert filas[2][170] == "#" and filas[2][171] == "#"  # Pared arriba
-    assert filas[6][170] != "#" and filas[6][171] != "#"  # Ventana abierta en fila 6
-    assert filas[7][170] != "#" and filas[7][171] != "#"  # Ventana abierta en fila 7
-    assert filas[9][170] == "#" and filas[9][171] == "#"  # Pared abajo
+    assert filas[2][240] == "#" and filas[2][241] == "#"  # Pared arriba
+    assert filas[6][240] != "#" and filas[6][241] != "#"  # Ventana abierta en fila 6
+    assert filas[7][240] != "#" and filas[7][241] != "#"  # Ventana abierta en fila 7
+    assert filas[9][240] == "#" and filas[9][241] == "#"  # Pared abajo
 
-    # Posicionar al jugador en la plataforma de lanzamiento (col 163, fila 8)
-    juego.jugador.x = 163 * TILE
+    # Posicionar al jugador en la plataforma de lanzamiento (col 233, fila 8)
+    juego.jugador.x = 233 * TILE
     juego.jugador.y = 8 * TILE - JUGADOR_ALTO
     juego.jugador.rect.topleft = (round(juego.jugador.x), round(juego.jugador.y))
     juego.jugador.en_suelo = True
@@ -772,12 +783,12 @@ def probar_salto_ventana_nivel_2():
 
     for _ in range(240):
         # Dashear en el aire al aproximarse a la ventana
-        if juego.jugador.rect.x > 165 * TILE and juego.jugador.dash_usos_aire > 0:
+        if juego.jugador.rect.x > 235 * TILE and juego.jugador.dash_usos_aire > 0:
             juego.jugador.pedir_dash()
 
         juego.jugador.actualizar(1 / 60, teclas, nivel.solidos)
 
-        if juego.jugador.rect.x > 172 * TILE:
+        if juego.jugador.rect.x > 242 * TILE:
             cruzo_ventana = True
 
         if juego.jugador.rect.colliderect(nivel.meta):
@@ -1631,6 +1642,231 @@ def probar_jump_buffer():
     print("jump buffer: OK")
 
 
+# --- Prueba: Losa Quebradiza (~) --- #
+def probar_losa_quebradiza():
+    # 1. Comportamiento unitario de LosaQuebradiza
+    losa = LosaQuebradiza(pygame.Rect(100, 200, 32, 32))
+    assert losa.activa
+    assert not losa.pisada
+
+    # Pisar la losa activa el temporizador
+    losa.pisar()
+    assert losa.pisada
+    assert losa.activa
+
+    # Mientras se actualiza durante los primeros 0.40s, vibra y permanece activa
+    losa.actualizar(0.20)
+    assert losa.activa
+    assert losa.pisada
+    assert losa.vibracion_offset != 0.0
+
+    # Al cumplirse los 0.40s, se quiebra
+    losa.actualizar(0.21)
+    assert not losa.activa
+    assert not losa.pisada
+    assert losa.recien_quebrada
+    assert losa.tiempo_reconstruccion > 0
+
+    # Durante 2.5s permanece inactiva
+    losa.actualizar(1.0)
+    assert not losa.activa
+
+    # Al cumplirse los 2.5s se reconstruye
+    losa.actualizar(1.6)
+    assert losa.activa
+    assert losa.recien_reconstruida
+
+    # Reiniciar restaura estado inicial
+    losa.pisar()
+    losa.actualizar(0.40)
+    assert not losa.activa
+    losa.reiniciar()
+    assert losa.activa
+    assert not losa.pisada
+    assert losa.tiempo_quiebre == 0.0
+
+    # 2. Integración en Nivel y solidos_actuales
+    mapa_losa = """
+......
+..P...
+.####.
+.~~~..
+..G...
+"""
+    nivel = Nivel(mapa_losa)
+    assert len(nivel.losas_quebradizas) == 3
+    solidos_ini = nivel.solidos_actuales()
+    for l in nivel.losas_quebradizas:
+        assert l.rect in solidos_ini
+
+    # Quebrar una losa la excluye de solidos_actuales
+    nivel.losas_quebradizas[0].activa = False
+    solidos_post = nivel.solidos_actuales()
+    assert nivel.losas_quebradizas[0].rect not in solidos_post
+    assert nivel.losas_quebradizas[1].rect in solidos_post
+
+    # nivel.reiniciar() la restaura
+    nivel.reiniciar()
+    assert nivel.losas_quebradizas[0].activa
+    assert nivel.losas_quebradizas[0].rect in nivel.solidos_actuales()
+
+    # 3. Interacción en loop de Juego
+    juego = Juego()
+    juego.nivel = nivel
+    juego.jugador = Jugador(nivel.losas_quebradizas[0].rect.x, nivel.losas_quebradizas[0].rect.y - 30)
+    juego.jugador.en_suelo = True
+    juego.actualizar_losas(0.016)
+    assert nivel.losas_quebradizas[0].pisada
+
+    print("losa quebradiza: OK")
+
+
+# --- Prueba: Incensario / Campana de Rebote (I) --- #
+def probar_incensario_rebote():
+    # 1. Comportamiento unitario de IncensarioRebote
+    incensario = IncensarioRebote(pygame.Rect(200, 200, 24, 28))
+    assert incensario.puede_rebotar()
+    incensario.activar_rebote()
+    assert not incensario.puede_rebotar()
+    assert incensario.cooldown == INCENSARIO_COOLDOWN
+    assert incensario.tiempo_repique > 0
+
+    # Cooldown decrece con actualizar
+    incensario.actualizar(0.3)
+    assert not incensario.puede_rebotar()
+    incensario.actualizar(0.25)
+    assert incensario.puede_rebotar()
+
+    # reiniciar restaura
+    incensario.activar_rebote()
+    incensario.reiniciar()
+    assert incensario.puede_rebotar()
+    assert incensario.cooldown == 0.0
+
+    # 2. Integración en Nivel
+    mapa_incensario = """
+......
+..P...
+..I...
+.####.
+..G...
+"""
+    nivel = Nivel(mapa_incensario)
+    assert len(nivel.incensarios) == 1
+    assert nivel.incensarios[0].rect.width == 24
+    assert nivel.incensarios[0].rect.height == 28
+
+    # 3. Interacción cayendo (Pisotón / aterrizaje aéreo sin pala en Nivel 1)
+    juego = Juego()
+    juego.nivel = nivel
+    juego.jugador = Jugador(nivel.incensarios[0].rect.x, nivel.incensarios[0].rect.y - 28)
+    juego.jugador.tiene_pala = False  # Sin pala, demostrando cruce en Nivel 1
+    juego.jugador.tiene_dash = True
+    juego.jugador.dash_usos_aire = 0
+    juego.jugador.dash_cooldown = 0.4
+    juego.jugador.vy = 200.0  # Cayendo
+
+    juego.actualizar_incensarios(0.016)
+    assert nivel.incensarios[0].cooldown > 0
+    assert juego.jugador.vy == -REBOTE_ENEMIGO
+    assert juego.jugador.dash_usos_aire == DASH_USOS_AIRE
+    assert juego.jugador.dash_cooldown == 0.0
+
+    # 4. Interacción con ataque de pala / guadaña
+    nivel.reiniciar()
+    juego.jugador.tiene_pala = True
+    juego.jugador.dash_usos_aire = 0
+    juego.jugador.dash_cooldown = 0.5
+    juego.jugador.pedir_ataque()
+    juego.jugador.rect.center = (nivel.incensarios[0].rect.x - 10, nivel.incensarios[0].rect.centery)
+    juego.actualizar_ataque()
+    assert juego.jugador.ataque_golpeado
+    assert juego.jugador.vy == -REBOTE_ENEMIGO
+    assert juego.jugador.dash_usos_aire == DASH_USOS_AIRE
+    assert juego.jugador.dash_cooldown == 0.0
+
+    print("incensario rebote: OK")
+
+
+# --- Prueba: Farol (F) y los 3 Tiers de Consagración --- #
+def probar_farol_3_tiers():
+    juego = Juego()
+    juego.cargar_nivel(0, vidas=VIDAS_INICIALES)
+    cp = juego.nivel.checkpoints[0]
+
+    # --- Tier 1 (1 a 4 almas): Consagración Básica ---
+    juego.jugador.vidas = 2  # Dañado (< 3)
+    juego.jugador.almas = 3
+    juego.jugador.rect.center = cp.rect.center
+    juego.almas_consagradas = 0
+    cp.reiniciar()
+    juego.actualizar_checkpoints()
+    assert cp.tier == 1
+    assert juego.jugador.vidas == 3  # Curó +1
+    assert not juego.jugador.escudo_farol
+    assert not getattr(juego.jugador, "filo_anima", False)
+    assert juego.almas_consagradas == 3
+
+    # --- Tier 2 (5 a 7 almas): Bendición del Manto ---
+    juego.cargar_nivel(0, vidas=2)
+    cp = juego.nivel.checkpoints[0]
+    juego.almas_consagradas = 0
+    juego.jugador.almas = 6  # 6 almas en el tramo
+    juego.jugador.rect.center = cp.rect.center
+    cp.reiniciar()
+    juego.actualizar_checkpoints()
+    assert cp.tier == 2
+    assert juego.jugador.vidas == 3  # Curó +1
+    assert juego.jugador.escudo_farol  # Manto otorgado
+    assert not getattr(juego.jugador, "filo_anima", False)
+
+    # Manto absorbe daño sin perder vida
+    vidas_antes = juego.jugador.vidas
+    juego.jugador.invulnerable = 0
+    juego.perder_vida(causa="Prueba de daño")
+    assert juego.jugador.vidas == vidas_antes
+    assert not juego.jugador.escudo_farol
+
+    # --- Tier 3 (8+ almas): Fuego Fatuo Consagrado (Filo de Ánima) ---
+    juego.cargar_nivel(0, vidas=2)
+    cp = juego.nivel.checkpoints[0]
+    juego.almas_consagradas = 0
+    juego.jugador.almas = 9  # 9 almas en el tramo
+    juego.jugador.rect.center = cp.rect.center
+    cp.reiniciar()
+    juego.actualizar_checkpoints()
+    assert cp.tier == 3
+    assert juego.jugador.vidas == 3
+    assert juego.jugador.escudo_farol
+    assert juego.jugador.filo_anima
+
+    # Beneficios de Filo de Ánima:
+    # 1. Cooldown de Dash reducido un 20%
+    juego.jugador.tiene_dash = True
+    juego.jugador.pedir_dash()
+    assert abs(juego.jugador.dash_cooldown - DASH_COOLDOWN * 0.80) < 1e-4
+
+    # 2. Alcance de ataque extendido en +12 px
+    juego.jugador.tiene_pala = True
+    r_atk = juego.jugador.rect_ataque()
+    assert r_atk.width == ATAQUE_ALCANCE + 12
+
+    # Daño recibido remueve Filo de Ánima
+    # Primero consumimos el manto protector
+    juego.jugador.invulnerable = 0
+    juego.perder_vida(causa="Golpe absorbido por Manto")
+    assert not juego.jugador.escudo_farol
+    assert juego.jugador.filo_anima  # No perdió vida aún
+
+    # Segundo golpe hace daño real (pierde vida)
+    juego.jugador.invulnerable = 0
+    juego.perder_vida(causa="Golpe real")
+    assert juego.jugador.vidas == 2
+    assert not juego.jugador.filo_anima
+
+    print("farol 3 tiers: OK")
+
+
 if __name__ == "__main__":
     probar_niveles()
     probar_parser()
@@ -1679,5 +1915,8 @@ if __name__ == "__main__":
     probar_post_dash_gravedad()
     probar_coyote_time()
     probar_jump_buffer()
+    probar_losa_quebradiza()
+    probar_incensario_rebote()
+    probar_farol_3_tiers()
     probar_juego_headless()
     print("\nTESTS_INCRYPTA_OK")

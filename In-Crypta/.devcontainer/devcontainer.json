@@ -1,0 +1,20 @@
+{
+  "name": "In Crypta - Pygame",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance"
+      ]
+    }
+  },
+  "runArgs": [
+    "-p", "6080:6080",
+    "-p", "5900:5900"
+  ],
+  "postCreateCommand": "python -m pip install -r requirements.txt",
+  "remoteUser": "vscode"
+}

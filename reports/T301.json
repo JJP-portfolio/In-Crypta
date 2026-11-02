@@ -1,0 +1,12 @@
+{
+  "tarea": "T301",
+  "estado": "ok",
+  "decision_ref": "D4",
+  "archivos_modificados": ["tools/generar_proyecto_nativo.py", "tests/test_export_gravedad.py"],
+  "comandos": [
+    {"cmd": "CMD_GRAV", "codigo": 0, "esperado_encontrado": true, "salida_resumen": "PASS probar_post_dash_se_escribe (las otras 3 fallan hasta T302/T303, esperado)"},
+    {"cmd": "CMD_LOGICA", "codigo": 0, "esperado_encontrado": true, "salida_resumen": "TESTS_INCRYPTA_OK"}
+  ],
+  "commit": "",
+  "notas": "post_dash se escribe al terminar el dash (evento Fin del dash) y en el dash-salto, con str(POST_DASH_DURACION). Agregado evento que decrementa post_dash cada frame antes de # Recarga del dash. tests/test_export_gravedad.py creado (contenido del plan). En T301 solo verificar_post_dash_se_escribe pasa; las demás quedan en FAIL hasta T302/T303. POST_DASH_DURACION ya estaba importada. test_logica en verde. requiere_gdevelop=parcial: vista previa de GDevelop pendiente (se aborda en T302)."
+}

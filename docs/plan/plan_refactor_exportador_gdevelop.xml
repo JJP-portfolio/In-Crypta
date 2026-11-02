@@ -1,0 +1,1040 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name=claude:viewport-fit-sides content=cover><style>:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-right:env(safe-area-inset-right,0px);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}</style><style>.md-table{overflow-x:auto}@media print{.md-table{overflow-x:visible}}</style><style>:root{color-scheme:light dark;--md-bg:#fff;--md-text:rgba(0,0,0,.8);--md-muted:rgba(0,0,0,.6);--md-fill:rgba(0,0,0,.04);--md-fill-strong:rgba(0,0,0,.06);--md-rule:rgba(0,0,0,.1);--md-rule-strong:rgba(0,0,0,.16);--md-link:hsl(210 100% 45%)}@media (prefers-color-scheme:dark){:root:where(:not([data-theme="light"])){--md-bg:#0d0d0d;--md-text:rgba(255,255,255,.85);--md-muted:rgba(255,255,255,.6);--md-fill:rgba(255,255,255,.06);--md-fill-strong:rgba(255,255,255,.09);--md-rule:rgba(255,255,255,.14);--md-rule-strong:rgba(255,255,255,.22);--md-link:hsl(210 100% 72%)}}:root[data-theme="dark"]{color-scheme:dark;--md-bg:#0d0d0d;--md-text:rgba(255,255,255,.85);--md-muted:rgba(255,255,255,.6);--md-fill:rgba(255,255,255,.06);--md-fill-strong:rgba(255,255,255,.09);--md-rule:rgba(255,255,255,.14);--md-rule-strong:rgba(255,255,255,.22);--md-link:hsl(210 100% 72%)}:root[data-theme="light"]{color-scheme:light}@media print{:root,:root[data-theme="dark"]{color-scheme:light;--md-bg:#fff;--md-text:rgba(0,0,0,.8);--md-muted:rgba(0,0,0,.6);--md-fill:rgba(0,0,0,.04);--md-fill-strong:rgba(0,0,0,.06);--md-rule:rgba(0,0,0,.1);--md-rule-strong:rgba(0,0,0,.16);--md-link:hsl(210 100% 45%)}}body{background:var(--md-bg);color:var(--md-text);max-width:720px;margin:0 auto;padding:32px;display:flex;flex-direction:column;gap:10px;font:14px/1.55 -apple-system,BlinkMacSystemFont,'SF Pro','Segoe UI',sans-serif;overflow-wrap:break-word}body>:first-child{margin-top:0}h1,h2,h3,h4,h5,h6{margin:6px 0 0;line-height:1.25;font-weight:600;text-wrap:balance}h1{font-size:1.35em}h2{font-size:1.15em;color:var(--md-muted)}h3,h4,h5,h6{font-size:1em}p,ul,ol,blockquote,table,pre,hr{margin:0}strong{font-weight:600}a{color:var(--md-link);text-decoration:none}a:hover{text-decoration:underline}ul,ol{display:flex;flex-direction:column;gap:6px;padding-left:22px}ul{list-style:disc}ol{list-style:decimal}:is(li,td,th)>*+:is(p,ul,ol,blockquote){margin-top:6px}blockquote{display:flex;flex-direction:column;gap:10px;border-left:2px solid var(--md-rule);padding-left:10px;color:var(--md-muted)}:not(pre)>code{background:var(--md-fill);padding:1px 3px;border-radius:4px;font:.92em 'SF Mono',ui-monospace,Menlo,Consolas,monospace}a>code{background:none;color:inherit}pre{background:var(--md-fill);padding:10px 12px;border-radius:6px;overflow-x:auto;font:12px/1.5 'SF Mono',ui-monospace,Menlo,Consolas,monospace;margin-block:4px}pre code{background:none;padding:0;font:inherit}table{width:100%;border-collapse:separate;border-spacing:2px;font:inherit}th,td{padding:6px 8px;border-radius:3px;text-align:left;vertical-align:top}th{background:var(--md-fill-strong);font-weight:600}td{background:var(--md-fill)}:is(th,td) :not(pre)>code{background:transparent}hr{border:0;border-top:1px solid var(--md-rule-strong);margin-block:10px}img{max-width:100%;height:auto;border-radius:4px}</style>
+</head><body>
+<pre><code>&lt;?xml version=&#34;1.0&#34; encoding=&#34;UTF-8&#34;?&gt;
+&lt;!-- Plan ejecutable para una CLI o agente. Base: analisis_exportacion_gdevelop_v025.xml (versión 2). Cada tarea es pequeña, localiza su cambio por ancla de texto (no por número de línea), define la prueba que debe pasar y el criterio de aceptación. Las líneas aproximadas son orientativas: la fuente de verdad es el ancla. Ejecutar las fases en orden; no saltar tareas con dependencias. --&gt;
+&lt;plan_refactor_exportador_gdevelop version=&#34;1&#34; rama=&#34;v0.2.4&#34; base=&#34;analisis_exportacion_gdevelop_v025.xml v2&#34;&gt;
+
+  &lt;uso_para_cli&gt;
+    Cada tarea tiene: precondiciones (si fallan, la tarea no se ejecuta), pasos (en orden), verificación (comandos con salida esperada), criterio de aceptación y acción si falla. Un agente debe ejecutar una tarea completa antes de pasar a la siguiente, escribir el reporte de esa tarea y hacer un commit solo con los archivos de esa tarea.
+  &lt;/uso_para_cli&gt;
+
+  &lt;instrucciones_para_el_agente&gt;
+    &lt;regla id=&#34;R1&#34;&gt;Trabaja una tarea a la vez. Antes de editar, ejecuta las precondiciones. Después de editar, ejecuta la verificación. Si la verificación falla, revierte los cambios de la tarea (git checkout -- archivos de la tarea) y marca la tarea como fallo.&lt;/regla&gt;
+    &lt;regla id=&#34;R2&#34;&gt;No uses números de línea como fuente de verdad. Localiza cada cambio con grep -n -F &#34;ancla&#34;. Si el ancla aparece más veces de las esperadas, detente y reporta; no elijas una ocurrencia al azar.&lt;/regla&gt;
+    &lt;regla id=&#34;R3&#34;&gt;Respeta la columna cambia_comportamiento. Si una tarea dice no, el comportamiento de Pygame y de GDevelop no debe cambiar; si la verificación muestra un cambio no esperado, revierte.&lt;/regla&gt;
+    &lt;regla id=&#34;R4&#34;&gt;Las tareas con requiere_humano=&#34;si&#34; no se ejecutan: escribe el reporte con estado requiere_humano y la pregunta. Las tareas con requiere_humano=&#34;parcial&#34; se ejecutan solo hasta el punto marcado como parada.&lt;/regla&gt;
+    &lt;regla id=&#34;R5&#34;&gt;Las tareas con requiere_gdevelop=&#34;si&#34; se verifican con validar_eventos_gd.py y la vista previa, si el entorno lo permite. Si no hay GDevelop, marca no_verificable y no falles el lote. Las pruebas estáticas siempre deben pasar.&lt;/regla&gt;
+    &lt;regla id=&#34;R6&#34;&gt;Un commit por tarea, con el mensaje &#34;export: ID titulo&#34;. Haz commit solo de los archivos listados en la tarea. Nunca hagas commit de archivos generados en export/ ni de reports/.&lt;/regla&gt;
+    &lt;regla id=&#34;R7&#34;&gt;No borres archivos en las fases F4 y F5 salvo que la tarea lo indique explícitamente. No cambies la constante VERSION. No hagas push.&lt;/regla&gt;
+    &lt;regla id=&#34;R8&#34;&gt;No inventes valores ni fórmulas. Si un nombre de constante, de acción o de condición no existe, detente y reporta. Para nombres de GDevelop, verifica contra tools/exportador/datos/metadatos_gdevelop_5_6.json.&lt;/regla&gt;
+    &lt;regla id=&#34;R9&#34;&gt;Escribe un reporte por tarea en reports/ID.json con el formato de formato_reporte. Las tareas de F6 escriben reports/investigacion/ID.md en lugar de editar código.&lt;/regla&gt;
+    &lt;regla id=&#34;R10&#34;&gt;Lee solo los archivos que la tarea nombra. No cargues el repositorio completo en contexto. Para archivos largos, usa grep -n con el ancla y luego sed -n con un rango de unas 60 líneas alrededor.&lt;/regla&gt;
+  &lt;/instrucciones_para_el_agente&gt;
+
+  &lt;entorno&gt;
+    &lt;comando id=&#34;PY_RUN&#34;&gt;PYTHONPATH=. SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python&lt;/comando&gt;
+    &lt;nota&gt;Si .venv/bin/python no existe, usa python3 y reporta el cambio en notas. Las pruebas nuevas se ejecutan desde la raíz del repo.&lt;/nota&gt;
+    &lt;comando id=&#34;CMD_LOGICA&#34;&gt;PYTHONPATH=. SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python tests/test_logica.py&lt;/comando&gt;
+    &lt;comando id=&#34;CMD_HUD&#34;&gt;PYTHONPATH=. SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python tests/test_hud.py&lt;/comando&gt;
+    &lt;comando id=&#34;CMD_CONST&#34;&gt;PYTHONPATH=. SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python tests/test_export_constantes.py&lt;/comando&gt;
+    &lt;comando id=&#34;CMD_GRAV&#34;&gt;PYTHONPATH=. SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python tests/test_export_gravedad.py&lt;/comando&gt;
+    &lt;comando id=&#34;CMD_PIPE&#34;&gt;PYTHONPATH=. SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python tests/test_export_pipeline.py&lt;/comando&gt;
+    &lt;comando id=&#34;CMD_EXPORT&#34;&gt;PYTHONPATH=. SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python tools/exportar_todo.py&lt;/comando&gt;
+    &lt;comando id=&#34;CMD_EVENTOS&#34;&gt;PYTHONPATH=. SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python tools/validar_eventos_gd.py&lt;/comando&gt;
+    &lt;comando id=&#34;CMD_PARIDAD&#34;&gt;PYTHONPATH=. SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python tools/verificar_paridad.py&lt;/comando&gt;
+  &lt;/entorno&gt;
+
+  &lt;decisiones&gt;
+    &lt;decision id=&#34;D1&#34; tema=&#34;umbral de ápice&#34; defecto=&#34;APEX_VY_UMBRAL = 70&#34; alternativa=&#34;95 (cambiar config.py y tests)&#34; aplicar_por_defecto=&#34;si&#34;&gt;Se usa 70 porque es lo que implementan el código y los tests actuales. La especificación se corrige (T501).&lt;/decision&gt;
+    &lt;decision id=&#34;D2&#34; tema=&#34;tecla Z como salto o ataque&#34; defecto=&#34;Z no cuenta para salto ni para ápice en el preset moderno&#34; alternativa=&#34;mantener Z en el ápice&#34; aplicar_por_defecto=&#34;si&#34;&gt;Corrige H6. Con el preset retro, Z deja de activar el ápice; queda como seguimiento.&lt;/decision&gt;
+    &lt;decision id=&#34;D3&#34; tema=&#34;corte de salto en GDevelop&#34; defecto=&#34;opción B: mantener AbortJump y documentar la divergencia&#34; alternativa=&#34;opción A: JumpSustainTime calibrado&#34; aplicar_por_defecto=&#34;si&#34;&gt;Hasta medir la altura en vista previa, no se cambia la mecánica.&lt;/decision&gt;
+    &lt;decision id=&#34;D4&#34; tema=&#34;velocidad horizontal al terminar el dash&#34; defecto=&#34;VELOCIDAD (250), como el código actual&#34; alternativa=&#34;conservar DASH_VELOCIDAD con decaimiento&#34; aplicar_por_defecto=&#34;si&#34;&gt;Cambiar esto es un cambio de diseño, no de paridad.&lt;/decision&gt;
+    &lt;decision id=&#34;D5&#34; tema=&#34;runtime JavaScript (ruta B)&#34; defecto=&#34;mover a legacy/ y quitar del pipeline&#34; alternativa=&#34;borrar&#34; aplicar_por_defecto=&#34;si&#34;&gt;Se conserva en legacy/ para consulta.&lt;/decision&gt;
+    &lt;decision id=&#34;D6&#34; tema=&#34;plantilla base del proyecto GDevelop&#34; defecto=&#34;generar plantilla mínima en código si BASE_PROJECT solo aporta claves de metadatos&#34; alternativa=&#34;archivo versionado en export/gdevelop_nativo/plantilla_base.json (requiere copiar el archivo del equipo)&#34; aplicar_por_defecto=&#34;parcial&#34;&gt;Si BASE_PROJECT aporta extensiones, recursos o sonidos, la tarea T402 se detiene y pide el archivo.&lt;/decision&gt;
+    &lt;decision id=&#34;D7&#34; tema=&#34;preset de referencia para GDevelop&#34; defecto=&#34;moderno (Espacio, W, Arriba para salto; J, Z, K y clic para ataque)&#34; alternativa=&#34;retro&#34; aplicar_por_defecto=&#34;si&#34;&gt;Se fija en el exportador porque GDevelop no tiene preset dinámico.&lt;/decision&gt;
+    &lt;decision id=&#34;D8&#34; tema=&#34;Guadaña X al morir&#34; defecto=&#34;respetar respawn() de Pygame: se pierde&#34; alternativa=&#34;conservarla&#34; aplicar_por_defecto=&#34;si&#34;&gt;Se verifica en I6 antes de cambiar nada.&lt;/decision&gt;
+  &lt;/decisiones&gt;
+
+  &lt;archivos_clave&gt;
+    &lt;archivo ruta=&#34;config.py&#34; rol=&#34;fuente de verdad de constantes (VERSION, COYOTE_TIME, JUMP_BUFFER, APEX_VY_UMBRAL, GRAVEDAD, SALTO, DASH_*, POST_DASH_*, ATAQUE_*)&#34;/&gt;
+    &lt;archivo ruta=&#34;entidades.py&#34; rol=&#34;física de Pygame: Jugador.actualizar, pedir_salto, soltar_salto, actualizar_dash, actualizar_temporizadores, respawn; Custodio&#34;/&gt;
+    &lt;archivo ruta=&#34;juego.py&#34; rol=&#34;PRESET_MODERNO y PRESET_RETRO, TECLAS_ATAQUE, actualizar_jefe, dañar_jefe_pisaton, _rebotar_jefe_coraza&#34;/&gt;
+    &lt;archivo ruta=&#34;audio.py&#34; rol=&#34;SFX; alias rebote_metalico de rebote_pala&#34;/&gt;
+    &lt;archivo ruta=&#34;tools/generar_proyecto_nativo.py&#34; rol=&#34;monolito del export nativo: eventos_nivel, eventos_jefe, construir_proyecto, main&#34;/&gt;
+    &lt;archivo ruta=&#34;tools/exportador/gdevelop.py&#34; rol=&#34;primitivas de formato: cond, accion, evento, cond_or, comportamiento_jugador, variables_jugador&#34;/&gt;
+    &lt;archivo ruta=&#34;tools/exportador/datos/metadatos_gdevelop_5_6.json&#34; rol=&#34;tabla de acciones y condiciones reales de GDevelop 5.6 (una sola línea de JSON)&#34;/&gt;
+    &lt;archivo ruta=&#34;tools/integrar_assets_gdevelop.py&#34; rol=&#34;PNG pixel-art y animaciones de 16 índices; máscara 24x30&#34;/&gt;
+    &lt;archivo ruta=&#34;tools/exportar_todo.py&#34; rol=&#34;orquestador de la exportación&#34;/&gt;
+    &lt;archivo ruta=&#34;tools/verificar_paridad.py&#34; rol=&#34;criterio de aceptación de geometría (no física)&#34;/&gt;
+    &lt;archivo ruta=&#34;tools/validar_eventos_gd.py&#34; rol=&#34;valida parámetros de eventos contra el núcleo de GDevelop&#34;/&gt;
+    &lt;archivo ruta=&#34;tests/test_logica.py&#34; rol=&#34;pruebas de lógica Pygame (incluye probar_fisica_salto_dash_game_feel)&#34;/&gt;
+    &lt;archivo ruta=&#34;tests/test_hud.py&#34; rol=&#34;pruebas del HUD&#34;/&gt;
+  &lt;/archivos_clave&gt;
+
+  &lt;formato_reporte&gt;
+    &lt;![CDATA[
+{
+  &#34;tarea&#34;: &#34;T101&#34;,
+  &#34;estado&#34;: &#34;ok | fallo | bloqueada | requiere_humano | no_verificable | aplicado_por_defecto&#34;,
+  &#34;decision_ref&#34;: &#34;D1 o vacío&#34;,
+  &#34;archivos_modificados&#34;: [&#34;tools/generar_proyecto_nativo.py&#34;],
+  &#34;comandos&#34;: [
+    {&#34;cmd&#34;: &#34;CMD_CONST&#34;, &#34;codigo&#34;: 0, &#34;esperado_encontrado&#34;: true, &#34;salida_resumen&#34;: &#34;PASS probar_buffer_salto_usa_config&#34;}
+  ],
+  &#34;commit&#34;: &#34;hash o vacío&#34;,
+  &#34;notas&#34;: &#34;texto libre, incluidas las anclas que no coincidieron&#34;
+}
+    ]]&gt;
+  &lt;/formato_reporte&gt;
+
+  &lt;fases&gt;
+
+    &lt;!-- ========================================================= --&gt;
+    &lt;fase id=&#34;F0&#34; nombre=&#34;linea_base&#34; tipo=&#34;solo_lectura&#34; riesgo=&#34;nulo&#34;&gt;
+      &lt;tarea id=&#34;T000&#34; titulo=&#34;Registrar la línea base antes de tocar nada&#34; fase=&#34;F0&#34; riesgo=&#34;nulo&#34; depende_de=&#34;&#34; requiere_humano=&#34;no&#34; requiere_gdevelop=&#34;no&#34; cambia_comportamiento=&#34;no&#34;&gt;
+        &lt;archivos&gt;Ninguno editado. Salidas en reports/baseline/.&lt;/archivos&gt;
+        &lt;precondiciones&gt;
+          &lt;cmd esperado=&#34;existe .venv o python3 disponible&#34;&gt;&lt;![CDATA[ls .venv/bin/python || which python3 ]]&gt;&lt;/cmd&gt;
+          &lt;cmd esperado=&#34;working tree limpio&#34;&gt;&lt;![CDATA[git status --porcelain | wc -l]]&gt;&lt;/cmd&gt;
+        &lt;/precondiciones&gt;
+        &lt;pasos&gt;
+          &lt;paso n=&#34;1&#34;&gt;&lt;![CDATA[mkdir -p reports/baseline]]&gt;&lt;/paso&gt;
+          &lt;paso n=&#34;2&#34;&gt;Ejecuta CMD_LOGICA, CMD_HUD, CMD_EXPORT, CMD_EVENTOS y CMD_PARIDAD. Guarda la salida de cada uno en reports/baseline/NOMBRE.txt, con el código de salida.&lt;/paso&gt;
+          &lt;paso n=&#34;3&#34;&gt;Después de CMD_EXPORT, ejecuta git checkout -- export/ para descartar los archivos regenerados (no se versionan en esta tarea).&lt;/paso&gt;
+        &lt;/pasos&gt;
+        &lt;verificacion&gt;
+          &lt;cmd esperado=&#34;TESTS_INCRYPTA_OK y código 0&#34;&gt;&lt;![CDATA[PYTHONPATH=. SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python tests/test_logica.py | tail -n 1]]&gt;&lt;/cmd&gt;
+          &lt;cmd esperado=&#34;código 0&#34;&gt;&lt;![CDATA[PYTHONPATH=. SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python tests/test_hud.py; echo $?]]&gt;&lt;/cmd&gt;
+          &lt;cmd esperado=&#34;EVENTOS_OK&#34;&gt;&lt;![CDATA[.venv/bin/python tools/validar_eventos_gd.py | tail -n 1]]&gt;&lt;/cmd&gt;
+          &lt;cmd esperado=&#34;PARIDAD_OK&#34;&gt;&lt;![CDATA[.venv/bin/python tools/verificar_paridad.py | tail -n 1]]&gt;&lt;/cmd&gt;
+        &lt;/verificacion&gt;
+        &lt;criterio_aceptacion&gt;Las cuatro suites están en verde. Si alguna no lo está, se registra y se detiene el plan: no se corrige nada en F0.&lt;/criterio_aceptacion&gt;
+        &lt;si_falla&gt;Detener el plan y reportar qué suite falla y su salida. No continuar.&lt;/si_falla&gt;
+      &lt;/tarea&gt;
+    &lt;/fase&gt;
+
+    &lt;!-- ========================================================= --&gt;
+    &lt;fase id=&#34;F1&#34; nombre=&#34;constantes_del_export&#34; tipo=&#34;codigo&#34; riesgo=&#34;bajo&#34;&gt;
+      &lt;tarea id=&#34;T100&#34; titulo=&#34;Crear las pruebas que exigen constantes de config.py en el export&#34; fase=&#34;F1&#34; riesgo=&#34;bajo&#34; depende_de=&#34;T000&#34; requiere_humano=&#34;no&#34; requiere_gdevelop=&#34;no&#34; cambia_comportamiento=&#34;no&#34;&gt;
+        &lt;archivos&gt;tests/test_export_constantes.py (nuevo)&lt;/archivos&gt;
+        &lt;precondiciones&gt;
+          &lt;cmd esperado=&#34;sin resultados (el archivo no existe)&#34;&gt;&lt;![CDATA[ls tests/test_export_constantes.py 2&gt;/dev/null; echo fin]]&gt;&lt;/cmd&gt;
+        &lt;/precondiciones&gt;
+        &lt;pasos&gt;
+          &lt;paso n=&#34;1&#34;&gt;Crea tests/test_export_constantes.py con el contenido de archivo_nuevo. Este archivo define los helpers que reutilizan las tareas siguientes (acciones, posiciones, asignados_a, eventos_de_todas_las_escenas, fuente_generar).&lt;/paso&gt;
+          &lt;paso n=&#34;2&#34;&gt;&lt;![CDATA[
+# tests/test_export_constantes.py — el export nativo toma sus constantes de config.py
+import os
+import sys
+from pathlib import Path
+
+os.environ.setdefault(&#34;SDL_VIDEODRIVER&#34;, &#34;dummy&#34;)
+os.environ.setdefault(&#34;SDL_AUDIODRIVER&#34;, &#34;dummy&#34;)
+
+RAIZ = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(RAIZ))
+sys.path.insert(0, str(RAIZ / &#34;tools&#34;))
+
+import pygame  # noqa: E402
+
+pygame.init()
+
+from config import (  # noqa: E402
+    APEX_GRAVEDAD_FACTOR,
+    APEX_VY_UMBRAL,
+    ATAQUE_COOLDOWN,
+    ATAQUE_DURACION,
+    COYOTE_TIME,
+    DASH_COOLDOWN,
+    DASH_JUMP_IMPULSO_X,
+    GRAVEDAD,
+    JUMP_BUFFER,
+    POST_DASH_DURACION,
+    POST_DASH_GRAVEDAD_FACTOR,
+    REBOTE_ENEMIGO,
+    SALTO,
+    VELOCIDAD,
+)
+
+FUENTE_GENERAR = RAIZ / &#34;tools&#34; / &#34;generar_proyecto_nativo.py&#34;
+FUENTE_GDEVELOP = RAIZ / &#34;tools&#34; / &#34;exportador&#34; / &#34;gdevelop.py&#34;
+
+
+def fuente_generar():
+    return FUENTE_GENERAR.read_text(encoding=&#34;utf-8&#34;)
+
+
+def fuente_gdevelop():
+    return FUENTE_GDEVELOP.read_text(encoding=&#34;utf-8&#34;)
+
+
+def _tipo(nodo):
+    tipo = nodo.get(&#34;type&#34;)
+    if isinstance(tipo, dict):
+        return tipo.get(&#34;value&#34;)
+    return tipo
+
+
+def _parametros(nodo):
+    crudos = nodo.get(&#34;parameters&#34;, [])
+    return [p.get(&#34;value&#34;, &#34;&#34;) if isinstance(p, dict) else p for p in crudos]
+
+
+def acciones(nodo, tipo):
+    &#34;&#34;&#34;Parámetros de cada acción del tipo dado, en todo el árbol de eventos.&#34;&#34;&#34;
+    salida = []
+
+    def recorrer(x):
+        if isinstance(x, dict):
+            if _tipo(x) == tipo and &#34;parameters&#34; in x:
+                salida.append(_parametros(x))
+            for valor in x.values():
+                recorrer(valor)
+        elif isinstance(x, list):
+            for valor in x:
+                recorrer(valor)
+
+    recorrer(nodo)
+    return salida
+
+
+def posiciones(nodo, tipo, variable=None):
+    &#34;&#34;&#34;Orden de recorrido de las acciones del tipo (y variable, si se indica).&#34;&#34;&#34;
+    orden = []
+    contador = [0]
+
+    def recorrer(x):
+        if isinstance(x, dict):
+            if _tipo(x) == tipo and &#34;parameters&#34; in x:
+                params = _parametros(x)
+                if variable is None or (len(params) &gt; 1 and params[1] == variable):
+                    orden.append(contador[0])
+            contador[0] += 1
+            for valor in x.values():
+                recorrer(valor)
+        elif isinstance(x, list):
+            for valor in x:
+                recorrer(valor)
+
+    recorrer(nodo)
+    return orden
+
+
+def asignados_a(eventos, variable, operador=&#34;=&#34;):
+    &#34;&#34;&#34;Valores asignados con el operador dado a una variable de Jugador.&#34;&#34;&#34;
+    return [
+        p[3]
+        for p in acciones(eventos, &#34;SetNumberObjectVariable&#34;)
+        if len(p) &gt;= 4 and p[0] == &#34;Jugador&#34; and p[1] == variable and p[2] == operador
+    ]
+
+
+def eventos_de_todas_las_escenas():
+    import generar_proyecto_nativo as gen
+    from nivel import Nivel
+    from niveles import NIVELES
+
+    eventos = []
+    for indice, datos in enumerate(NIVELES, start=1):
+        nivel = Nivel(datos[&#34;mapa&#34;], datos[&#34;nombre&#34;], datos[&#34;pista&#34;], datos.get(&#34;tema&#34;, &#34;camposanto&#34;))
+        eventos += gen.eventos_nivel(nivel, indice, len(NIVELES))
+    return eventos
+
+
+def probar_buffer_salto_usa_config(eventos):
+    valores = [float(v) for v in asignados_a(eventos, &#34;buffer_salto&#34;) if float(v) &gt; 0]
+    assert valores, &#34;no hay asignación positiva al buffer de salto&#34;
+    assert all(abs(v - JUMP_BUFFER) &lt; 1e-9 for v in valores), f&#34;buffer_salto usa {valores}, debe ser {JUMP_BUFFER}&#34;
+
+
+def probar_coyote_usa_config(eventos):
+    valores = [float(v) for v in asignados_a(eventos, &#34;coyote&#34;) if float(v) &gt; 0]
+    assert valores, &#34;no hay asignación positiva al coyote time&#34;
+    assert all(abs(v - COYOTE_TIME) &lt; 1e-9 for v in valores), f&#34;coyote usa {valores}, debe ser {COYOTE_TIME}&#34;
+
+
+def probar_ataque_usa_config(eventos):
+    tiempo = [float(v) for v in asignados_a(eventos, &#34;ataque_time&#34;) if float(v) &gt; 0]
+    cooldown = [float(v) for v in asignados_a(eventos, &#34;ataque_cd&#34;) if float(v) &gt; 0]
+    assert tiempo and all(abs(v - ATAQUE_DURACION) &lt; 1e-9 for v in tiempo), f&#34;ataque_time usa {tiempo}&#34;
+    assert cooldown and all(abs(v - ATAQUE_COOLDOWN) &lt; 1e-9 for v in cooldown), f&#34;ataque_cd usa {cooldown}&#34;
+
+
+def probar_velocidades_de_salto_usan_config(eventos):
+    permitidas = {round(-SALTO, 6), round(REBOTE_ENEMIGO, 6)}
+    usadas = {round(float(p[3]), 6) for p in acciones(eventos, &#34;PlatformBehavior::JumpSpeed&#34;) if p[0] == &#34;Jugador&#34;}
+    assert usadas &lt;= permitidas, f&#34;JumpSpeed usa {usadas}, permitido {permitidas}&#34;
+
+
+def probar_sin_literales_de_config_en_el_export():
+    texto = fuente_generar()
+    prohibidos = [&#39;&#34;0.15&#34;&#39;, &#39;&#34;0.18&#34;&#39;, &#39;&#34;0.40&#34;&#39;, &#39;&#34;0.60&#34;&#39;, &#39;&#34;620&#34;&#39;, &#39;&#34;360&#34;&#39;, &#34;* 1.18&#34;]
+    encontrados = [lit for lit in prohibidos if lit in texto]
+    assert not encontrados, f&#34;literales que deben venir de config.py: {encontrados}&#34;
+
+
+PRUEBAS_EVENTOS = [
+    probar_buffer_salto_usa_config,
+    probar_coyote_usa_config,
+    probar_ataque_usa_config,
+    probar_velocidades_de_salto_usan_config,
+]
+PRUEBAS_TEXTO = [probar_sin_literales_de_config_en_el_export]
+
+
+if __name__ == &#34;__main__&#34;:
+    eventos = eventos_de_todas_las_escenas()
+    fallos = 0
+    for prueba in PRUEBAS_EVENTOS:
+        try:
+            prueba(eventos)
+            print(f&#34;PASS {prueba.__name__}&#34;)
+        except AssertionError as error:
+            fallos += 1
+            print(f&#34;FAIL {prueba.__name__}: {error}&#34;)
+    for prueba in PRUEBAS_TEXTO:
+        try:
+            prueba()
+            print(f&#34;PASS {prueba.__name__}&#34;)
+        except AssertionError as error:
+            fallos += 1
+            print(f&#34;FAIL {prueba.__name__}: {error}&#34;)
+    if fallos:
+        print(f&#34;TESTS_CONSTANTES_FALLAN: {fallos}&#34;)
+        sys.exit(1)
+    print(&#34;TESTS_CONSTANTES_OK&#34;)
+          ]]&gt;&lt;/paso&gt;
+          &lt;paso n=&#34;3&#34;&gt;Ejecuta CMD_CONST. Se espera que fallen exactamente cuatro pruebas (buffer, coyote, ataque y literales) y que probar_velocidades_de_salto_usan_config pase. Cualquier otro error (ImportError, KeyError, TypeError) es bloqueante: corrige el helper, no la prueba.&lt;/paso&gt;
+        &lt;/pasos&gt;
+        &lt;verificacion&gt;
+          &lt;cmd esperado=&#34;3 o más líneas FAIL y una PASS probar_velocidades_de_salto_usan_config&#34;&gt;&lt;![CDATA[PYTHONPATH=. SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python tests/test_export_constantes.py; echo $?]]&gt;&lt;/cmd&gt;
+        &lt;/verificacion&gt;
+        &lt;criterio_aceptacion&gt;El archivo existe, se ejecuta sin errores de importación y las fallas son exactamente las esperadas. El export aún no cambió.&lt;/criterio_aceptacion&gt;
+        &lt;si_falla&gt;Si el helper acciones() no encuentra las acciones, revisa la función accion() en tools/exportador/gdevelop.py (forma de type y parameters). Ajusta solo _tipo() y _parametros(), y reporta la forma real encontrada.&lt;/si_falla&gt;
+      &lt;/tarea&gt;
+
+      &lt;tarea id=&#34;T101&#34; titulo=&#34;Buffer de salto desde config (JUMP_BUFFER)&#34; fase=&#34;F1&#34; riesgo=&#34;bajo&#34; depende_de=&#34;T100&#34; requiere_humano=&#34;no&#34; requiere_gdevelop=&#34;no&#34; cambia_comportamiento=&#34;si&#34; decision_ref=&#34;&#34;&gt;
+        &lt;archivos&gt;tools/generar_proyecto_nativo.py&lt;/archivos&gt;
+        &lt;precondiciones&gt;
+          &lt;cmd esperado=&#34;1&#34;&gt;&lt;![CDATA[grep -c -F &#39;accion(&#34;SetNumberObjectVariable&#34;, [&#34;Jugador&#34;, &#34;buffer_salto&#34;, &#34;=&#34;, &#34;0.15&#34;])&#39; tools/generar_proyecto_nativo.py]]&gt;&lt;/cmd&gt;
+        &lt;/precondiciones&gt;
+        &lt;pasos&gt;
+          &lt;paso n=&#34;1&#34;&gt;Reemplaza el ancla por la versión con constante:&lt;/paso&gt;
+          &lt;paso n=&#34;2&#34;&gt;&lt;![CDATA[accion(&#34;SetNumberObjectVariable&#34;, [&#34;Jugador&#34;, &#34;buffer_salto&#34;, &#34;=&#34;, str(JUMP_BUFFER)])]]&gt;&lt;/paso&gt;
+          &lt;paso n=&#34;3&#34;&gt;En el bloque from config import ( ... ) de tools/generar_proyecto_nativo.py, agrega JUMP_BUFFER en orden alfabético.&lt;/paso&gt;
+        &lt;/pasos&gt;
+        &lt;verificacion&gt;
+          &lt;cmd esperado=&#34;PASS probar_buffer_salto_usa_config&#34;&gt;&lt;![CDATA[PYTHONPATH=. SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python tests/test_export_constantes.py | grep probar_buffer_salto_usa_config]]&gt;&lt;/cmd&gt;
+          &lt;cmd esperado=&#34;código 0 de tests/test_logica.py&#34;&gt;&lt;![CDATA[PYTHONPATH=. SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python tests/test_logica.py | tail -n 1]]&gt;&lt;/cmd&gt;
+        &lt;/verificacion&gt;
+        &lt;criterio_aceptacion&gt;La prueba del buffer pasa y test_logica sigue en verde.&lt;/criterio_aceptacion&gt;
+        &lt;si_falla&gt;Revierte. Reporta el valor encontrado en la salida.&lt;/si_falla&gt;
+      &lt;/tarea&gt;
+
+      &lt;tarea id=&#34;T102&#34; titulo=&#34;Coyote time desde config (COYOTE_TIME)&#34; fase=&#34;F1&#34; riesgo=&#34;bajo&#34; depende_de=&#34;T101&#34; requiere_humano=&#34;no&#34; requiere_gdevelop=&#34;no&#34; cambia_comportamiento=&#34;si&#34; decision_ref=&#34;&#34;&gt;
+        &lt;archivos&gt;tools/generar_proyecto_nativo.py&lt;/archivos&gt;
+        &lt;precondiciones&gt;
+          &lt;cmd esperado=&#34;1&#34;&gt;&lt;![CDATA[grep -c -F &#39;accion(&#34;SetNumberObjectVariable&#34;, [&#34;Jugador&#34;, &#34;coyote&#34;, &#34;=&#34;, &#34;0.18&#34;])&#39; tools/generar_proyecto_nativo.py]]&gt;&lt;/cmd&gt;
+        &lt;/precondiciones&gt;
+        &lt;pasos&gt;
+          &lt;paso n=&#34;1&#34;&gt;&lt;![CDATA[accion(&#34;SetNumberObjectVariable&#34;, [&#34;Jugador&#34;, &#34;coyote&#34;, &#34;=&#34;, str(COYOTE_TIME)])]]&gt;&lt;/paso&gt;
+          &lt;paso n=&#34;2&#34;&gt;Agrega COYOTE_TIME a la importación desde config.&lt;/paso&gt;
+        &lt;/pasos&gt;
+        &lt;verificacion&gt;
+          &lt;cmd esperado=&#34;PASS probar_coyote_usa_config&#34;&gt;&lt;![CDATA[PYTHONPATH=. SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python tests/test_export_constantes.py | grep probar_coyote_usa_config]]&gt;&lt;/cmd&gt;
+        &lt;/verificacion&gt;
+        &lt;criterio_aceptacion&gt;La prueba del coyote pasa.&lt;/criterio_aceptacion&gt;
+        &lt;si_falla&gt;Revierte.&lt;/si_falla&gt;
+      &lt;/tarea&gt;
+
+      &lt;tarea id=&#34;T103&#34; titulo=&#34;Tiempos de ataque desde config (ATAQUE_DURACION y ATAQUE_COOLDOWN)&#34; fase=&#34;F1&#34; riesgo=&#34;bajo&#34; depende_de=&#34;T102&#34; requiere_humano=&#34;no&#34; requiere_gdevelop=&#34;no&#34; cambia_comportamiento=&#34;si&#34; decision_ref=&#34;&#34;&gt;
+        &lt;archivos&gt;tools/generar_proyecto_nativo.py&lt;/archivos&gt;
+        &lt;precondiciones&gt;
+          &lt;cmd esperado=&#34;1&#34;&gt;&lt;![CDATA[grep -c -F &#39;accion(&#34;SetNumberObjectVariable&#34;, [&#34;Jugador&#34;, &#34;ataque_time&#34;, &#34;=&#34;, &#34;0.18&#34;])&#39; tools/generar_proyecto_nativo.py]]&gt;&lt;/cmd&gt;
+          &lt;cmd esperado=&#34;1&#34;&gt;&lt;![CDATA[grep -c -F &#39;accion(&#34;SetNumberObjectVariable&#34;, [&#34;Jugador&#34;, &#34;ataque_cd&#34;, &#34;=&#34;, &#34;0.40&#34;])&#39; tools/generar_proyecto_nativo.py]]&gt;&lt;/cmd&gt;
+        &lt;/precondiciones&gt;
+        &lt;pasos&gt;
+          &lt;paso n=&#34;1&#34;&gt;&lt;![CDATA[accion(&#34;SetNumberObjectVariable&#34;, [&#34;Jugador&#34;, &#34;ataque_time&#34;, &#34;=&#34;, str(ATAQUE_DURACION)])]]&gt;&lt;/paso&gt;
+          &lt;paso n=&#34;2&#34;&gt;&lt;![CDATA[accion(&#34;SetNumberObjectVariable&#34;, [&#34;Jugador&#34;, &#34;ataque_cd&#34;, &#34;=&#34;, str(ATAQUE_COOLDOWN)])]]&gt;&lt;/paso&gt;
+          &lt;paso n=&#34;3&#34;&gt;Agrega ATAQUE_DURACION y ATAQUE_COOLDOWN a la importación desde config.&lt;/paso&gt;
+        &lt;/pasos&gt;
+        &lt;verificacion&gt;
+          &lt;cmd esperado=&#34;PASS probar_ataque_usa_config&#34;&gt;&lt;![CDATA[PYTHONPATH=. SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python tests/test_export_constantes.py | grep probar_ataque_usa_config]]&gt;&lt;/cmd&gt;
+        &lt;/verificacion&gt;
+        &lt;criterio_aceptacion&gt;La prueba de ataque pasa.&lt;/criterio_aceptacion&gt;
+        &lt;si_falla&gt;Revierte. Si el valor de la animación de ataque en GDevelop deja de coincidir con la animación, reporta como nota (no es bloqueante).&lt;/si_falla&gt;
+      &lt;/tarea&gt;
+
+      &lt;tarea id=&#34;T104&#34; titulo=&#34;Dash y saltos: cooldown, velocidad de salto y factor de dash-salto desde config&#34; fase=&#34;F1&#34; riesgo=&#34;bajo&#34; depende_de=&#34;T103&#34; requiere_humano=&#34;no&#34; requiere_gdevelop=&#34;no&#34; cambia_comportamiento=&#34;no&#34; decision_ref=&#34;&#34;&gt;
+        &lt;archivos&gt;tools/generar_proyecto_nativo.py&lt;/archivos&gt;
+        &lt;precondiciones&gt;
+          &lt;cmd esperado=&#34;2&#34;&gt;&lt;![CDATA[grep -c -F &#39;&#34;dash_cd&#34;, &#34;=&#34;, &#34;0.60&#34;&#39; tools/generar_proyecto_nativo.py]]&gt;&lt;/cmd&gt;
+          &lt;cmd esperado=&#34;al menos 1&#34;&gt;&lt;![CDATA[grep -c -F &#39;&#34;620&#34;&#39; tools/generar_proyecto_nativo.py]]&gt;&lt;/cmd&gt;
+          &lt;cmd esperado=&#34;al menos 1&#34;&gt;&lt;![CDATA[grep -c -F &#39;* 1.18&#39; tools/generar_proyecto_nativo.py]]&gt;&lt;/cmd&gt;
+        &lt;/precondiciones&gt;
+        &lt;pasos&gt;
+          &lt;paso n=&#34;1&#34;&gt;Reemplaza cada &#34;dash_cd&#34; con valor &#34;0.60&#34; (hay dos, en el dash en suelo y en el dash aéreo) por str(DASH_COOLDOWN).&lt;/paso&gt;
+          &lt;paso n=&#34;2&#34;&gt;Reemplaza cada literal &#34;620&#34; que sea velocidad de salto (PlatformBehavior::JumpSpeed) por str(int(-SALTO)). No tocar otros usos del número 620.&lt;/paso&gt;
+          &lt;paso n=&#34;3&#34;&gt;Reemplaza el &#34;360&#34; que sea velocidad de rebote al jefe o enemigo (PlatformBehavior::JumpSpeed) por str(int(REBOTE_ENEMIGO)). Verifica que no sea otro valor en el mismo archivo.&lt;/paso&gt;
+          &lt;paso n=&#34;4&#34;&gt;Reemplaza str(int(VELOCIDAD * 1.18)) (y cualquier * 1.18 del mismo sentido) por str(int(VELOCIDAD * DASH_JUMP_IMPULSO_X)).&lt;/paso&gt;
+          &lt;paso n=&#34;5&#34;&gt;Agrega a la importación desde config: DASH_COOLDOWN, DASH_JUMP_IMPULSO_X, REBOTE_ENEMIGO, SALTO, VELOCIDAD (si falta).&lt;/paso&gt;
+        &lt;/pasos&gt;
+        &lt;verificacion&gt;
+          &lt;cmd esperado=&#34;PASS probar_sin_literales_de_config_en_el_export y PASS probar_velocidades_de_salto_usan_config&#34;&gt;&lt;![CDATA[PYTHONPATH=. SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python tests/test_export_constantes.py]]&gt;&lt;/cmd&gt;
+          &lt;cmd esperado=&#34;código 0 de tests/test_logica.py&#34;&gt;&lt;![CDATA[PYTHONPATH=. SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python tests/test_logica.py | tail -n 1]]&gt;&lt;/cmd&gt;
+        &lt;/verificacion&gt;
+        &lt;criterio_aceptacion&gt;Las cuatro pruebas de constantes pasan (TESTS_CONSTANTES_OK). Los valores numéricos resultantes son iguales a los de antes (dash_cd 0,6; JumpSpeed 620 y 360; MaxSpeed 295), salvo los de T101 a T103.&lt;/criterio_aceptacion&gt;
+        &lt;si_falla&gt;Revierte y reporta las ocurrencias ambiguas con su línea de contexto.&lt;/si_falla&gt;
+      &lt;/tarea&gt;
+    &lt;/fase&gt;
+
+    &lt;!-- ========================================================= --&gt;
+    &lt;fase id=&#34;F2&#34; nombre=&#34;fisica_pygame_y_pruebas&#34; tipo=&#34;codigo&#34; riesgo=&#34;medio&#34;&gt;
+      &lt;tarea id=&#34;T201&#34; titulo=&#34;El ápice no se activa con la tecla Z en Pygame&#34; fase=&#34;F2&#34; riesgo=&#34;medio&#34; depende_de=&#34;T104&#34; requiere_humano=&#34;no&#34; requiere_gdevelop=&#34;no&#34; cambia_comportamiento=&#34;si&#34; decision_ref=&#34;D2&#34;&gt;
+        &lt;archivos&gt;entidades.py, tests/test_logica.py&lt;/archivos&gt;
+        &lt;precondiciones&gt;
+          &lt;cmd esperado=&#34;1&#34;&gt;&lt;![CDATA[grep -c -F &#39;or _tecla_activa(teclas, pygame.K_z)&#39; entidades.py]]&gt;&lt;/cmd&gt;
+        &lt;/precondiciones&gt;
+        &lt;pasos&gt;
+          &lt;paso n=&#34;1&#34;&gt;En entidades.py, en la asignación salto_mantenido de Jugador.actualizar, elimina la línea que contiene el ancla or _tecla_activa(teclas, pygame.K_z). Deja el paréntesis de cierre correcto.&lt;/paso&gt;
+          &lt;paso n=&#34;2&#34;&gt;En tests/test_logica.py agrega la función siguiente antes del bloque if __name__ == &#34;__main__&#34; y llámala en el bloque (antes de probar_juego_headless()):&lt;/paso&gt;
+          &lt;paso n=&#34;3&#34;&gt;&lt;![CDATA[
+def probar_apex_no_se_activa_con_z():
+    jugador = Jugador(100, 300)
+    jugador.en_suelo = False
+    jugador.vy = -50.0
+    jugador.manteniendo_salto = False
+    teclas = {pygame.K_z: True}
+    jugador.actualizar(1 / 60, teclas, [])
+    esperado = -50.0 + GRAVEDAD * (1 / 60)
+    assert abs(jugador.vy - esperado) &lt; 1e-4, &#34;Z no debe activar el ápice&#34;
+    print(&#34;apex no se activa con Z: OK&#34;)
+          ]]&gt;&lt;/paso&gt;
+          &lt;paso n=&#34;4&#34;&gt;Agrega GRAVEDAD al bloque de importación desde config de tests/test_logica.py si falta.&lt;/paso&gt;
+        &lt;/pasos&gt;
+        &lt;verificacion&gt;
+          &lt;cmd esperado=&#34;línea apex no se activa con Z: OK y código 0&#34;&gt;&lt;![CDATA[PYTHONPATH=. SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python tests/test_logica.py | grep -E &#34;apex no se activa|TESTS_INCRYPTA_OK&#34;]]&gt;&lt;/cmd&gt;
+        &lt;/verificacion&gt;
+        &lt;criterio_aceptacion&gt;La prueba nueva pasa y todas las pruebas de test_logica siguen en verde.&lt;/criterio_aceptacion&gt;
+        &lt;si_falla&gt;Revierte. Si una prueba antigua falla porque dependía de Z, reporta el nombre exacto y no la modifiques sin registrarlo en notas.&lt;/si_falla&gt;
+      &lt;/tarea&gt;
+
+      &lt;tarea id=&#34;T202&#34; titulo=&#34;Pruebas de regresión de ápice negativo, post-dash y gravedad&#34; fase=&#34;F2&#34; riesgo=&#34;bajo&#34; depende_de=&#34;T201&#34; requiere_humano=&#34;no&#34; requiere_gdevelop=&#34;no&#34; cambia_comportamiento=&#34;no&#34; decision_ref=&#34;D1 D4&#34;&gt;
+        &lt;archivos&gt;tests/test_logica.py&lt;/archivos&gt;
+        &lt;precondiciones&gt;
+          &lt;cmd esperado=&#34;1&#34;&gt;&lt;![CDATA[grep -c -F &#39;def probar_fisica_salto_dash_game_feel():&#39; tests/test_logica.py]]&gt;&lt;/cmd&gt;
+        &lt;/precondiciones&gt;
+        &lt;pasos&gt;
+          &lt;paso n=&#34;1&#34;&gt;Agrega al bloque de importación desde config de tests/test_logica.py: APEX_VY_UMBRAL, COYOTE_TIME, POST_DASH_DURACION, POST_DASH_GRAVEDAD_FACTOR (si faltan).&lt;/paso&gt;
+          &lt;paso n=&#34;2&#34;&gt;Agrega estas funciones antes del bloque if __name__ == &#34;__main__&#34; y llámalas en el bloque (antes de probar_juego_headless()):&lt;/paso&gt;
+          &lt;paso n=&#34;3&#34;&gt;&lt;![CDATA[
+def probar_apex_umbral_negativo():
+    jugador = Jugador(100, 300)
+    jugador.en_suelo = False
+    jugador.vy = -(APEX_VY_UMBRAL + 10.0)
+    jugador.manteniendo_salto = True
+    antes = jugador.vy
+    jugador.actualizar(1 / 60, {pygame.K_SPACE: True}, [])
+    esperado = antes + GRAVEDAD * (1 / 60)
+    assert abs(jugador.vy - esperado) &lt; 1e-4, &#34;con |vy| &gt;= APEX_VY_UMBRAL no hay ápice&#34;
+    print(&#34;apex umbral negativo: OK&#34;)
+
+
+def probar_post_dash_gravedad():
+    jugador = Jugador(100, 300)
+    jugador.en_suelo = False
+    jugador.vy = 0.0
+    jugador.post_dash_tiempo = POST_DASH_DURACION
+    jugador.manteniendo_salto = False
+    jugador.actualizar(1 / 60, {}, [])
+    esperado = GRAVEDAD * POST_DASH_GRAVEDAD_FACTOR * (1 / 60)
+    assert abs(jugador.vy - esperado) &lt; 1e-4, &#34;durante el post-dash la gravedad es POST_DASH_GRAVEDAD_FACTOR&#34;
+    print(&#34;post-dash gravedad: OK&#34;)
+
+
+def probar_coyote_time():
+    jugador = Jugador(100, 300)
+    jugador.en_suelo = False
+    jugador.coyote = COYOTE_TIME
+    for _ in range(4):
+        jugador.actualizar(1 / 60, {}, [])
+    jugador.pedir_salto()
+    jugador.actualizar(1 / 60, {}, [])
+    assert jugador.salto_recien, &#34;dentro del coyote time debe poder saltar&#34;
+    jugador = Jugador(100, 300)
+    jugador.en_suelo = False
+    jugador.coyote = COYOTE_TIME
+    for _ in range(8):
+        jugador.actualizar(1 / 60, {}, [])
+    jugador.pedir_salto()
+    jugador.actualizar(1 / 60, {}, [])
+    assert not jugador.salto_recien, &#34;fuera del coyote time no debe saltar&#34;
+    print(&#34;coyote time: OK&#34;)
+
+
+def probar_jump_buffer():
+    jugador = Jugador(100, 300)
+    jugador.en_suelo = False
+    jugador.coyote = 0.0
+    jugador.pedir_salto()
+    for _ in range(4):
+        jugador.actualizar(1 / 60, {}, [])
+    jugador.en_suelo = True
+    jugador.actualizar(1 / 60, {}, [])
+    assert jugador.salto_recien, &#34;el buffer vigente debe disparar el salto al aterrizar&#34;
+    jugador = Jugador(100, 300)
+    jugador.en_suelo = False
+    jugador.coyote = 0.0
+    jugador.pedir_salto()
+    for _ in range(9):
+        jugador.actualizar(1 / 60, {}, [])
+    jugador.en_suelo = True
+    jugador.actualizar(1 / 60, {}, [])
+    assert not jugador.salto_recien, &#34;el buffer vencido no debe disparar el salto&#34;
+    print(&#34;jump buffer: OK&#34;)
+          ]]&gt;&lt;/paso&gt;
+        &lt;/pasos&gt;
+        &lt;verificacion&gt;
+          &lt;cmd esperado=&#34;las cuatro líneas OK y código 0&#34;&gt;&lt;![CDATA[PYTHONPATH=. SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python tests/test_logica.py | grep -E &#34;apex umbral|post-dash gravedad|coyote time|jump buffer|TESTS_INCRYPTA_OK&#34;]]&gt;&lt;/cmd&gt;
+        &lt;/verificacion&gt;
+        &lt;criterio_aceptacion&gt;Las cuatro pruebas nuevas pasan con la física actual (son pruebas de regresión, no cambian el comportamiento).&lt;/criterio_aceptacion&gt;
+        &lt;si_falla&gt;Si una prueba falla con la física actual, el test está mal escrito o la física tiene un defecto. Revierte el test, reporta la salida completa y no cambies la física en esta tarea.&lt;/si_falla&gt;
+      &lt;/tarea&gt;
+
+      &lt;tarea id=&#34;T203&#34; titulo=&#34;Documentar el criterio de velocidad de dash (D4) en las pruebas&#34; fase=&#34;F2&#34; riesgo=&#34;bajo&#34; depende_de=&#34;T202&#34; requiere_humano=&#34;no&#34; requiere_gdevelop=&#34;no&#34; cambia_comportamiento=&#34;no&#34; decision_ref=&#34;D4&#34;&gt;
+        &lt;archivos&gt;tests/test_logica.py&lt;/archivos&gt;
+        &lt;precondiciones&gt;
+          &lt;cmd esperado=&#34;1&#34;&gt;&lt;![CDATA[grep -c -F &#39;assert jugador.vx == jugador.dash_direccion * VELOCIDAD&#39; tests/test_logica.py]]&gt;&lt;/cmd&gt;
+        &lt;/precondiciones&gt;
+        &lt;pasos&gt;
+          &lt;paso n=&#34;1&#34;&gt;Agrega un comentario justo encima de esa aserción: &#34;Criterio D4: al terminar el dash, vx pasa a VELOCIDAD (250). Cambiar esto es un cambio de diseño.&#34;&lt;/paso&gt;
+        &lt;/pasos&gt;
+        &lt;verificacion&gt;
+          &lt;cmd esperado=&#34;código 0&#34;&gt;&lt;![CDATA[PYTHONPATH=. SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python tests/test_logica.py | tail -n 1]]&gt;&lt;/cmd&gt;
+        &lt;/verificacion&gt;
+        &lt;criterio_aceptacion&gt;Solo se agregó un comentario; las pruebas siguen en verde.&lt;/criterio_aceptacion&gt;
+        &lt;si_falla&gt;Revierte.&lt;/si_falla&gt;
+      &lt;/tarea&gt;
+    &lt;/fase&gt;
+
+    &lt;!-- ========================================================= --&gt;
+    &lt;fase id=&#34;F3&#34; nombre=&#34;fisica_gdevelop&#34; tipo=&#34;codigo&#34; riesgo=&#34;alto&#34;&gt;
+      &lt;tarea id=&#34;T301&#34; titulo=&#34;Escribir post_dash al terminar el dash y el dash-salto, y decrementarlo cada frame&#34; fase=&#34;F3&#34; riesgo=&#34;medio&#34; depende_de=&#34;T104&#34; requiere_humano=&#34;no&#34; requiere_gdevelop=&#34;parcial&#34; cambia_comportamiento=&#34;si&#34; decision_ref=&#34;D4&#34;&gt;
+        &lt;archivos&gt;tools/generar_proyecto_nativo.py, tests/test_export_gravedad.py (nuevo)&lt;/archivos&gt;
+        &lt;precondiciones&gt;
+          &lt;cmd esperado=&#34;sin resultados&#34;&gt;&lt;![CDATA[grep -n -F &#39;&#34;post_dash&#34;, &#34;=&#34;&#39; tools/generar_proyecto_nativo.py; echo fin]]&gt;&lt;/cmd&gt;
+          &lt;cmd esperado=&#34;al menos 1 (la condición que lee post_dash)&#34;&gt;&lt;![CDATA[grep -c -F &#39;&#34;post_dash&#34;, &#34;&gt;&#34;, &#34;0&#34;&#39; tools/generar_proyecto_nativo.py]]&gt;&lt;/cmd&gt;
+        &lt;/precondiciones&gt;
+        &lt;pasos&gt;
+          &lt;paso n=&#34;1&#34;&gt;Localiza el evento de fin de dash: el que contiene la acción SetNumberObjectVariable con &#34;dashing&#34;, &#34;=&#34;, &#34;0&#34; y el comentario &#34;Fin del dash&#34;. Dentro de sus acciones agrega: accion(&#34;SetNumberObjectVariable&#34;, [&#34;Jugador&#34;, &#34;post_dash&#34;, &#34;=&#34;, str(POST_DASH_DURACION)]).&lt;/paso&gt;
+          &lt;paso n=&#34;2&#34;&gt;Localiza el evento del dash-salto (el que contiene &#34;dashing&#34;, &#34;=&#34;, &#34;0&#34; y &#34;buffer_salto&#34;, &#34;=&#34;, &#34;0&#34;). Agrega la misma acción de post_dash.&lt;/paso&gt;
+          &lt;paso n=&#34;3&#34;&gt;Agrega un evento que decremente post_dash cada frame, justo antes del bloque de dash (ancla: &#34;# Recarga del dash.&#34; o el comentario que lo precede):&lt;/paso&gt;
+          &lt;paso n=&#34;4&#34;&gt;&lt;![CDATA[
+evento(
+    [cond(&#34;NumberObjectVariable&#34;, [&#34;Jugador&#34;, &#34;post_dash&#34;, &#34;&gt;&#34;, &#34;0&#34;])],
+    [accion(&#34;SetNumberObjectVariable&#34;, [&#34;Jugador&#34;, &#34;post_dash&#34;, &#34;-&#34;, &#34;TimeDelta()&#34;])],
+),
+          ]]&gt;&lt;/paso&gt;
+          &lt;paso n=&#34;5&#34;&gt;Agrega POST_DASH_DURACION a la importación desde config si falta.&lt;/paso&gt;
+          &lt;paso n=&#34;6&#34;&gt;Crea tests/test_export_gravedad.py con el contenido del elemento archivo_nuevo_gravedad (al final del plan). En T301 solo se usa probar_post_dash_se_escribe; las demás pruebas quedan en FAIL hasta T302.&lt;/paso&gt;
+        &lt;/pasos&gt;
+        &lt;verificacion&gt;
+          &lt;cmd esperado=&#34;PASS probar_post_dash_se_escribe&#34;&gt;&lt;![CDATA[PYTHONPATH=. SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python tests/test_export_gravedad.py | grep probar_post_dash_se_escribe]]&gt;&lt;/cmd&gt;
+          &lt;cmd esperado=&#34;tests de Pygame en verde&#34;&gt;&lt;![CDATA[PYTHONPATH=. SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python tests/test_logica.py | tail -n 1]]&gt;&lt;/cmd&gt;
+        &lt;/verificacion&gt;
+        &lt;criterio_aceptacion&gt;post_dash se escribe al terminar el dash y en el dash-salto, y se decrementa cada frame. Requiere verificación en GDevelop (vista previa) como parte de T302.&lt;/criterio_aceptacion&gt;
+        &lt;si_falla&gt;Revierte. Si el ancla de &#34;Fin del dash&#34; no existe, busca el evento que contiene dash_time con valor 0 y reporta.&lt;/si_falla&gt;
+      &lt;/tarea&gt;
+
+      &lt;tarea id=&#34;T302&#34; titulo=&#34;Un único escritor de gravedad: gravedad_actual calculada en eventos y aplicada al final&#34; fase=&#34;F3&#34; riesgo=&#34;alto&#34; depende_de=&#34;T301&#34; requiere_humano=&#34;no&#34; requiere_gdevelop=&#34;parcial&#34; cambia_comportamiento=&#34;si&#34; decision_ref=&#34;D1 D2 D4&#34;&gt;
+        &lt;archivos&gt;tools/generar_proyecto_nativo.py, tools/exportador/gdevelop.py, tests/test_export_gravedad.py&lt;/archivos&gt;
+        &lt;precondiciones&gt;
+          &lt;cmd esperado=&#34;presentes (PlatformBehavior::IsOnFloor, IsJumping, IsFalling, CurrentJumpSpeed, CurrentFallSpeed, Gravity)&#34;&gt;&lt;![CDATA[for c in IsOnFloor IsJumping IsFalling CurrentJumpSpeed CurrentFallSpeed Gravity; do echo -n &#34;$c=&#34;; grep -o &#34;PlatformBehavior::$c&#34; tools/exportador/datos/metadatos_gdevelop_5_6.json | wc -l; done]]&gt;&lt;/cmd&gt;
+          &lt;cmd esperado=&#34;5 o más (bloques antiguos de ápice)&#34;&gt;&lt;![CDATA[grep -c &#39;reducir gravedad para flotación de ápice&#39; tools/generar_proyecto_nativo.py]]&gt;&lt;/cmd&gt;
+        &lt;/precondiciones&gt;
+        &lt;pasos&gt;
+          &lt;paso n=&#34;1&#34;&gt;En tools/exportador/gdevelop.py, función variables_jugador(), agrega {&#34;name&#34;: &#34;gravedad_actual&#34;, &#34;type&#34;: &#34;number&#34;, &#34;value&#34;: 1500}.&lt;/paso&gt;
+          &lt;paso n=&#34;2&#34;&gt;En tools/generar_proyecto_nativo.py, elimina los eventos de ápice: todos los evento(...) que tengan el comentario &#34;reducir gravedad para flotación de ápice&#34; y el bloque del post-dash que tenga el comentario &#34;La gravedad del post-dash usa POST_DASH_GRAVEDAD_FACTOR&#34;.&lt;/paso&gt;
+          &lt;paso n=&#34;3&#34;&gt;Elimina toda acción accion(&#34;PlatformBehavior::Gravity&#34;, ...) que esté en eventos de dash (inicio del dash con &#34;0&#34;, evento &#34;Mientras dura el dash&#34;, dash-salto con GRAVEDAD y fin del dash con GRAVEDAD). Para localizarlas: grep -n -F &#39;PlatformBehavior::Gravity&#39; tools/generar_proyecto_nativo.py.&lt;/paso&gt;
+          &lt;paso n=&#34;4&#34;&gt;Agrega el bloque siguiente al final de la lista de eventos del jugador (después de los eventos de dash y del decremento de post_dash, y antes del cierre de la lista):&lt;/paso&gt;
+          &lt;paso n=&#34;5&#34;&gt;&lt;![CDATA[
+# --- Gravedad del jugador: un único escritor del comportamiento (plan T302) ---
+_SIN_PISO = cond(&#34;PlatformBehavior::IsOnFloor&#34;, [&#34;Jugador&#34;, &#34;PlatformerObject&#34;], invertida=True)
+_TECLA_SALTO_MANTENIDA = cond_or(
+    cond(&#34;KeyFromTextPressed&#34;, [&#39;&#34;Space&#34;&#39;]),
+    cond(&#34;KeyFromTextPressed&#34;, [&#39;&#34;Up&#34;&#39;]),
+    cond(&#34;KeyFromTextPressed&#34;, [&#39;&#34;w&#34;&#39;]),
+    cond(&#34;KeyFromTextPressed&#34;, [&#39;&#34;W&#34;&#39;]),
+)
+
+
+def _fijar_gravedad_actual(valor: str) -&gt; dict:
+    return accion(&#34;SetNumberObjectVariable&#34;, [&#34;Jugador&#34;, &#34;gravedad_actual&#34;, &#34;=&#34;, valor])
+
+
+bloque_gravedad = [
+    evento([], [_fijar_gravedad_actual(str(int(GRAVEDAD)))]),
+    evento(
+        [
+            _SIN_PISO,
+            _TECLA_SALTO_MANTENIDA,
+            cond(&#34;PlatformBehavior::IsJumping&#34;, [&#34;Jugador&#34;, &#34;PlatformerObject&#34;]),
+            cond(&#34;PlatformBehavior::CurrentJumpSpeed&#34;, [&#34;Jugador&#34;, &#34;PlatformerObject&#34;, &#34;&lt;&#34;, str(int(APEX_VY_UMBRAL))]),
+        ],
+        [_fijar_gravedad_actual(str(int(GRAVEDAD * APEX_GRAVEDAD_FACTOR)))],
+    ),
+    evento(
+        [
+            _SIN_PISO,
+            _TECLA_SALTO_MANTENIDA,
+            cond(&#34;PlatformBehavior::IsFalling&#34;, [&#34;Jugador&#34;, &#34;PlatformerObject&#34;]),
+            cond(&#34;PlatformBehavior::CurrentFallSpeed&#34;, [&#34;Jugador&#34;, &#34;PlatformerObject&#34;, &#34;&lt;&#34;, str(int(APEX_VY_UMBRAL))]),
+        ],
+        [_fijar_gravedad_actual(str(int(GRAVEDAD * APEX_GRAVEDAD_FACTOR)))],
+    ),
+    evento(
+        [cond(&#34;NumberObjectVariable&#34;, [&#34;Jugador&#34;, &#34;post_dash&#34;, &#34;&gt;&#34;, &#34;0&#34;])],
+        [_fijar_gravedad_actual(str(int(GRAVEDAD * POST_DASH_GRAVEDAD_FACTOR)))],
+    ),
+    evento(
+        [cond(&#34;NumberObjectVariable&#34;, [&#34;Jugador&#34;, &#34;dashing&#34;, &#34;=&#34;, &#34;1&#34;])],
+        [_fijar_gravedad_actual(&#34;0&#34;)],
+    ),
+    evento(
+        [],
+        [accion(&#34;PlatformBehavior::Gravity&#34;, [&#34;Jugador&#34;, &#34;PlatformerObject&#34;, &#34;=&#34;, &#34;Jugador.Variable(gravedad_actual)&#34;])],
+    ),
+]
+          ]]&gt;&lt;/paso&gt;
+          &lt;paso n=&#34;6&#34;&gt;Agrega el contenido de bloque_gravedad a la lista de eventos que se devuelve, en el mismo orden. Localiza la lista con grep -n &#34;eventos = \[&#34; tools/generar_proyecto_nativo.py. Si la lista se devuelve con return, agrega bloque_gravedad antes del return.&lt;/paso&gt;
+          &lt;paso n=&#34;7&#34;&gt;Agrega POST_DASH_GRAVEDAD_FACTOR, APEX_VY_UMBRAL, GRAVEDAD y APEX_GRAVEDAD_FACTOR a la importación desde config si faltan.&lt;/paso&gt;
+          &lt;paso n=&#34;8&#34;&gt;En tests/test_export_gravedad.py, verifica que el archivo tests/test_export_gravedad.py contenga las pruebas del elemento archivo_nuevo_gravedad (si T301 ya lo creó, no lo dupliques).&lt;/paso&gt;
+        &lt;/pasos&gt;
+        &lt;verificacion&gt;
+          &lt;cmd esperado=&#34;grep devuelve 1&#34;&gt;&lt;![CDATA[grep -c -F &#39;PlatformBehavior::Gravity&#39; tools/generar_proyecto_nativo.py]]&gt;&lt;/cmd&gt;
+          &lt;cmd esperado=&#34;PASS probar_un_solo_escritor_de_gravedad, PASS probar_valores_de_gravedad_permitidos, PASS probar_aplicacion_de_gravedad_al_final&#34;&gt;&lt;![CDATA[PYTHONPATH=. SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python tests/test_export_gravedad.py]]&gt;&lt;/cmd&gt;
+          &lt;cmd esperado=&#34;EVENTOS_OK&#34;&gt;&lt;![CDATA[.venv/bin/python tools/validar_eventos_gd.py | tail -n 1]]&gt;&lt;/cmd&gt;
+          &lt;cmd esperado=&#34;PARIDAD_OK o solo diferencias de zoom (se corrige en T404)&#34;&gt;&lt;![CDATA[.venv/bin/python tools/verificar_paridad.py | tail -n 1]]&gt;&lt;/cmd&gt;
+        &lt;/verificacion&gt;
+        &lt;criterio_aceptacion&gt;Hay exactamente un PlatformBehavior::Gravity en el export, se aplica después de calcular gravedad_actual, y los valores son solo los permitidos. validar_eventos_gd da EVENTOS_OK. requiere_gdevelop=&#34;parcial&#34;: en la vista previa, la gravedad en el aire debe ser 1500 y la altura de un salto desde el suelo debe acercarse a 128 px (ver tests_sugeridos de v2). Si no hay vista previa, marcar no_verificable para esa parte.&lt;/criterio_aceptacion&gt;
+        &lt;si_falla&gt;Revierte. Si validar_eventos_gd reporta el nombre de una condición de PlatformBehavior como desconocido, no lo cambies: reporta el nombre exacto y la fila de metadatos encontrada.&lt;/si_falla&gt;
+        &lt;nota_de_implementacion&gt;Las condiciones CurrentJumpSpeed y CurrentFallSpeed existen en la documentación de PlatformBehavior de GDevelop 5 (valor positivo). Esta tarea no depende de las variables velocidad_vertical, que se eliminan en T303.&lt;/nota_de_implementacion&gt;
+      &lt;/tarea&gt;
+
+      &lt;tarea id=&#34;T303&#34; titulo=&#34;Eliminar variables muertas de velocidad vertical&#34; fase=&#34;F3&#34; riesgo=&#34;bajo&#34; depende_de=&#34;T302&#34; requiere_humano=&#34;no&#34; requiere_gdevelop=&#34;no&#34; cambia_comportamiento=&#34;no&#34; decision_ref=&#34;&#34;&gt;
+        &lt;archivos&gt;tools/generar_proyecto_nativo.py, tools/exportador/gdevelop.py&lt;/archivos&gt;
+        &lt;precondiciones&gt;
+          &lt;cmd esperado=&#34;al menos 1&#34;&gt;&lt;![CDATA[grep -c -F &#39;velocidad_vertical&#39; tools/generar_proyecto_nativo.py]]&gt;&lt;/cmd&gt;
+        &lt;/precondiciones&gt;
+        &lt;pasos&gt;
+          &lt;paso n=&#34;1&#34;&gt;En tools/generar_proyecto_nativo.py, elimina las acciones SetNumberObjectVariable de &#34;velocidad_vertical&#34; y &#34;velocidad_vertical_abs&#34; en el evento SceneJustBegins (y su comentario &#34;Variables auxiliares de velocidad vertical&#34;).&lt;/paso&gt;
+          &lt;paso n=&#34;2&#34;&gt;Elimina la acción SetNumberVariable con &#34;velocidad_vertical_umbral&#34; en el evento SceneJustBegins y en el evento de la variable global de ápice; si un evento queda vacío, elimínalo.&lt;/paso&gt;
+          &lt;paso n=&#34;3&#34;&gt;En tools/exportador/gdevelop.py, en variables_jugador(), elimina las entradas &#34;velocidad_vertical&#34;, &#34;velocidad_vertical_abs&#34; y &#34;post_dash_timer&#34; (esta última no se usa).&lt;/paso&gt;
+          &lt;paso n=&#34;4&#34;&gt;Verifica con grep que no queden referencias: grep -n -F &#39;velocidad_vertical&#39; tools/generar_proyecto_nativo.py tools/exportador/gdevelop.py.&lt;/paso&gt;
+        &lt;/pasos&gt;
+        &lt;verificacion&gt;
+          &lt;cmd esperado=&#34;sin resultados&#34;&gt;&lt;![CDATA[grep -n -F &#39;velocidad_vertical&#39; tools/generar_proyecto_nativo.py tools/exportador/gdevelop.py; echo fin]]&gt;&lt;/cmd&gt;
+          &lt;cmd esperado=&#34;PASS probar_sin_variables_muertas (agregar esta prueba en tests/test_export_gravedad.py si falta)&#34;&gt;&lt;![CDATA[PYTHONPATH=. SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python tests/test_export_gravedad.py | grep probar_sin_variables_muertas]]&gt;&lt;/cmd&gt;
+          &lt;cmd esperado=&#34;EVENTOS_OK&#34;&gt;&lt;![CDATA[.venv/bin/python tools/validar_eventos_gd.py | tail -n 1]]&gt;&lt;/cmd&gt;
+        &lt;/verificacion&gt;
+        &lt;criterio_aceptacion&gt;No quedan referencias a las variables muertas; validar_eventos_gd da EVENTOS_OK.&lt;/criterio_aceptacion&gt;
+        &lt;si_falla&gt;Revierte.&lt;/si_falla&gt;
+      &lt;/tarea&gt;
+
+      &lt;tarea id=&#34;T304&#34; titulo=&#34;Corte de salto: documentar la divergencia (decisión D3, opción B)&#34; fase=&#34;F3&#34; riesgo=&#34;bajo&#34; depende_de=&#34;T303&#34; requiere_humano=&#34;no&#34; requiere_gdevelop=&#34;no&#34; cambia_comportamiento=&#34;no&#34; decision_ref=&#34;D3&#34;&gt;
+        &lt;archivos&gt;tools/generar_proyecto_nativo.py&lt;/archivos&gt;
+        &lt;precondiciones&gt;
+          &lt;cmd esperado=&#34;al menos 1&#34;&gt;&lt;![CDATA[grep -c -F &#39;AbortJump&#39; tools/generar_proyecto_nativo.py]]&gt;&lt;/cmd&gt;
+        &lt;/precondiciones&gt;
+        &lt;pasos&gt;
+          &lt;paso n=&#34;1&#34;&gt;Encima de cada bloque que contiene AbortJump, agrega el comentario: &#34;# Divergencia conocida (D3): AbortJump detiene el movimiento vertical; Pygame multiplica vy por CORTE_SALTO (0,45) una sola vez al soltar.&#34;&lt;/paso&gt;
+        &lt;/pasos&gt;
+        &lt;verificacion&gt;
+          &lt;cmd esperado=&#34;código 0&#34;&gt;&lt;![CDATA[PYTHONPATH=. SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python tests/test_export_constantes.py; echo $?]]&gt;&lt;/cmd&gt;
+        &lt;/verificacion&gt;
+        &lt;criterio_aceptacion&gt;Solo comentarios; el export no cambia.&lt;/criterio_aceptacion&gt;
+        &lt;si_falla&gt;Revierte.&lt;/si_falla&gt;
+      &lt;/tarea&gt;
+
+      &lt;tarea id=&#34;T305&#34; titulo=&#34;Pisotón al jefe: traducir el umbral de Pygame (32 px), no copiar el 10&#34; fase=&#34;F3&#34; riesgo=&#34;medio&#34; depende_de=&#34;T304&#34; requiere_humano=&#34;parcial&#34; requiere_gdevelop=&#34;si&#34; cambia_comportamiento=&#34;si&#34; decision_ref=&#34;&#34;&gt;
+        &lt;archivos&gt;tools/generar_proyecto_nativo.py&lt;/archivos&gt;
+        &lt;nota_de_correccion&gt;La versión 2 del análisis propuso reemplazar 10 por 32. Eso no es una traducción directa: el umbral de Pygame compara bottom del rect del jugador con top del jefe más 32, y el de GDevelop compara PosY con Jefe.Y() menos 10 sobre un origen y una máscara distintos. La tarea no aplica un número fijo. Primero deriva la condición con la caja real de GDevelop.&lt;/nota_de_correccion&gt;
+        &lt;precondiciones&gt;
+          &lt;cmd esperado=&#34;2 (fase 1 y fase 2)&#34;&gt;&lt;![CDATA[grep -c -F &#39;&#34;Jefe.Y() - 10&#34;&#39; tools/generar_proyecto_nativo.py]]&gt;&lt;/cmd&gt;
+        &lt;/precondiciones&gt;
+        &lt;pasos&gt;
+          &lt;paso n=&#34;1&#34;&gt;Parada obligatoria: deriva la condición equivalente con la caja de colisión real. Hipótesis a verificar: en GDevelop la máscara de Jugador es 24x30 con desplazamiento (4,2) en el sprite 32x32 (ver MASK_COLISION_JUGADOR en integrar_assets_gdevelop.py). Con Jugador.Y() como origen del sprite, el borde inferior de la máscara es Jugador.Y() + 32. Si el jefe tiene su origen en su esquina superior, la condición equivalente a &#34;bottom menor o igual que top más 32&#34; sería Jugador.Y() + 32 menor o igual que Jefe.Y() + 32.&lt;/paso&gt;
+          &lt;paso n=&#34;2&#34;&gt;Confirma la hipótesis del paso 1 en la vista previa (requiere_gdevelop) midiendo la posición del jugador en el momento del contacto. Si no hay vista previa, marca estado requiere_humano y no cambies la condición.&lt;/paso&gt;
+          &lt;paso n=&#34;3&#34;&gt;Si la hipótesis se confirma, reemplaza las dos condiciones PosY(...) con Jefe.Y() menos 10 por la forma derivada, y combina con la velocidad vertical positiva con cond(&#34;PlatformBehavior::IsFalling&#34;, ...).&lt;/paso&gt;
+        &lt;/pasos&gt;
+        &lt;verificacion&gt;
+          &lt;cmd esperado=&#34;0 ocurrencias del ancla tras el cambio&#34;&gt;&lt;![CDATA[grep -c -F &#39;&#34;Jefe.Y() - 10&#34;&#39; tools/generar_proyecto_nativo.py]]&gt;&lt;/cmd&gt;
+          &lt;cmd esperado=&#34;EVENTOS_OK&#34;&gt;&lt;![CDATA[.venv/bin/python tools/validar_eventos_gd.py | tail -n 1]]&gt;&lt;/cmd&gt;
+        &lt;/verificacion&gt;
+        &lt;criterio_aceptacion&gt;La condición derivada está documentada en un comentario con la fuente (juego.py, actualizar_jefe) y su verificación en vista previa. Si no hay verificación, la tarea queda en requiere_humano.&lt;/criterio_aceptacion&gt;
+        &lt;si_falla&gt;Revierte la tarea completa. No dejes el umbral a medio cambiar.&lt;/si_falla&gt;
+      &lt;/tarea&gt;
+    &lt;/fase&gt;
+
+    &lt;!-- ========================================================= --&gt;
+    &lt;fase id=&#34;F4&#34; nombre=&#34;pipeline_y_rutas&#34; tipo=&#34;codigo&#34; riesgo=&#34;medio&#34;&gt;
+      &lt;tarea id=&#34;T401&#34; titulo=&#34;Quitar escrituras fuera del repo: espejo y configuración del IDE&#34; fase=&#34;F4&#34; riesgo=&#34;bajo&#34; depende_de=&#34;T305&#34; requiere_humano=&#34;no&#34; requiere_gdevelop=&#34;no&#34; cambia_comportamiento=&#34;no&#34; decision_ref=&#34;&#34;&gt;
+        &lt;archivos&gt;tools/generar_proyecto_nativo.py&lt;/archivos&gt;
+        &lt;precondiciones&gt;
+          &lt;cmd esperado=&#34;1&#34;&gt;&lt;![CDATA[grep -c -F &#39;/home/sanodesu/In-Crypta/export/gdevelop_nativo&#39; tools/generar_proyecto_nativo.py]]&gt;&lt;/cmd&gt;
+          &lt;cmd esperado=&#34;1&#34;&gt;&lt;![CDATA[grep -c -F &#39;open-projects.json&#39; tools/generar_proyecto_nativo.py]]&gt;&lt;/cmd&gt;
+        &lt;/precondiciones&gt;
+        &lt;pasos&gt;
+          &lt;paso n=&#34;1&#34;&gt;En main(), elimina el bloque que empieza en el comentario &#34;Sincronizar espejo en ~/In-Crypta&#34; y el bloque que empieza en &#34;Actualizar open-projects.json&#34;. Incluye sus try/except.&lt;/paso&gt;
+          &lt;paso n=&#34;2&#34;&gt;Si shutil ya no se usa en el archivo, elimina su import (grep -n &#39;shutil&#39; antes).&lt;/paso&gt;
+        &lt;/pasos&gt;
+        &lt;verificacion&gt;
+          &lt;cmd esperado=&#34;sin resultados&#34;&gt;&lt;![CDATA[grep -n -F -e &#39;/home/sanodesu&#39; -e &#39;open-projects.json&#39; -e &#39;In-Crypta&#39; tools/generar_proyecto_nativo.py; echo fin]]&gt;&lt;/cmd&gt;
+          &lt;cmd esperado=&#34;código 0 al compilar&#34;&gt;&lt;![CDATA[.venv/bin/python -m py_compile tools/generar_proyecto_nativo.py; echo $?]]&gt;&lt;/cmd&gt;
+        &lt;/verificacion&gt;
+        &lt;criterio_aceptacion&gt;No queda ninguna escritura fuera de export/gdevelop_nativo/.&lt;/criterio_aceptacion&gt;
+        &lt;si_falla&gt;Revierte.&lt;/si_falla&gt;
+      &lt;/tarea&gt;
+
+      &lt;tarea id=&#34;T402&#34; titulo=&#34;Plantilla base del proyecto sin ruta personal (decisión D6)&#34; fase=&#34;F4&#34; riesgo=&#34;medio&#34; depende_de=&#34;T401&#34; requiere_humano=&#34;parcial&#34; requiere_gdevelop=&#34;no&#34; cambia_comportamiento=&#34;no&#34; decision_ref=&#34;D6&#34;&gt;
+        &lt;archivos&gt;tools/generar_proyecto_nativo.py&lt;/archivos&gt;
+        &lt;precondiciones&gt;
+          &lt;cmd esperado=&#34;1&#34;&gt;&lt;![CDATA[grep -c -F &#39;BASE_PROJECT = (&#39; tools/generar_proyecto_nativo.py]]&gt;&lt;/cmd&gt;
+        &lt;/precondiciones&gt;
+        &lt;pasos&gt;
+          &lt;paso n=&#34;1&#34;&gt;Parada obligatoria: lista las claves del base que se usan. grep -n -E &#39;base\[|base\.get|base\.&#39; tools/generar_proyecto_nativo.py. Si construir_proyecto solo toma claves de metadatos (por ejemplo properties) y no toma extensiones, recursos, sonidos ni fuentes del base, continúa al paso 2. Si toma cualquiera de esas cosas, detente: estado requiere_humano, y pide el archivo plantilla_base.json al usuario.&lt;/paso&gt;
+          &lt;paso n=&#34;2&#34;&gt;Reemplaza BASE_PROJECT y la lectura base = json.loads(BASE_PROJECT.read_text(...)) por una función plantilla_base() que devuelva un dict con solo las claves identificadas en el paso 1.&lt;/paso&gt;
+          &lt;paso n=&#34;3&#34;&gt;Elimina la referencia a Path.home() de BASE_PROJECT.&lt;/paso&gt;
+        &lt;/pasos&gt;
+        &lt;verificacion&gt;
+          &lt;cmd esperado=&#34;sin resultados&#34;&gt;&lt;![CDATA[grep -n -F &#39;Path.home()&#39; tools/generar_proyecto_nativo.py; echo fin]]&gt;&lt;/cmd&gt;
+          &lt;cmd esperado=&#34;EVENTOS_OK&#34;&gt;&lt;![CDATA[.venv/bin/python tools/validar_eventos_gd.py | tail -n 1]]&gt;&lt;/cmd&gt;
+        &lt;/verificacion&gt;
+        &lt;criterio_aceptacion&gt;El export corre en una máquina sin el archivo de Documentos/GDevelop projects. Se comprueba borrando temporalmente el archivo (solo en la prueba) o revisando que no hay lecturas fuera del repo.&lt;/criterio_aceptacion&gt;
+        &lt;si_falla&gt;Revierte y deja requiere_humano con la lista de claves encontradas.&lt;/si_falla&gt;
+      &lt;/tarea&gt;
+
+      &lt;tarea id=&#34;T403&#34; titulo=&#34;Los errores de integración de assets deben propagarse y las pruebas del pipeline&#34; fase=&#34;F4&#34; riesgo=&#34;medio&#34; depende_de=&#34;T402&#34; requiere_humano=&#34;no&#34; requiere_gdevelop=&#34;no&#34; cambia_comportamiento=&#34;no&#34; decision_ref=&#34;&#34;&gt;
+        &lt;archivos&gt;tools/generar_proyecto_nativo.py, tests/test_export_pipeline.py (nuevo)&lt;/archivos&gt;
+        &lt;precondiciones&gt;
+          &lt;cmd esperado=&#34;1&#34;&gt;&lt;![CDATA[grep -c -F &#39;Aviso al integrar assets pixel-art&#39; tools/generar_proyecto_nativo.py]]&gt;&lt;/cmd&gt;
+        &lt;/precondiciones&gt;
+        &lt;pasos&gt;
+          &lt;paso n=&#34;1&#34;&gt;En main(), reemplaza el bloque try: import integrar_assets_gdevelop ... except Exception as err: print(...) por llamadas directas sin try/except, con la misma secuencia (generar_todos_los_assets, actualizar_proyecto_gdevelop sobre destino).&lt;/paso&gt;
+          &lt;paso n=&#34;2&#34;&gt;Crea tests/test_export_pipeline.py con el contenido siguiente:&lt;/paso&gt;
+          &lt;paso n=&#34;3&#34;&gt;&lt;![CDATA[
+import sys
+import tempfile
+from pathlib import Path
+from unittest import mock
+
+from test_export_constantes import RAIZ  # noqa: F401  (configura sys.path y SDL)
+
+import generar_proyecto_nativo as gen
+import integrar_assets_gdevelop as integ
+
+
+def probar_error_de_integracion_se_propaga():
+    with tempfile.TemporaryDirectory() as tmp, \
+            mock.patch.object(gen, &#34;OUT&#34;, Path(tmp)), \
+            mock.patch.object(gen, &#34;ASSETS&#34;, Path(tmp) / &#34;assets&#34;), \
+            mock.patch.object(gen, &#34;generar_assets&#34;, lambda escenas: None), \
+            mock.patch.object(gen, &#34;construir_proyecto&#34;,
+                              lambda escenas: {&#34;layouts&#34;: [], &#34;resources&#34;: {&#34;resources&#34;: []}, &#34;variables&#34;: []}), \
+            mock.patch.object(gen, &#34;limpiar_assets&#34;, lambda proyecto: []), \
+            mock.patch.object(integ, &#34;generar_todos_los_assets&#34;, side_effect=RuntimeError(&#34;PNG faltante&#34;)):
+        try:
+            gen.main()
+        except RuntimeError:
+            print(&#34;PASS probar_error_de_integracion_se_propaga&#34;)
+            return
+    print(&#34;FAIL probar_error_de_integracion_se_propaga: main() no propagó el error&#34;)
+    sys.exit(1)
+
+
+if __name__ == &#34;__main__&#34;:
+    probar_error_de_integracion_se_propaga()
+          ]]&gt;&lt;/paso&gt;
+        &lt;/pasos&gt;
+        &lt;verificacion&gt;
+          &lt;cmd esperado=&#34;PASS probar_error_de_integracion_se_propaga&#34;&gt;&lt;![CDATA[PYTHONPATH=. SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python tests/test_export_pipeline.py]]&gt;&lt;/cmd&gt;
+        &lt;/verificacion&gt;
+        &lt;criterio_aceptacion&gt;La prueba pasa: un fallo de integración hace fallar el export.&lt;/criterio_aceptacion&gt;
+        &lt;si_falla&gt;Si la prueba se queda en el main por la lectura de escenas reales, cambia mock de leer_escena también. Reporta el paso exacto que falla.&lt;/si_falla&gt;
+      &lt;/tarea&gt;
+
+      &lt;tarea id=&#34;T404&#34; titulo=&#34;verificar_paridad: comprobar física, animaciones y zoom en el JSON&#34; fase=&#34;F4&#34; riesgo=&#34;medio&#34; depende_de=&#34;T403&#34; requiere_humano=&#34;no&#34; requiere_gdevelop=&#34;no&#34; cambia_comportamiento=&#34;no&#34; decision_ref=&#34;&#34;&gt;
+        &lt;archivos&gt;tools/verificar_paridad.py&lt;/archivos&gt;
+        &lt;precondiciones&gt;
+          &lt;cmd esperado=&#34;1&#34;&gt;&lt;![CDATA[grep -c -F &#34;zoom_esperado = f&#39;\&#34;{CAMARA_ZOOM}\&#34;&#39;&#34; tools/verificar_paridad.py]]&gt;&lt;/cmd&gt;
+        &lt;/precondiciones&gt;
+        &lt;pasos&gt;
+          &lt;paso n=&#34;1&#34;&gt;Agrega la función comparar_comportamiento_jugador(informe, proyecto). Recorre proyecto[&#34;layouts&#34;], para cada escena recorre escena[&#34;objects&#34;] (o lista equivalente) y para el objeto de nombre Jugador toma el behavior con name PlatformerObject. Compara gravity con GRAVEDAD, jumpSpeed con -SALTO, maxFallingSpeed con MAX_CAIDA y maxSpeed con VELOCIDAD usando informe.ok o informe.mal.&lt;/paso&gt;
+          &lt;paso n=&#34;2&#34;&gt;Agrega comparar_animaciones_jugador(informe, proyecto): verifica que Jugador tenga 16 animaciones y que todo número usado en ChangeAnimation de los eventos sea menor que 16.&lt;/paso&gt;
+          &lt;paso n=&#34;3&#34;&gt;Reemplaza la comprobación de zoom basada en subcadena por una que busque la acción de zoom de cámara en los eventos (grep -n &#39;ZoomCamera&#39; tools/generar_proyecto_nativo.py para ver el nombre exacto usado) y compare su parámetro numérico con CAMARA_ZOOM como float.&lt;/paso&gt;
+          &lt;paso n=&#34;4&#34;&gt;Llama a las tres funciones desde main(), antes de imprimir el resultado.&lt;/paso&gt;
+        &lt;/pasos&gt;
+        &lt;verificacion&gt;
+          &lt;cmd esperado=&#34;PARIDAD_OK&#34;&gt;&lt;![CDATA[.venv/bin/python tools/verificar_paridad.py | tail -n 1]]&gt;&lt;/cmd&gt;
+          &lt;cmd esperado=&#34;al menos una línea OK de física y una de animaciones&#34;&gt;&lt;![CDATA[.venv/bin/python tools/verificar_paridad.py | grep -i -E &#34;jugador|animaci&#34;]]&gt;&lt;/cmd&gt;
+        &lt;/verificacion&gt;
+        &lt;criterio_aceptacion&gt;Si el export actual cumple, PARIDAD_OK. Si algún valor físico no coincide, la verificación falla con el nombre de la propiedad. Esto hace que un cambio como el de T302 se detecte.&lt;/criterio_aceptacion&gt;
+        &lt;si_falla&gt;Si el export actual ya no cumple por un cambio de T30x, eso es correcto: reporta la diferencia, no la ocultes.&lt;/si_falla&gt;
+      &lt;/tarea&gt;
+
+      &lt;tarea id=&#34;T405&#34; titulo=&#34;Retirar la ruta B (runtime JavaScript) del pipeline (decisión D5)&#34; fase=&#34;F4&#34; riesgo=&#34;medio&#34; depende_de=&#34;T404&#34; requiere_humano=&#34;no&#34; requiere_gdevelop=&#34;no&#34; cambia_comportamiento=&#34;no&#34; decision_ref=&#34;D5&#34;&gt;
+        &lt;archivos&gt;tools/exportar_todo.py, tools/export_gdevelop.py, export/gdevelop/runtime_gdevelop.js, tests/test_runtime_gdevelop.js, export/gdevelop/LEEME.md&lt;/archivos&gt;
+        &lt;precondiciones&gt;
+          &lt;cmd esperado=&#34;sin resultados (legacy/ no existe aún)&#34;&gt;&lt;![CDATA[ls legacy 2&gt;/dev/null; echo fin]]&gt;&lt;/cmd&gt;
+        &lt;/precondiciones&gt;
+        &lt;pasos&gt;
+          &lt;paso n=&#34;1&#34;&gt;&lt;![CDATA[mkdir -p legacy/tools legacy/export/gdevelop legacy/tests]]&gt;&lt;/paso&gt;
+          &lt;paso n=&#34;2&#34;&gt;&lt;![CDATA[git mv tools/export_gdevelop.py legacy/tools/ &amp;&amp; git mv export/gdevelop/runtime_gdevelop.js legacy/export/gdevelop/ &amp;&amp; git mv tests/test_runtime_gdevelop.js legacy/tests/ &amp;&amp; git mv export/gdevelop/LEEME.md legacy/export/gdevelop/]]&gt;&lt;/paso&gt;
+          &lt;paso n=&#34;3&#34;&gt;En tools/exportar_todo.py elimina el bloque &#34;Paso 1: JSON para el runtime JS&#34; y la lista de fallos asociada, y ajusta el texto de _imprimir_resultado para quitar la línea de game_data.json.&lt;/paso&gt;
+        &lt;/pasos&gt;
+        &lt;verificacion&gt;
+          &lt;cmd esperado=&#34;sin resultados en código activo&#34;&gt;&lt;![CDATA[grep -rn -F &#39;export_gdevelop.py&#39; tools tests --include=*.py | grep -v legacy; echo fin]]&gt;&lt;/cmd&gt;
+          &lt;cmd esperado=&#34;EXPORT COMPLETO&#34;&gt;&lt;![CDATA[.venv/bin/python tools/exportar_todo.py | grep -i &#34;EXPORT COMPLETO&#34;]]&gt;&lt;/cmd&gt;
+        &lt;/verificacion&gt;
+        &lt;criterio_aceptacion&gt;exportar_todo ya no llama al exportador JSON del runtime y termina en EXPORT COMPLETO. legacy/ contiene los archivos movidos.&lt;/criterio_aceptacion&gt;
+        &lt;si_falla&gt;Revierte con git checkout y deshaz git mv si quedó a medias (git status).&lt;/si_falla&gt;
+      &lt;/tarea&gt;
+
+      &lt;tarea id=&#34;T406&#34; titulo=&#34;Quitar rutas de usuario de las herramientas de validación&#34; fase=&#34;F4&#34; riesgo=&#34;bajo&#34; depende_de=&#34;T405&#34; requiere_humano=&#34;no&#34; requiere_gdevelop=&#34;no&#34; cambia_comportamiento=&#34;no&#34; decision_ref=&#34;&#34;&gt;
+        &lt;archivos&gt;tools/compilar_proyecto_gd.js, tools/previsualizar_nativo.py, tools/instalar_gdevelop.py&lt;/archivos&gt;
+        &lt;precondiciones&gt;
+          &lt;cmd esperado=&#34;al menos 1&#34;&gt;&lt;![CDATA[grep -rn -F &#39;sanodesu&#39; tools | wc -l]]&gt;&lt;/cmd&gt;
+        &lt;/precondiciones&gt;
+        &lt;pasos&gt;
+          &lt;paso n=&#34;1&#34;&gt;En cada archivo, reemplaza los valores por defecto con rutas de usuario por una variable de entorno GDEVELOP_RUNTIME_DIR (y GDEVELOP_IDE_DIR si aplica). Si la variable no está definida, el script termina con un mensaje claro y código distinto de cero.&lt;/paso&gt;
+          &lt;paso n=&#34;2&#34;&gt;Elimina cualquier referencia a /home/sanodesu y a rutas de flatpak fijas.&lt;/paso&gt;
+        &lt;/pasos&gt;
+        &lt;verificacion&gt;
+          &lt;cmd esperado=&#34;0&#34;&gt;&lt;![CDATA[grep -rn -F &#39;sanodesu&#39; tools tests docs export | wc -l]]&gt;&lt;/cmd&gt;
+          &lt;cmd esperado=&#34;código 0&#34;&gt;&lt;![CDATA[node --check tools/compilar_proyecto_gd.js; echo $?]]&gt;&lt;/cmd&gt;
+        &lt;/verificacion&gt;
+        &lt;criterio_aceptacion&gt;No quedan rutas personales en el código activo. Los scripts fallan con mensaje claro si falta la variable.&lt;/criterio_aceptacion&gt;
+        &lt;si_falla&gt;Revierte.&lt;/si_falla&gt;
+      &lt;/tarea&gt;
+
+      &lt;tarea id=&#34;T407&#34; titulo=&#34;Completar __all__ del paquete exportador&#34; fase=&#34;F4&#34; riesgo=&#34;bajo&#34; depende_de=&#34;T406&#34; requiere_humano=&#34;no&#34; requiere_gdevelop=&#34;no&#34; cambia_comportamiento=&#34;no&#34; decision_ref=&#34;&#34;&gt;
+        &lt;archivos&gt;tools/exportador/__init__.py&lt;/archivos&gt;
+        &lt;precondiciones&gt;
+          &lt;cmd esperado=&#34;1&#34;&gt;&lt;![CDATA[grep -c -F &#39;__all__&#39; tools/exportador/__init__.py]]&gt;&lt;/cmd&gt;
+        &lt;/precondiciones&gt;
+        &lt;pasos&gt;
+          &lt;paso n=&#34;1&#34;&gt;Reemplaza __all__ por la lista de los 9 módulos del paquete: adaptadores, gdevelop, manifiesto, metadatos, modelo, pipeline, reglas, sprites y extraer_metadatos no (es un script JS). Verifica con ls tools/exportador/*.py.&lt;/paso&gt;
+        &lt;/pasos&gt;
+        &lt;verificacion&gt;
+          &lt;cmd esperado=&#34;código 0&#34;&gt;&lt;![CDATA[PYTHONPATH=. .venv/bin/python -c &#34;import tools.exportador as e; print(sorted(e.__all__))&#34;; echo $?]]&gt;&lt;/cmd&gt;
+        &lt;/verificacion&gt;
+        &lt;criterio_aceptacion&gt;__all__ lista los 8 módulos Python del paquete y el import funciona.&lt;/criterio_aceptacion&gt;
+        &lt;si_falla&gt;Si el import de tools.exportador falla por ruta, usa sys.path como hace generar_proyecto_nativo.py y reporta.&lt;/si_falla&gt;
+      &lt;/tarea&gt;
+    &lt;/fase&gt;
+
+    &lt;!-- ========================================================= --&gt;
+    &lt;fase id=&#34;F5&#34; nombre=&#34;documentacion&#34; tipo=&#34;docs&#34; riesgo=&#34;bajo&#34;&gt;
+      &lt;tarea id=&#34;T501&#34; titulo=&#34;Corregir la especificación v0.2.4 con los valores reales del código&#34; fase=&#34;F5&#34; riesgo=&#34;bajo&#34; depende_de=&#34;T305&#34; requiere_humano=&#34;no&#34; requiere_gdevelop=&#34;no&#34; cambia_comportamiento=&#34;no&#34; decision_ref=&#34;D1&#34;&gt;
+        &lt;archivos&gt;docs/especificaci_n_t_cnica_v0_2_4.md&lt;/archivos&gt;
+        &lt;precondiciones&gt;
+          &lt;cmd esperado=&#34;al menos 1&#34;&gt;&lt;![CDATA[grep -c -F &#39;95.0&#39; docs/especificaci_n_t_cnica_v0_2_4.md]]&gt;&lt;/cmd&gt;
+        &lt;/precondiciones&gt;
+        &lt;pasos&gt;
+          &lt;paso n=&#34;1&#34;&gt;Reemplaza el umbral 95.0 por 70 (ancla &#34;95.0&#34;, en FIX-PHYS-01 y en el texto de Apex). Coincide con config.py.&lt;/paso&gt;
+          &lt;paso n=&#34;2&#34;&gt;FIX-GD-03: el target correcto es tools/integrar_assets_gdevelop.py; agrega &#34;implementado en integrar_assets (ver análisis H9)&#34;.&lt;/paso&gt;
+          &lt;paso n=&#34;3&#34;&gt;FIX-GD-04: el target tools/exportador/hoja_eventos.py no existe. Cambia el target a tools/integrar_assets_gdevelop.py.&lt;/paso&gt;
+          &lt;paso n=&#34;4&#34;&gt;REV-01: reemplaza &#34;escudo_parry&#34; por &#34;rebote_pala (alias rebote_metalico)&#34; o agrega una nota de que el SFX de parry queda pendiente.&lt;/paso&gt;
+          &lt;paso n=&#34;5&#34;&gt;FIX-PHYS-02: cambia &#34;conservando el 100%&#34; por &#34;la velocidad horizontal pasa de DASH_VELOCIDAD a VELOCIDAD al terminar el dash (criterio D4)&#34;.&lt;/paso&gt;
+        &lt;/pasos&gt;
+        &lt;verificacion&gt;
+          &lt;cmd esperado=&#34;0 ocurrencias de 95.0 y de hoja_eventos&#34;&gt;&lt;![CDATA[grep -c -F -e &#39;95.0&#39; -e &#39;hoja_eventos&#39; docs/especificaci_n_t_cnica_v0_2_4.md]]&gt;&lt;/cmd&gt;
+        &lt;/verificacion&gt;
+        &lt;criterio_aceptacion&gt;La especificación describe el código real en esos cinco puntos.&lt;/criterio_aceptacion&gt;
+        &lt;si_falla&gt;Revierte.&lt;/si_falla&gt;
+      &lt;/tarea&gt;
+
+      &lt;tarea id=&#34;T502&#34; titulo=&#34;Corregir la documentación del exportador (zoom, CLI inexistente, pip)&#34; fase=&#34;F5&#34; riesgo=&#34;bajo&#34; depende_de=&#34;T501&#34; requiere_humano=&#34;no&#34; requiere_gdevelop=&#34;no&#34; cambia_comportamiento=&#34;no&#34; decision_ref=&#34;&#34;&gt;
+        &lt;archivos&gt;docs/ARQUITECTURA_EXPORTADOR_GDEVELOP.md, docs/EXPORTADOR_GDEVELOP.md&lt;/archivos&gt;
+        &lt;precondiciones&gt;
+          &lt;cmd esperado=&#34;al menos 1&#34;&gt;&lt;![CDATA[grep -c -F &#39;pygame_gdevelop_exporter&#39; docs/ARQUITECTURA_EXPORTADOR_GDEVELOP.md]]&gt;&lt;/cmd&gt;
+          &lt;cmd esperado=&#34;al menos 1&#34;&gt;&lt;![CDATA[grep -c -F &#39;RENDER_W / ANCHO = 1.5&#39; docs/EXPORTADOR_GDEVELOP.md]]&gt;&lt;/cmd&gt;
+        &lt;/precondiciones&gt;
+        &lt;pasos&gt;
+          &lt;paso n=&#34;1&#34;&gt;En ARQUITECTURA, reemplaza la sección 5 (instalación con pip y CLI python -m pygame_gdevelop_exporter) por los comandos reales: PYTHONPATH=. .venv/bin/python tools/exportar_todo.py y los pasos de la suite.&lt;/paso&gt;
+          &lt;paso n=&#34;2&#34;&gt;En EXPORTADOR, reemplaza GAME_ZOOM = RENDER_W / ANCHO = 1.5 por GAME_ZOOM = CAMARA_ZOOM = 1.25 y actualiza las frases que lo mencionan.&lt;/paso&gt;
+          &lt;paso n=&#34;3&#34;&gt;En EXPORTADOR, actualiza el conteo de líneas de generar_proyecto_nativo.py con el valor real (wc -l) y cambia &#34;CLI delgado&#34; por una descripción honesta del estado.&lt;/paso&gt;
+        &lt;/pasos&gt;
+        &lt;verificacion&gt;
+          &lt;cmd esperado=&#34;0&#34;&gt;&lt;![CDATA[grep -c -F &#39;pygame_gdevelop_exporter&#39; docs/ARQUITECTURA_EXPORTADOR_GDEVELOP.md; echo fin]]&gt;&lt;/cmd&gt;
+        &lt;/verificacion&gt;
+        &lt;criterio_aceptacion&gt;Los comandos de la documentación se pueden copiar y ejecutar tal cual.&lt;/criterio_aceptacion&gt;
+        &lt;si_falla&gt;Revierte.&lt;/si_falla&gt;
+      &lt;/tarea&gt;
+    &lt;/fase&gt;
+
+    &lt;!-- ========================================================= --&gt;
+    &lt;fase id=&#34;F6&#34; nombre=&#34;investigacion_y_busqueda&#34; tipo=&#34;solo_lectura&#34; riesgo=&#34;nulo&#34;&gt;
+      &lt;nota&gt;Cada tarea de esta fase escribe reports/investigacion/ID.md con: hallazgo, evidencia (archivo y línea), y si corresponde una tarea nueva propuesta. No edita código.&lt;/nota&gt;
+      &lt;tarea id=&#34;I1&#34; titulo=&#34;Números literales sueltos en el export que deberían venir de config&#34; tipo=&#34;solo_lectura&#34; fase=&#34;F6&#34; depende_de=&#34;T405&#34;&gt;
+        &lt;pasos&gt;
+          &lt;paso n=&#34;1&#34;&gt;&lt;![CDATA[grep -n -E &#39;&#34;[0-9]+\.[0-9]+&#34;&#39; tools/generar_proyecto_nativo.py]]&gt;&lt;/paso&gt;
+          &lt;paso n=&#34;2&#34;&gt;Clasifica cada resultado: constante que debe ir a config (proponer nombre), literal de presentación (texto, colores, tamaños de HUD), o duda.&lt;/paso&gt;
+        &lt;/pasos&gt;
+        &lt;criterio_aceptacion&gt;Tabla en reports/investigacion/I1.md con cada literal y su clasificación.&lt;/criterio_aceptacion&gt;
+      &lt;/tarea&gt;
+      &lt;tarea id=&#34;I2&#34; titulo=&#34;Enemigos: velocidad, límites de patrulla y rango melee&#34; tipo=&#34;solo_lectura&#34; fase=&#34;F6&#34; depende_de=&#34;T405&#34;&gt;
+        &lt;pasos&gt;
+          &lt;paso n=&#34;1&#34;&gt;Compara VELOCIDAD_ENEMIGO y la lógica de patrulla de Enemigo (entidades.py) con comportamiento_enemigo() en tools/exportador/gdevelop.py y con las variables min_x y max_x de las instancias exportadas.&lt;/paso&gt;
+          &lt;paso n=&#34;2&#34;&gt;Revisa si EnemigoMelee (rango 70 horizontal y 20 vertical en entidades.py) tiene equivalente en el export. grep -n &#34;70\|20&#34; tools/generar_proyecto_nativo.py.&lt;/paso&gt;
+        &lt;/pasos&gt;
+        &lt;criterio_aceptacion&gt;Reporte con cada diferencia encontrada y si es un defecto o un faltante.&lt;/criterio_aceptacion&gt;
+      &lt;/tarea&gt;
+      &lt;tarea id=&#34;I3&#34; titulo=&#34;Cámara: suavizado y sacudida en GDevelop frente a camara.py&#34; tipo=&#34;solo_lectura&#34; fase=&#34;F6&#34; depende_de=&#34;T405&#34;&gt;
+        &lt;pasos&gt;
+          &lt;paso n=&#34;1&#34;&gt;Compara CAMARA_SUAVIZADO, SACUDIDA_FUERZA y SACUDIDA_DURACION (config.py) con los valores que usan los eventos de cámara de generar_proyecto_nativo.py (grep -n &#34;sacud\|Sacud\|SACUD\|7.0\|smooth&#34; tools/generar_proyecto_nativo.py).&lt;/paso&gt;
+        &lt;/pasos&gt;
+        &lt;criterio_aceptacion&gt;Reporte con diferencias de valor.&lt;/criterio_aceptacion&gt;
+      &lt;/tarea&gt;
+      &lt;tarea id=&#34;I4&#34; titulo=&#34;HUD: la especificación dice riel de 1232x72 px; verificar en el código&#34; tipo=&#34;solo_lectura&#34; fase=&#34;F6&#34; depende_de=&#34;T405&#34;&gt;
+        &lt;pasos&gt;
+          &lt;paso n=&#34;1&#34;&gt;&lt;![CDATA[grep -n -E &#34;1232|72&#34; config.py hud.py tools/generar_proyecto_nativo.py]]&gt;&lt;/paso&gt;
+          &lt;paso n=&#34;2&#34;&gt;Si no existe el valor 1232x72 en el código, anota en la especificación la discrepancia (tarea propuesta para T501b).&lt;/paso&gt;
+        &lt;/pasos&gt;
+        &lt;criterio_aceptacion&gt;Reporte: valor real del riel y ubicación.&lt;/criterio_aceptacion&gt;
+      &lt;/tarea&gt;
+      &lt;tarea id=&#34;I5&#34; titulo=&#34;Índices de ChangeAnimation frente al orden de animaciones de integrar_assets&#34; tipo=&#34;solo_lectura&#34; fase=&#34;F6&#34; depende_de=&#34;T405&#34;&gt;
+        &lt;pasos&gt;
+          &lt;paso n=&#34;1&#34;&gt;&lt;![CDATA[grep -n &#39;ChangeAnimation&#39; tools/generar_proyecto_nativo.py]]&gt;&lt;/paso&gt;
+          &lt;paso n=&#34;2&#34;&gt;Compara cada índice con la lista ordenada de animaciones de actualizar_proyecto_gdevelop (tools/integrar_assets_gdevelop.py). Anota cualquier índice que no corresponda a la animación que su evento pretende reproducir (por ejemplo, un salto que usa índice de caída).&lt;/paso&gt;
+        &lt;/pasos&gt;
+        &lt;criterio_aceptacion&gt;Tabla índice por índice con la animación real y la intención del evento.&lt;/criterio_aceptacion&gt;
+      &lt;/tarea&gt;
+      &lt;tarea id=&#34;I6&#34; titulo=&#34;Respawn y checkpoint: qué se reinicia al morir (decisión D8)&#34; tipo=&#34;solo_lectura&#34; fase=&#34;F6&#34; depende_de=&#34;T405&#34;&gt;
+        &lt;pasos&gt;
+          &lt;paso n=&#34;1&#34;&gt;En entidades.py, Jugador.respawn() reinicia rango_ataque_mejorado y escudo_farol. Busca en tools/generar_proyecto_nativo.py el evento que reinicia Jugador tras morir (grep -n &#39;checkpoint_x\|checkpoint_activo&#39; tools/generar_proyecto_nativo.py) y lista qué variables reinicia.&lt;/paso&gt;
+        &lt;/pasos&gt;
+        &lt;criterio_aceptacion&gt;Tabla de variables: Pygame reinicia, GDevelop reinicia, coincide o no. Decisión D8 se confirma o se propone cambio.&lt;/criterio_aceptacion&gt;
+      &lt;/tarea&gt;
+      &lt;tarea id=&#34;I7&#34; titulo=&#34;Invulnerabilidad tras morir y tras pisotón&#34; tipo=&#34;solo_lectura&#34; fase=&#34;F6&#34; depende_de=&#34;T405&#34;&gt;
+        &lt;pasos&gt;
+          &lt;paso n=&#34;1&#34;&gt;Pygame: INVULNERABILIDAD (config.py) en respawn; juego.py fija invulnerable = 0.40 tras pisotón al jefe.&lt;/paso&gt;
+          &lt;paso n=&#34;2&#34;&gt;GDevelop: grep -n -E &#39;invuln|Invuln|1\.2|0\.40&#39; tools/generar_proyecto_nativo.py. Anota los valores encontrados y si coinciden.&lt;/paso&gt;
+        &lt;/pasos&gt;
+        &lt;criterio_aceptacion&gt;Tabla de valores de invulnerabilidad por caso, Pygame frente a GDevelop.&lt;/criterio_aceptacion&gt;
+      &lt;/tarea&gt;
+      &lt;tarea id=&#34;I8&#34; titulo=&#34;Búsqueda de magic numbers de física fuera del export&#34; tipo=&#34;solo_lectura&#34; fase=&#34;F6&#34; depende_de=&#34;T405&#34;&gt;
+        &lt;pasos&gt;
+          &lt;paso n=&#34;1&#34;&gt;&lt;![CDATA[grep -rn -E &#39;0\.55|0\.5[^0-9]|1\.18|\b95\b|\b70\b&#39; entidades.py juego.py nivel.py camara.py hud.py]]&gt;&lt;/paso&gt;
+          &lt;paso n=&#34;2&#34;&gt;Clasifica: constante que debe ir a config, o valor de presentación.&lt;/paso&gt;
+        &lt;/pasos&gt;
+        &lt;criterio_aceptacion&gt;Lista de magic numbers de física con propuesta de constante.&lt;/criterio_aceptacion&gt;
+      &lt;/tarea&gt;
+    &lt;/fase&gt;
+
+    &lt;!-- ========================================================= --&gt;
+    &lt;fase id=&#34;F7&#34; nombre=&#34;cierre&#34; tipo=&#34;verificacion&#34; riesgo=&#34;bajo&#34;&gt;
+      &lt;tarea id=&#34;T701&#34; titulo=&#34;Suite completa y resumen final&#34; fase=&#34;F7&#34; riesgo=&#34;bajo&#34; depende_de=&#34;I1 I2 I3 I4 I5 I6 I7 I8&#34; requiere_humano=&#34;no&#34; requiere_gdevelop=&#34;parcial&#34; cambia_comportamiento=&#34;no&#34; decision_ref=&#34;&#34;&gt;
+        &lt;archivos&gt;reports/resumen.json (nuevo). Sin cambios de código.&lt;/archivos&gt;
+        &lt;pasos&gt;
+          &lt;paso n=&#34;1&#34;&gt;Ejecuta, en este orden: CMD_LOGICA, CMD_HUD, CMD_CONST, CMD_GRAV, CMD_PIPE, CMD_EXPORT, CMD_EVENTOS, CMD_PARIDAD. Guarda código de salida y última línea de cada una.&lt;/paso&gt;
+          &lt;paso n=&#34;2&#34;&gt;Escribe reports/resumen.json con: estado por tarea (desde reports/ID.json), lista de decisiones aplicadas por defecto, lista de tareas requiere_humano con su pregunta, y la lista de hallazgos de F6 que proponen tareas nuevas.&lt;/paso&gt;
+          &lt;paso n=&#34;3&#34;&gt;git checkout -- export/ para descartar archivos regenerados. No hagas commit de reports/.&lt;/paso&gt;
+        &lt;/pasos&gt;
+        &lt;verificacion&gt;
+          &lt;cmd esperado=&#34;todas las pruebas con código 0; EVENTOS_OK; PARIDAD_OK; EXPORT COMPLETO&#34;&gt;&lt;![CDATA[for c in tests/test_logica.py tests/test_hud.py tests/test_export_constantes.py tests/test_export_gravedad.py tests/test_export_pipeline.py; do PYTHONPATH=. SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python $c &gt; /dev/null; echo &#34;$c $?&#34;; done]]&gt;&lt;/cmd&gt;
+        &lt;/verificacion&gt;
+        &lt;criterio_aceptacion&gt;Todas las pruebas en 0. Si requires_gdevelop no fue verificable, el resumen lo dice explícitamente. No se declara paridad física sin verificación en vista previa.&lt;/criterio_aceptacion&gt;
+        &lt;si_falla&gt;Reporta cuál falla y no marques el plan como completo.&lt;/si_falla&gt;
+      &lt;/tarea&gt;
+    &lt;/fase&gt;
+  &lt;/fases&gt;
+
+  &lt;criterio_de_salida_global&gt;
+    &lt;item&gt;Todas las suites (test_logica, test_hud, test_export_constantes, test_export_gravedad, test_export_pipeline) con código 0.&lt;/item&gt;
+    &lt;item&gt;validar_eventos_gd.py devuelve EVENTOS_OK.&lt;/item&gt;
+    &lt;item&gt;verificar_paridad.py devuelve PARIDAD_OK con las comprobaciones de T404.&lt;/item&gt;
+    &lt;item&gt;exportar_todo.py termina en EXPORT COMPLETO sin la ruta B.&lt;/item&gt;
+    &lt;item&gt;Un único PlatformBehavior::Gravity en el export, y ninguna variable velocidad_vertical.&lt;/item&gt;
+    &lt;item&gt;Ninguna ruta personal en tools, tests, docs ni export/ versionado.&lt;/item&gt;
+    &lt;item&gt;Las decisiones D1 a D8 están registradas en reports/resumen.json como aplicadas por defecto o pendientes de humano.&lt;/item&gt;
+    &lt;item&gt;Para declarar paridad física en GDevelop (salto, gravedad, post-dash, pisotón): verificación en vista previa, registrada en reports/. Sin ella, el estado es parcial.&lt;/item&gt;
+  &lt;/criterio_de_salida_global&gt;
+
+  &lt;mapa_de_dependencias&gt;
+    T000 → T100 → T101 → T102 → T103 → T104 → T201 → T202 → T203 → T301 → T302 → T303 → T304 → T305 → T401 → T402 → T403 → T404 → T405 → T406 → T407 → T501 → T502 → (I1 a I8 pueden ejecutarse en paralelo tras T405) → T701.
+    Las tareas de F6 no modifican código y pueden adelantarse a F3 si el agente ya tiene el repo cargado, pero sus conclusiones se revisan después de T305.
+  &lt;/mapa_de_dependencias&gt;
+
+  &lt;archivo_nuevo_gravedad id=&#34;T302_seccion_final&#34;&gt;
+    &lt;![CDATA[
+# tests/test_export_gravedad.py — la gravedad del jugador en GDevelop tiene un único escritor
+from test_export_constantes import (
+    FUENTE_GDEVELOP,
+    acciones,
+    asignados_a,
+    eventos_de_todas_las_escenas,
+    fuente_generar,
+    posiciones,
+)
+from config import APEX_GRAVEDAD_FACTOR, GRAVEDAD, POST_DASH_DURACION, POST_DASH_GRAVEDAD_FACTOR
+
+
+def probar_un_solo_escritor_de_gravedad(eventos):
+    escrituras = acciones(eventos, &#34;PlatformBehavior::Gravity&#34;)
+    assert len(escrituras) == 1, f&#34;debe haber 1 acción PlatformBehavior::Gravity, hay {len(escrituras)}&#34;
+    assert &#34;gravedad_actual&#34; in escrituras[0][3], &#34;la única escritura debe leer gravedad_actual&#34;
+
+
+def probar_valores_de_gravedad_permitidos(eventos):
+    permitidos = [GRAVEDAD, GRAVEDAD * APEX_GRAVEDAD_FACTOR, GRAVEDAD * POST_DASH_GRAVEDAD_FACTOR, 0.0]
+    for valor in asignados_a(eventos, &#34;gravedad_actual&#34;):
+        assert any(abs(float(valor) - p) &lt; 1.0 for p in permitidos), f&#34;valor no permitido para gravedad_actual: {valor}&#34;
+
+
+def probar_aplicacion_de_gravedad_al_final(eventos):
+    escrituras = posiciones(eventos, &#34;SetNumberObjectVariable&#34;, &#34;gravedad_actual&#34;)
+    aplicacion = posiciones(eventos, &#34;PlatformBehavior::Gravity&#34;)
+    assert escrituras and aplicacion, &#34;faltan escrituras de gravedad_actual o la aplicación&#34;
+    assert max(escrituras) &lt; min(aplicacion), &#34;gravedad_actual se aplica antes de calcularse&#34;
+
+
+def probar_post_dash_se_escribe(eventos):
+    valores = [float(v) for v in asignados_a(eventos, &#34;post_dash&#34;) if float(v) &gt; 0]
+    assert any(abs(v - POST_DASH_DURACION) &lt; 1e-9 for v in valores), f&#34;post_dash no se escribe con {POST_DASH_DURACION}: {valores}&#34;
+
+
+def probar_sin_variables_muertas():
+    for texto_fuente in (fuente_generar(), FUENTE_GDEVELOP.read_text(encoding=&#34;utf-8&#34;)):
+        for nombre in [&#39;&#34;velocidad_vertical&#34;&#39;, &#39;&#34;velocidad_vertical_abs&#34;&#39;, &#39;&#34;velocidad_vertical_umbral&#34;&#39;, &#39;&#34;post_dash_timer&#34;&#39;]:
+            assert nombre not in texto_fuente, f&#34;variable muerta todavía presente: {nombre}&#34;
+
+
+PRUEBAS_EVENTOS = [
+    probar_un_solo_escritor_de_gravedad,
+    probar_valores_de_gravedad_permitidos,
+    probar_aplicacion_de_gravedad_al_final,
+    probar_post_dash_se_escribe,
+]
+PRUEBAS_TEXTO = [probar_sin_variables_muertas]
+
+
+if __name__ == &#34;__main__&#34;:
+    eventos = eventos_de_todas_las_escenas()
+    fallos = 0
+    for prueba in PRUEBAS_EVENTOS:
+        try:
+            prueba(eventos)
+            print(f&#34;PASS {prueba.__name__}&#34;)
+        except AssertionError as error:
+            fallos += 1
+            print(f&#34;FAIL {prueba.__name__}: {error}&#34;)
+    for prueba in PRUEBAS_TEXTO:
+        try:
+            prueba()
+            print(f&#34;PASS {prueba.__name__}&#34;)
+        except AssertionError as error:
+            fallos += 1
+            print(f&#34;FAIL {prueba.__name__}: {error}&#34;)
+    if fallos:
+        print(f&#34;TESTS_GRAVEDAD_FALLAN: {fallos}&#34;)
+        raise SystemExit(1)
+    print(&#34;TESTS_GRAVEDAD_OK&#34;)
+    ]]&gt;
+  &lt;/archivo_nuevo_gravedad&gt;
+
+&lt;/plan_refactor_exportador_gdevelop&gt;
+
+</code></pre>
+
+</body></html>

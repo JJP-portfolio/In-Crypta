@@ -1,0 +1,11 @@
+{
+  "tarea": "T103",
+  "estado": "ok",
+  "decision_ref": "",
+  "archivos_modificados": ["tools/generar_proyecto_nativo.py"],
+  "comandos": [
+    {"cmd": "CMD_CONST", "codigo": 0, "esperado_encontrado": true, "salida_resumen": "PASS probar_ataque_usa_config"}
+  ],
+  "commit": "",
+  "notas": "Anclas ataque_time = 0.18 y ataque_cd = 0.40 (líneas 1518-1519, 1 ocurrencia cada una) reemplazadas por str(ATAQUE_DURACION) y str(ATAQUE_COOLDOWN). Ambas agregadas a la importación de config. Prueba de ataque pasa. Los literales restantes (0.40, 0.60, 620, 360, * 1.18) se tratan en T104."
+}

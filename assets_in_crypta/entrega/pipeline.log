@@ -1,0 +1,167 @@
+22:58:19 | INFO    | Backend=ml, device=auto, targets=42 (20 SFX, 10 música, 12 sprites)
+22:58:38 | INFO    | Cargando AudioGen medium (facebook/audiogen-medium) en cuda
+/media/backup/incrypta_assets/venv/lib/python3.11/site-packages/torch/nn/utils/weight_norm.py:30: UserWarning: torch.nn.utils.weight_norm is deprecated in favor of torch.nn.utils.parametrizations.weight_norm.
+  warnings.warn("torch.nn.utils.weight_norm is deprecated in favor of torch.nn.utils.parametrizations.weight_norm.")
+23:00:25 | INFO    | SFX salto              AudioGen 8.6s -> 0.140s
+23:00:29 | INFO    | SFX dash               AudioGen 4.5s -> 0.180s
+23:00:35 | INFO    | SFX ataque             AudioGen 5.6s -> 0.110s
+23:00:40 | INFO    | SFX pala               AudioGen 4.6s -> 0.200s
+23:00:44 | INFO    | SFX stomp              AudioGen 4.6s -> 0.180s
+23:00:49 | INFO    | SFX alma_ref           AudioGen 4.6s -> 0.220s
+23:00:53 | INFO    | SFX onda               AudioGen 4.5s -> 0.400s
+23:00:58 | INFO    | SFX jefe_aviso         AudioGen 4.7s -> 0.280s
+23:01:02 | INFO    | SFX jefe_fase          AudioGen 4.2s -> 0.550s
+23:01:07 | INFO    | SFX pala_recoger       AudioGen 4.4s -> 0.250s
+23:01:11 | INFO    | SFX dash_recoger       AudioGen 4.6s -> 0.280s
+23:01:16 | INFO    | SFX checkpoint         AudioGen 4.7s -> 0.320s
+23:01:21 | INFO    | SFX vida_extra         AudioGen 4.7s -> 0.440s
+23:01:25 | INFO    | SFX ui                 AudioGen 4.6s -> 0.060s
+23:01:30 | INFO    | SFX dano               AudioGen 4.3s -> 0.260s
+23:01:34 | INFO    | SFX muerte             AudioGen 4.6s -> 0.650s
+23:01:39 | INFO    | SFX meta               AudioGen 4.4s -> 0.550s
+23:01:43 | INFO    | SFX rebote_pala        AudioGen 4.5s -> 0.160s
+23:01:50 | INFO    | SFX corazon_latido     AudioGen 7.2s -> 1.000s
+23:02:51 | INFO    | SFX dron_catacumbas    AudioGen 60.2s -> 20.000s
+23:02:56 | INFO    | Cargando MusicGen medium (facebook/musicgen-medium) en cuda
+/media/backup/incrypta_assets/venv/lib/python3.11/site-packages/torch/nn/utils/weight_norm.py:30: UserWarning: torch.nn.utils.weight_norm is deprecated in favor of torch.nn.utils.parametrizations.weight_norm.
+  warnings.warn("torch.nn.utils.weight_norm is deprecated in favor of torch.nn.utils.parametrizations.weight_norm.")
+23:05:26 | INFO    | Música mus_titulo         MusicGen 61.9s -> 60.0s
+23:06:28 | INFO    | Música mus_camposanto     MusicGen 59.9s -> 90.0s
+23:07:24 | INFO    | Música mus_cripta         MusicGen 54.4s -> 90.0s
+23:08:24 | INFO    | Música mus_osario         MusicGen 56.7s -> 90.0s
+23:09:22 | INFO    | Música mus_carcelero      MusicGen 55.5s -> 60.0s
+23:10:21 | INFO    | Música mus_custodio_f1    MusicGen 57.0s -> 60.0s
+23:11:17 | INFO    | Música mus_custodio_f2    MusicGen 54.7s -> 60.0s
+23:11:37 | INFO    | Música mus_victoria       MusicGen 17.4s -> 8.0s
+23:11:53 | INFO    | Música mus_derrota        MusicGen 16.4s -> 6.0s
+23:12:48 | INFO    | Música mus_creditos       MusicGen 54.6s -> 90.0s
+23:12:54 | INFO    | Cargando Stable Diffusion 1.5 + LoRA pixel art en cuda
+/media/backup/incrypta_assets/venv/lib/python3.11/site-packages/huggingface_hub/file_download.py:1132: FutureWarning: `resume_download` is deprecated and will be removed in version 1.0.0. Downloads always resume when possible. If you want to force a new download, use `force_download=True`.
+  warnings.warn(
+Loading pipeline components...:   0%|          | 0/6 [00:00<?, ?it/s]Loading pipeline components...:  17%|█▋        | 1/6 [00:06<00:32,  6.53s/it]Loading pipeline components...:  33%|███▎      | 2/6 [00:13<00:27,  6.88s/it]Loading pipeline components...:  50%|█████     | 3/6 [00:13<00:11,  3.80s/it]Loading pipeline components...:  83%|████████▎ | 5/6 [00:13<00:01,  1.70s/it]Loading pipeline components...: 100%|██████████| 6/6 [01:06<00:00, 16.22s/it]Loading pipeline components...: 100%|██████████| 6/6 [01:06<00:00, 11.01s/it]
+23:14:03 | INFO    | LoRA pixel art cargada
+23:14:22 | INFO    | Sprite jugador_con_pala_idle    SD+LoRA 16.1s
+23:14:40 | INFO    | Sprite jugador_con_pala_run     SD+LoRA 18.1s
+23:14:46 | INFO    | Sprite jugador_con_pala_jump    SD+LoRA 6.0s
+23:14:52 | INFO    | Sprite jugador_con_pala_caida   SD+LoRA 6.0s
+23:15:01 | INFO    | Sprite jugador_con_pala_dash    SD+LoRA 9.1s
+23:15:10 | INFO    | Sprite jugador_con_pala_ataque  SD+LoRA 8.2s
+23:15:21 | INFO    | Sprite jugador_sin_pala_idle    SD+LoRA 11.1s
+23:15:38 | INFO    | Sprite jugador_sin_pala_run     SD+LoRA 16.9s
+23:15:49 | INFO    | Sprite morador_walk             SD+LoRA 11.7s
+23:16:01 | INFO    | Sprite guardia_walk             SD+LoRA 11.7s
+23:16:23 | INFO    | Sprite carcelero_walk           SD+LoRA 21.5s
+23:16:44 | INFO    | Sprite custodio_walk            SD+LoRA 21.2s
+23:16:44 | INFO    | Índice de sprites: assets_in_crypta/entrega/sprites/sprites_manifest.json
+23:16:49 | INFO    | Manifiesto escrito: assets_in_crypta/entrega/manifest_entrega.json
+
+==============================================================================
+ENTREGA IN CRYPTA — RESUMEN DE VALIDACIÓN
+==============================================================================
+Assets: 43/43 OK | SFX: 21 | Música: 10 | Sprites: 12
+  [OK  ] salto                        sfx/salto.wav                              0.14s
+  [OK  ] dash                         sfx/dash.wav                               0.18s
+  [OK  ] ataque                       sfx/ataque.wav                             0.11s
+  [OK  ] pala                         sfx/pala.wav                               0.2s
+  [OK  ] stomp                        sfx/stomp.wav                              0.18s
+  [OK  ] alma_ref                     sfx/alma_ref.wav                           0.22s
+  [OK  ] onda                         sfx/onda.wav                               0.4s
+  [OK  ] jefe_aviso                   sfx/jefe_aviso.wav                         0.28s
+  [OK  ] jefe_fase                    sfx/jefe_fase.wav                          0.55s
+  [OK  ] pala_recoger                 sfx/pala_recoger.wav                       0.25s
+  [OK  ] dash_recoger                 sfx/dash_recoger.wav                       0.28s
+  [OK  ] checkpoint                   sfx/checkpoint.wav                         0.32s
+  [OK  ] vida_extra                   sfx/vida_extra.wav                         0.44s
+  [OK  ] ui                           sfx/ui.wav                                 0.06s
+  [OK  ] dano                         sfx/dano.wav                               0.26s
+  [OK  ] muerte                       sfx/muerte.wav                             0.65s
+  [OK  ] meta                         sfx/meta.wav                               0.55s
+  [OK  ] rebote_pala                  sfx/rebote_pala.wav                        0.16s
+  [OK  ] corazon_latido               sfx/corazon_latido.wav                     1.0s
+  [OK  ] dron_catacumbas              sfx/dron_catacumbas.wav                    20.0s
+  [OK  ] dron_catacumbas_ogg          sfx/dron_catacumbas.ogg                    ?s
+  [OK  ] mus_titulo                   musica/titulo.ogg                          60.0s -16.0 LUFS
+  [OK  ] mus_camposanto               musica/camposanto.ogg                      90.0s -16.0 LUFS
+  [OK  ] mus_cripta                   musica/cripta.ogg                          90.0s -16.0 LUFS
+  [OK  ] mus_osario                   musica/osario.ogg                          90.0s -16.0 LUFS
+  [OK  ] mus_carcelero                musica/carcelero.ogg                       60.0s -16.0 LUFS
+  [OK  ] mus_custodio_f1              musica/custodio_f1.ogg                     60.0s -15.9 LUFS
+  [OK  ] mus_custodio_f2              musica/custodio_f2.ogg                     60.0s -16.0 LUFS
+  [OK  ] mus_victoria                 musica/victoria.ogg                        8.0s -16.0 LUFS
+  [OK  ] mus_derrota                  musica/derrota.ogg                         6.0s -16.0 LUFS
+  [OK  ] mus_creditos                 musica/creditos.ogg                        90.0s -15.9 LUFS
+  [OK  ] jugador_con_pala_idle        sprites/jugador_con_pala_idle.png          [128, 32]
+  [OK  ] jugador_con_pala_run         sprites/jugador_con_pala_run.png           [192, 32]
+  [OK  ] jugador_con_pala_jump        sprites/jugador_con_pala_jump.png          [64, 32]
+  [OK  ] jugador_con_pala_caida       sprites/jugador_con_pala_caida.png         [64, 32]
+  [OK  ] jugador_con_pala_dash        sprites/jugador_con_pala_dash.png          [96, 32]
+  [OK  ] jugador_con_pala_ataque      sprites/jugador_con_pala_ataque.png        [96, 32]
+  [OK  ] jugador_sin_pala_idle        sprites/jugador_sin_pala_idle.png          [128, 32]
+  [OK  ] jugador_sin_pala_run         sprites/jugador_sin_pala_run.png           [192, 32]
+  [OK  ] morador_walk                 sprites/morador_walk.png                   [104, 26]
+  [OK  ] guardia_walk                 sprites/guardia_walk.png                   [104, 26]
+  [OK  ] carcelero_walk               sprites/carcelero_walk.png                 [144, 48]
+  [OK  ] custodio_walk                sprites/custodio_walk.png                  [192, 64]
+==============================================================================
+23:16:49 | INFO    | Generación terminada en 1110.0s
+23:16:49 | INFO    | ENTREGA OK
+23:25:31 | INFO    | Manifiesto escrito: assets_in_crypta/entrega/manifest_entrega.json
+23:31:05 | INFO    | Manifiesto escrito: assets_in_crypta/entrega/manifest_entrega.json
+23:48:23 | INFO    | Manifiesto escrito: assets_in_crypta/entrega/manifest_entrega.json
+23:52:26 | INFO    | Manifiesto escrito: assets_in_crypta/entrega/manifest_entrega.json
+23:52:34 | INFO    | Manifiesto escrito: assets_in_crypta/entrega/manifest_entrega.json
+23:52:44 | INFO    | Manifiesto escrito: assets_in_crypta/entrega/manifest_entrega.json
+23:52:58 | INFO    | Manifiesto escrito: assets_in_crypta/entrega/manifest_entrega.json
+23:58:15 | INFO    | Manifiesto escrito: assets_in_crypta/entrega/manifest_entrega.json
+23:58:23 | INFO    | Manifiesto escrito: assets_in_crypta/entrega/manifest_entrega.json
+23:58:31 | INFO    | Manifiesto escrito: assets_in_crypta/entrega/manifest_entrega.json
+00:01:16 | INFO    | Manifiesto escrito: assets_in_crypta/entrega/manifest_entrega.json
+00:02:04 | INFO    | Backend=procedural, device=auto, targets=42 (20 SFX, 10 música, 12 sprites)
+00:02:04 | INFO    | SFX salto              ya existe, se conserva
+00:02:04 | INFO    | SFX dash               ya existe, se conserva
+00:02:04 | INFO    | SFX ataque             ya existe, se conserva
+00:02:04 | INFO    | SFX pala               ya existe, se conserva
+00:02:04 | INFO    | SFX stomp              ya existe, se conserva
+00:02:04 | INFO    | SFX alma_ref           ya existe, se conserva
+00:02:04 | INFO    | SFX onda               ya existe, se conserva
+00:02:04 | INFO    | SFX jefe_aviso         ya existe, se conserva
+00:02:04 | INFO    | SFX jefe_fase          ya existe, se conserva
+00:02:04 | INFO    | SFX pala_recoger       ya existe, se conserva
+00:02:04 | INFO    | SFX dash_recoger       ya existe, se conserva
+00:02:04 | INFO    | SFX checkpoint         ya existe, se conserva
+00:02:04 | INFO    | SFX vida_extra         ya existe, se conserva
+00:02:04 | INFO    | SFX ui                 ya existe, se conserva
+00:02:04 | INFO    | SFX dano               ya existe, se conserva
+00:02:04 | INFO    | SFX muerte             ya existe, se conserva
+00:02:04 | INFO    | SFX meta               ya existe, se conserva
+00:02:04 | INFO    | SFX rebote_pala        ya existe, se conserva
+00:02:04 | INFO    | SFX corazon_latido     ya existe, se conserva
+00:02:04 | INFO    | SFX dron_catacumbas    ya existe, se conserva
+00:02:04 | INFO    | Música mus_titulo         ya existe, se conserva
+00:02:04 | INFO    | Música mus_camposanto     ya existe, se conserva
+00:02:04 | INFO    | Música mus_cripta         ya existe, se conserva
+00:02:04 | INFO    | Música mus_osario         ya existe, se conserva
+00:02:04 | INFO    | Música mus_carcelero      ya existe, se conserva
+00:02:04 | INFO    | Música mus_custodio_f1    ya existe, se conserva
+00:02:04 | INFO    | Música mus_custodio_f2    ya existe, se conserva
+00:02:04 | INFO    | Música mus_victoria       ya existe, se conserva
+00:02:04 | INFO    | Música mus_derrota        ya existe, se conserva
+00:02:04 | INFO    | Música mus_creditos       ya existe, se conserva
+00:02:04 | INFO    | Sprite jugador_con_pala_idle    ya existe, se conserva
+00:02:04 | INFO    | Sprite jugador_con_pala_run     ya existe, se conserva
+00:02:04 | INFO    | Sprite jugador_con_pala_jump    ya existe, se conserva
+00:02:04 | INFO    | Sprite jugador_con_pala_caida   ya existe, se conserva
+00:02:04 | INFO    | Sprite jugador_con_pala_dash    ya existe, se conserva
+00:02:04 | INFO    | Sprite jugador_con_pala_ataque  ya existe, se conserva
+00:02:04 | INFO    | Sprite jugador_sin_pala_idle    ya existe, se conserva
+00:02:04 | INFO    | Sprite jugador_sin_pala_run     ya existe, se conserva
+00:02:04 | INFO    | Sprite morador_walk             ya existe, se conserva
+00:02:04 | INFO    | Sprite guardia_walk             ya existe, se conserva
+00:02:04 | INFO    | Sprite carcelero_walk           ya existe, se conserva
+00:02:04 | INFO    | Sprite custodio_walk            ya existe, se conserva
+00:02:04 | INFO    | Índice de sprites: assets_in_crypta/entrega/sprites/sprites_manifest.json
+00:02:09 | INFO    | Manifiesto escrito: assets_in_crypta/entrega/manifest_entrega.json
+00:02:09 | INFO    | Generación terminada en 5.1s
+00:02:09 | INFO    | ENTREGA OK
+00:02:49 | INFO    | Manifiesto escrito: assets_in_crypta/entrega/manifest_entrega.json
+00:08:14 | INFO    | Manifiesto escrito: assets_in_crypta/entrega/manifest_entrega.json

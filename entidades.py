@@ -33,11 +33,14 @@ from config import (
     ENEMIGO_ALTO,
     ENEMIGO_ANCHO,
     FAROL_CÁLIDO,
+    FILO_ANIMA_ALCANCE,
+    FILO_ANIMA_DASH_FACTOR,
     GRAVEDAD,
     GRIS,
     GRIS_OSCURO,
     HUESO,
     HUESO_MARFIL,
+    INCENSARIO_COOLDOWN,
     INVULNERABILIDAD,
     JEFE_ALTO,
     JEFE_ANCHO,
@@ -48,6 +51,8 @@ from config import (
     JUMP_BUFFER,
     JUGADOR_ALTO,
     JUGADOR_ANCHO,
+    LOSA_TIEMPO_QUIEBRE,
+    LOSA_TIEMPO_RECONSTRUCCION,
     MARRON,
     MARRON_OSCURO,
     MAX_CAIDA,
@@ -63,11 +68,16 @@ from config import (
     NEGRO_NOCHE,
     ORO,
     ORO_LITÚRGICO,
+    PIEDRA_FRIA,
+    PIEDRA_OSCURA,
     POST_DASH_DURACION,
     POST_DASH_GRAVEDAD_FACTOR,
+    REBOTE_ENEMIGO,
     ROJO,
+    SALITRE_CRIPTA,
     SALTO,
     SANGRE,
+    TOLERANCIA_PISOTON,
     TURQUESA,
     TURQUESA_ÁNIMA,
     VELOCIDAD,
@@ -205,6 +215,9 @@ class Jugador:
 
         self.salto_recien = False
         self.dash_recien = False
+        self.squash_timer = 0.0
+        self.squash_tipo = None
+        self.aterrizaje_recien = False
 
         self.ataque_tiempo = 0.0
         self.ataque_cooldown = 0.0
@@ -217,6 +230,7 @@ class Jugador:
         self.tiene_dash = tiene_dash
         self.rango_ataque_mejorado = False
         self.escudo_farol = False
+        self.filo_anima = False
 
     # --- Función pedir_salto --- #
     def pedir_salto(self):
@@ -242,7 +256,8 @@ class Jugador:
             return False
 
         self.dash_tiempo = DASH_DURACION
-        self.dash_cooldown = DASH_COOLDOWN
+        cd = DASH_COOLDOWN * (FILO_ANIMA_DASH_FACTOR if getattr(self, "filo_anima", False) else 1.0)
+        self.dash_cooldown = cd
         self.dash_direccion = self.direccion
 
         if not self.en_suelo:
@@ -281,6 +296,8 @@ class Jugador:
     def rect_ataque(self):
         es_guadaña = self.rango_ataque_mejorado
         alcance = ATAQUE_ALCANCE_MEJORADO if es_guadaña else ATAQUE_ALCANCE
+        if getattr(self, "filo_anima", False):
+            alcance += FILO_ANIMA_ALCANCE
         alto = (ATAQUE_ALTO + 16) if es_guadaña else ATAQUE_ALTO
         if self.direccion > 0:
             x = self.rect.right - 4
@@ -309,6 +326,12 @@ class Jugador:
     def actualizar(self, dt, teclas, solidos):
         self.salto_recien = False
         self.dash_recien = False
+        self.aterrizaje_recien = False
+
+        if self.squash_timer > 0:
+            self.squash_timer = max(0.0, self.squash_timer - dt)
+            if self.squash_timer <= 0:
+                self.squash_tipo = None
 
         if self.invulnerable > 0:
             self.invulnerable = max(0.0, self.invulnerable - dt)
@@ -335,8 +358,15 @@ class Jugador:
                 self.coyote = 0.0
                 self.buffer_salto = 0.0
                 self.salto_recien = True
+                self.squash_timer = 0.10
+                self.squash_tipo = "salto"
             else:
+                era_en_suelo = self.en_suelo
                 self.actualizar_dash(dt, solidos)
+                if not era_en_suelo and self.en_suelo:
+                    self.aterrizaje_recien = True
+                    self.squash_timer = 0.09
+                    self.squash_tipo = "aterrizaje"
                 return
 
         self.actualizar_horizontal(teclas)
@@ -347,6 +377,8 @@ class Jugador:
             self.coyote = 0.0
             self.buffer_salto = 0.0
             self.salto_recien = True
+            self.squash_timer = 0.10
+            self.squash_tipo = "salto"
 
         # Gravedad con Apex Hang-Time (flotación en cima de salto) y Post-Dash Float
         factor_gravedad = 1.0
@@ -365,8 +397,14 @@ class Jugador:
         self.vy = min(MAX_CAIDA, self.vy + GRAVEDAD * factor_gravedad * dt)
 
         self.mover_x(self.vx * dt, solidos)
+        era_en_suelo = self.en_suelo
         self.en_suelo = False
         self.mover_y(self.vy * dt, solidos)
+
+        if not era_en_suelo and self.en_suelo:
+            self.aterrizaje_recien = True
+            self.squash_timer = 0.09
+            self.squash_tipo = "aterrizaje"
 
         if self.en_suelo:
             self.coyote = COYOTE_TIME
@@ -530,12 +568,16 @@ class Jugador:
         self.manteniendo_salto = False
         self.salto_recien = False
         self.dash_recien = False
+        self.squash_timer = 0.0
+        self.squash_tipo = None
+        self.aterrizaje_recien = False
         self.ataque_tiempo = 0.0
         self.ataque_cooldown = 0.0
         self.ataque_golpeado = False
         self.almas_para_vida = 0
         self.rango_ataque_mejorado = False
         self.escudo_farol = False
+        self.filo_anima = False
 
     # --- Función dibujar --- #
     def dibujar(self, surface, camara, tiempo, pose=None, con_pala=True):
@@ -564,27 +606,38 @@ class Jugador:
         atacando = pose in ("ataque1", "ataque2", "ataque3")
         moviendo = self.en_suelo and abs(self.vx) > 1 and not atacando
 
-        # 2. Ciclo de caminata (4 Poses): Contacto (squash 0.95x), paso bajo, extensión (stretch 1.05x), paso alto
+        # 2. Squash & Stretch con Memoria Temporal y ciclo de caminata
         despliegue_pierna = 0
-        factor_squash = 1.0
-        if moviendo:
+        escala_x = 1.0
+        escala_y = 1.0
+        if getattr(self, "squash_timer", 0.0) > 0 and getattr(self, "squash_tipo", None):
+            if self.squash_tipo == "salto":
+                frac = min(1.0, self.squash_timer / 0.10)
+                escala_y = 1.0 + 0.15 * frac
+                escala_x = 1.0 - 0.13 * frac
+            elif self.squash_tipo == "aterrizaje":
+                frac = min(1.0, self.squash_timer / 0.09)
+                escala_y = 1.0 - 0.15 * frac
+                escala_x = 1.0 + 0.18 * frac
+        elif moviendo:
             fase_paso = int((self.tiempo_animacion * 9.5) % 4)
             if fase_paso == 0:  # Contacto: squash leve
-                factor_squash = 0.95
+                escala_y = 0.95
                 despliegue_pierna = 6
             elif fase_paso == 1:  # Paso bajo
-                factor_squash = 0.98
+                escala_y = 0.98
                 despliegue_pierna = 2
             elif fase_paso == 2:  # Extensión: stretch
-                factor_squash = 1.05
+                escala_y = 1.05
                 despliegue_pierna = -5
             elif fase_paso == 3:  # Paso alto
-                factor_squash = 1.02
+                escala_y = 1.02
                 despliegue_pierna = -1
 
-        # 3. Pala / Guadaña Mística: al hombro o extendida durante el golpe
+        # 3. Pala / Guadaña Mística: al hombro, en ataque, o pisotón aéreo (Shovel Knight style)
         hombro_x = centro_x - self.direccion * 7
         es_guadaña = getattr(self, "rango_ataque_mejorado", False)
+        postura_pisotón = con_pala and en_aire and self.vy > 60 and not atacando
 
         if atacando:
             alcance = (36 if es_guadaña else 16) if pose == "ataque2" else (28 if es_guadaña else 13)
@@ -624,6 +677,11 @@ class Jugador:
                     onda_x = centro_x if signo > 0 else centro_x - 76
                     onda_y = rect.y - 12
                     surface.blit(obtener_arco_guadaña(signo), (onda_x, onda_y))
+                    if getattr(self, "filo_anima", False):
+                        start_ang = 0.0 if signo > 0 else 1.57
+                        end_ang = 3.14 if signo > 0 else 4.71
+                        pygame.draw.arc(surface, TURQUESA_ÁNIMA, (onda_x - 3, onda_y - 3, 82, 54), start_ang, end_ang, 2)
+                        pygame.draw.arc(surface, ORO_LITÚRGICO, (onda_x - 1, onda_y - 1, 78, 50), start_ang, end_ang, 1)
                 else:
                     # Hoja de pala de hierro plateada con filo
                     pygame.draw.polygon(
@@ -657,8 +715,49 @@ class Jugador:
                     ang_fin = 2.4 if signo > 0 else 5.4
                     pygame.draw.arc(surface, (230, 235, 245), arco_caja, ang_ini, ang_fin, 2)
                     pygame.draw.arc(surface, ORO_LITÚRGICO, arco_caja.inflate(2, 2), ang_ini, ang_fin, 1)
+                    if getattr(self, "filo_anima", False):
+                        pygame.draw.arc(surface, TURQUESA_ÁNIMA, arco_caja.inflate(6, 6), ang_ini, ang_fin, 2)
+                        pygame.draw.arc(surface, (255, 235, 140), arco_caja.inflate(4, 4), ang_ini, ang_fin, 1)
+                        for off_i in range(3):
+                            sp_x = punta_x - self.direccion * (off_i * 6 + 4)
+                            sp_y = alto_pala + (off_i * 3 - 3)
+                            col_sp = (255, 225, 90) if off_i % 2 == 0 else TURQUESA_ÁNIMA
+                            pygame.draw.circle(surface, col_sp, (sp_x, sp_y), 2)
                     # Chispas en el vértice del golpe
                     pygame.draw.circle(surface, (255, 245, 190), (punta_x + signo * 2, alto_pala), 2)
+        elif postura_pisotón:
+            # Postura de pisotón aéreo (Shovel Knight style): arma apuntando hacia abajo bajo las botas
+            color_mango = (45, 30, 48) if es_guadaña else MARRON
+            pygame.draw.line(
+                surface,
+                color_mango,
+                (centro_x, rect.centery + 2),
+                (centro_x, base_y + 11),
+                4 if es_guadaña else 3,
+            )
+            punta_pogo_y = base_y + (16 if es_guadaña else 13)
+            if es_guadaña:
+                puntos_pogo = [
+                    (centro_x - 4, base_y + 5),
+                    (centro_x + 9, base_y + 9),
+                    (centro_x, punta_pogo_y),
+                    (centro_x - 3, base_y + 10),
+                ]
+                pygame.draw.polygon(surface, (215, 80, 255), puntos_pogo)
+                pygame.draw.lines(surface, (255, 235, 255), False, puntos_pogo, 1)
+            else:
+                puntos_pogo = [
+                    (centro_x - 5, base_y + 4),
+                    (centro_x + 5, base_y + 4),
+                    (centro_x, punta_pogo_y),
+                ]
+                pygame.draw.polygon(surface, (195, 198, 208), puntos_pogo)
+                pygame.draw.polygon(surface, ORO_LITÚRGICO, [(centro_x - 3, base_y + 5), (centro_x + 3, base_y + 5), (centro_x, punta_pogo_y - 1)])
+
+            # Destello / Glint relampagueante en la punta
+            pygame.draw.line(surface, BLANCO, (centro_x - 4, punta_pogo_y), (centro_x + 4, punta_pogo_y), 1)
+            pygame.draw.line(surface, BLANCO, (centro_x, punta_pogo_y - 4), (centro_x, punta_pogo_y + 4), 1)
+            pygame.draw.circle(surface, (255, 245, 190), (centro_x, punta_pogo_y), 2)
         elif con_pala:
             if es_guadaña:
                 # Guadaña mística reposando en la espalda
@@ -696,7 +795,25 @@ class Jugador:
                 )
 
         # 4. Piernas y botas animadas
-        if en_aire:
+        if postura_pisotón:
+            # Postura firme y recogida para empalar en caída
+            for lado in (-4, 4):
+                px_b = centro_x + (2 if lado > 0 else -2)
+                pygame.draw.line(
+                    surface,
+                    MARRON_OSCURO,
+                    (centro_x + lado, base_y - 9),
+                    (px_b, base_y - 2),
+                    4,
+                )
+                pygame.draw.line(
+                    surface,
+                    NEGRO_NOCHE,
+                    (px_b - 2, base_y - 2),
+                    (px_b + 3, base_y - 2),
+                    4,
+                )
+        elif en_aire:
             separacion = 7 if pose == "caida" else 9
             for lado, destino in ((-5, -separacion), (5, separacion)):
                 pygame.draw.line(
@@ -737,7 +854,7 @@ class Jugador:
                 pygame.draw.line(
                     surface,
                     MARRON_OSCURO,
-                    (centro_x + lado, base_y - int(9 * factor_squash)),
+                    (centro_x + lado, base_y - int(9 * escala_y)),
                     (centro_x + lado + offset, base_y - 1),
                     4,
                 )
@@ -749,11 +866,12 @@ class Jugador:
                     4,
                 )
 
-        # 5. Abrigo largo andrajoso con inercia secundaria según vx
+        # 5. Abrigo largo andrajoso con inercia secundaria según vx y Squash & Stretch
         inercia_falda = -self.direccion * min(7, int(abs(self.vx) * 0.024))
-        cuerpo_y = rect.y + int(10 * factor_squash)
-        cuerpo_h = rect.height - int(16 * factor_squash)
-        cuerpo = pygame.Rect(rect.x + 3, cuerpo_y, rect.width - 6, cuerpo_h)
+        dw = int(rect.width * (escala_x - 1.0))
+        cuerpo_y = rect.y + int(10 * escala_y)
+        cuerpo_h = rect.height - int(16 * escala_y)
+        cuerpo = pygame.Rect(rect.x + 3 - dw // 2, cuerpo_y, rect.width - 6 + dw, cuerpo_h)
 
         pygame.draw.rect(surface, AZUL_OSCURO, cuerpo, border_radius=4)
         pygame.draw.rect(surface, MARRON, (cuerpo.x + 4, cuerpo.y + 5, cuerpo.width - 8, cuerpo.height - 5), border_radius=3)
@@ -776,34 +894,35 @@ class Jugador:
             pygame.draw.rect(surface, TURQUESA_ÁNIMA, cuerpo, 1, border_radius=5)
 
         # 6. Cabeza, rostro sombreado y sombrero de ala ancha caído
-        pygame.draw.circle(surface, (185, 175, 160), (centro_x, rect.y + 10), 8)
-        pygame.draw.circle(surface, NEGRO_NOCHE, (centro_x, rect.y + 10), 8, 1)
+        cabeza_y = rect.y + int(10 * escala_y)
+        pygame.draw.circle(surface, (185, 175, 160), (centro_x, cabeza_y), 8)
+        pygame.draw.circle(surface, NEGRO_NOCHE, (centro_x, cabeza_y), 8, 1)
 
         # Sombra profunda sobre el rostro bajo el ala del sombrero
         pygame.draw.polygon(
             surface,
             NEGRO_NOCHE,
             [
-                (centro_x - 7, rect.y + 7),
-                (centro_x + 7, rect.y + 7),
-                (centro_x + 5, rect.y + 12),
-                (centro_x - 5, rect.y + 12),
+                (centro_x - 7, cabeza_y - 3),
+                (centro_x + 7, cabeza_y - 3),
+                (centro_x + 5, cabeza_y + 2),
+                (centro_x - 5, cabeza_y + 2),
             ],
         )
 
         # Sombrero de ala ancha caído hacia el frente
-        ala_caida_y = rect.y + 4
-        pygame.draw.ellipse(surface, NEGRO_NOCHE, (rect.x - 2, ala_caida_y, rect.width + 4, 6))
-        pygame.draw.rect(surface, (32, 26, 36), (rect.x + 5, rect.y - 1, rect.width - 10, 6), border_radius=2)
-        pygame.draw.rect(surface, CARMESÍ_SANGRE, (rect.x + 5, rect.y + 2, rect.width - 10, 2))
+        ala_caida_y = cabeza_y - 6
+        pygame.draw.ellipse(surface, NEGRO_NOCHE, (rect.x - 2 - dw // 2, ala_caida_y, rect.width + 4 + dw, 6))
+        pygame.draw.rect(surface, (32, 26, 36), (rect.x + 5, cabeza_y - 11, rect.width - 10, 6), border_radius=2)
+        pygame.draw.rect(surface, CARMESÍ_SANGRE, (rect.x + 5, cabeza_y - 8, rect.width - 10, 2))
 
         # Dos ojos luminosos azul pálido fulgurando en la penumbra
         ojo_base_x = centro_x + self.direccion * 2
-        pygame.draw.circle(surface, (160, 215, 255), (ojo_base_x, rect.y + 10), 1)
-        pygame.draw.circle(surface, (160, 215, 255), (ojo_base_x + self.direccion * 3, rect.y + 10), 1)
+        pygame.draw.circle(surface, (160, 215, 255), (ojo_base_x, cabeza_y), 1)
+        pygame.draw.circle(surface, (160, 215, 255), (ojo_base_x + self.direccion * 3, cabeza_y), 1)
 
         # Bufanda fúnebre
-        pygame.draw.rect(surface, CARMESÍ_SANGRE, (centro_x - 7, rect.y + 15, 14, 3), border_radius=1)
+        pygame.draw.rect(surface, CARMESÍ_SANGRE, (centro_x - 7, cabeza_y + 5, 14, 3), border_radius=1)
 
         # 7. Farol litúrgico diegético aditivo
         farol_x = centro_x + self.direccion * 11
@@ -836,17 +955,41 @@ class Jugador:
             1,
         )
 
-        # Manto del Farol (UI Diegética/Espacial: aura celeste sutil de protección)
+        # Manto del Farol (UI Diegética/Espacial: aura celeste protectora doble con runas celestes orbitantes)
         if getattr(self, "escudo_farol", False):
             pulso = 0.5 + 0.5 * math.sin(tiempo * 6.0)
-            aura = pygame.Surface((rect.width + 16, rect.height + 16), pygame.SRCALPHA)
+            aura = pygame.Surface((rect.width + 24, rect.height + 24), pygame.SRCALPHA)
             pygame.draw.ellipse(
                 aura,
-                (92, 190, 220, int(50 + pulso * 35)),
-                (0, 0, rect.width + 16, rect.height + 16),
+                (92, 190, 220, int(35 + pulso * 25)),
+                (0, 0, rect.width + 24, rect.height + 24),
+                1,
+            )
+            pygame.draw.ellipse(
+                aura,
+                (140, 225, 255, int(65 + pulso * 45)),
+                (4, 4, rect.width + 16, rect.height + 16),
                 2,
             )
-            surface.blit(aura, (rect.x - 8, rect.y - 8))
+            surface.blit(aura, (rect.x - 12, rect.y - 12))
+
+            # 4 Runas celestes diamantinas orbitando suavemente
+            for k in range(4):
+                ang_runa = tiempo * 2.4 + k * (math.tau / 4.0)
+                rx = centro_x + int(math.cos(ang_runa) * (rect.width // 2 + 10))
+                ry = rect.centery + int(math.sin(ang_runa) * (rect.height // 2 + 8))
+                puntos_runa = [(rx, ry - 3), (rx + 2, ry), (rx, ry + 3), (rx - 2, ry)]
+                pygame.draw.polygon(surface, (140, 230, 255), puntos_runa)
+                pygame.draw.circle(surface, BLANCO, (rx, ry), 1)
+
+        # Filo de Ánima (chispas doradas/turquesas danzantes alrededor del sepulturero)
+        if getattr(self, "filo_anima", False):
+            for i, offset_fase in enumerate((0.0, 2.09, 4.18)):
+                t_f = tiempo * 4.0 + offset_fase
+                ch_x = centro_x + int(math.cos(t_f) * 14)
+                ch_y = rect.centery + int(math.sin(t_f) * 14)
+                col_ch = (255, 215, 80) if i % 2 == 0 else TURQUESA_ÁNIMA
+                pygame.draw.circle(surface, col_ch, (ch_x, ch_y), 2)
 
 
 # --- Clase Enemigo --- #
@@ -2407,9 +2550,11 @@ class FarolCheckpoint:
     def __init__(self, rect):
         self.rect = pygame.Rect(rect)
         self.activo = False
+        self.tier = 0
 
     def reiniciar(self):
         self.activo = False
+        self.tier = 0
 
     def actualizar(self, jugador):
         if not self.activo and self.rect.colliderect(jugador.rect):
@@ -2434,18 +2579,240 @@ class FarolCheckpoint:
         flame_y = base_y - 27
         if self.activo:
             pulso = 0.5 + 0.5 * math.sin(tiempo * 8 + cx * 0.05)
-            # Resplandor místico translúcido aditivo (iluminación litúrgica, no disco opaco)
-            brillo = pygame.Surface((48, 48), pygame.SRCALPHA)
-            pygame.draw.circle(brillo, (60, 180, 255, int(30 + pulso * 20)), (24, 24), 22)
-            pygame.draw.circle(brillo, (140, 220, 255, int(55 + pulso * 30)), (24, 24), 12)
-            pygame.draw.circle(brillo, (200, 245, 255, int(80 + pulso * 40)), (24, 24), 6)
-            surface.blit(brillo, (cx - 24, flame_y - 24), special_flags=pygame.BLEND_RGBA_ADD)
+            # Resplandor según el Grado de Consagración
+            if self.tier >= 3:
+                # Tier 3 (Fuego Fatuo): resplandor áureo y turquesa más intenso
+                color_aura_ext = (90, 220, 255, int(45 + pulso * 25))
+                color_aura_mid = (255, 215, 100, int(70 + pulso * 35))
+                color_aura_int = (255, 250, 200, int(100 + pulso * 45))
+                color_nucleo = (255, 245, 180)
+            elif self.tier >= 2:
+                # Tier 2 (Bendición del Manto): resplandor celeste protector
+                color_aura_ext = (80, 200, 255, int(40 + pulso * 25))
+                color_aura_mid = (160, 235, 255, int(65 + pulso * 35))
+                color_aura_int = (220, 250, 255, int(90 + pulso * 40))
+                color_nucleo = (240, 255, 255)
+            else:
+                # Tier 1 / Base: iluminación litúrgica clásica
+                color_aura_ext = (60, 180, 255, int(30 + pulso * 20))
+                color_aura_mid = (140, 220, 255, int(55 + pulso * 30))
+                color_aura_int = (200, 245, 255, int(80 + pulso * 40))
+                color_nucleo = (240, 255, 255)
 
-            radio_llama = int(3 + pulso * 2)
-            pygame.draw.circle(surface, (120, 220, 255), (cx, flame_y), radio_llama)
-            pygame.draw.circle(surface, (240, 255, 255), (cx, flame_y), max(1, radio_llama - 2))
+            radio_aura = 26 if self.tier >= 3 else 22
+            brillo = pygame.Surface((radio_aura * 2 + 4, radio_aura * 2 + 4), pygame.SRCALPHA)
+            bc = radio_aura + 2
+            pygame.draw.circle(brillo, color_aura_ext, (bc, bc), radio_aura)
+            pygame.draw.circle(brillo, color_aura_mid, (bc, bc), radio_aura // 2 + 2)
+            pygame.draw.circle(brillo, color_aura_int, (bc, bc), 6)
+            surface.blit(brillo, (cx - bc, flame_y - bc), special_flags=pygame.BLEND_RGBA_ADD)
+
+            radio_llama = int((4 if self.tier >= 3 else 3) + pulso * 2)
+            color_llama = (255, 205, 90) if self.tier >= 3 else (120, 220, 255)
+            pygame.draw.circle(surface, color_llama, (cx, flame_y), radio_llama)
+            pygame.draw.circle(surface, color_nucleo, (cx, flame_y), max(1, radio_llama - 2))
         else:
             # Vela apagada
             pygame.draw.rect(surface, (120, 110, 100), (cx - 1, flame_y, 2, 4))
+
+
+# --- Clase LosaQuebradiza --- #
+class LosaQuebradiza:
+    """Losa de osario quebradiza que colapsa tras 0.40s de contacto y reaparece tras 2.5s."""
+
+    def __init__(self, rect):
+        self.rect = pygame.Rect(rect)
+        self.inicial_rect = pygame.Rect(rect)
+        self.activa = True
+        self.pisada = False
+        self.tiempo_quiebre = 0.0
+        self.tiempo_reconstruccion = 0.0
+        self.vibracion_offset = 0.0
+        self.recien_quebrada = False
+        self.recien_reconstruida = False
+
+    def reiniciar(self):
+        self.rect = pygame.Rect(self.inicial_rect)
+        self.activa = True
+        self.pisada = False
+        self.tiempo_quiebre = 0.0
+        self.tiempo_reconstruccion = 0.0
+        self.vibracion_offset = 0.0
+        self.recien_quebrada = False
+        self.recien_reconstruida = False
+
+    def pisar(self):
+        """Activa el temporizador de colapso si la losa está firme."""
+        if self.activa and not self.pisada:
+            self.pisada = True
+
+    def actualizar(self, dt, jugador=None):
+        self.recien_quebrada = False
+        self.recien_reconstruida = False
+
+        # Si se pasa jugador, comprobar si está apoyado sobre la losa
+        if jugador is not None and self.activa:
+            if (
+                jugador.en_suelo
+                and abs(jugador.rect.bottom - self.rect.top) <= 2
+                and jugador.rect.right > self.rect.left
+                and jugador.rect.left < self.rect.right
+            ):
+                self.pisar()
+
+        if self.activa:
+            if self.pisada:
+                self.tiempo_quiebre += dt
+                # Vibración telegrafiada ±2 px
+                self.vibracion_offset = math.sin(self.tiempo_quiebre * 50.0) * 2.0
+                if self.tiempo_quiebre >= LOSA_TIEMPO_QUIEBRE:
+                    self.activa = False
+                    self.pisada = False
+                    self.tiempo_quiebre = 0.0
+                    self.tiempo_reconstruccion = LOSA_TIEMPO_RECONSTRUCCION
+                    self.vibracion_offset = 0.0
+                    self.recien_quebrada = True
+            else:
+                self.vibracion_offset = 0.0
+        else:
+            self.vibracion_offset = 0.0
+            self.tiempo_reconstruccion -= dt
+            if self.tiempo_reconstruccion <= 0:
+                self.activa = True
+                self.pisada = False
+                self.tiempo_quiebre = 0.0
+                self.tiempo_reconstruccion = 0.0
+                self.recien_reconstruida = True
+
+    def dibujar(self, surface, camara, tiempo=0.0):
+        # Si no está activa, dibujamos una silueta espectral translúcida
+        if not self.activa:
+            rect = camara.aplicar_rect(self.rect)
+            alfa = int(25 + 20 * math.sin(tiempo * 6.0))
+            fantasma = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
+            pygame.draw.rect(fantasma, (92, 190, 174, alfa), (0, 0, rect.width, rect.height), 1, border_radius=2)
+            surface.blit(fantasma, rect.topleft)
+            return
+
+        rect = camara.aplicar_rect(self.rect)
+        rx = rect.x + int(self.vibracion_offset)
+        ry = rect.y
+        w = rect.width
+        h = rect.height
+
+        # Base de losa de piedra gótica / osario
+        color_base = PIEDRA_FRIA
+        pygame.draw.rect(surface, color_base, (rx, ry, w, h), border_radius=2)
+        # Borde superior iluminado (salitre / marfil)
+        color_borde = HUESO_MARFIL if self.pisada else SALITRE_CRIPTA
+        pygame.draw.line(surface, color_borde, (rx + 1, ry), (rx + w - 2, ry), 2)
+        # Borde inferior sombra
+        pygame.draw.line(surface, PIEDRA_OSCURA, (rx + 1, ry + h - 1), (rx + w - 2, ry + h - 1), 2)
+
+        # Grietas telegrafiadas si fue pisada
+        if self.pisada:
+            avance = min(1.0, self.tiempo_quiebre / LOSA_TIEMPO_QUIEBRE)
+            color_grieta = (30, 25, 35)
+            mid_x = rx + w // 2
+            pygame.draw.line(surface, color_grieta, (mid_x, ry + 2), (mid_x - int(5 * avance), ry + int(h * 0.6 * avance)), 1)
+            pygame.draw.line(surface, color_grieta, (mid_x - int(5 * avance), ry + int(h * 0.6 * avance)), (mid_x + int(4 * avance), ry + int(h * 0.9 * avance)), 1)
+            if w > 32:
+                for off in (16, w - 16):
+                    gx = rx + off
+                    pygame.draw.line(surface, color_grieta, (gx, ry + 2), (gx + int(3 * avance), ry + int(h * 0.5 * avance)), 1)
+        else:
+            pygame.draw.line(surface, PIEDRA_OSCURA, (rx + w // 2, ry + 4), (rx + w // 2, ry + h - 4), 1)
+
+
+# --- Clase IncensarioRebote --- #
+class IncensarioRebote:
+    """Campana / Incensario de resonancia suspendido en el aire que permite rebotar y recargar Dash."""
+
+    def __init__(self, rect):
+        self.rect = pygame.Rect(rect)
+        self.inicial_rect = pygame.Rect(rect)
+        self.cooldown = 0.0
+        self.tiempo_repique = 0.0
+        self.activo = True
+
+    def reiniciar(self):
+        self.rect = pygame.Rect(self.inicial_rect)
+        self.cooldown = 0.0
+        self.tiempo_repique = 0.0
+        self.activo = True
+
+    def puede_rebotar(self):
+        return self.cooldown <= 0.0
+
+    def activar_rebote(self):
+        """Dispara el repique y el cooldown de rebote."""
+        self.cooldown = INCENSARIO_COOLDOWN
+        self.tiempo_repique = 0.45
+        return True
+
+    def actualizar(self, dt):
+        if self.cooldown > 0:
+            self.cooldown = max(0.0, self.cooldown - dt)
+        if self.tiempo_repique > 0:
+            self.tiempo_repique = max(0.0, self.tiempo_repique - dt)
+
+    def dibujar(self, surface, camara, tiempo=0.0):
+        rect = camara.aplicar_rect(self.rect)
+        cx = rect.centerx
+        cy = rect.centery
+
+        # Oscilación visual si está repicando
+        offset_osc = 0.0
+        if self.tiempo_repique > 0:
+            offset_osc = math.sin(self.tiempo_repique * 30.0) * (4.0 * (self.tiempo_repique / 0.45))
+
+        centro_campana_x = cx + int(offset_osc)
+        centro_campana_y = cy
+
+        # Cadena de suspensión de hierro que sube hacia el techo
+        y_cadena_fin = centro_campana_y - 12
+        y_cadena_inicio = y_cadena_fin - 24
+        pygame.draw.line(surface, (65, 60, 75), (centro_campana_x, y_cadena_inicio), (centro_campana_x, y_cadena_fin), 2)
+        for y_eslabon in range(y_cadena_inicio, y_cadena_fin, 5):
+            pygame.draw.circle(surface, (95, 90, 105), (centro_campana_x, y_eslabon), 2, 1)
+
+        # Halo turquesa pulsante del incensario
+        pulso = 0.5 + 0.5 * math.sin(tiempo * 5.0 + cx * 0.1)
+        brillo_radio = 24 if self.tiempo_repique > 0 else 16
+        brillo = pygame.Surface((brillo_radio * 2, brillo_radio * 2), pygame.SRCALPHA)
+        alfa_halo = int(60 + pulso * 40) if self.tiempo_repique > 0 else int(25 + pulso * 15)
+        pygame.draw.circle(brillo, (92, 190, 174, alfa_halo), (brillo_radio, brillo_radio), brillo_radio)
+        pygame.draw.circle(brillo, (180, 240, 230, int(alfa_halo * 0.7)), (brillo_radio, brillo_radio), brillo_radio // 2)
+        surface.blit(brillo, (centro_campana_x - brillo_radio, centro_campana_y - brillo_radio), special_flags=pygame.BLEND_RGBA_ADD)
+
+        # Campana / Incensario de bronce/hierro gótico
+        pygame.draw.rect(surface, (165, 120, 50), (centro_campana_x - 4, centro_campana_y - 12, 8, 4), border_radius=1)
+        puntos_campana = [
+            (centro_campana_x - 3, centro_campana_y - 8),
+            (centro_campana_x + 3, centro_campana_y - 8),
+            (centro_campana_x + 9, centro_campana_y + 4),
+            (centro_campana_x + 11, centro_campana_y + 8),
+            (centro_campana_x - 11, centro_campana_y + 8),
+            (centro_campana_x - 9, centro_campana_y + 4),
+        ]
+        color_cuerpo = (198, 156, 62) if self.tiempo_repique > 0 else (145, 105, 45)
+        pygame.draw.polygon(surface, color_cuerpo, puntos_campana)
+        pygame.draw.polygon(surface, (90, 65, 30), puntos_campana, 1)
+
+        # Badajo / incensario central inferior con gema o brasa turquesa
+        color_brasa = (180, 255, 245) if self.tiempo_repique > 0 else TURQUESA_ÁNIMA
+        pygame.draw.circle(surface, color_brasa, (centro_campana_x, centro_campana_y + 8), 3)
+
+        # Onda expansiva turquesa al repicar
+        if self.tiempo_repique > 0:
+            radio_onda = int((1.0 - (self.tiempo_repique / 0.45)) * 28) + 4
+            alfa_onda = int((self.tiempo_repique / 0.45) * 160)
+            onda_surf = pygame.Surface((radio_onda * 2 + 4, radio_onda * 2 + 4), pygame.SRCALPHA)
+            pygame.draw.circle(onda_surf, (92, 190, 174, alfa_onda), (radio_onda + 2, radio_onda + 2), radio_onda, 2)
+            surface.blit(onda_surf, (centro_campana_x - radio_onda - 2, centro_campana_y - radio_onda - 2), special_flags=pygame.BLEND_RGBA_ADD)
+
+
+CampanaResonancia = IncensarioRebote
+
 
 

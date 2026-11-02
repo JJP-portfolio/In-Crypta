@@ -1,0 +1,3881 @@
+{
+  "proyecto": "IN CRYPTA",
+  "pipeline": "pipeline_in_crypta.py",
+  "pipeline_version": "1.0.0",
+  "generated_at": "2026-11-02T03:08:14+00:00",
+  "root": "/home/sanodesu/unahur/PlataformeroMDA",
+  "delivery": "assets_in_crypta/entrega",
+  "palette": [
+    "#09080D",
+    "#D7CFB8",
+    "#701622",
+    "#5CBEAE",
+    "#C69C3E",
+    "#4B284B",
+    "#B5B9C2",
+    "#F0C45A"
+  ],
+  "formats": {
+    "sfx": "WAV PCM 16-bit, 44100 Hz, 2 canales",
+    "musica": "OGG Vorbis 44100 Hz, 2 canales, -16 LUFS integrados",
+    "sprites": "PNG RGBA, tiras horizontales, cuadros finales exactos"
+  },
+  "models": {
+    "sfx": "facebook/audiogen-medium",
+    "musica": "facebook/musicgen-medium",
+    "sprites_base": "stable-diffusion-v1-5/stable-diffusion-v1-5",
+    "sprites_lora": "artificialguybr/pixelartredmond-1-5v-pixel-art-loras-for-sd-1-5",
+    "sprites_lora_file": "PixelArtRedmond15V-PixelArt-PIXARFK.safetensors"
+  },
+  "licenses": {
+    "facebook/audiogen-medium": "CC-BY-NC-4.0",
+    "facebook/musicgen-medium": "CC-BY-NC-4.0",
+    "stable-diffusion-v1-5/stable-diffusion-v1-5": "CreativeML-OpenRAIL-M",
+    "artificialguybr/pixelartredmond-1-5v-pixel-art-loras-for-sd-1-5": "Bespoke LoRA license (allow derivatives, no credit required)"
+  },
+  "summary": {
+    "assets_total": 43,
+    "assets_ok": 43,
+    "assets_failed": 0,
+    "sfx": 21,
+    "musica": 10,
+    "sprites": 12,
+    "failed_ids": [],
+    "all_ok": true
+  },
+  "assets": [
+    {
+      "id": "salto",
+      "category": "sfx",
+      "file": "sfx/salto.wav",
+      "spec": {
+        "duration_s": 0.14,
+        "channels": 2,
+        "sample_rate": 44100,
+        "bit_depth": 16,
+        "loop": false,
+        "prompt": "soft rising whoosh of cloth, a quick airy hop, dusty crypt air"
+      },
+      "sha256": "3affc5ea791d99a69367deb7fc5c83cd66433016c19ced6b1a050f9380027a90",
+      "size_bytes": 24740,
+      "checks": {
+        "exists": true,
+        "wave": {
+          "channels": 2,
+          "sample_width_bytes": 2,
+          "sample_rate": 44100,
+          "frames": 6174,
+          "compression": "NONE",
+          "duration": 0.14
+        },
+        "channels_ok": true,
+        "sample_rate_ok": true,
+        "bit_depth_ok": true,
+        "pcm_ok": true,
+        "frames_ok": true,
+        "shape": [
+          6174,
+          2
+        ],
+        "rms_db": -14.51,
+        "peak": 0.70795,
+        "silence_ok": true,
+        "loop_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "audiogen-medium",
+      "model": "facebook/audiogen-medium",
+      "seed": 389667,
+      "note": "",
+      "extra": {}
+    },
+    {
+      "id": "dash",
+      "category": "sfx",
+      "file": "sfx/dash.wav",
+      "spec": {
+        "duration_s": 0.18,
+        "channels": 2,
+        "sample_rate": 44100,
+        "bit_depth": 16,
+        "loop": false,
+        "prompt": "fast shadowy dash, eerie spectral swoosh with a breath of wind"
+      },
+      "sha256": "8307c7fc8c4e2fb2775d04db18d661ab7c208e1178841de21922a4dd402914a0",
+      "size_bytes": 31796,
+      "checks": {
+        "exists": true,
+        "wave": {
+          "channels": 2,
+          "sample_width_bytes": 2,
+          "sample_rate": 44100,
+          "frames": 7938,
+          "compression": "NONE",
+          "duration": 0.18
+        },
+        "channels_ok": true,
+        "sample_rate_ok": true,
+        "bit_depth_ok": true,
+        "pcm_ok": true,
+        "frames_ok": true,
+        "shape": [
+          7938,
+          2
+        ],
+        "rms_db": -12.22,
+        "peak": 0.70792,
+        "silence_ok": true,
+        "loop_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "audiogen-medium",
+      "model": "facebook/audiogen-medium",
+      "seed": 389536,
+      "note": "",
+      "extra": {}
+    },
+    {
+      "id": "ataque",
+      "category": "sfx",
+      "file": "sfx/ataque.wav",
+      "spec": {
+        "duration_s": 0.11,
+        "channels": 2,
+        "sample_rate": 44100,
+        "bit_depth": 16,
+        "loop": false,
+        "prompt": "short shovel swing through air, thin metal hiss"
+      },
+      "sha256": "11aa07dc1f1782c147a79649c6e254ed5d368b2331745af65b98fa72dc8a83af",
+      "size_bytes": 19448,
+      "checks": {
+        "exists": true,
+        "wave": {
+          "channels": 2,
+          "sample_width_bytes": 2,
+          "sample_rate": 44100,
+          "frames": 4851,
+          "compression": "NONE",
+          "duration": 0.11
+        },
+        "channels_ok": true,
+        "sample_rate_ok": true,
+        "bit_depth_ok": true,
+        "pcm_ok": true,
+        "frames_ok": true,
+        "shape": [
+          4851,
+          2
+        ],
+        "rms_db": -17.29,
+        "peak": 0.70792,
+        "silence_ok": true,
+        "loop_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "audiogen-medium",
+      "model": "facebook/audiogen-medium",
+      "seed": 389761,
+      "note": "",
+      "extra": {}
+    },
+    {
+      "id": "pala",
+      "category": "sfx",
+      "file": "sfx/pala.wav",
+      "spec": {
+        "duration_s": 0.2,
+        "channels": 2,
+        "sample_rate": 44100,
+        "bit_depth": 16,
+        "loop": false,
+        "prompt": "heavy iron shovel hitting stone, dull metallic thud with gravel"
+      },
+      "sha256": "3e27a7928c9b6b6f23c71dc9f6afb5de9d0738444c747985d45810fd4b38e3b3",
+      "size_bytes": 35324,
+      "checks": {
+        "exists": true,
+        "wave": {
+          "channels": 2,
+          "sample_width_bytes": 2,
+          "sample_rate": 44100,
+          "frames": 8820,
+          "compression": "NONE",
+          "duration": 0.2
+        },
+        "channels_ok": true,
+        "sample_rate_ok": true,
+        "bit_depth_ok": true,
+        "pcm_ok": true,
+        "frames_ok": true,
+        "shape": [
+          8820,
+          2
+        ],
+        "rms_db": -21.32,
+        "peak": 0.70795,
+        "silence_ok": true,
+        "loop_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "audiogen-medium",
+      "model": "facebook/audiogen-medium",
+      "seed": 389534,
+      "note": "",
+      "extra": {}
+    },
+    {
+      "id": "stomp",
+      "category": "sfx",
+      "file": "sfx/stomp.wav",
+      "spec": {
+        "duration_s": 0.18,
+        "channels": 2,
+        "sample_rate": 44100,
+        "bit_depth": 16,
+        "loop": false,
+        "prompt": "heavy stomp on a bone-dust floor, muffled crunch of bones"
+      },
+      "sha256": "ddad73a1cd5c39a32904f4609aaa60c40ae9c58b57864647dd44dfe1c0682ad5",
+      "size_bytes": 31796,
+      "checks": {
+        "exists": true,
+        "wave": {
+          "channels": 2,
+          "sample_width_bytes": 2,
+          "sample_rate": 44100,
+          "frames": 7938,
+          "compression": "NONE",
+          "duration": 0.18
+        },
+        "channels_ok": true,
+        "sample_rate_ok": true,
+        "bit_depth_ok": true,
+        "pcm_ok": true,
+        "frames_ok": true,
+        "shape": [
+          7938,
+          2
+        ],
+        "rms_db": -24.17,
+        "peak": 0.70795,
+        "silence_ok": true,
+        "loop_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "audiogen-medium",
+      "model": "facebook/audiogen-medium",
+      "seed": 389683,
+      "note": "",
+      "extra": {}
+    },
+    {
+      "id": "alma_ref",
+      "category": "sfx",
+      "file": "sfx/alma_ref.wav",
+      "spec": {
+        "duration_s": 0.22,
+        "channels": 2,
+        "sample_rate": 44100,
+        "bit_depth": 16,
+        "loop": false,
+        "prompt": "single soft glass-like bell chime, pure tone at A5 (880 Hz)"
+      },
+      "sha256": "b6a54b8c18084f1fb86fc440564015f6d7d425d658abbcfda0aca7b798d0c228",
+      "size_bytes": 38852,
+      "checks": {
+        "exists": true,
+        "wave": {
+          "channels": 2,
+          "sample_width_bytes": 2,
+          "sample_rate": 44100,
+          "frames": 9702,
+          "compression": "NONE",
+          "duration": 0.22
+        },
+        "channels_ok": true,
+        "sample_rate_ok": true,
+        "bit_depth_ok": true,
+        "pcm_ok": true,
+        "frames_ok": true,
+        "shape": [
+          9702,
+          2
+        ],
+        "rms_db": -13.64,
+        "peak": 0.70795,
+        "silence_ok": true,
+        "loop_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "audiogen-medium",
+      "model": "facebook/audiogen-medium",
+      "seed": 389943,
+      "note": "",
+      "extra": {}
+    },
+    {
+      "id": "onda",
+      "category": "sfx",
+      "file": "sfx/onda.wav",
+      "spec": {
+        "duration_s": 0.4,
+        "channels": 2,
+        "sample_rate": 44100,
+        "bit_depth": 16,
+        "loop": false,
+        "prompt": "deep rumbling shockwave of dust and bones, subsonic boom"
+      },
+      "sha256": "11df653a45d7270063dd57c702bae9ea2ed4250ebb1503c6b154dee3d0b52a4f",
+      "size_bytes": 70604,
+      "checks": {
+        "exists": true,
+        "wave": {
+          "channels": 2,
+          "sample_width_bytes": 2,
+          "sample_rate": 44100,
+          "frames": 17640,
+          "compression": "NONE",
+          "duration": 0.4
+        },
+        "channels_ok": true,
+        "sample_rate_ok": true,
+        "bit_depth_ok": true,
+        "pcm_ok": true,
+        "frames_ok": true,
+        "shape": [
+          17640,
+          2
+        ],
+        "rms_db": -12.86,
+        "peak": 0.70792,
+        "silence_ok": true,
+        "loop_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "audiogen-medium",
+      "model": "facebook/audiogen-medium",
+      "seed": 389538,
+      "note": "",
+      "extra": {}
+    },
+    {
+      "id": "jefe_aviso",
+      "category": "sfx",
+      "file": "sfx/jefe_aviso.wav",
+      "spec": {
+        "duration_s": 0.28,
+        "channels": 2,
+        "sample_rate": 44100,
+        "bit_depth": 16,
+        "loop": false,
+        "prompt": "ominous warning toll, low bell with a dissonant undertone"
+      },
+      "sha256": "6367ff45a25a240006b84df12ec8d790f073133b975ac24194209f71b1b71cb1",
+      "size_bytes": 49436,
+      "checks": {
+        "exists": true,
+        "wave": {
+          "channels": 2,
+          "sample_width_bytes": 2,
+          "sample_rate": 44100,
+          "frames": 12348,
+          "compression": "NONE",
+          "duration": 0.28
+        },
+        "channels_ok": true,
+        "sample_rate_ok": true,
+        "bit_depth_ok": true,
+        "pcm_ok": true,
+        "frames_ok": true,
+        "shape": [
+          12348,
+          2
+        ],
+        "rms_db": -11.75,
+        "peak": 0.70795,
+        "silence_ok": true,
+        "loop_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "audiogen-medium",
+      "model": "facebook/audiogen-medium",
+      "seed": 390171,
+      "note": "",
+      "extra": {}
+    },
+    {
+      "id": "jefe_fase",
+      "category": "sfx",
+      "file": "sfx/jefe_fase.wav",
+      "spec": {
+        "duration_s": 0.55,
+        "channels": 2,
+        "sample_rate": 44100,
+        "bit_depth": 16,
+        "loop": false,
+        "prompt": "sinister phase change, deep choir-like drone swelling and cutting off"
+      },
+      "sha256": "97529bc0f2253a2d81589366fd53db95a1c837f7782b94bfd725d6906dcba6eb",
+      "size_bytes": 97064,
+      "checks": {
+        "exists": true,
+        "wave": {
+          "channels": 2,
+          "sample_width_bytes": 2,
+          "sample_rate": 44100,
+          "frames": 24255,
+          "compression": "NONE",
+          "duration": 0.55
+        },
+        "channels_ok": true,
+        "sample_rate_ok": true,
+        "bit_depth_ok": true,
+        "pcm_ok": true,
+        "frames_ok": true,
+        "shape": [
+          24255,
+          2
+        ],
+        "rms_db": -14.6,
+        "peak": 0.70795,
+        "silence_ok": true,
+        "loop_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "audiogen-medium",
+      "model": "facebook/audiogen-medium",
+      "seed": 390040,
+      "note": "",
+      "extra": {}
+    },
+    {
+      "id": "pala_recoger",
+      "category": "sfx",
+      "file": "sfx/pala_recoger.wav",
+      "spec": {
+        "duration_s": 0.25,
+        "channels": 2,
+        "sample_rate": 44100,
+        "bit_depth": 16,
+        "loop": false,
+        "prompt": "metal tool pickup, short clink and bright shimmer"
+      },
+      "sha256": "b7bce483ec7f0e98068d1d74ba304bc5185d030adc4838ba252828bdc006e7a8",
+      "size_bytes": 44144,
+      "checks": {
+        "exists": true,
+        "wave": {
+          "channels": 2,
+          "sample_width_bytes": 2,
+          "sample_rate": 44100,
+          "frames": 11025,
+          "compression": "NONE",
+          "duration": 0.25
+        },
+        "channels_ok": true,
+        "sample_rate_ok": true,
+        "bit_depth_ok": true,
+        "pcm_ok": true,
+        "frames_ok": true,
+        "shape": [
+          11025,
+          2
+        ],
+        "rms_db": -25.94,
+        "peak": 0.70795,
+        "silence_ok": true,
+        "loop_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "audiogen-medium",
+      "model": "facebook/audiogen-medium",
+      "seed": 390372,
+      "note": "",
+      "extra": {}
+    },
+    {
+      "id": "dash_recoger",
+      "category": "sfx",
+      "file": "sfx/dash_recoger.wav",
+      "spec": {
+        "duration_s": 0.28,
+        "channels": 2,
+        "sample_rate": 44100,
+        "bit_depth": 16,
+        "loop": false,
+        "prompt": "shadow amulet pickup, soft whooshing chime"
+      },
+      "sha256": "8a27fd1fd0dccbb45cabb9f5b84a791ab3e3cf591a8b8c5ac7660dbf675789cd",
+      "size_bytes": 49436,
+      "checks": {
+        "exists": true,
+        "wave": {
+          "channels": 2,
+          "sample_width_bytes": 2,
+          "sample_rate": 44100,
+          "frames": 12348,
+          "compression": "NONE",
+          "duration": 0.28
+        },
+        "channels_ok": true,
+        "sample_rate_ok": true,
+        "bit_depth_ok": true,
+        "pcm_ok": true,
+        "frames_ok": true,
+        "shape": [
+          12348,
+          2
+        ],
+        "rms_db": -7.18,
+        "peak": 0.70795,
+        "silence_ok": true,
+        "loop_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "audiogen-medium",
+      "model": "facebook/audiogen-medium",
+      "seed": 390374,
+      "note": "",
+      "extra": {}
+    },
+    {
+      "id": "checkpoint",
+      "category": "sfx",
+      "file": "sfx/checkpoint.wav",
+      "spec": {
+        "duration_s": 0.32,
+        "channels": 2,
+        "sample_rate": 44100,
+        "bit_depth": 16,
+        "loop": false,
+        "prompt": "lantern lighting up, warm chime with a small flicker"
+      },
+      "sha256": "ccdfdc38c4342cb3c880141da22d809684cbc0b581f221d8c8283af59152badf",
+      "size_bytes": 56492,
+      "checks": {
+        "exists": true,
+        "wave": {
+          "channels": 2,
+          "sample_width_bytes": 2,
+          "sample_rate": 44100,
+          "frames": 14112,
+          "compression": "NONE",
+          "duration": 0.32
+        },
+        "channels_ok": true,
+        "sample_rate_ok": true,
+        "bit_depth_ok": true,
+        "pcm_ok": true,
+        "frames_ok": true,
+        "shape": [
+          14112,
+          2
+        ],
+        "rms_db": -32.57,
+        "peak": 0.70792,
+        "silence_ok": true,
+        "loop_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "audiogen-medium",
+      "model": "facebook/audiogen-medium",
+      "seed": 390184,
+      "note": "",
+      "extra": {}
+    },
+    {
+      "id": "vida_extra",
+      "category": "sfx",
+      "file": "sfx/vida_extra.wav",
+      "spec": {
+        "duration_s": 0.44,
+        "channels": 2,
+        "sample_rate": 44100,
+        "bit_depth": 16,
+        "loop": false,
+        "prompt": "extra life, warm reverent chord rising, no voices"
+      },
+      "sha256": "94a88b4a5a8a8b49b71f38dba7d83bd1285fe160c29c37eb366767ca991fa443",
+      "size_bytes": 77660,
+      "checks": {
+        "exists": true,
+        "wave": {
+          "channels": 2,
+          "sample_width_bytes": 2,
+          "sample_rate": 44100,
+          "frames": 19404,
+          "compression": "NONE",
+          "duration": 0.44
+        },
+        "channels_ok": true,
+        "sample_rate_ok": true,
+        "bit_depth_ok": true,
+        "pcm_ok": true,
+        "frames_ok": true,
+        "shape": [
+          19404,
+          2
+        ],
+        "rms_db": -13.21,
+        "peak": 0.70795,
+        "silence_ok": true,
+        "loop_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "audiogen-medium",
+      "model": "facebook/audiogen-medium",
+      "seed": 390183,
+      "note": "",
+      "extra": {}
+    },
+    {
+      "id": "ui",
+      "category": "sfx",
+      "file": "sfx/ui.wav",
+      "spec": {
+        "duration_s": 0.06,
+        "channels": 2,
+        "sample_rate": 44100,
+        "bit_depth": 16,
+        "loop": false,
+        "prompt": "tiny dry wooden click for menus"
+      },
+      "sha256": "b9751a7066bfbe6cb63672fe5d3d58c7ddcaf99a226be64db035b8e8fa16fb19",
+      "size_bytes": 10628,
+      "checks": {
+        "exists": true,
+        "wave": {
+          "channels": 2,
+          "sample_width_bytes": 2,
+          "sample_rate": 44100,
+          "frames": 2646,
+          "compression": "NONE",
+          "duration": 0.06
+        },
+        "channels_ok": true,
+        "sample_rate_ok": true,
+        "bit_depth_ok": true,
+        "pcm_ok": true,
+        "frames_ok": true,
+        "shape": [
+          2646,
+          2
+        ],
+        "rms_db": -24.25,
+        "peak": 0.70795,
+        "silence_ok": true,
+        "loop_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "audiogen-medium",
+      "model": "facebook/audiogen-medium",
+      "seed": 389342,
+      "note": "",
+      "extra": {}
+    },
+    {
+      "id": "dano",
+      "category": "sfx",
+      "file": "sfx/dano.wav",
+      "spec": {
+        "duration_s": 0.26,
+        "channels": 2,
+        "sample_rate": 44100,
+        "bit_depth": 16,
+        "loop": false,
+        "prompt": "low ghostly impact, short thud with a breath of pain, no human voice"
+      },
+      "sha256": "bcc52d3783c566d8807d32dcffe51dec9dcfb5d7e37384ab3f1b12d69b41b170",
+      "size_bytes": 45908,
+      "checks": {
+        "exists": true,
+        "wave": {
+          "channels": 2,
+          "sample_width_bytes": 2,
+          "sample_rate": 44100,
+          "frames": 11466,
+          "compression": "NONE",
+          "duration": 0.26
+        },
+        "channels_ok": true,
+        "sample_rate_ok": true,
+        "bit_depth_ok": true,
+        "pcm_ok": true,
+        "frames_ok": true,
+        "shape": [
+          11466,
+          2
+        ],
+        "rms_db": -13.72,
+        "peak": 0.70795,
+        "silence_ok": true,
+        "loop_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "audiogen-medium",
+      "model": "facebook/audiogen-medium",
+      "seed": 389538,
+      "note": "",
+      "extra": {}
+    },
+    {
+      "id": "muerte",
+      "category": "sfx",
+      "file": "sfx/muerte.wav",
+      "spec": {
+        "duration_s": 0.65,
+        "channels": 2,
+        "sample_rate": 44100,
+        "bit_depth": 16,
+        "loop": false,
+        "prompt": "gravedigger's death, descending drone fading into one bell toll"
+      },
+      "sha256": "1c1a2da4948e296848c1e9e941b3f05ff0c3519c1f5d37c9ed5e9fddb1d1584f",
+      "size_bytes": 114704,
+      "checks": {
+        "exists": true,
+        "wave": {
+          "channels": 2,
+          "sample_width_bytes": 2,
+          "sample_rate": 44100,
+          "frames": 28665,
+          "compression": "NONE",
+          "duration": 0.65
+        },
+        "channels_ok": true,
+        "sample_rate_ok": true,
+        "bit_depth_ok": true,
+        "pcm_ok": true,
+        "frames_ok": true,
+        "shape": [
+          28665,
+          2
+        ],
+        "rms_db": -14.38,
+        "peak": 0.70795,
+        "silence_ok": true,
+        "loop_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "audiogen-medium",
+      "model": "facebook/audiogen-medium",
+      "seed": 389778,
+      "note": "",
+      "extra": {}
+    },
+    {
+      "id": "meta",
+      "category": "sfx",
+      "file": "sfx/meta.wav",
+      "spec": {
+        "duration_s": 0.55,
+        "channels": 2,
+        "sample_rate": 44100,
+        "bit_depth": 16,
+        "loop": false,
+        "prompt": "heavy stone gate opening, grinding stone, rising bell resolution"
+      },
+      "sha256": "70e96f899250df3311d34c3fc7eed7665d195ee352ed7ed2c229de82a66c0414",
+      "size_bytes": 97064,
+      "checks": {
+        "exists": true,
+        "wave": {
+          "channels": 2,
+          "sample_width_bytes": 2,
+          "sample_rate": 44100,
+          "frames": 24255,
+          "compression": "NONE",
+          "duration": 0.55
+        },
+        "channels_ok": true,
+        "sample_rate_ok": true,
+        "bit_depth_ok": true,
+        "pcm_ok": true,
+        "frames_ok": true,
+        "shape": [
+          24255,
+          2
+        ],
+        "rms_db": -18.66,
+        "peak": 0.70792,
+        "silence_ok": true,
+        "loop_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "audiogen-medium",
+      "model": "facebook/audiogen-medium",
+      "seed": 389543,
+      "note": "",
+      "extra": {}
+    },
+    {
+      "id": "rebote_pala",
+      "category": "sfx",
+      "file": "sfx/rebote_pala.wav",
+      "spec": {
+        "duration_s": 0.16,
+        "channels": 2,
+        "sample_rate": 44100,
+        "bit_depth": 16,
+        "loop": false,
+        "prompt": "shovel clang bouncing off iron armor, metallic ring, short tail"
+      },
+      "sha256": "472298760750894b6266d85a540a8064d5b8525dff4bba90f3f182145e5cb597",
+      "size_bytes": 28268,
+      "checks": {
+        "exists": true,
+        "wave": {
+          "channels": 2,
+          "sample_width_bytes": 2,
+          "sample_rate": 44100,
+          "frames": 7056,
+          "compression": "NONE",
+          "duration": 0.16
+        },
+        "channels_ok": true,
+        "sample_rate_ok": true,
+        "bit_depth_ok": true,
+        "pcm_ok": true,
+        "frames_ok": true,
+        "shape": [
+          7056,
+          2
+        ],
+        "rms_db": -7.91,
+        "peak": 0.70795,
+        "silence_ok": true,
+        "loop_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "audiogen-medium",
+      "model": "facebook/audiogen-medium",
+      "seed": 390270,
+      "note": "",
+      "extra": {}
+    },
+    {
+      "id": "corazon_latido",
+      "category": "sfx",
+      "file": "sfx/corazon_latido.wav",
+      "spec": {
+        "duration_s": 1.0,
+        "channels": 2,
+        "sample_rate": 44100,
+        "bit_depth": 16,
+        "loop": false,
+        "prompt": "single heartbeat, lub-dub, deep and wet, no room tone"
+      },
+      "sha256": "492b2841961edcd0dd69a026863b8ba8eb55a9a79a67add5ce06bcc20db71f8c",
+      "size_bytes": 176444,
+      "checks": {
+        "exists": true,
+        "wave": {
+          "channels": 2,
+          "sample_width_bytes": 2,
+          "sample_rate": 44100,
+          "frames": 44100,
+          "compression": "NONE",
+          "duration": 1.0
+        },
+        "channels_ok": true,
+        "sample_rate_ok": true,
+        "bit_depth_ok": true,
+        "pcm_ok": true,
+        "frames_ok": true,
+        "shape": [
+          44100,
+          2
+        ],
+        "rms_db": -15.25,
+        "peak": 0.70792,
+        "silence_ok": true,
+        "loop_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "audiogen-medium",
+      "model": "facebook/audiogen-medium",
+      "seed": 390616,
+      "note": "",
+      "extra": {}
+    },
+    {
+      "id": "dron_catacumbas",
+      "category": "sfx",
+      "file": "sfx/dron_catacumbas.wav",
+      "spec": {
+        "duration_s": 20.0,
+        "channels": 2,
+        "sample_rate": 44100,
+        "bit_depth": 16,
+        "loop": true,
+        "prompt": "dark funeral drone, low sustained cello-like tone with slow beating, seamless loop, no melody"
+      },
+      "sha256": "8666620481f8e791cbad0e5fbbb9498e01d1a16628131ca26db68475222ac94a",
+      "size_bytes": 3528044,
+      "checks": {
+        "exists": true,
+        "wave": {
+          "channels": 2,
+          "sample_width_bytes": 2,
+          "sample_rate": 44100,
+          "frames": 882000,
+          "compression": "NONE",
+          "duration": 20.0
+        },
+        "channels_ok": true,
+        "sample_rate_ok": true,
+        "bit_depth_ok": true,
+        "pcm_ok": true,
+        "frames_ok": true,
+        "shape": [
+          882000,
+          2
+        ],
+        "rms_db": -19.5,
+        "peak": 0.70792,
+        "silence_ok": true,
+        "loop_seam": {
+          "sample_jump": 0.0,
+          "slope_error": 0.004852
+        },
+        "loop_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "audiogen-medium",
+      "model": "facebook/audiogen-medium",
+      "seed": 390694,
+      "note": "",
+      "extra": {
+        "sfx/dron_catacumbas.ogg": {
+          "ok": true,
+          "lufs": -16.0,
+          "gain_db": 5.199999999999999,
+          "attempts": 2,
+          "history": [
+            {
+              "attempt": 1,
+              "gain_db": 0.0,
+              "loop": true,
+              "lufs": -21.2,
+              "true_peak_db": -3.0,
+              "method": "ebur128"
+            },
+            {
+              "attempt": 2,
+              "gain_db": 5.2,
+              "loop": true,
+              "lufs": -16.0,
+              "true_peak_db": -0.9,
+              "method": "ebur128"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "dron_catacumbas_ogg",
+      "category": "sfx",
+      "file": "sfx/dron_catacumbas.ogg",
+      "spec": {
+        "duration_s": 20.0,
+        "codec": "vorbis",
+        "channels": 2,
+        "sample_rate": 44100,
+        "lufs": -16.0,
+        "loop": true,
+        "prompt": "dark funeral drone, low sustained cello-like tone with slow beating, seamless loop, no melody"
+      },
+      "sha256": "ccb4ed3902f4e80c4d554a5ff35b962506ccffa1e8a37d71c359da1fa06bbbe2",
+      "size_bytes": 199038,
+      "checks": {
+        "exists": true,
+        "codec": "vorbis",
+        "sample_rate": "44100",
+        "channels": 2,
+        "duration_s": 20.0,
+        "codec_ok": true,
+        "sample_rate_ok": true,
+        "channels_ok": true,
+        "duration_ok": true,
+        "lufs": -16.0,
+        "true_peak_db": -0.9,
+        "lufs_ok": true,
+        "loop_seam": {
+          "sample_jump": 0.001556,
+          "slope_error": 0.009735
+        },
+        "loop_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "shared-wav"
+    },
+    {
+      "id": "mus_titulo",
+      "category": "musica",
+      "file": "musica/titulo.ogg",
+      "spec": {
+        "duration_s": 60.0,
+        "codec": "vorbis",
+        "channels": 2,
+        "sample_rate": 44100,
+        "lufs": -16.0,
+        "loop": true,
+        "bpm": 70,
+        "prompt": "solemn church organ and low strings, 70 BPM, melancholic title theme for a gothic crypt platformer"
+      },
+      "sha256": "072998af06683bd5ab86e07955e8f1a87731f800e7ee6506188d19f31fef5d9d",
+      "size_bytes": 1043749,
+      "checks": {
+        "exists": true,
+        "codec": "vorbis",
+        "sample_rate": "44100",
+        "channels": 2,
+        "duration_s": 60.0,
+        "codec_ok": true,
+        "sample_rate_ok": true,
+        "channels_ok": true,
+        "duration_ok": true,
+        "lufs": -16.0,
+        "true_peak_db": -6.0,
+        "lufs_ok": true,
+        "loop_seam": {
+          "sample_jump": 0.00058,
+          "slope_error": 0.000885
+        },
+        "loop_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "musicgen-medium",
+      "model": "facebook/musicgen-medium",
+      "seed": 101,
+      "note": "",
+      "loudness": {
+        "ok": true,
+        "lufs": -16.0,
+        "gain_db": -5.0,
+        "attempts": 2,
+        "history": [
+          {
+            "attempt": 1,
+            "gain_db": 0.0,
+            "loop": true,
+            "lufs": -11.0,
+            "true_peak_db": -1.4,
+            "method": "ebur128"
+          },
+          {
+            "attempt": 2,
+            "gain_db": -5.0,
+            "loop": true,
+            "lufs": -16.0,
+            "true_peak_db": -6.0,
+            "method": "ebur128"
+          }
+        ]
+      }
+    },
+    {
+      "id": "mus_camposanto",
+      "category": "musica",
+      "file": "musica/camposanto.ogg",
+      "spec": {
+        "duration_s": 90.0,
+        "codec": "vorbis",
+        "channels": 2,
+        "sample_rate": 44100,
+        "lufs": -16.0,
+        "loop": true,
+        "bpm": 90,
+        "prompt": "graveyard exploration, sparse plucked strings, distant bell, 90 BPM, eerie but calm"
+      },
+      "sha256": "641c6cdac7bee6221ec3c4893415ef606fe2175b3303f3f34e0ec39b067cea45",
+      "size_bytes": 1292162,
+      "checks": {
+        "exists": true,
+        "codec": "vorbis",
+        "sample_rate": "44100",
+        "channels": 2,
+        "duration_s": 90.0,
+        "codec_ok": true,
+        "sample_rate_ok": true,
+        "channels_ok": true,
+        "duration_ok": true,
+        "lufs": -16.0,
+        "true_peak_db": -1.1,
+        "lufs_ok": true,
+        "loop_seam": {
+          "sample_jump": 0.00061,
+          "slope_error": 0.000946
+        },
+        "loop_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "musicgen-medium",
+      "model": "facebook/musicgen-medium",
+      "seed": 102,
+      "note": "",
+      "loudness": {
+        "ok": true,
+        "lufs": -16.0,
+        "gain_db": 1.1999999999999993,
+        "attempts": 2,
+        "history": [
+          {
+            "attempt": 1,
+            "gain_db": 0.0,
+            "loop": true,
+            "lufs": -17.2,
+            "true_peak_db": -1.5,
+            "method": "ebur128"
+          },
+          {
+            "attempt": 2,
+            "gain_db": 1.2,
+            "loop": true,
+            "lufs": -16.0,
+            "true_peak_db": -1.1,
+            "method": "ebur128"
+          }
+        ]
+      }
+    },
+    {
+      "id": "mus_cripta",
+      "category": "musica",
+      "file": "musica/cripta.ogg",
+      "spec": {
+        "duration_s": 90.0,
+        "codec": "vorbis",
+        "channels": 2,
+        "sample_rate": 44100,
+        "lufs": -16.0,
+        "loop": true,
+        "bpm": 85,
+        "prompt": "underground crypt, dripping water textures, low cello ostinato, 85 BPM, dark ambient"
+      },
+      "sha256": "caf94157d5ddf3226f0c5430a459d92a061588853fc546f2a3992d99f688b001",
+      "size_bytes": 1170820,
+      "checks": {
+        "exists": true,
+        "codec": "vorbis",
+        "sample_rate": "44100",
+        "channels": 2,
+        "duration_s": 90.0,
+        "codec_ok": true,
+        "sample_rate_ok": true,
+        "channels_ok": true,
+        "duration_ok": true,
+        "lufs": -16.0,
+        "true_peak_db": -2.5,
+        "lufs_ok": true,
+        "loop_seam": {
+          "sample_jump": 0.003693,
+          "slope_error": 0.00174
+        },
+        "loop_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "musicgen-medium",
+      "model": "facebook/musicgen-medium",
+      "seed": 103,
+      "note": "",
+      "loudness": {
+        "ok": true,
+        "lufs": -16.0,
+        "gain_db": -1.6999999999999993,
+        "attempts": 2,
+        "history": [
+          {
+            "attempt": 1,
+            "gain_db": 0.0,
+            "loop": true,
+            "lufs": -14.3,
+            "true_peak_db": -1.4,
+            "method": "ebur128"
+          },
+          {
+            "attempt": 2,
+            "gain_db": -1.7,
+            "loop": true,
+            "lufs": -16.0,
+            "true_peak_db": -2.5,
+            "method": "ebur128"
+          }
+        ]
+      }
+    },
+    {
+      "id": "mus_osario",
+      "category": "musica",
+      "file": "musica/osario.ogg",
+      "spec": {
+        "duration_s": 90.0,
+        "codec": "vorbis",
+        "channels": 2,
+        "sample_rate": 44100,
+        "lufs": -16.0,
+        "loop": true,
+        "bpm": 100,
+        "prompt": "ossuary, rhythmic bone percussion, dissonant brass hints, tense, 100 BPM"
+      },
+      "sha256": "834b0408f3399424bab57298e4174a382bab2a61c844b4d7c21275164352a18a",
+      "size_bytes": 1385641,
+      "checks": {
+        "exists": true,
+        "codec": "vorbis",
+        "sample_rate": "44100",
+        "channels": 2,
+        "duration_s": 90.0,
+        "codec_ok": true,
+        "sample_rate_ok": true,
+        "channels_ok": true,
+        "duration_ok": true,
+        "lufs": -16.0,
+        "true_peak_db": -1.5,
+        "lufs_ok": true,
+        "loop_seam": {
+          "sample_jump": 0.00354,
+          "slope_error": 0.000366
+        },
+        "loop_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "musicgen-medium",
+      "model": "facebook/musicgen-medium",
+      "seed": 104,
+      "note": "",
+      "loudness": {
+        "ok": true,
+        "lufs": -16.0,
+        "gain_db": -0.3000000000000007,
+        "attempts": 2,
+        "history": [
+          {
+            "attempt": 1,
+            "gain_db": 0.0,
+            "loop": true,
+            "lufs": -15.7,
+            "true_peak_db": -1.3,
+            "method": "ebur128"
+          },
+          {
+            "attempt": 2,
+            "gain_db": -0.3,
+            "loop": true,
+            "lufs": -16.0,
+            "true_peak_db": -1.5,
+            "method": "ebur128"
+          }
+        ]
+      }
+    },
+    {
+      "id": "mus_carcelero",
+      "category": "musica",
+      "file": "musica/carcelero.ogg",
+      "spec": {
+        "duration_s": 60.0,
+        "codec": "vorbis",
+        "channels": 2,
+        "sample_rate": 44100,
+        "lufs": -16.0,
+        "loop": true,
+        "bpm": 120,
+        "prompt": "mini-boss battle, driving percussion, chain rattles, low string ostinato, 120 BPM"
+      },
+      "sha256": "5f15297aec1dd4974aa6f75cf2209ee981d5ae17ea0895745b0818c5f3ed85a1",
+      "size_bytes": 945378,
+      "checks": {
+        "exists": true,
+        "codec": "vorbis",
+        "sample_rate": "44100",
+        "channels": 2,
+        "duration_s": 60.0,
+        "codec_ok": true,
+        "sample_rate_ok": true,
+        "channels_ok": true,
+        "duration_ok": true,
+        "lufs": -16.0,
+        "true_peak_db": -0.9,
+        "lufs_ok": true,
+        "loop_seam": {
+          "sample_jump": 0.004181,
+          "slope_error": 0.004852
+        },
+        "loop_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "musicgen-medium",
+      "model": "facebook/musicgen-medium",
+      "seed": 105,
+      "note": "",
+      "loudness": {
+        "ok": true,
+        "lufs": -16.0,
+        "gain_db": 1.1000000000000014,
+        "attempts": 2,
+        "history": [
+          {
+            "attempt": 1,
+            "gain_db": 0.0,
+            "loop": true,
+            "lufs": -17.1,
+            "true_peak_db": -1.5,
+            "method": "ebur128"
+          },
+          {
+            "attempt": 2,
+            "gain_db": 1.1,
+            "loop": true,
+            "lufs": -16.0,
+            "true_peak_db": -0.9,
+            "method": "ebur128"
+          }
+        ]
+      }
+    },
+    {
+      "id": "mus_custodio_f1",
+      "category": "musica",
+      "file": "musica/custodio_f1.ogg",
+      "spec": {
+        "duration_s": 60.0,
+        "codec": "vorbis",
+        "channels": 2,
+        "sample_rate": 44100,
+        "lufs": -16.0,
+        "loop": true,
+        "bpm": 110,
+        "prompt": "final boss phase one, grand gothic choir-like pads, heavy drums, 110 BPM, dramatic"
+      },
+      "sha256": "75ba0dae63ea061f0b93bc8328e6d2de9ef70451daf8107bc53391e1c5d510ef",
+      "size_bytes": 957558,
+      "checks": {
+        "exists": true,
+        "codec": "vorbis",
+        "sample_rate": "44100",
+        "channels": 2,
+        "duration_s": 60.0,
+        "codec_ok": true,
+        "sample_rate_ok": true,
+        "channels_ok": true,
+        "duration_ok": true,
+        "lufs": -15.9,
+        "true_peak_db": -1.4,
+        "lufs_ok": true,
+        "loop_seam": {
+          "sample_jump": 0.001587,
+          "slope_error": 0.008026
+        },
+        "loop_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "musicgen-medium",
+      "model": "facebook/musicgen-medium",
+      "seed": 106,
+      "note": "",
+      "loudness": {
+        "ok": true,
+        "lufs": -15.9,
+        "gain_db": 0.0,
+        "attempts": 1,
+        "history": [
+          {
+            "attempt": 1,
+            "gain_db": 0.0,
+            "loop": true,
+            "lufs": -15.9,
+            "true_peak_db": -1.4,
+            "method": "ebur128"
+          }
+        ]
+      }
+    },
+    {
+      "id": "mus_custodio_f2",
+      "category": "musica",
+      "file": "musica/custodio_f2.ogg",
+      "spec": {
+        "duration_s": 60.0,
+        "codec": "vorbis",
+        "channels": 2,
+        "sample_rate": 44100,
+        "lufs": -16.0,
+        "loop": true,
+        "bpm": 130,
+        "prompt": "final boss phase two, same theme as phase one but faster and more desperate, 130 BPM, distorted strings"
+      },
+      "sha256": "5132c316f76ede10af668e50f8a8c01b5606fdae16d17aae57dae686453436d1",
+      "size_bytes": 1011953,
+      "checks": {
+        "exists": true,
+        "codec": "vorbis",
+        "sample_rate": "44100",
+        "channels": 2,
+        "duration_s": 60.0,
+        "codec_ok": true,
+        "sample_rate_ok": true,
+        "channels_ok": true,
+        "duration_ok": true,
+        "lufs": -16.0,
+        "true_peak_db": -4.2,
+        "lufs_ok": true,
+        "loop_seam": {
+          "sample_jump": 0.002716,
+          "slope_error": 0.00528
+        },
+        "loop_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "musicgen-medium",
+      "model": "facebook/musicgen-medium",
+      "seed": 107,
+      "note": "",
+      "loudness": {
+        "ok": true,
+        "lufs": -16.0,
+        "gain_db": -3.1999999999999993,
+        "attempts": 2,
+        "history": [
+          {
+            "attempt": 1,
+            "gain_db": 0.0,
+            "loop": true,
+            "lufs": -12.8,
+            "true_peak_db": -1.4,
+            "method": "ebur128"
+          },
+          {
+            "attempt": 2,
+            "gain_db": -3.2,
+            "loop": true,
+            "lufs": -16.0,
+            "true_peak_db": -4.2,
+            "method": "ebur128"
+          }
+        ]
+      }
+    },
+    {
+      "id": "mus_victoria",
+      "category": "musica",
+      "file": "musica/victoria.ogg",
+      "spec": {
+        "duration_s": 8.0,
+        "codec": "vorbis",
+        "channels": 2,
+        "sample_rate": 44100,
+        "lufs": -16.0,
+        "loop": false,
+        "bpm": 60,
+        "prompt": "short triumphant but mournful stinger, bells and organ resolve"
+      },
+      "sha256": "3d1215542ddce4e9b4b3dc19700152e583ffe5ce14bcb927397840b2fa222093",
+      "size_bytes": 124569,
+      "checks": {
+        "exists": true,
+        "codec": "vorbis",
+        "sample_rate": "44100",
+        "channels": 2,
+        "duration_s": 8.0,
+        "codec_ok": true,
+        "sample_rate_ok": true,
+        "channels_ok": true,
+        "duration_ok": true,
+        "lufs": -16.0,
+        "true_peak_db": -3.8,
+        "lufs_ok": true,
+        "loop_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "musicgen-medium",
+      "model": "facebook/musicgen-medium",
+      "seed": 108,
+      "note": "",
+      "loudness": {
+        "ok": true,
+        "lufs": -16.0,
+        "gain_db": -2.6999999999999993,
+        "attempts": 2,
+        "history": [
+          {
+            "attempt": 1,
+            "gain_db": 0.0,
+            "loop": false,
+            "lufs": -13.3,
+            "true_peak_db": -1.0,
+            "method": "ebur128"
+          },
+          {
+            "attempt": 2,
+            "gain_db": -2.7,
+            "loop": false,
+            "lufs": -16.0,
+            "true_peak_db": -3.8,
+            "method": "ebur128"
+          }
+        ]
+      }
+    },
+    {
+      "id": "mus_derrota",
+      "category": "musica",
+      "file": "musica/derrota.ogg",
+      "spec": {
+        "duration_s": 6.0,
+        "codec": "vorbis",
+        "channels": 2,
+        "sample_rate": 44100,
+        "lufs": -16.0,
+        "loop": false,
+        "bpm": 60,
+        "prompt": "short defeat stinger, descending strings and one toll"
+      },
+      "sha256": "9f85f02faa3af4645641d8d3d43fda0b0adb399ce084d4c6e0873da5680c16a4",
+      "size_bytes": 101552,
+      "checks": {
+        "exists": true,
+        "codec": "vorbis",
+        "sample_rate": "44100",
+        "channels": 2,
+        "duration_s": 6.0,
+        "codec_ok": true,
+        "sample_rate_ok": true,
+        "channels_ok": true,
+        "duration_ok": true,
+        "lufs": -16.0,
+        "true_peak_db": -5.8,
+        "lufs_ok": true,
+        "loop_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "musicgen-medium",
+      "model": "facebook/musicgen-medium",
+      "seed": 109,
+      "note": "",
+      "loudness": {
+        "ok": true,
+        "lufs": -16.0,
+        "gain_db": -4.800000000000001,
+        "attempts": 2,
+        "history": [
+          {
+            "attempt": 1,
+            "gain_db": 0.0,
+            "loop": false,
+            "lufs": -11.2,
+            "true_peak_db": -1.2,
+            "method": "ebur128"
+          },
+          {
+            "attempt": 2,
+            "gain_db": -4.8,
+            "loop": false,
+            "lufs": -16.0,
+            "true_peak_db": -5.8,
+            "method": "ebur128"
+          }
+        ]
+      }
+    },
+    {
+      "id": "mus_creditos",
+      "category": "musica",
+      "file": "musica/creditos.ogg",
+      "spec": {
+        "duration_s": 90.0,
+        "codec": "vorbis",
+        "channels": 2,
+        "sample_rate": 44100,
+        "lufs": -16.0,
+        "loop": true,
+        "bpm": 70,
+        "prompt": "reflective slow piano and strings, minor resolving to major"
+      },
+      "sha256": "9423025ac4fea9fbb452846146e438c390be82b00e139dc762111babeda65c45",
+      "size_bytes": 1502338,
+      "checks": {
+        "exists": true,
+        "codec": "vorbis",
+        "sample_rate": "44100",
+        "channels": 2,
+        "duration_s": 90.0,
+        "codec_ok": true,
+        "sample_rate_ok": true,
+        "channels_ok": true,
+        "duration_ok": true,
+        "lufs": -15.9,
+        "true_peak_db": -4.4,
+        "lufs_ok": true,
+        "loop_seam": {
+          "sample_jump": 0.000458,
+          "slope_error": 0.002258
+        },
+        "loop_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "musicgen-medium",
+      "model": "facebook/musicgen-medium",
+      "seed": 110,
+      "note": "",
+      "loudness": {
+        "ok": true,
+        "lufs": -15.9,
+        "gain_db": -3.6999999999999993,
+        "attempts": 2,
+        "history": [
+          {
+            "attempt": 1,
+            "gain_db": 0.0,
+            "loop": true,
+            "lufs": -12.3,
+            "true_peak_db": -1.3,
+            "method": "ebur128"
+          },
+          {
+            "attempt": 2,
+            "gain_db": -3.7,
+            "loop": true,
+            "lufs": -15.9,
+            "true_peak_db": -4.4,
+            "method": "ebur128"
+          }
+        ]
+      }
+    },
+    {
+      "id": "jugador_con_pala_idle",
+      "category": "sprites",
+      "file": "sprites/jugador_con_pala_idle.png",
+      "spec": {
+        "frames": 4,
+        "frame_w": 32,
+        "frame_h": 32,
+        "sheet_w": 128,
+        "sheet_h": 32,
+        "palette": [
+          "#09080D",
+          "#D7CFB8",
+          "#701622",
+          "#5CBEAE",
+          "#C69C3E",
+          "#4B284B",
+          "#B5B9C2",
+          "#F0C45A"
+        ],
+        "outline": "#09080D",
+        "transparent_background": true,
+        "baseline": 31,
+        "prompt_subject": "gaunt gravedigger in a wide black hat, crimson scarf, long dark coat, glowing pale eyes, iron shovel resting on his shoulder",
+        "prompt_action": "idle breathing, subtle bob, shovel on shoulder"
+      },
+      "sha256": "eb5cec7d84c552e3ed900527148a48f7800466df47f42fb6830ef534d377169a",
+      "size_bytes": 1274,
+      "checks": {
+        "exists": true,
+        "mode": "RGBA",
+        "size": [
+          128,
+          32
+        ],
+        "rgba_ok": true,
+        "size_ok": true,
+        "palette": [
+          "#09080D",
+          "#D7CFB8",
+          "#701622",
+          "#5CBEAE",
+          "#C69C3E",
+          "#4B284B",
+          "#B5B9C2",
+          "#F0C45A"
+        ],
+        "frames": [
+          {
+            "frame": 1,
+            "colors": 7,
+            "semi_alpha_px": 0,
+            "transparent_px": 312,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              1,
+              1,
+              30,
+              32
+            ],
+            "bottom": 31,
+            "ok": true
+          },
+          {
+            "frame": 2,
+            "colors": 7,
+            "semi_alpha_px": 0,
+            "transparent_px": 312,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              1,
+              1,
+              30,
+              32
+            ],
+            "bottom": 31,
+            "ok": true
+          },
+          {
+            "frame": 3,
+            "colors": 7,
+            "semi_alpha_px": 0,
+            "transparent_px": 312,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              1,
+              1,
+              30,
+              32
+            ],
+            "bottom": 31,
+            "ok": true
+          },
+          {
+            "frame": 4,
+            "colors": 8,
+            "semi_alpha_px": 0,
+            "transparent_px": 312,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              1,
+              1,
+              30,
+              32
+            ],
+            "bottom": 31,
+            "ok": true
+          }
+        ],
+        "baseline": 31,
+        "bottoms": [
+          31,
+          31,
+          31,
+          31
+        ],
+        "baseline_ok": true,
+        "center_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "sd15-pixelart-lora",
+      "model": "stable-diffusion-v1-5/stable-diffusion-v1-5 + artificialguybr/pixelartredmond-1-5v-pixel-art-loras-for-sd-1-5",
+      "seed": 370821,
+      "note": "",
+      "frames": 4,
+      "frame_w": 32,
+      "frame_h": 32,
+      "generation_scale": 4,
+      "input_canvas": [
+        512,
+        512
+      ],
+      "scale": 0.056641,
+      "union_bbox": [
+        32,
+        0,
+        512,
+        512
+      ],
+      "baseline": 31,
+      "frame_meta": [
+        {
+          "frame": 1,
+          "bbox": [
+            1,
+            1,
+            30,
+            32
+          ],
+          "bottom": 31
+        },
+        {
+          "frame": 2,
+          "bbox": [
+            1,
+            1,
+            30,
+            32
+          ],
+          "bottom": 31
+        },
+        {
+          "frame": 3,
+          "bbox": [
+            1,
+            1,
+            30,
+            32
+          ],
+          "bottom": 31
+        },
+        {
+          "frame": 4,
+          "bbox": [
+            1,
+            1,
+            30,
+            32
+          ],
+          "bottom": 31
+        }
+      ]
+    },
+    {
+      "id": "jugador_con_pala_run",
+      "category": "sprites",
+      "file": "sprites/jugador_con_pala_run.png",
+      "spec": {
+        "frames": 6,
+        "frame_w": 32,
+        "frame_h": 32,
+        "sheet_w": 192,
+        "sheet_h": 32,
+        "palette": [
+          "#09080D",
+          "#D7CFB8",
+          "#701622",
+          "#5CBEAE",
+          "#C69C3E",
+          "#4B284B",
+          "#B5B9C2",
+          "#F0C45A"
+        ],
+        "outline": "#09080D",
+        "transparent_background": true,
+        "baseline": 31,
+        "prompt_subject": "gaunt gravedigger in a wide black hat, crimson scarf, long dark coat, glowing pale eyes, iron shovel resting on his shoulder",
+        "prompt_action": "full run cycle, alternating legs, coat and scarf swaying"
+      },
+      "sha256": "63c104639e0fbd828096a60084685432dd7f3685d7b7d387726e798f4e62a9ef",
+      "size_bytes": 1743,
+      "checks": {
+        "exists": true,
+        "mode": "RGBA",
+        "size": [
+          192,
+          32
+        ],
+        "rgba_ok": true,
+        "size_ok": true,
+        "palette": [
+          "#09080D",
+          "#D7CFB8",
+          "#701622",
+          "#5CBEAE",
+          "#C69C3E",
+          "#4B284B",
+          "#B5B9C2",
+          "#F0C45A"
+        ],
+        "frames": [
+          {
+            "frame": 1,
+            "colors": 7,
+            "semi_alpha_px": 0,
+            "transparent_px": 292,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              0,
+              1,
+              31,
+              32
+            ],
+            "bottom": 31,
+            "ok": true
+          },
+          {
+            "frame": 2,
+            "colors": 7,
+            "semi_alpha_px": 0,
+            "transparent_px": 292,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              0,
+              1,
+              31,
+              32
+            ],
+            "bottom": 31,
+            "ok": true
+          },
+          {
+            "frame": 3,
+            "colors": 7,
+            "semi_alpha_px": 0,
+            "transparent_px": 278,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              0,
+              1,
+              31,
+              32
+            ],
+            "bottom": 31,
+            "ok": true
+          },
+          {
+            "frame": 4,
+            "colors": 7,
+            "semi_alpha_px": 0,
+            "transparent_px": 293,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              0,
+              1,
+              31,
+              32
+            ],
+            "bottom": 31,
+            "ok": true
+          },
+          {
+            "frame": 5,
+            "colors": 7,
+            "semi_alpha_px": 0,
+            "transparent_px": 292,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              0,
+              1,
+              31,
+              32
+            ],
+            "bottom": 31,
+            "ok": true
+          },
+          {
+            "frame": 6,
+            "colors": 7,
+            "semi_alpha_px": 0,
+            "transparent_px": 292,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              0,
+              1,
+              31,
+              32
+            ],
+            "bottom": 31,
+            "ok": true
+          }
+        ],
+        "baseline": 31,
+        "bottoms": [
+          31,
+          31,
+          31,
+          31,
+          31,
+          31
+        ],
+        "baseline_ok": true,
+        "center_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "sd15-pixelart-lora",
+      "model": "stable-diffusion-v1-5/stable-diffusion-v1-5 + artificialguybr/pixelartredmond-1-5v-pixel-art-loras-for-sd-1-5",
+      "seed": 370748,
+      "note": "",
+      "frames": 6,
+      "frame_w": 32,
+      "frame_h": 32,
+      "generation_scale": 4,
+      "input_canvas": [
+        512,
+        512
+      ],
+      "scale": 0.056641,
+      "union_bbox": [
+        0,
+        0,
+        512,
+        512
+      ],
+      "baseline": 31,
+      "frame_meta": [
+        {
+          "frame": 1,
+          "bbox": [
+            0,
+            1,
+            31,
+            32
+          ],
+          "bottom": 31
+        },
+        {
+          "frame": 2,
+          "bbox": [
+            0,
+            1,
+            31,
+            32
+          ],
+          "bottom": 31
+        },
+        {
+          "frame": 3,
+          "bbox": [
+            0,
+            1,
+            31,
+            32
+          ],
+          "bottom": 31
+        },
+        {
+          "frame": 4,
+          "bbox": [
+            0,
+            1,
+            31,
+            32
+          ],
+          "bottom": 31
+        },
+        {
+          "frame": 5,
+          "bbox": [
+            0,
+            1,
+            31,
+            32
+          ],
+          "bottom": 31
+        },
+        {
+          "frame": 6,
+          "bbox": [
+            0,
+            1,
+            31,
+            32
+          ],
+          "bottom": 31
+        }
+      ]
+    },
+    {
+      "id": "jugador_con_pala_jump",
+      "category": "sprites",
+      "file": "sprites/jugador_con_pala_jump.png",
+      "spec": {
+        "frames": 2,
+        "frame_w": 32,
+        "frame_h": 32,
+        "sheet_w": 64,
+        "sheet_h": 32,
+        "palette": [
+          "#09080D",
+          "#D7CFB8",
+          "#701622",
+          "#5CBEAE",
+          "#C69C3E",
+          "#4B284B",
+          "#B5B9C2",
+          "#F0C45A"
+        ],
+        "outline": "#09080D",
+        "transparent_background": true,
+        "baseline": 31,
+        "prompt_subject": "gaunt gravedigger in a wide black hat, crimson scarf, long dark coat, glowing pale eyes, iron shovel resting on his shoulder",
+        "prompt_action": "crouch and launch, then apex of the jump"
+      },
+      "sha256": "c55bd87d96e4e569d47077418feaf80c8ccd06eb20ff4b26797901526292f589",
+      "size_bytes": 927,
+      "checks": {
+        "exists": true,
+        "mode": "RGBA",
+        "size": [
+          64,
+          32
+        ],
+        "rgba_ok": true,
+        "size_ok": true,
+        "palette": [
+          "#09080D",
+          "#D7CFB8",
+          "#701622",
+          "#5CBEAE",
+          "#C69C3E",
+          "#4B284B",
+          "#B5B9C2",
+          "#F0C45A"
+        ],
+        "frames": [
+          {
+            "frame": 1,
+            "colors": 8,
+            "semi_alpha_px": 0,
+            "transparent_px": 309,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              1,
+              1,
+              30,
+              32
+            ],
+            "bottom": 31,
+            "ok": true
+          },
+          {
+            "frame": 2,
+            "colors": 7,
+            "semi_alpha_px": 0,
+            "transparent_px": 309,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              1,
+              1,
+              30,
+              32
+            ],
+            "bottom": 31,
+            "ok": true
+          }
+        ],
+        "baseline": 31,
+        "bottoms": [
+          31,
+          31
+        ],
+        "baseline_ok": true,
+        "center_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "sd15-pixelart-lora",
+      "model": "stable-diffusion-v1-5/stable-diffusion-v1-5 + artificialguybr/pixelartredmond-1-5v-pixel-art-loras-for-sd-1-5",
+      "seed": 370851,
+      "note": "",
+      "frames": 2,
+      "frame_w": 32,
+      "frame_h": 32,
+      "generation_scale": 4,
+      "input_canvas": [
+        512,
+        512
+      ],
+      "scale": 0.056641,
+      "union_bbox": [
+        32,
+        0,
+        512,
+        512
+      ],
+      "baseline": 31,
+      "frame_meta": [
+        {
+          "frame": 1,
+          "bbox": [
+            1,
+            1,
+            30,
+            32
+          ],
+          "bottom": 31
+        },
+        {
+          "frame": 2,
+          "bbox": [
+            1,
+            1,
+            30,
+            32
+          ],
+          "bottom": 31
+        }
+      ]
+    },
+    {
+      "id": "jugador_con_pala_caida",
+      "category": "sprites",
+      "file": "sprites/jugador_con_pala_caida.png",
+      "spec": {
+        "frames": 2,
+        "frame_w": 32,
+        "frame_h": 32,
+        "sheet_w": 64,
+        "sheet_h": 32,
+        "palette": [
+          "#09080D",
+          "#D7CFB8",
+          "#701622",
+          "#5CBEAE",
+          "#C69C3E",
+          "#4B284B",
+          "#B5B9C2",
+          "#F0C45A"
+        ],
+        "outline": "#09080D",
+        "transparent_background": true,
+        "baseline": 31,
+        "prompt_subject": "gaunt gravedigger in a wide black hat, crimson scarf, long dark coat, glowing pale eyes, iron shovel resting on his shoulder",
+        "prompt_action": "falling, coat lifted by the air, arms out for balance"
+      },
+      "sha256": "87c1f726c495ebb730d96bcc3b680428492adc11a82164106fe79f3215c1dae1",
+      "size_bytes": 843,
+      "checks": {
+        "exists": true,
+        "mode": "RGBA",
+        "size": [
+          64,
+          32
+        ],
+        "rgba_ok": true,
+        "size_ok": true,
+        "palette": [
+          "#09080D",
+          "#D7CFB8",
+          "#701622",
+          "#5CBEAE",
+          "#C69C3E",
+          "#4B284B",
+          "#B5B9C2",
+          "#F0C45A"
+        ],
+        "frames": [
+          {
+            "frame": 1,
+            "colors": 8,
+            "semi_alpha_px": 0,
+            "transparent_px": 309,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              1,
+              1,
+              30,
+              32
+            ],
+            "bottom": 31,
+            "ok": true
+          },
+          {
+            "frame": 2,
+            "colors": 7,
+            "semi_alpha_px": 0,
+            "transparent_px": 302,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              1,
+              1,
+              30,
+              32
+            ],
+            "bottom": 31,
+            "ok": true
+          }
+        ],
+        "baseline": 31,
+        "bottoms": [
+          31,
+          31
+        ],
+        "baseline_ok": true,
+        "center_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "sd15-pixelart-lora",
+      "model": "stable-diffusion-v1-5/stable-diffusion-v1-5 + artificialguybr/pixelartredmond-1-5v-pixel-art-loras-for-sd-1-5",
+      "seed": 370905,
+      "note": "",
+      "frames": 2,
+      "frame_w": 32,
+      "frame_h": 32,
+      "generation_scale": 4,
+      "input_canvas": [
+        512,
+        512
+      ],
+      "scale": 0.056641,
+      "union_bbox": [
+        32,
+        0,
+        512,
+        512
+      ],
+      "baseline": 31,
+      "frame_meta": [
+        {
+          "frame": 1,
+          "bbox": [
+            1,
+            1,
+            30,
+            32
+          ],
+          "bottom": 31
+        },
+        {
+          "frame": 2,
+          "bbox": [
+            1,
+            1,
+            30,
+            32
+          ],
+          "bottom": 31
+        }
+      ]
+    },
+    {
+      "id": "jugador_con_pala_dash",
+      "category": "sprites",
+      "file": "sprites/jugador_con_pala_dash.png",
+      "spec": {
+        "frames": 3,
+        "frame_w": 32,
+        "frame_h": 32,
+        "sheet_w": 96,
+        "sheet_h": 32,
+        "palette": [
+          "#09080D",
+          "#D7CFB8",
+          "#701622",
+          "#5CBEAE",
+          "#C69C3E",
+          "#4B284B",
+          "#B5B9C2",
+          "#F0C45A"
+        ],
+        "outline": "#09080D",
+        "transparent_background": true,
+        "baseline": 31,
+        "prompt_subject": "gaunt gravedigger in a wide black hat, crimson scarf, long dark coat, glowing pale eyes, iron shovel resting on his shoulder",
+        "prompt_action": "shadow dash lunge with trailing afterimages"
+      },
+      "sha256": "7c4469966a413698294c8507965e1120c4dd2f59e6caf7bb279413a1258f0b12",
+      "size_bytes": 1078,
+      "checks": {
+        "exists": true,
+        "mode": "RGBA",
+        "size": [
+          96,
+          32
+        ],
+        "rgba_ok": true,
+        "size_ok": true,
+        "palette": [
+          "#09080D",
+          "#D7CFB8",
+          "#701622",
+          "#5CBEAE",
+          "#C69C3E",
+          "#4B284B",
+          "#B5B9C2",
+          "#F0C45A"
+        ],
+        "frames": [
+          {
+            "frame": 1,
+            "colors": 7,
+            "semi_alpha_px": 0,
+            "transparent_px": 283,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              0,
+              1,
+              31,
+              32
+            ],
+            "bottom": 31,
+            "ok": true
+          },
+          {
+            "frame": 2,
+            "colors": 8,
+            "semi_alpha_px": 0,
+            "transparent_px": 283,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              0,
+              1,
+              31,
+              32
+            ],
+            "bottom": 31,
+            "ok": true
+          },
+          {
+            "frame": 3,
+            "colors": 7,
+            "semi_alpha_px": 0,
+            "transparent_px": 283,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              0,
+              1,
+              31,
+              32
+            ],
+            "bottom": 31,
+            "ok": true
+          }
+        ],
+        "baseline": 31,
+        "bottoms": [
+          31,
+          31,
+          31
+        ],
+        "baseline_ok": true,
+        "center_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "sd15-pixelart-lora",
+      "model": "stable-diffusion-v1-5/stable-diffusion-v1-5 + artificialguybr/pixelartredmond-1-5v-pixel-art-loras-for-sd-1-5",
+      "seed": 370823,
+      "note": "",
+      "frames": 3,
+      "frame_w": 32,
+      "frame_h": 32,
+      "generation_scale": 4,
+      "input_canvas": [
+        512,
+        512
+      ],
+      "scale": 0.056641,
+      "union_bbox": [
+        0,
+        0,
+        512,
+        512
+      ],
+      "baseline": 31,
+      "frame_meta": [
+        {
+          "frame": 1,
+          "bbox": [
+            0,
+            1,
+            31,
+            32
+          ],
+          "bottom": 31
+        },
+        {
+          "frame": 2,
+          "bbox": [
+            0,
+            1,
+            31,
+            32
+          ],
+          "bottom": 31
+        },
+        {
+          "frame": 3,
+          "bbox": [
+            0,
+            1,
+            31,
+            32
+          ],
+          "bottom": 31
+        }
+      ]
+    },
+    {
+      "id": "jugador_con_pala_ataque",
+      "category": "sprites",
+      "file": "sprites/jugador_con_pala_ataque.png",
+      "spec": {
+        "frames": 3,
+        "frame_w": 32,
+        "frame_h": 32,
+        "sheet_w": 96,
+        "sheet_h": 32,
+        "palette": [
+          "#09080D",
+          "#D7CFB8",
+          "#701622",
+          "#5CBEAE",
+          "#C69C3E",
+          "#4B284B",
+          "#B5B9C2",
+          "#F0C45A"
+        ],
+        "outline": "#09080D",
+        "transparent_background": true,
+        "baseline": 31,
+        "prompt_subject": "gaunt gravedigger in a wide black hat, crimson scarf, long dark coat, glowing pale eyes, iron shovel resting on his shoulder",
+        "prompt_action": "shovel attack: windup, impact, recovery"
+      },
+      "sha256": "3a4a5ee5512d5200e3dcb487bccbdf420ca845c040de5afc773dff1c3fd4654a",
+      "size_bytes": 1237,
+      "checks": {
+        "exists": true,
+        "mode": "RGBA",
+        "size": [
+          96,
+          32
+        ],
+        "rgba_ok": true,
+        "size_ok": true,
+        "palette": [
+          "#09080D",
+          "#D7CFB8",
+          "#701622",
+          "#5CBEAE",
+          "#C69C3E",
+          "#4B284B",
+          "#B5B9C2",
+          "#F0C45A"
+        ],
+        "frames": [
+          {
+            "frame": 1,
+            "colors": 8,
+            "semi_alpha_px": 0,
+            "transparent_px": 287,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              1,
+              1,
+              30,
+              32
+            ],
+            "bottom": 31,
+            "ok": true
+          },
+          {
+            "frame": 2,
+            "colors": 7,
+            "semi_alpha_px": 0,
+            "transparent_px": 294,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              1,
+              1,
+              30,
+              32
+            ],
+            "bottom": 31,
+            "ok": true
+          },
+          {
+            "frame": 3,
+            "colors": 8,
+            "semi_alpha_px": 0,
+            "transparent_px": 289,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              1,
+              1,
+              30,
+              32
+            ],
+            "bottom": 31,
+            "ok": true
+          }
+        ],
+        "baseline": 31,
+        "bottoms": [
+          31,
+          31,
+          31
+        ],
+        "baseline_ok": true,
+        "center_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "sd15-pixelart-lora",
+      "model": "stable-diffusion-v1-5/stable-diffusion-v1-5 + artificialguybr/pixelartredmond-1-5v-pixel-art-loras-for-sd-1-5",
+      "seed": 371048,
+      "note": "",
+      "frames": 3,
+      "frame_w": 32,
+      "frame_h": 32,
+      "generation_scale": 4,
+      "input_canvas": [
+        512,
+        512
+      ],
+      "scale": 0.056641,
+      "union_bbox": [
+        32,
+        0,
+        512,
+        512
+      ],
+      "baseline": 31,
+      "frame_meta": [
+        {
+          "frame": 1,
+          "bbox": [
+            1,
+            1,
+            30,
+            32
+          ],
+          "bottom": 31
+        },
+        {
+          "frame": 2,
+          "bbox": [
+            1,
+            1,
+            30,
+            32
+          ],
+          "bottom": 31
+        },
+        {
+          "frame": 3,
+          "bbox": [
+            1,
+            1,
+            30,
+            32
+          ],
+          "bottom": 31
+        }
+      ]
+    },
+    {
+      "id": "jugador_sin_pala_idle",
+      "category": "sprites",
+      "file": "sprites/jugador_sin_pala_idle.png",
+      "spec": {
+        "frames": 4,
+        "frame_w": 32,
+        "frame_h": 32,
+        "sheet_w": 128,
+        "sheet_h": 32,
+        "palette": [
+          "#09080D",
+          "#D7CFB8",
+          "#701622",
+          "#5CBEAE",
+          "#C69C3E",
+          "#4B284B",
+          "#B5B9C2",
+          "#F0C45A"
+        ],
+        "outline": "#09080D",
+        "transparent_background": true,
+        "baseline": 31,
+        "prompt_subject": "gaunt gravedigger in a wide black hat, crimson scarf, long dark coat, glowing pale eyes, empty hands",
+        "prompt_action": "idle breathing, empty hands"
+      },
+      "sha256": "5aef40db8070540a806adad1e670e7ad86387ccebd94c4aa75847bdcded80818",
+      "size_bytes": 1098,
+      "checks": {
+        "exists": true,
+        "mode": "RGBA",
+        "size": [
+          128,
+          32
+        ],
+        "rgba_ok": true,
+        "size_ok": true,
+        "palette": [
+          "#09080D",
+          "#D7CFB8",
+          "#701622",
+          "#5CBEAE",
+          "#C69C3E",
+          "#4B284B",
+          "#B5B9C2",
+          "#F0C45A"
+        ],
+        "frames": [
+          {
+            "frame": 1,
+            "colors": 7,
+            "semi_alpha_px": 0,
+            "transparent_px": 335,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              1,
+              1,
+              30,
+              32
+            ],
+            "bottom": 31,
+            "ok": true
+          },
+          {
+            "frame": 2,
+            "colors": 7,
+            "semi_alpha_px": 0,
+            "transparent_px": 335,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              1,
+              1,
+              30,
+              32
+            ],
+            "bottom": 31,
+            "ok": true
+          },
+          {
+            "frame": 3,
+            "colors": 7,
+            "semi_alpha_px": 0,
+            "transparent_px": 335,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              1,
+              1,
+              30,
+              32
+            ],
+            "bottom": 31,
+            "ok": true
+          },
+          {
+            "frame": 4,
+            "colors": 7,
+            "semi_alpha_px": 0,
+            "transparent_px": 335,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              1,
+              1,
+              30,
+              32
+            ],
+            "bottom": 31,
+            "ok": true
+          }
+        ],
+        "baseline": 31,
+        "bottoms": [
+          31,
+          31,
+          31,
+          31
+        ],
+        "baseline_ok": true,
+        "center_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "sd15-pixelart-lora",
+      "model": "stable-diffusion-v1-5/stable-diffusion-v1-5 + artificialguybr/pixelartredmond-1-5v-pixel-art-loras-for-sd-1-5",
+      "seed": 370831,
+      "note": "",
+      "frames": 4,
+      "frame_w": 32,
+      "frame_h": 32,
+      "generation_scale": 4,
+      "input_canvas": [
+        512,
+        512
+      ],
+      "scale": 0.056641,
+      "union_bbox": [
+        32,
+        0,
+        512,
+        512
+      ],
+      "baseline": 31,
+      "frame_meta": [
+        {
+          "frame": 1,
+          "bbox": [
+            1,
+            1,
+            30,
+            32
+          ],
+          "bottom": 31
+        },
+        {
+          "frame": 2,
+          "bbox": [
+            1,
+            1,
+            30,
+            32
+          ],
+          "bottom": 31
+        },
+        {
+          "frame": 3,
+          "bbox": [
+            1,
+            1,
+            30,
+            32
+          ],
+          "bottom": 31
+        },
+        {
+          "frame": 4,
+          "bbox": [
+            1,
+            1,
+            30,
+            32
+          ],
+          "bottom": 31
+        }
+      ]
+    },
+    {
+      "id": "jugador_sin_pala_run",
+      "category": "sprites",
+      "file": "sprites/jugador_sin_pala_run.png",
+      "spec": {
+        "frames": 6,
+        "frame_w": 32,
+        "frame_h": 32,
+        "sheet_w": 192,
+        "sheet_h": 32,
+        "palette": [
+          "#09080D",
+          "#D7CFB8",
+          "#701622",
+          "#5CBEAE",
+          "#C69C3E",
+          "#4B284B",
+          "#B5B9C2",
+          "#F0C45A"
+        ],
+        "outline": "#09080D",
+        "transparent_background": true,
+        "baseline": 31,
+        "prompt_subject": "gaunt gravedigger in a wide black hat, crimson scarf, long dark coat, glowing pale eyes, empty hands",
+        "prompt_action": "full run cycle, alternating legs, coat and scarf swaying"
+      },
+      "sha256": "1a99d262ab7b3dc5279acd882d5005698027930d1bb3f573b3e8f8ead2ab5cc3",
+      "size_bytes": 1593,
+      "checks": {
+        "exists": true,
+        "mode": "RGBA",
+        "size": [
+          192,
+          32
+        ],
+        "rgba_ok": true,
+        "size_ok": true,
+        "palette": [
+          "#09080D",
+          "#D7CFB8",
+          "#701622",
+          "#5CBEAE",
+          "#C69C3E",
+          "#4B284B",
+          "#B5B9C2",
+          "#F0C45A"
+        ],
+        "frames": [
+          {
+            "frame": 1,
+            "colors": 7,
+            "semi_alpha_px": 0,
+            "transparent_px": 307,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              0,
+              1,
+              31,
+              32
+            ],
+            "bottom": 31,
+            "ok": true
+          },
+          {
+            "frame": 2,
+            "colors": 7,
+            "semi_alpha_px": 0,
+            "transparent_px": 307,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              0,
+              1,
+              31,
+              32
+            ],
+            "bottom": 31,
+            "ok": true
+          },
+          {
+            "frame": 3,
+            "colors": 7,
+            "semi_alpha_px": 0,
+            "transparent_px": 290,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              0,
+              1,
+              31,
+              32
+            ],
+            "bottom": 31,
+            "ok": true
+          },
+          {
+            "frame": 4,
+            "colors": 7,
+            "semi_alpha_px": 0,
+            "transparent_px": 309,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              0,
+              1,
+              31,
+              32
+            ],
+            "bottom": 31,
+            "ok": true
+          },
+          {
+            "frame": 5,
+            "colors": 7,
+            "semi_alpha_px": 0,
+            "transparent_px": 307,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              0,
+              1,
+              31,
+              32
+            ],
+            "bottom": 31,
+            "ok": true
+          },
+          {
+            "frame": 6,
+            "colors": 7,
+            "semi_alpha_px": 0,
+            "transparent_px": 307,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              0,
+              1,
+              31,
+              32
+            ],
+            "bottom": 31,
+            "ok": true
+          }
+        ],
+        "baseline": 31,
+        "bottoms": [
+          31,
+          31,
+          31,
+          31,
+          31,
+          31
+        ],
+        "baseline_ok": true,
+        "center_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "sd15-pixelart-lora",
+      "model": "stable-diffusion-v1-5/stable-diffusion-v1-5 + artificialguybr/pixelartredmond-1-5v-pixel-art-loras-for-sd-1-5",
+      "seed": 370758,
+      "note": "",
+      "frames": 6,
+      "frame_w": 32,
+      "frame_h": 32,
+      "generation_scale": 4,
+      "input_canvas": [
+        512,
+        512
+      ],
+      "scale": 0.056641,
+      "union_bbox": [
+        0,
+        0,
+        512,
+        512
+      ],
+      "baseline": 31,
+      "frame_meta": [
+        {
+          "frame": 1,
+          "bbox": [
+            0,
+            1,
+            31,
+            32
+          ],
+          "bottom": 31
+        },
+        {
+          "frame": 2,
+          "bbox": [
+            0,
+            1,
+            31,
+            32
+          ],
+          "bottom": 31
+        },
+        {
+          "frame": 3,
+          "bbox": [
+            0,
+            1,
+            31,
+            32
+          ],
+          "bottom": 31
+        },
+        {
+          "frame": 4,
+          "bbox": [
+            0,
+            1,
+            31,
+            32
+          ],
+          "bottom": 31
+        },
+        {
+          "frame": 5,
+          "bbox": [
+            0,
+            1,
+            31,
+            32
+          ],
+          "bottom": 31
+        },
+        {
+          "frame": 6,
+          "bbox": [
+            0,
+            1,
+            31,
+            32
+          ],
+          "bottom": 31
+        }
+      ]
+    },
+    {
+      "id": "morador_walk",
+      "category": "sprites",
+      "file": "sprites/morador_walk.png",
+      "spec": {
+        "frames": 4,
+        "frame_w": 26,
+        "frame_h": 26,
+        "sheet_w": 104,
+        "sheet_h": 26,
+        "palette": [
+          "#09080D",
+          "#D7CFB8",
+          "#701622",
+          "#5CBEAE",
+          "#C69C3E",
+          "#4B284B",
+          "#B5B9C2",
+          "#F0C45A"
+        ],
+        "outline": "#09080D",
+        "transparent_background": true,
+        "baseline": 25,
+        "prompt_subject": "floating skeletal wraith with a bone-white skull, glowing crimson eyes and a tattered dark green shroud",
+        "prompt_action": "floating walk, tattered shroud drifting"
+      },
+      "sha256": "16bd498bad7722cc9fd79ad31dd381ad2751415a7fd55ce2cd80e010a9fb5a2e",
+      "size_bytes": 1316,
+      "checks": {
+        "exists": true,
+        "mode": "RGBA",
+        "size": [
+          104,
+          26
+        ],
+        "rgba_ok": true,
+        "size_ok": true,
+        "palette": [
+          "#09080D",
+          "#D7CFB8",
+          "#701622",
+          "#5CBEAE",
+          "#C69C3E",
+          "#4B284B",
+          "#B5B9C2",
+          "#F0C45A"
+        ],
+        "frames": [
+          {
+            "frame": 1,
+            "colors": 7,
+            "semi_alpha_px": 0,
+            "transparent_px": 184,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              0,
+              2,
+              25,
+              26
+            ],
+            "bottom": 25,
+            "ok": true
+          },
+          {
+            "frame": 2,
+            "colors": 8,
+            "semi_alpha_px": 0,
+            "transparent_px": 203,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              0,
+              3,
+              25,
+              26
+            ],
+            "bottom": 25,
+            "ok": true
+          },
+          {
+            "frame": 3,
+            "colors": 7,
+            "semi_alpha_px": 0,
+            "transparent_px": 184,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              0,
+              2,
+              25,
+              26
+            ],
+            "bottom": 25,
+            "ok": true
+          },
+          {
+            "frame": 4,
+            "colors": 7,
+            "semi_alpha_px": 0,
+            "transparent_px": 167,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              0,
+              1,
+              25,
+              26
+            ],
+            "bottom": 25,
+            "ok": true
+          }
+        ],
+        "baseline": 25,
+        "bottoms": [
+          25,
+          25,
+          25,
+          25
+        ],
+        "baseline_ok": true,
+        "center_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "sd15-pixelart-lora",
+      "model": "stable-diffusion-v1-5/stable-diffusion-v1-5 + artificialguybr/pixelartredmond-1-5v-pixel-art-loras-for-sd-1-5",
+      "seed": 369922,
+      "note": "",
+      "frames": 4,
+      "frame_w": 26,
+      "frame_h": 26,
+      "generation_scale": 4,
+      "input_canvas": [
+        512,
+        512
+      ],
+      "scale": 0.044922,
+      "union_bbox": [
+        0,
+        0,
+        512,
+        512
+      ],
+      "baseline": 25,
+      "frame_meta": [
+        {
+          "frame": 1,
+          "bbox": [
+            0,
+            2,
+            25,
+            26
+          ],
+          "bottom": 25
+        },
+        {
+          "frame": 2,
+          "bbox": [
+            0,
+            3,
+            25,
+            26
+          ],
+          "bottom": 25
+        },
+        {
+          "frame": 3,
+          "bbox": [
+            0,
+            2,
+            25,
+            26
+          ],
+          "bottom": 25
+        },
+        {
+          "frame": 4,
+          "bbox": [
+            0,
+            1,
+            25,
+            26
+          ],
+          "bottom": 25
+        }
+      ]
+    },
+    {
+      "id": "guardia_walk",
+      "category": "sprites",
+      "file": "sprites/guardia_walk.png",
+      "spec": {
+        "frames": 4,
+        "frame_w": 26,
+        "frame_h": 26,
+        "sheet_w": 104,
+        "sheet_h": 26,
+        "palette": [
+          "#09080D",
+          "#D7CFB8",
+          "#701622",
+          "#5CBEAE",
+          "#C69C3E",
+          "#4B284B",
+          "#B5B9C2",
+          "#F0C45A"
+        ],
+        "outline": "#09080D",
+        "transparent_background": true,
+        "baseline": 25,
+        "prompt_subject": "heavy armored crypt guard with a bone-white skull, crimson eyes, dark green tabard and an iron sword",
+        "prompt_action": "heavy walk, sword at his side"
+      },
+      "sha256": "ec84127126a82ab396ca53c7de01ab6ce0886b6202f62b6b7ed3087ccc60331c",
+      "size_bytes": 1513,
+      "checks": {
+        "exists": true,
+        "mode": "RGBA",
+        "size": [
+          104,
+          26
+        ],
+        "rgba_ok": true,
+        "size_ok": true,
+        "palette": [
+          "#09080D",
+          "#D7CFB8",
+          "#701622",
+          "#5CBEAE",
+          "#C69C3E",
+          "#4B284B",
+          "#B5B9C2",
+          "#F0C45A"
+        ],
+        "frames": [
+          {
+            "frame": 1,
+            "colors": 7,
+            "semi_alpha_px": 0,
+            "transparent_px": 182,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              0,
+              2,
+              25,
+              26
+            ],
+            "bottom": 25,
+            "ok": true
+          },
+          {
+            "frame": 2,
+            "colors": 7,
+            "semi_alpha_px": 0,
+            "transparent_px": 201,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              0,
+              3,
+              25,
+              26
+            ],
+            "bottom": 25,
+            "ok": true
+          },
+          {
+            "frame": 3,
+            "colors": 7,
+            "semi_alpha_px": 0,
+            "transparent_px": 182,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              0,
+              2,
+              25,
+              26
+            ],
+            "bottom": 25,
+            "ok": true
+          },
+          {
+            "frame": 4,
+            "colors": 7,
+            "semi_alpha_px": 0,
+            "transparent_px": 122,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              0,
+              1,
+              25,
+              26
+            ],
+            "bottom": 25,
+            "ok": true
+          }
+        ],
+        "baseline": 25,
+        "bottoms": [
+          25,
+          25,
+          25,
+          25
+        ],
+        "baseline_ok": true,
+        "center_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "sd15-pixelart-lora",
+      "model": "stable-diffusion-v1-5/stable-diffusion-v1-5 + artificialguybr/pixelartredmond-1-5v-pixel-art-loras-for-sd-1-5",
+      "seed": 369899,
+      "note": "",
+      "frames": 4,
+      "frame_w": 26,
+      "frame_h": 26,
+      "generation_scale": 4,
+      "input_canvas": [
+        512,
+        512
+      ],
+      "scale": 0.044922,
+      "union_bbox": [
+        0,
+        0,
+        512,
+        512
+      ],
+      "baseline": 25,
+      "frame_meta": [
+        {
+          "frame": 1,
+          "bbox": [
+            0,
+            2,
+            25,
+            26
+          ],
+          "bottom": 25
+        },
+        {
+          "frame": 2,
+          "bbox": [
+            0,
+            3,
+            25,
+            26
+          ],
+          "bottom": 25
+        },
+        {
+          "frame": 3,
+          "bbox": [
+            0,
+            2,
+            25,
+            26
+          ],
+          "bottom": 25
+        },
+        {
+          "frame": 4,
+          "bbox": [
+            0,
+            1,
+            25,
+            26
+          ],
+          "bottom": 25
+        }
+      ]
+    },
+    {
+      "id": "carcelero_walk",
+      "category": "sprites",
+      "file": "sprites/carcelero_walk.png",
+      "spec": {
+        "frames": 4,
+        "frame_w": 36,
+        "frame_h": 48,
+        "sheet_w": 144,
+        "sheet_h": 48,
+        "palette": [
+          "#09080D",
+          "#D7CFB8",
+          "#701622",
+          "#5CBEAE",
+          "#C69C3E",
+          "#4B284B",
+          "#B5B9C2",
+          "#F0C45A"
+        ],
+        "outline": "#09080D",
+        "transparent_background": true,
+        "baseline": 47,
+        "prompt_subject": "hulking jailer of the ossuary, bone mask, dark robes, heavy chains and a ring of keys",
+        "prompt_action": "heavy walk dragging a chain"
+      },
+      "sha256": "181e6969d223c3ef9e026001ed0cc6dd08200db1ef3cc9910d2345f6e5874465",
+      "size_bytes": 1334,
+      "checks": {
+        "exists": true,
+        "mode": "RGBA",
+        "size": [
+          144,
+          48
+        ],
+        "rgba_ok": true,
+        "size_ok": true,
+        "palette": [
+          "#09080D",
+          "#D7CFB8",
+          "#701622",
+          "#5CBEAE",
+          "#C69C3E",
+          "#4B284B",
+          "#B5B9C2",
+          "#F0C45A"
+        ],
+        "frames": [
+          {
+            "frame": 1,
+            "colors": 7,
+            "semi_alpha_px": 0,
+            "transparent_px": 560,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              1,
+              1,
+              34,
+              48
+            ],
+            "bottom": 47,
+            "ok": true
+          },
+          {
+            "frame": 2,
+            "colors": 7,
+            "semi_alpha_px": 0,
+            "transparent_px": 560,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              1,
+              1,
+              34,
+              48
+            ],
+            "bottom": 47,
+            "ok": true
+          },
+          {
+            "frame": 3,
+            "colors": 6,
+            "semi_alpha_px": 0,
+            "transparent_px": 560,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              1,
+              1,
+              34,
+              48
+            ],
+            "bottom": 47,
+            "ok": true
+          },
+          {
+            "frame": 4,
+            "colors": 7,
+            "semi_alpha_px": 0,
+            "transparent_px": 560,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              1,
+              1,
+              34,
+              48
+            ],
+            "bottom": 47,
+            "ok": true
+          }
+        ],
+        "baseline": 47,
+        "bottoms": [
+          47,
+          47,
+          47,
+          47
+        ],
+        "baseline_ok": true,
+        "center_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "sd15-pixelart-lora",
+      "model": "stable-diffusion-v1-5/stable-diffusion-v1-5 + artificialguybr/pixelartredmond-1-5v-pixel-art-loras-for-sd-1-5",
+      "seed": 370110,
+      "note": "",
+      "frames": 4,
+      "frame_w": 36,
+      "frame_h": 48,
+      "generation_scale": 4,
+      "input_canvas": [
+        512,
+        768
+      ],
+      "scale": 0.061141,
+      "union_bbox": [
+        0,
+        32,
+        512,
+        768
+      ],
+      "baseline": 47,
+      "frame_meta": [
+        {
+          "frame": 1,
+          "bbox": [
+            1,
+            1,
+            34,
+            48
+          ],
+          "bottom": 47
+        },
+        {
+          "frame": 2,
+          "bbox": [
+            1,
+            1,
+            34,
+            48
+          ],
+          "bottom": 47
+        },
+        {
+          "frame": 3,
+          "bbox": [
+            1,
+            1,
+            34,
+            48
+          ],
+          "bottom": 47
+        },
+        {
+          "frame": 4,
+          "bbox": [
+            1,
+            1,
+            34,
+            48
+          ],
+          "bottom": 47
+        }
+      ]
+    },
+    {
+      "id": "custodio_walk",
+      "category": "sprites",
+      "file": "sprites/custodio_walk.png",
+      "spec": {
+        "frames": 4,
+        "frame_w": 48,
+        "frame_h": 64,
+        "sheet_w": 192,
+        "sheet_h": 64,
+        "palette": [
+          "#09080D",
+          "#D7CFB8",
+          "#701622",
+          "#5CBEAE",
+          "#C69C3E",
+          "#4B284B",
+          "#B5B9C2",
+          "#F0C45A"
+        ],
+        "outline": "#09080D",
+        "transparent_background": true,
+        "baseline": 63,
+        "prompt_subject": "colossal ossuary custodian, crowned skull, bone armor, gold medallion, dark violet robe and a star-shaped flail",
+        "prompt_action": "heavy walk, bone armor and flail"
+      },
+      "sha256": "45393b74eae5ce212688514d26a891a575814713d73e32a10dfd01466e106fc6",
+      "size_bytes": 4339,
+      "checks": {
+        "exists": true,
+        "mode": "RGBA",
+        "size": [
+          192,
+          64
+        ],
+        "rgba_ok": true,
+        "size_ok": true,
+        "palette": [
+          "#09080D",
+          "#D7CFB8",
+          "#701622",
+          "#5CBEAE",
+          "#C69C3E",
+          "#4B284B",
+          "#B5B9C2",
+          "#F0C45A"
+        ],
+        "frames": [
+          {
+            "frame": 1,
+            "colors": 8,
+            "semi_alpha_px": 0,
+            "transparent_px": 1164,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              2,
+              2,
+              45,
+              64
+            ],
+            "bottom": 63,
+            "ok": true
+          },
+          {
+            "frame": 2,
+            "colors": 8,
+            "semi_alpha_px": 0,
+            "transparent_px": 1182,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              2,
+              3,
+              45,
+              64
+            ],
+            "bottom": 63,
+            "ok": true
+          },
+          {
+            "frame": 3,
+            "colors": 8,
+            "semi_alpha_px": 0,
+            "transparent_px": 1164,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              2,
+              2,
+              45,
+              64
+            ],
+            "bottom": 63,
+            "ok": true
+          },
+          {
+            "frame": 4,
+            "colors": 8,
+            "semi_alpha_px": 0,
+            "transparent_px": 1145,
+            "outline_boundary_ok": true,
+            "palette_ok": true,
+            "bbox": [
+              2,
+              1,
+              45,
+              64
+            ],
+            "bottom": 63,
+            "ok": true
+          }
+        ],
+        "baseline": 63,
+        "bottoms": [
+          63,
+          63,
+          63,
+          63
+        ],
+        "baseline_ok": true,
+        "center_ok": true,
+        "ok": true
+      },
+      "ok": true,
+      "backend": "sd15-pixelart-lora",
+      "model": "stable-diffusion-v1-5/stable-diffusion-v1-5 + artificialguybr/pixelartredmond-1-5v-pixel-art-loras-for-sd-1-5",
+      "seed": 370040,
+      "note": "",
+      "frames": 4,
+      "frame_w": 48,
+      "frame_h": 64,
+      "generation_scale": 4,
+      "input_canvas": [
+        512,
+        768
+      ],
+      "scale": 0.079427,
+      "union_bbox": [
+        0,
+        0,
+        512,
+        768
+      ],
+      "baseline": 63,
+      "frame_meta": [
+        {
+          "frame": 1,
+          "bbox": [
+            2,
+            2,
+            45,
+            64
+          ],
+          "bottom": 63
+        },
+        {
+          "frame": 2,
+          "bbox": [
+            2,
+            3,
+            45,
+            64
+          ],
+          "bottom": 63
+        },
+        {
+          "frame": 3,
+          "bbox": [
+            2,
+            2,
+            45,
+            64
+          ],
+          "bottom": 63
+        },
+        {
+          "frame": 4,
+          "bbox": [
+            2,
+            1,
+            45,
+            64
+          ],
+          "bottom": 63
+        }
+      ]
+    }
+  ]
+}

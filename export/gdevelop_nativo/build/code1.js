@@ -28,17 +28,25 @@ isConditionTrue_0 = gdjs.evtTools.runtimeScene.sceneJustBegins(runtimeScene);
 if (isConditionTrue_0) {
 {runtimeScene.getScene().getVariables().getFromIndex(0).setNumber(1);
 }
-{gdjs.evtTools.camera.setCameraZoom(runtimeScene, 2, "", 0);
+{runtimeScene.getGame().getVariables().getFromIndex(11).setNumber(512);
 }
-{gdjs.evtTools.camera.setCameraX(runtimeScene, 480, "", 0);
+{runtimeScene.getGame().getVariables().getFromIndex(12).setNumber(288);
 }
-{gdjs.evtTools.camera.setCameraY(runtimeScene, 270, "", 0);
+{runtimeScene.getGame().getVariables().getFromIndex(13).setNumber(0);
 }
-{gdjs.evtTools.camera.setCameraZoom(runtimeScene, 2, "UI", 0);
+{runtimeScene.getGame().getVariables().getFromIndex(14).setNumber(0);
 }
-{gdjs.evtTools.camera.setCameraX(runtimeScene, 480, "UI", 0);
+{gdjs.evtTools.camera.setCameraZoom(runtimeScene, 1.25, "", 0);
 }
-{gdjs.evtTools.camera.setCameraY(runtimeScene, 270, "UI", 0);
+{gdjs.evtTools.camera.setCameraX(runtimeScene, 512, "", 0);
+}
+{gdjs.evtTools.camera.setCameraY(runtimeScene, 288, "", 0);
+}
+{gdjs.evtTools.camera.setCameraZoom(runtimeScene, 1, "UI", 0);
+}
+{gdjs.evtTools.camera.setCameraX(runtimeScene, 640, "UI", 0);
+}
+{gdjs.evtTools.camera.setCameraY(runtimeScene, 360, "UI", 0);
 }
 }
 
@@ -248,7 +256,7 @@ isConditionTrue_0 = false;
 if (isConditionTrue_0) {
 {gdjs.evtTools.sound.playSound(runtimeScene, "SFX_UI", false, 100, 1);
 }
-{runtimeScene.getGame().getVariables().getFromIndex(4).setNumber(1);
+{runtimeScene.getGame().getVariables().getFromIndex(9).setNumber(1);
 }
 {gdjs.evtTools.runtimeScene.popScene(runtimeScene);
 }

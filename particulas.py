@@ -21,7 +21,9 @@ from config import (
     NEGRO_NOCHE,
     ORO,
     ORO_LITÚRGICO,
+    PIEDRA_FRIA,
     ROJO,
+    SALITRE_CRIPTA,
     SANGRE,
     TURQUESA,
     TURQUESA_ÁNIMA,
@@ -245,6 +247,58 @@ class SistemaParticulas:
     # --- Función meta --- #
     def meta(self, x, y):
         self.emitir(x, y, 32, (ORO_LITÚRGICO, BLANCO, TURQUESA_ÁNIMA, VIOLETA_POE), 260, 1.0, 5, 280)
+
+    # --- Función losa_romper --- #
+    def losa_romper(self, x, y, w=32):
+        """Estallido de 8 a 10 esquirlas de hueso y piedra al fracturarse una losa."""
+        for _ in range(8):
+            self.particulas.append(Particula(
+                x + random.uniform(-w // 2, w // 2),
+                y,
+                random.uniform(-80, 80),
+                random.uniform(-60, 30),
+                random.uniform(0.35, 0.65),
+                random.choice((HUESO_MARFIL, SALITRE_CRIPTA, PIEDRA_FRIA, BLANCO)),
+                random.uniform(2.5, 4.5),
+                gravedad=550.0,
+            ))
+
+    # --- Función campana_repique --- #
+    def campana_repique(self, x, y):
+        """Onda expansiva turquesa y dorada con partículas radiantes al percutir la campana."""
+        for _ in range(16):
+            ang = random.uniform(0, math.tau)
+            vel = random.uniform(80, 220)
+            self.particulas.append(Particula(
+                x,
+                y,
+                math.cos(ang) * vel,
+                math.sin(ang) * vel,
+                random.uniform(0.35, 0.60),
+                random.choice((TURQUESA_ÁNIMA, (180, 255, 245), ORO_LITÚRGICO, BLANCO)),
+                random.uniform(2.5, 5.0),
+                gravedad=80.0,
+            ))
+
+    # --- Función consagracion_farol --- #
+    def consagracion_farol(self, x, y, tier=1):
+        """Columna ascendente de partículas celestes y doradas al consagrar un farol."""
+        cantidad = 14 + tier * 8
+        colores = (TURQUESA_ÁNIMA, BLANCO, (160, 240, 235)) if tier == 1 else (
+            ((120, 220, 255), ORO_LITÚRGICO, BLANCO, (255, 235, 160)) if tier == 2 else
+            (ORO_LITÚRGICO, (255, 215, 80), TURQUESA_ÁNIMA, BLANCO, (240, 180, 255))
+        )
+        for _ in range(cantidad):
+            self.particulas.append(Particula(
+                x + random.uniform(-10, 10),
+                y - random.uniform(4, 16),
+                random.uniform(-25, 25),
+                random.uniform(-180, -320),
+                random.uniform(0.55, 0.95),
+                random.choice(colores),
+                random.uniform(2.5, 4.5),
+                gravedad=-30.0,
+            ))
 
     # --- Función actualizar --- #
     def actualizar(self, dt):

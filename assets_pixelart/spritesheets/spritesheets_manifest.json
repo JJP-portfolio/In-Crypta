@@ -1,0 +1,924 @@
+{
+  "spritesheet_jugador.png": {
+    "jugador_ataque_1": {
+      "x": 2,
+      "y": 2,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_ataque_2": {
+      "x": 70,
+      "y": 2,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_ataque_3": {
+      "x": 138,
+      "y": 2,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_ataque_izq_1": {
+      "x": 206,
+      "y": 2,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_ataque_izq_2": {
+      "x": 274,
+      "y": 2,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_ataque_izq_3": {
+      "x": 342,
+      "y": 2,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_ataque_izq_sin_pala_1": {
+      "x": 410,
+      "y": 2,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_ataque_izq_sin_pala_2": {
+      "x": 478,
+      "y": 2,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_ataque_izq_sin_pala_3": {
+      "x": 2,
+      "y": 70,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_ataque_sin_pala_1": {
+      "x": 70,
+      "y": 70,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_ataque_sin_pala_2": {
+      "x": 138,
+      "y": 70,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_ataque_sin_pala_3": {
+      "x": 206,
+      "y": 70,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_caida_1": {
+      "x": 274,
+      "y": 70,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_caida_2": {
+      "x": 342,
+      "y": 70,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_caida_izq_1": {
+      "x": 410,
+      "y": 70,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_caida_izq_2": {
+      "x": 478,
+      "y": 70,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_caida_izq_sin_pala_1": {
+      "x": 2,
+      "y": 138,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_caida_izq_sin_pala_2": {
+      "x": 70,
+      "y": 138,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_caida_sin_pala_1": {
+      "x": 138,
+      "y": 138,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_caida_sin_pala_2": {
+      "x": 206,
+      "y": 138,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_dash_1": {
+      "x": 274,
+      "y": 138,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_dash_2": {
+      "x": 342,
+      "y": 138,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_dash_3": {
+      "x": 410,
+      "y": 138,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_dash_izq_1": {
+      "x": 478,
+      "y": 138,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_dash_izq_2": {
+      "x": 2,
+      "y": 206,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_dash_izq_3": {
+      "x": 70,
+      "y": 206,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_dash_izq_sin_pala_1": {
+      "x": 138,
+      "y": 206,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_dash_izq_sin_pala_2": {
+      "x": 206,
+      "y": 206,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_dash_izq_sin_pala_3": {
+      "x": 274,
+      "y": 206,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_dash_sin_pala_1": {
+      "x": 342,
+      "y": 206,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_dash_sin_pala_2": {
+      "x": 410,
+      "y": 206,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_dash_sin_pala_3": {
+      "x": 478,
+      "y": 206,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_idle_1": {
+      "x": 2,
+      "y": 274,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_idle_2": {
+      "x": 70,
+      "y": 274,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_idle_3": {
+      "x": 138,
+      "y": 274,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_idle_4": {
+      "x": 206,
+      "y": 274,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_idle_izq_1": {
+      "x": 274,
+      "y": 274,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_idle_izq_2": {
+      "x": 342,
+      "y": 274,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_idle_izq_3": {
+      "x": 410,
+      "y": 274,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_idle_izq_4": {
+      "x": 478,
+      "y": 274,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_idle_izq_sin_pala_1": {
+      "x": 2,
+      "y": 342,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_idle_izq_sin_pala_2": {
+      "x": 70,
+      "y": 342,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_idle_izq_sin_pala_3": {
+      "x": 138,
+      "y": 342,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_idle_izq_sin_pala_4": {
+      "x": 206,
+      "y": 342,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_idle_sin_pala_1": {
+      "x": 274,
+      "y": 342,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_idle_sin_pala_2": {
+      "x": 342,
+      "y": 342,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_idle_sin_pala_3": {
+      "x": 410,
+      "y": 342,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_idle_sin_pala_4": {
+      "x": 478,
+      "y": 342,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_jump_1": {
+      "x": 2,
+      "y": 410,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_jump_2": {
+      "x": 70,
+      "y": 410,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_jump_izq_1": {
+      "x": 138,
+      "y": 410,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_jump_izq_2": {
+      "x": 206,
+      "y": 410,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_jump_izq_sin_pala_1": {
+      "x": 274,
+      "y": 410,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_jump_izq_sin_pala_2": {
+      "x": 342,
+      "y": 410,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_jump_sin_pala_1": {
+      "x": 410,
+      "y": 410,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_jump_sin_pala_2": {
+      "x": 478,
+      "y": 410,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_run_1": {
+      "x": 2,
+      "y": 478,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_run_2": {
+      "x": 70,
+      "y": 478,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_run_3": {
+      "x": 138,
+      "y": 478,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_run_4": {
+      "x": 206,
+      "y": 478,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_run_5": {
+      "x": 274,
+      "y": 478,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_run_6": {
+      "x": 342,
+      "y": 478,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_run_izq_1": {
+      "x": 410,
+      "y": 478,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_run_izq_2": {
+      "x": 478,
+      "y": 478,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_run_izq_3": {
+      "x": 2,
+      "y": 546,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_run_izq_4": {
+      "x": 70,
+      "y": 546,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_run_izq_5": {
+      "x": 138,
+      "y": 546,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_run_izq_6": {
+      "x": 206,
+      "y": 546,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_run_izq_sin_pala_1": {
+      "x": 274,
+      "y": 546,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_run_izq_sin_pala_2": {
+      "x": 342,
+      "y": 546,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_run_izq_sin_pala_3": {
+      "x": 410,
+      "y": 546,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_run_izq_sin_pala_4": {
+      "x": 478,
+      "y": 546,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_run_izq_sin_pala_5": {
+      "x": 2,
+      "y": 614,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_run_izq_sin_pala_6": {
+      "x": 70,
+      "y": 614,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_run_sin_pala_1": {
+      "x": 138,
+      "y": 614,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_run_sin_pala_2": {
+      "x": 206,
+      "y": 614,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_run_sin_pala_3": {
+      "x": 274,
+      "y": 614,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_run_sin_pala_4": {
+      "x": 342,
+      "y": 614,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_run_sin_pala_5": {
+      "x": 410,
+      "y": 614,
+      "w": 32,
+      "h": 32
+    },
+    "jugador_run_sin_pala_6": {
+      "x": 478,
+      "y": 614,
+      "w": 32,
+      "h": 32
+    },
+    "jugador": {
+      "x": 2,
+      "y": 682,
+      "w": 64,
+      "h": 64
+    },
+    "jugador_izq": {
+      "x": 70,
+      "y": 682,
+      "w": 64,
+      "h": 64
+    },
+    "jugador_sin_pala": {
+      "x": 138,
+      "y": 682,
+      "w": 64,
+      "h": 64
+    },
+    "jugador_izq_sin_pala": {
+      "x": 206,
+      "y": 682,
+      "w": 64,
+      "h": 64
+    }
+  },
+  "spritesheet_enemigos.png": {
+    "enemy_walk_1": {
+      "x": 2,
+      "y": 2,
+      "w": 26,
+      "h": 26
+    },
+    "enemy_walk_2": {
+      "x": 58,
+      "y": 2,
+      "w": 26,
+      "h": 26
+    },
+    "enemy_walk_3": {
+      "x": 114,
+      "y": 2,
+      "w": 26,
+      "h": 26
+    },
+    "enemy_walk_4": {
+      "x": 170,
+      "y": 2,
+      "w": 26,
+      "h": 26
+    },
+    "enemymelee_walk_1": {
+      "x": 2,
+      "y": 58,
+      "w": 26,
+      "h": 26
+    },
+    "enemymelee_walk_2": {
+      "x": 58,
+      "y": 58,
+      "w": 26,
+      "h": 26
+    },
+    "enemymelee_walk_3": {
+      "x": 114,
+      "y": 58,
+      "w": 26,
+      "h": 26
+    },
+    "enemymelee_walk_4": {
+      "x": 170,
+      "y": 58,
+      "w": 26,
+      "h": 26
+    },
+    "enemy": {
+      "x": 2,
+      "y": 114,
+      "w": 52,
+      "h": 52
+    },
+    "enemymelee": {
+      "x": 58,
+      "y": 114,
+      "w": 52,
+      "h": 52
+    }
+  },
+  "spritesheet_jefes.png": {
+    "jefe_walk_1": {
+      "x": 2,
+      "y": 2,
+      "w": 48,
+      "h": 64
+    },
+    "jefe_walk_2": {
+      "x": 102,
+      "y": 2,
+      "w": 48,
+      "h": 64
+    },
+    "jefe_walk_3": {
+      "x": 202,
+      "y": 2,
+      "w": 48,
+      "h": 64
+    },
+    "jefe_walk_4": {
+      "x": 302,
+      "y": 2,
+      "w": 48,
+      "h": 64
+    },
+    "minijefe_walk_1": {
+      "x": 2,
+      "y": 134,
+      "w": 36,
+      "h": 48
+    },
+    "minijefe_walk_2": {
+      "x": 102,
+      "y": 134,
+      "w": 36,
+      "h": 48
+    },
+    "minijefe_walk_3": {
+      "x": 202,
+      "y": 134,
+      "w": 36,
+      "h": 48
+    },
+    "minijefe_walk_4": {
+      "x": 302,
+      "y": 134,
+      "w": 36,
+      "h": 48
+    },
+    "jefe": {
+      "x": 2,
+      "y": 266,
+      "w": 96,
+      "h": 128
+    },
+    "minijefe": {
+      "x": 102,
+      "y": 266,
+      "w": 72,
+      "h": 96
+    },
+    "onda_jefe": {
+      "x": 202,
+      "y": 266,
+      "w": 20,
+      "h": 22
+    }
+  },
+  "spritesheet_interactivos.png": {
+    "alma_1": {
+      "x": 2,
+      "y": 2,
+      "w": 24,
+      "h": 24
+    },
+    "alma_2": {
+      "x": 54,
+      "y": 2,
+      "w": 24,
+      "h": 24
+    },
+    "alma_3": {
+      "x": 106,
+      "y": 2,
+      "w": 24,
+      "h": 24
+    },
+    "alma_4": {
+      "x": 158,
+      "y": 2,
+      "w": 24,
+      "h": 24
+    },
+    "farolcheckpoint_off": {
+      "x": 210,
+      "y": 2,
+      "w": 20,
+      "h": 30
+    },
+    "farolcheckpoint_on_1": {
+      "x": 262,
+      "y": 2,
+      "w": 20,
+      "h": 30
+    },
+    "farolcheckpoint_on_2": {
+      "x": 2,
+      "y": 66,
+      "w": 20,
+      "h": 30
+    },
+    "farolcheckpoint_on_3": {
+      "x": 54,
+      "y": 66,
+      "w": 20,
+      "h": 30
+    },
+    "farolcheckpoint_on_4": {
+      "x": 106,
+      "y": 66,
+      "w": 20,
+      "h": 30
+    },
+    "pala_1": {
+      "x": 158,
+      "y": 66,
+      "w": 20,
+      "h": 30
+    },
+    "pala_2": {
+      "x": 210,
+      "y": 66,
+      "w": 20,
+      "h": 30
+    },
+    "pala_3": {
+      "x": 262,
+      "y": 66,
+      "w": 20,
+      "h": 30
+    },
+    "pala_4": {
+      "x": 2,
+      "y": 130,
+      "w": 20,
+      "h": 30
+    },
+    "powerupdash_1": {
+      "x": 54,
+      "y": 130,
+      "w": 20,
+      "h": 30
+    },
+    "powerupdash_2": {
+      "x": 106,
+      "y": 130,
+      "w": 20,
+      "h": 30
+    },
+    "powerupdash_3": {
+      "x": 158,
+      "y": 130,
+      "w": 20,
+      "h": 30
+    },
+    "powerupdash_4": {
+      "x": 210,
+      "y": 130,
+      "w": 20,
+      "h": 30
+    },
+    "poweruprango_1": {
+      "x": 262,
+      "y": 130,
+      "w": 20,
+      "h": 30
+    },
+    "poweruprango_2": {
+      "x": 2,
+      "y": 194,
+      "w": 20,
+      "h": 30
+    },
+    "poweruprango_3": {
+      "x": 54,
+      "y": 194,
+      "w": 20,
+      "h": 30
+    },
+    "poweruprango_4": {
+      "x": 106,
+      "y": 194,
+      "w": 20,
+      "h": 30
+    },
+    "golpe_der_1": {
+      "x": 158,
+      "y": 194,
+      "w": 32,
+      "h": 32
+    },
+    "golpe_der_2": {
+      "x": 210,
+      "y": 194,
+      "w": 32,
+      "h": 32
+    },
+    "golpe_der_3": {
+      "x": 262,
+      "y": 194,
+      "w": 32,
+      "h": 32
+    },
+    "golpe_izq_1": {
+      "x": 2,
+      "y": 258,
+      "w": 32,
+      "h": 32
+    },
+    "golpe_izq_2": {
+      "x": 54,
+      "y": 258,
+      "w": 32,
+      "h": 32
+    },
+    "golpe_izq_3": {
+      "x": 106,
+      "y": 258,
+      "w": 32,
+      "h": 32
+    },
+    "onda_jefe": {
+      "x": 158,
+      "y": 258,
+      "w": 20,
+      "h": 22
+    },
+    "pinchos": {
+      "x": 210,
+      "y": 258,
+      "w": 24,
+      "h": 20
+    },
+    "puerta": {
+      "x": 262,
+      "y": 258,
+      "w": 42,
+      "h": 58
+    },
+    "solido": {
+      "x": 2,
+      "y": 322,
+      "w": 32,
+      "h": 32
+    },
+    "alma": {
+      "x": 54,
+      "y": 322,
+      "w": 48,
+      "h": 48
+    },
+    "farolcheckpoint": {
+      "x": 106,
+      "y": 322,
+      "w": 40,
+      "h": 60
+    },
+    "pala": {
+      "x": 158,
+      "y": 322,
+      "w": 40,
+      "h": 60
+    },
+    "powerupdash": {
+      "x": 210,
+      "y": 322,
+      "w": 40,
+      "h": 60
+    },
+    "poweruprango": {
+      "x": 262,
+      "y": 322,
+      "w": 40,
+      "h": 60
+    }
+  },
+  "spritesheet_hud.png": {
+    "corazon_lleno": {
+      "x": 2,
+      "y": 2,
+      "w": 28,
+      "h": 24
+    },
+    "corazon_vacio": {
+      "x": 566,
+      "y": 2,
+      "w": 28,
+      "h": 24
+    },
+    "corazon_manto": {
+      "x": 1130,
+      "y": 2,
+      "w": 28,
+      "h": 24
+    },
+    "icono_alma": {
+      "x": 1694,
+      "y": 2,
+      "w": 16,
+      "h": 16
+    },
+    "icono_dash": {
+      "x": 2258,
+      "y": 2,
+      "w": 16,
+      "h": 16
+    },
+    "icono_pala": {
+      "x": 2,
+      "y": 92,
+      "w": 16,
+      "h": 16
+    },
+    "icono_guadana": {
+      "x": 566,
+      "y": 92,
+      "w": 16,
+      "h": 16
+    },
+    "icono_reloj": {
+      "x": 1130,
+      "y": 92,
+      "w": 16,
+      "h": 16
+    },
+    "icono_calavera": {
+      "x": 1694,
+      "y": 92,
+      "w": 16,
+      "h": 16
+    },
+    "barra_hud": {
+      "x": 2258,
+      "y": 92,
+      "w": 436,
+      "h": 86
+    },
+    "barra_pista": {
+      "x": 2,
+      "y": 182,
+      "w": 560,
+      "h": 48
+    }
+  }
+}

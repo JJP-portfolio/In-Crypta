@@ -1,0 +1,11 @@
+{
+  "tarea": "T202",
+  "estado": "ok",
+  "decision_ref": "D1 D4",
+  "archivos_modificados": ["tests/test_logica.py"],
+  "comandos": [
+    {"cmd": "CMD_LOGICA", "codigo": 0, "esperado_encontrado": true, "salida_resumen": "las cuatro líneas OK y TESTS_INCRYPTA_OK"}
+  ],
+  "commit": "",
+  "notas": "Agregadas importaciones APEX_VY_UMBRAL, COYOTE_TIME, POST_DASH_DURACION, POST_DASH_GRAVEDAD_FACTOR a tests/test_logica.py. Agregadas y llamadas cuatro pruebas de regresión (probar_apex_umbral_negativo, probar_post_dash_gravedad, probar_coyote_time, probar_jump_buffer) antes de probar_juego_headless(). Son pruebas de regresión con la física actual; todas pasan y TESTS_INCRYPTA_OK se mantiene. No se cambió la física."
+}

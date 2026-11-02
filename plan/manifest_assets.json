@@ -1,0 +1,783 @@
+{
+  "proyecto": "IN CRYPTA",
+  "version_manifiesto": "1.0",
+  "fuente": "auditoria del codigo en la raiz del repo (audio.py, entidades.py, assets_loader.py, spritesheets_manifest.json)",
+  "paleta_obligatoria": {
+    "negro_noche": "#09080D",
+    "hueso_marfil": "#D7CFB8",
+    "carmesi_sangre": "#701622",
+    "turquesa_animas": "#5CBEAE",
+    "oro_liturgico": "#C69C3E",
+    "violeta_poe": "#4B284B",
+    "salitre_cripta": "#B5B9C2",
+    "farol_calido": "#F0C45A"
+  },
+  "formatos": {
+    "sfx": "WAV 44100 Hz, 16 bits, estereo (mono duplicado)",
+    "musica": "OGG Vorbis 44100 Hz, estereo, loudness -16 LUFS",
+    "sprites_pasos": "generar a 4x el tamano final, reducir x4, cuantizar a 16 colores de la paleta, contorno de 1 px #09080D, fondo transparente, centrado por los pies"
+  },
+  "entrega_humana": "assets_in_crypta/entrega/{sfx,musica,sprites}/ con los nombres de este archivo",
+  "sfx": [
+    {
+      "id": "salto",
+      "duracion_s": 0.14,
+      "bucle": false,
+      "llamadas_en_codigo": 2,
+      "archivo": "sfx/salto.wav",
+      "clave_codigo": "salto",
+      "nota": "swoop ascendente + roce de tela; 3 variantes de tono por codigo"
+    },
+    {
+      "id": "dash",
+      "duracion_s": 0.18,
+      "bucle": false,
+      "llamadas_en_codigo": 2,
+      "archivo": "sfx/dash.wav",
+      "clave_codigo": "dash",
+      "nota": "torbellino espectral"
+    },
+    {
+      "id": "ataque",
+      "duracion_s": 0.11,
+      "bucle": false,
+      "llamadas_en_codigo": 2,
+      "archivo": "sfx/ataque.wav",
+      "clave_codigo": "ataque",
+      "nota": "golpe de pala al aire"
+    },
+    {
+      "id": "pala",
+      "duracion_s": 0.2,
+      "bucle": false,
+      "llamadas_en_codigo": 14,
+      "archivo": "sfx/pala.wav",
+      "clave_codigo": "pala",
+      "nota": "impacto de pala en piedra"
+    },
+    {
+      "id": "stomp",
+      "duracion_s": 0.18,
+      "bucle": false,
+      "llamadas_en_codigo": 5,
+      "archivo": "sfx/stomp.wav",
+      "clave_codigo": "stomp",
+      "nota": "pisoton sobre huesos"
+    },
+    {
+      "id": "alma_ref",
+      "duracion_s": 0.22,
+      "bucle": false,
+      "llamadas_en_codigo": 2,
+      "archivo": "sfx/alma_ref.wav",
+      "clave_codigo": "alma_1..alma_6",
+      "nota": "UNA nota de referencia a 880 Hz; el empaquetador genera alma_1..6 a 523, 587, 659, 784, 880 y 1046 Hz"
+    },
+    {
+      "id": "onda",
+      "duracion_s": 0.4,
+      "bucle": false,
+      "llamadas_en_codigo": 2,
+      "archivo": "sfx/onda.wav",
+      "clave_codigo": "onda",
+      "nota": "retumbar de osario del Custodio"
+    },
+    {
+      "id": "jefe_aviso",
+      "duracion_s": 0.28,
+      "bucle": false,
+      "llamadas_en_codigo": 3,
+      "archivo": "sfx/jefe_aviso.wav",
+      "clave_codigo": "jefe_aviso",
+      "nota": "aviso de jefe"
+    },
+    {
+      "id": "jefe_fase",
+      "duracion_s": 0.55,
+      "bucle": false,
+      "llamadas_en_codigo": 2,
+      "archivo": "sfx/jefe_fase.wav",
+      "clave_codigo": "jefe_fase",
+      "nota": "cambio de fase del jefe"
+    },
+    {
+      "id": "pala_recoger",
+      "duracion_s": 0.25,
+      "bucle": false,
+      "llamadas_en_codigo": 2,
+      "archivo": "sfx/pala_recoger.wav",
+      "clave_codigo": "pala_recoger",
+      "nota": "recoger la pala"
+    },
+    {
+      "id": "dash_recoger",
+      "duracion_s": 0.28,
+      "bucle": false,
+      "llamadas_en_codigo": 1,
+      "archivo": "sfx/dash_recoger.wav",
+      "clave_codigo": "dash_recoger",
+      "nota": "recoger amuleto de sombras"
+    },
+    {
+      "id": "checkpoint",
+      "duracion_s": 0.32,
+      "bucle": false,
+      "llamadas_en_codigo": 1,
+      "archivo": "sfx/checkpoint.wav",
+      "clave_codigo": "checkpoint",
+      "nota": "farol de reposo encendido"
+    },
+    {
+      "id": "vida_extra",
+      "duracion_s": 0.44,
+      "bucle": false,
+      "llamadas_en_codigo": 2,
+      "archivo": "sfx/vida_extra.wav",
+      "clave_codigo": "vida_extra",
+      "nota": "vida extra"
+    },
+    {
+      "id": "ui",
+      "duracion_s": 0.06,
+      "bucle": false,
+      "llamadas_en_codigo": 55,
+      "archivo": "sfx/ui.wav",
+      "clave_codigo": "ui",
+      "nota": "clic de menu (el mas usado)"
+    },
+    {
+      "id": "dano",
+      "duracion_s": 0.26,
+      "bucle": false,
+      "llamadas_en_codigo": 2,
+      "archivo": "sfx/dano.wav",
+      "clave_codigo": "daño",
+      "nota": "clave con enie en el codigo: el archivo se llama dano.wav"
+    },
+    {
+      "id": "muerte",
+      "duracion_s": 0.65,
+      "bucle": false,
+      "llamadas_en_codigo": 2,
+      "archivo": "sfx/muerte.wav",
+      "clave_codigo": "muerte",
+      "nota": "muerte del sepulturero"
+    },
+    {
+      "id": "meta",
+      "duracion_s": 0.55,
+      "bucle": false,
+      "llamadas_en_codigo": 5,
+      "archivo": "sfx/meta.wav",
+      "clave_codigo": "meta",
+      "nota": "portón abierto"
+    },
+    {
+      "id": "rebote_pala",
+      "duracion_s": 0.16,
+      "bucle": false,
+      "llamadas_en_codigo": 5,
+      "archivo": "sfx/rebote_pala.wav",
+      "clave_codigo": "rebote_pala (alias rebote_metalico, escudo_parry)",
+      "nota": "rebote metalico"
+    },
+    {
+      "id": "corazon_latido",
+      "duracion_s": 1.0,
+      "bucle": false,
+      "llamadas_en_codigo": 1,
+      "archivo": "sfx/corazon_latido.wav",
+      "clave_codigo": "corazon_latido (alias corazon)",
+      "nota": "un latido; el codigo lo repite por intervalos"
+    },
+    {
+      "id": "dron_catacumbas",
+      "duracion_s": 20.0,
+      "bucle": true,
+      "llamadas_en_codigo": 0,
+      "archivo": "sfx/dron_catacumbas.ogg",
+      "clave_codigo": "dron_catacumbas (iniciar_dron, bucle)",
+      "nota": "bucle sin costuras; hoy el codigo sintetiza 4.0 s"
+    }
+  ],
+  "musica": [
+    {
+      "id": "mus_titulo",
+      "duracion_s": 60,
+      "bucle": true,
+      "archivo": "musica/titulo.ogg",
+      "uso": "menu principal / titulo (nuevo: el juego no tiene musica de menu)"
+    },
+    {
+      "id": "mus_camposanto",
+      "duracion_s": 90,
+      "bucle": true,
+      "archivo": "musica/camposanto.ogg",
+      "uso": "nivel 1 y sala de prueba 1 (tema camposanto)"
+    },
+    {
+      "id": "mus_cripta",
+      "duracion_s": 90,
+      "bucle": true,
+      "archivo": "musica/cripta.ogg",
+      "uso": "nivel 2 (tema cripta)"
+    },
+    {
+      "id": "mus_osario",
+      "duracion_s": 90,
+      "bucle": true,
+      "archivo": "musica/osario.ogg",
+      "uso": "nivel 3 (tema osario)"
+    },
+    {
+      "id": "mus_carcelero",
+      "duracion_s": 60,
+      "bucle": true,
+      "archivo": "musica/carcelero.ogg",
+      "uso": "minijefe K (Carcelero del Osario)"
+    },
+    {
+      "id": "mus_custodio_f1",
+      "duracion_s": 60,
+      "bucle": true,
+      "archivo": "musica/custodio_f1.ogg",
+      "uso": "jefe B, fase 1"
+    },
+    {
+      "id": "mus_custodio_f2",
+      "duracion_s": 60,
+      "bucle": true,
+      "archivo": "musica/custodio_f2.ogg",
+      "uso": "jefe B, fase 2"
+    },
+    {
+      "id": "mus_victoria",
+      "duracion_s": 8,
+      "bucle": false,
+      "archivo": "musica/victoria.ogg",
+      "uso": "estado victoria"
+    },
+    {
+      "id": "mus_derrota",
+      "duracion_s": 6,
+      "bucle": false,
+      "archivo": "musica/derrota.ogg",
+      "uso": "estado derrota"
+    },
+    {
+      "id": "mus_creditos",
+      "duracion_s": 90,
+      "bucle": true,
+      "archivo": "musica/creditos.ogg",
+      "uso": "creditos (opcional)"
+    }
+  ],
+  "sprites": [
+    {
+      "id": "jugador_con_pala_idle",
+      "personaje": "sepulturero (con pala)",
+      "accion": "respiracion, pala al hombro",
+      "cuadros": 4,
+      "claves_manifiesto": [
+        "jugador_idle"
+      ],
+      "tamano_final_px": [
+        32,
+        32
+      ],
+      "tamano_generacion_px": [
+        128,
+        128
+      ],
+      "espejo_izq": true,
+      "prioridad": "alta",
+      "uso_actual": "ninguno: pygame dibuja el personaje con codigo (entidades.py)",
+      "nota": ""
+    },
+    {
+      "id": "jugador_con_pala_run",
+      "personaje": "sepulturero (con pala)",
+      "accion": "ciclo de carrera completo",
+      "cuadros": 6,
+      "claves_manifiesto": [
+        "jugador_run"
+      ],
+      "tamano_final_px": [
+        32,
+        32
+      ],
+      "tamano_generacion_px": [
+        128,
+        128
+      ],
+      "espejo_izq": true,
+      "prioridad": "alta",
+      "uso_actual": "ninguno: pygame dibuja el personaje con codigo (entidades.py)",
+      "nota": ""
+    },
+    {
+      "id": "jugador_con_pala_jump",
+      "personaje": "sepulturero (con pala)",
+      "accion": "subida y apice",
+      "cuadros": 2,
+      "claves_manifiesto": [
+        "jugador_jump"
+      ],
+      "tamano_final_px": [
+        32,
+        32
+      ],
+      "tamano_generacion_px": [
+        128,
+        128
+      ],
+      "espejo_izq": true,
+      "prioridad": "alta",
+      "uso_actual": "ninguno: pygame dibuja el personaje con codigo (entidades.py)",
+      "nota": ""
+    },
+    {
+      "id": "jugador_con_pala_caida",
+      "personaje": "sepulturero (con pala)",
+      "accion": "caida",
+      "cuadros": 2,
+      "claves_manifiesto": [
+        "jugador_caida"
+      ],
+      "tamano_final_px": [
+        32,
+        32
+      ],
+      "tamano_generacion_px": [
+        128,
+        128
+      ],
+      "espejo_izq": true,
+      "prioridad": "alta",
+      "uso_actual": "ninguno: pygame dibuja el personaje con codigo (entidades.py)",
+      "nota": ""
+    },
+    {
+      "id": "jugador_con_pala_dash",
+      "personaje": "sepulturero (con pala)",
+      "accion": "estocada con estela de sombra",
+      "cuadros": 3,
+      "claves_manifiesto": [
+        "jugador_dash"
+      ],
+      "tamano_final_px": [
+        32,
+        32
+      ],
+      "tamano_generacion_px": [
+        128,
+        128
+      ],
+      "espejo_izq": true,
+      "prioridad": "alta",
+      "uso_actual": "ninguno: pygame dibuja el personaje con codigo (entidades.py)",
+      "nota": ""
+    },
+    {
+      "id": "jugador_con_pala_ataque",
+      "personaje": "sepulturero (con pala)",
+      "accion": "golpe de pala: preparacion, impacto, recuperacion",
+      "cuadros": 3,
+      "claves_manifiesto": [
+        "jugador_ataque"
+      ],
+      "tamano_final_px": [
+        32,
+        32
+      ],
+      "tamano_generacion_px": [
+        128,
+        128
+      ],
+      "espejo_izq": true,
+      "prioridad": "alta",
+      "uso_actual": "ninguno: pygame dibuja el personaje con codigo (entidades.py)",
+      "nota": ""
+    },
+    {
+      "id": "jugador_sin_pala_idle",
+      "personaje": "sepulturero (sin pala)",
+      "accion": "respiracion, manos vacias",
+      "cuadros": 4,
+      "claves_manifiesto": [
+        "jugador_idle_sin_pala"
+      ],
+      "tamano_final_px": [
+        32,
+        32
+      ],
+      "tamano_generacion_px": [
+        128,
+        128
+      ],
+      "espejo_izq": true,
+      "prioridad": "alta",
+      "uso_actual": "ninguno: pygame dibuja el personaje con codigo (entidades.py)",
+      "nota": ""
+    },
+    {
+      "id": "jugador_sin_pala_run",
+      "personaje": "sepulturero (sin pala)",
+      "accion": "ciclo de carrera",
+      "cuadros": 6,
+      "claves_manifiesto": [
+        "jugador_run_sin_pala"
+      ],
+      "tamano_final_px": [
+        32,
+        32
+      ],
+      "tamano_generacion_px": [
+        128,
+        128
+      ],
+      "espejo_izq": true,
+      "prioridad": "alta",
+      "uso_actual": "ninguno: pygame dibuja el personaje con codigo (entidades.py)",
+      "nota": ""
+    },
+    {
+      "id": "jugador_sin_pala_jump",
+      "personaje": "sepulturero (sin pala)",
+      "accion": "subida y apice",
+      "cuadros": 2,
+      "claves_manifiesto": [
+        "jugador_jump_sin_pala"
+      ],
+      "tamano_final_px": [
+        32,
+        32
+      ],
+      "tamano_generacion_px": [
+        128,
+        128
+      ],
+      "espejo_izq": true,
+      "prioridad": "alta",
+      "uso_actual": "ninguno: pygame dibuja el personaje con codigo (entidades.py)",
+      "nota": ""
+    },
+    {
+      "id": "jugador_sin_pala_caida",
+      "personaje": "sepulturero (sin pala)",
+      "accion": "caida",
+      "cuadros": 2,
+      "claves_manifiesto": [
+        "jugador_caida_sin_pala"
+      ],
+      "tamano_final_px": [
+        32,
+        32
+      ],
+      "tamano_generacion_px": [
+        128,
+        128
+      ],
+      "espejo_izq": true,
+      "prioridad": "alta",
+      "uso_actual": "ninguno: pygame dibuja el personaje con codigo (entidades.py)",
+      "nota": ""
+    },
+    {
+      "id": "jugador_sin_pala_dash",
+      "personaje": "sepulturero (sin pala)",
+      "accion": "estocada con estela de sombra",
+      "cuadros": 3,
+      "claves_manifiesto": [
+        "jugador_dash_sin_pala"
+      ],
+      "tamano_final_px": [
+        32,
+        32
+      ],
+      "tamano_generacion_px": [
+        128,
+        128
+      ],
+      "espejo_izq": true,
+      "prioridad": "alta",
+      "uso_actual": "ninguno: pygame dibuja el personaje con codigo (entidades.py)",
+      "nota": ""
+    },
+    {
+      "id": "morador_walk",
+      "personaje": "morador (E)",
+      "accion": "caminar flotando",
+      "cuadros": 4,
+      "claves_manifiesto": [
+        "enemy_walk"
+      ],
+      "tamano_final_px": [
+        26,
+        26
+      ],
+      "tamano_generacion_px": [
+        104,
+        104
+      ],
+      "espejo_izq": true,
+      "prioridad": "alta",
+      "uso_actual": "ninguno: pygame dibuja el personaje con codigo (entidades.py)",
+      "nota": ""
+    },
+    {
+      "id": "guardia_walk",
+      "personaje": "guardia (L)",
+      "accion": "caminar pesado",
+      "cuadros": 4,
+      "claves_manifiesto": [
+        "enemymelee_walk"
+      ],
+      "tamano_final_px": [
+        26,
+        26
+      ],
+      "tamano_generacion_px": [
+        104,
+        104
+      ],
+      "espejo_izq": true,
+      "prioridad": "alta",
+      "uso_actual": "ninguno: pygame dibuja el personaje con codigo (entidades.py)",
+      "nota": ""
+    },
+    {
+      "id": "carcelero_walk",
+      "personaje": "Carcelero del Osario (K)",
+      "accion": "caminar arrastrando la cadena",
+      "cuadros": 4,
+      "claves_manifiesto": [
+        "minijefe_walk"
+      ],
+      "tamano_final_px": [
+        36,
+        48
+      ],
+      "tamano_generacion_px": [
+        144,
+        192
+      ],
+      "espejo_izq": true,
+      "prioridad": "alta",
+      "uso_actual": "ninguno: pygame dibuja el personaje con codigo (entidades.py)",
+      "nota": ""
+    },
+    {
+      "id": "custodio_walk",
+      "personaje": "Custodio del Osario (B)",
+      "accion": "caminar pesado, coraza de hueso",
+      "cuadros": 4,
+      "claves_manifiesto": [
+        "jefe_walk"
+      ],
+      "tamano_final_px": [
+        48,
+        64
+      ],
+      "tamano_generacion_px": [
+        192,
+        256
+      ],
+      "espejo_izq": true,
+      "prioridad": "alta",
+      "uso_actual": "ninguno: pygame dibuja el personaje con codigo (entidades.py)",
+      "nota": ""
+    },
+    {
+      "id": "onda_custodio",
+      "personaje": "onda del Custodio (proyectil)",
+      "accion": "arco horizontal de polvo de hueso",
+      "cuadros": 1,
+      "claves_manifiesto": [
+        "onda_jefe"
+      ],
+      "tamano_final_px": [
+        20,
+        22
+      ],
+      "tamano_generacion_px": [
+        80,
+        88
+      ],
+      "espejo_izq": false,
+      "prioridad": "alta",
+      "uso_actual": "ninguno: pygame dibuja el personaje con codigo (entidades.py)",
+      "nota": "onda_jefe aparece duplicada en spritesheet_jefes y spritesheet_interactivos (mismo cuadro 20x22); generar un solo cuadro"
+    },
+    {
+      "id": "alma",
+      "personaje": "alma (coleccionable)",
+      "accion": "giro suave",
+      "cuadros": 5,
+      "claves_manifiesto": [
+        "alma"
+      ],
+      "tamano_final_px": [
+        24,
+        24
+      ],
+      "tamano_generacion_px": [
+        96,
+        96
+      ],
+      "espejo_izq": false,
+      "prioridad": "baja",
+      "uso_actual": "ninguno: pygame dibuja el personaje con codigo (entidades.py)",
+      "nota": ""
+    },
+    {
+      "id": "farol_encendido",
+      "personaje": "farol de reposo (F) encendido",
+      "accion": "llama parpadeante",
+      "cuadros": 4,
+      "claves_manifiesto": [
+        "farolcheckpoint_on"
+      ],
+      "tamano_final_px": [
+        20,
+        30
+      ],
+      "tamano_generacion_px": [
+        80,
+        120
+      ],
+      "espejo_izq": false,
+      "prioridad": "baja",
+      "uso_actual": "ninguno: pygame dibuja el personaje con codigo (entidades.py)",
+      "nota": ""
+    },
+    {
+      "id": "farol_apagado",
+      "personaje": "farol de reposo (F) apagado",
+      "accion": "sin llama",
+      "cuadros": 1,
+      "claves_manifiesto": [
+        "farolcheckpoint_off"
+      ],
+      "tamano_final_px": [
+        20,
+        30
+      ],
+      "tamano_generacion_px": [
+        80,
+        120
+      ],
+      "espejo_izq": false,
+      "prioridad": "baja",
+      "uso_actual": "ninguno: pygame dibuja el personaje con codigo (entidades.py)",
+      "nota": ""
+    },
+    {
+      "id": "pala_objeto",
+      "personaje": "pala recogible (W)",
+      "accion": "giro lento",
+      "cuadros": 5,
+      "claves_manifiesto": [
+        "pala"
+      ],
+      "tamano_final_px": [
+        20,
+        30
+      ],
+      "tamano_generacion_px": [
+        80,
+        120
+      ],
+      "espejo_izq": false,
+      "prioridad": "baja",
+      "uso_actual": "ninguno: pygame dibuja el personaje con codigo (entidades.py)",
+      "nota": ""
+    },
+    {
+      "id": "amuleto_dash",
+      "personaje": "amuleto de sombras (D)",
+      "accion": "pulsacion",
+      "cuadros": 5,
+      "claves_manifiesto": [
+        "powerupdash"
+      ],
+      "tamano_final_px": [
+        20,
+        30
+      ],
+      "tamano_generacion_px": [
+        80,
+        120
+      ],
+      "espejo_izq": false,
+      "prioridad": "baja",
+      "uso_actual": "ninguno: pygame dibuja el personaje con codigo (entidades.py)",
+      "nota": ""
+    },
+    {
+      "id": "guadana_rango",
+      "personaje": "guadana consagrada (X)",
+      "accion": "giro lento",
+      "cuadros": 5,
+      "claves_manifiesto": [
+        "poweruprango"
+      ],
+      "tamano_final_px": [
+        20,
+        30
+      ],
+      "tamano_generacion_px": [
+        80,
+        120
+      ],
+      "espejo_izq": false,
+      "prioridad": "baja",
+      "uso_actual": "ninguno: pygame dibuja el personaje con codigo (entidades.py)",
+      "nota": ""
+    },
+    {
+      "id": "golpe_pala_der",
+      "personaje": "impacto de pala (efecto)",
+      "accion": "destello de arco",
+      "cuadros": 3,
+      "claves_manifiesto": [
+        "golpe_der"
+      ],
+      "tamano_final_px": [
+        32,
+        32
+      ],
+      "tamano_generacion_px": [
+        128,
+        128
+      ],
+      "espejo_izq": true,
+      "prioridad": "baja",
+      "uso_actual": "ninguno: pygame dibuja el personaje con codigo (entidades.py)",
+      "nota": ""
+    }
+  ],
+  "generaciones_totales": {
+    "sfx": 20,
+    "musica": 10,
+    "sprites_alta": 16,
+    "sprites_baja": 7
+  },
+  "fuera_de_alcance": {
+    "retratos_sin_uso": [
+      "jugador 64x64",
+      "enemy 52x52",
+      "enemymelee 52x52",
+      "jefe 96x128",
+      "minijefe 72x96",
+      "farolcheckpoint 40x60"
+    ],
+    "ataque_sin_pala": "jugador_ataque_sin_pala y jugador_ataque_izq_sin_pala: intentar_ataque exige tener la pala (juego.py), no se generan",
+    "tiles_y_hud": "solido, pinchos, puerta, iconos HUD, barra_hud, barra_pista: siguen procedurales (hornear_assets_unificados.py)"
+  },
+  "hallazgos_manifiesto": [
+    "onda_jefe duplicada entre hojas (ver onda_custodio)",
+    "pygame no carga ningun PNG de personaje: assets_loader.obtener_spritesheet y obtener_sprite_entidad no tienen llamadores; entidades.obtener_sprite_pixelart tampoco tiene llamadores",
+    "entidades.py busca _assets_loader.obtener_sprite, que no existe en assets_loader.py"
+  ]
+}

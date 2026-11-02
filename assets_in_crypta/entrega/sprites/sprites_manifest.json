@@ -1,0 +1,456 @@
+{
+  "jugador_con_pala_idle": {
+    "file": "sprites/jugador_con_pala_idle.png",
+    "frames": 4,
+    "frame_w": 32,
+    "frame_h": 32,
+    "sheet_w": 128,
+    "sheet_h": 32,
+    "baseline": 31,
+    "rects": [
+      {
+        "i": 1,
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      {
+        "i": 2,
+        "x": 32,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      {
+        "i": 3,
+        "x": 64,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      {
+        "i": 4,
+        "x": 96,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      }
+    ]
+  },
+  "jugador_con_pala_run": {
+    "file": "sprites/jugador_con_pala_run.png",
+    "frames": 6,
+    "frame_w": 32,
+    "frame_h": 32,
+    "sheet_w": 192,
+    "sheet_h": 32,
+    "baseline": 31,
+    "rects": [
+      {
+        "i": 1,
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      {
+        "i": 2,
+        "x": 32,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      {
+        "i": 3,
+        "x": 64,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      {
+        "i": 4,
+        "x": 96,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      {
+        "i": 5,
+        "x": 128,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      {
+        "i": 6,
+        "x": 160,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      }
+    ]
+  },
+  "jugador_con_pala_jump": {
+    "file": "sprites/jugador_con_pala_jump.png",
+    "frames": 2,
+    "frame_w": 32,
+    "frame_h": 32,
+    "sheet_w": 64,
+    "sheet_h": 32,
+    "baseline": 31,
+    "rects": [
+      {
+        "i": 1,
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      {
+        "i": 2,
+        "x": 32,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      }
+    ]
+  },
+  "jugador_con_pala_caida": {
+    "file": "sprites/jugador_con_pala_caida.png",
+    "frames": 2,
+    "frame_w": 32,
+    "frame_h": 32,
+    "sheet_w": 64,
+    "sheet_h": 32,
+    "baseline": 31,
+    "rects": [
+      {
+        "i": 1,
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      {
+        "i": 2,
+        "x": 32,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      }
+    ]
+  },
+  "jugador_con_pala_dash": {
+    "file": "sprites/jugador_con_pala_dash.png",
+    "frames": 3,
+    "frame_w": 32,
+    "frame_h": 32,
+    "sheet_w": 96,
+    "sheet_h": 32,
+    "baseline": 31,
+    "rects": [
+      {
+        "i": 1,
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      {
+        "i": 2,
+        "x": 32,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      {
+        "i": 3,
+        "x": 64,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      }
+    ]
+  },
+  "jugador_con_pala_ataque": {
+    "file": "sprites/jugador_con_pala_ataque.png",
+    "frames": 3,
+    "frame_w": 32,
+    "frame_h": 32,
+    "sheet_w": 96,
+    "sheet_h": 32,
+    "baseline": 31,
+    "rects": [
+      {
+        "i": 1,
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      {
+        "i": 2,
+        "x": 32,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      {
+        "i": 3,
+        "x": 64,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      }
+    ]
+  },
+  "jugador_sin_pala_idle": {
+    "file": "sprites/jugador_sin_pala_idle.png",
+    "frames": 4,
+    "frame_w": 32,
+    "frame_h": 32,
+    "sheet_w": 128,
+    "sheet_h": 32,
+    "baseline": 31,
+    "rects": [
+      {
+        "i": 1,
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      {
+        "i": 2,
+        "x": 32,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      {
+        "i": 3,
+        "x": 64,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      {
+        "i": 4,
+        "x": 96,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      }
+    ]
+  },
+  "jugador_sin_pala_run": {
+    "file": "sprites/jugador_sin_pala_run.png",
+    "frames": 6,
+    "frame_w": 32,
+    "frame_h": 32,
+    "sheet_w": 192,
+    "sheet_h": 32,
+    "baseline": 31,
+    "rects": [
+      {
+        "i": 1,
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      {
+        "i": 2,
+        "x": 32,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      {
+        "i": 3,
+        "x": 64,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      {
+        "i": 4,
+        "x": 96,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      {
+        "i": 5,
+        "x": 128,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      {
+        "i": 6,
+        "x": 160,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      }
+    ]
+  },
+  "morador_walk": {
+    "file": "sprites/morador_walk.png",
+    "frames": 4,
+    "frame_w": 26,
+    "frame_h": 26,
+    "sheet_w": 104,
+    "sheet_h": 26,
+    "baseline": 25,
+    "rects": [
+      {
+        "i": 1,
+        "x": 0,
+        "y": 0,
+        "w": 26,
+        "h": 26
+      },
+      {
+        "i": 2,
+        "x": 26,
+        "y": 0,
+        "w": 26,
+        "h": 26
+      },
+      {
+        "i": 3,
+        "x": 52,
+        "y": 0,
+        "w": 26,
+        "h": 26
+      },
+      {
+        "i": 4,
+        "x": 78,
+        "y": 0,
+        "w": 26,
+        "h": 26
+      }
+    ]
+  },
+  "guardia_walk": {
+    "file": "sprites/guardia_walk.png",
+    "frames": 4,
+    "frame_w": 26,
+    "frame_h": 26,
+    "sheet_w": 104,
+    "sheet_h": 26,
+    "baseline": 25,
+    "rects": [
+      {
+        "i": 1,
+        "x": 0,
+        "y": 0,
+        "w": 26,
+        "h": 26
+      },
+      {
+        "i": 2,
+        "x": 26,
+        "y": 0,
+        "w": 26,
+        "h": 26
+      },
+      {
+        "i": 3,
+        "x": 52,
+        "y": 0,
+        "w": 26,
+        "h": 26
+      },
+      {
+        "i": 4,
+        "x": 78,
+        "y": 0,
+        "w": 26,
+        "h": 26
+      }
+    ]
+  },
+  "carcelero_walk": {
+    "file": "sprites/carcelero_walk.png",
+    "frames": 4,
+    "frame_w": 36,
+    "frame_h": 48,
+    "sheet_w": 144,
+    "sheet_h": 48,
+    "baseline": 47,
+    "rects": [
+      {
+        "i": 1,
+        "x": 0,
+        "y": 0,
+        "w": 36,
+        "h": 48
+      },
+      {
+        "i": 2,
+        "x": 36,
+        "y": 0,
+        "w": 36,
+        "h": 48
+      },
+      {
+        "i": 3,
+        "x": 72,
+        "y": 0,
+        "w": 36,
+        "h": 48
+      },
+      {
+        "i": 4,
+        "x": 108,
+        "y": 0,
+        "w": 36,
+        "h": 48
+      }
+    ]
+  },
+  "custodio_walk": {
+    "file": "sprites/custodio_walk.png",
+    "frames": 4,
+    "frame_w": 48,
+    "frame_h": 64,
+    "sheet_w": 192,
+    "sheet_h": 64,
+    "baseline": 63,
+    "rects": [
+      {
+        "i": 1,
+        "x": 0,
+        "y": 0,
+        "w": 48,
+        "h": 64
+      },
+      {
+        "i": 2,
+        "x": 48,
+        "y": 0,
+        "w": 48,
+        "h": 64
+      },
+      {
+        "i": 3,
+        "x": 96,
+        "y": 0,
+        "w": 48,
+        "h": 64
+      },
+      {
+        "i": 4,
+        "x": 144,
+        "y": 0,
+        "w": 48,
+        "h": 64
+      }
+    ]
+  }
+}

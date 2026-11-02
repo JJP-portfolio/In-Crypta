@@ -15,6 +15,7 @@ import pygame
 from audio import Audio
 from camara import Camara
 from config import (
+    ALMAS_FILO_ANIMA,
     ALMAS_MANTO_FAROL,
     ALMAS_POR_VIDA,
     ALTO,
@@ -34,6 +35,8 @@ from config import (
     DASH_VELOCIDAD,
     EQUIPO,
     FAROL_CÁLIDO,
+    FILO_ANIMA_ALCANCE,
+    FILO_ANIMA_DASH_FACTOR,
     FPS,
     GRIS,
     GRIS_OSCURO,
@@ -50,15 +53,22 @@ from config import (
     HUD_TEXTO,
     HUD_VERDE,
     HUESO,
+    HUESO_MARFIL,
     HUD_GRIS_CLARO,
+    INCENSARIO_COOLDOWN,
     INTEGRANTES,
     INVULNERABILIDAD,
     JEFE_ONDA_VELOCIDAD,
+    LOSA_TIEMPO_QUIEBRE,
     ORO,
+    ORO_LITÚRGICO,
+    PIEDRA_FRIA,
     REBOTE_ENEMIGO,
+    SALITRE_CRIPTA,
     TITULO,
     SUBTITULO,
     TILE,
+    TURQUESA_ÁNIMA,
     VIDAS_INICIALES,
     VIDAS_MAXIMAS,
     VIRTUAL_ALTO,
@@ -803,11 +813,13 @@ class Juego:
                 self.almas_combo_count = 0
 
         self.actualizar_plataformas(dt)
+        self.actualizar_losas(dt)
         teclas = pygame.key.get_pressed()
         self.jugador.actualizar(dt, teclas, self.nivel.solidos_actuales())
         self.limitar_jugador()
         self.procesar_feedback_jugador()
         self.actualizar_ataque()
+        self.actualizar_incensarios(dt)
 
         if self.actualizar_jefe(dt):
             return
@@ -877,6 +889,72 @@ class Juego:
             self.jugador.rect.x = round(self.jugador.x)
             self.jugador.rect.y = round(self.jugador.y)
 
+    # --- Función actualizar_losas --- #
+    def actualizar_losas(self, dt):
+        for losa in getattr(self.nivel, "losas_quebradizas", []):
+            if (
+                self.jugador.en_suelo
+                and abs(self.jugador.rect.bottom - losa.rect.top) <= 2
+                and self.jugador.rect.right > losa.rect.left
+                and self.jugador.rect.left < losa.rect.right
+            ):
+                losa.pisar()
+
+            if losa.recien_quebrada:
+                self.audio.reproducir("stomp")
+                self.particulas.emitir(
+                    losa.rect.centerx,
+                    losa.rect.centery,
+                    16,
+                    (HUESO_MARFIL, SALITRE_CRIPTA, PIEDRA_FRIA),
+                    140,
+                    0.5,
+                    3,
+                )
+                self.camara.sacudir(3.5, 0.12)
+            elif losa.recien_reconstruida:
+                self.particulas.emitir(
+                    losa.rect.centerx,
+                    losa.rect.centery,
+                    12,
+                    (TURQUESA_ÁNIMA, BLANCO),
+                    100,
+                    0.35,
+                    2,
+                )
+
+    # --- Función actualizar_incensarios --- #
+    def actualizar_incensarios(self, dt):
+        for incensario in getattr(self.nivel, "incensarios", []):
+            if not incensario.puede_rebotar():
+                continue
+
+            # Pisotón / contacto cayendo desde arriba (funciona sin pala incluso en Nivel 1)
+            if (
+                self.jugador.vy > 0
+                and self.jugador.rect.colliderect(incensario.rect)
+                and self.jugador.rect.bottom <= incensario.rect.top + TOLERANCIA_PISOTON
+            ):
+                incensario.activar_rebote()
+                self.jugador.rect.bottom = min(self.jugador.rect.bottom, incensario.rect.top)
+                self.jugador.y = float(self.jugador.rect.y)
+                self.jugador.vy = -REBOTE_ENEMIGO
+                self.jugador.en_suelo = False
+                self.jugador.dash_usos_aire = DASH_USOS_AIRE
+                self.jugador.dash_cooldown = 0.0
+                self.audio.reproducir("alma_6")
+                self.particulas.emitir(
+                    incensario.rect.centerx,
+                    incensario.rect.centery,
+                    20,
+                    (TURQUESA_ÁNIMA, BLANCO, ORO_LITÚRGICO),
+                    180,
+                    0.5,
+                    4,
+                )
+                self.camara.sacudir(5.0, 0.12, dir_x=0.0, dir_y=1.0)
+                self.hitstop = 0.08
+
     # --- Función limitar_jugador --- #
     def limitar_jugador(self):
         minimo = 0
@@ -913,6 +991,43 @@ class Juego:
             return
 
         golpe = self.jugador.rect_ataque()
+
+        # Filo de Ánima: estela de chispas litúrgicas doradas y turquesas
+        if getattr(self.jugador, "filo_anima", False):
+            self.particulas.emitir(
+                golpe.centerx,
+                golpe.centery,
+                2,
+                (ORO, TURQUESA_ÁNIMA, BLANCO),
+                120,
+                0.25,
+                3,
+            )
+
+        # Campanas de Resonancia / Incensarios (rebotan y recargan dash al golpearlas)
+        for incensario in getattr(self.nivel, "incensarios", []):
+            if incensario.puede_rebotar() and golpe.colliderect(incensario.rect):
+                incensario.activar_rebote()
+                self.jugador.ataque_golpeado = True
+                self.jugador.vy = -REBOTE_ENEMIGO
+                self.jugador.en_suelo = False
+                self.jugador.dash_usos_aire = DASH_USOS_AIRE
+                self.jugador.dash_cooldown = 0.0
+                self.audio.reproducir("alma_6")
+                self.particulas.emitir(
+                    incensario.rect.centerx,
+                    incensario.rect.centery,
+                    20,
+                    (TURQUESA_ÁNIMA, BLANCO, ORO_LITÚRGICO),
+                    180,
+                    0.5,
+                    4,
+                )
+                self.camara.sacudir(6.0, 0.14, dir_x=self.jugador.direccion, dir_y=-0.5)
+                self.hitstop = 0.08
+                self.flash = 0.08
+                self.flash_color = TURQUESA_ÁNIMA
+                return
 
         # Enemigos normales.
         for enemigo in self.nivel.enemigos:
@@ -1426,13 +1541,23 @@ class Juego:
                     120,
                 )
 
-                # Curación y Consagración de Almas
+                # Curación y Consagración de Almas: El Pacto del Farol (3 Grados)
                 almas_tramo = self.jugador.almas - getattr(self, "almas_consagradas", 0)
                 msg_partes = ["FAROL CONSAGRADO"]
-                if almas_tramo >= ALMAS_MANTO_FAROL:
+                if almas_tramo >= ALMAS_FILO_ANIMA:
+                    checkpoint.tier = 3
                     self.jugador.escudo_farol = True
-                    msg_partes.append("Manto protector otorgado")
+                    self.jugador.filo_anima = True
+                    msg_partes.append("Fuego Fatuo (Filo de Ánima y Manto)")
+                elif almas_tramo >= ALMAS_MANTO_FAROL:
+                    checkpoint.tier = 2
+                    self.jugador.escudo_farol = True
+                    msg_partes.append("Bendición del Manto")
+                elif almas_tramo >= 1:
+                    checkpoint.tier = 1
+                    msg_partes.append("Consagración Básica")
                 else:
+                    checkpoint.tier = 0
                     msg_partes.append("Punto de control registrado")
 
                 if self.jugador.vidas < VIDAS_INICIALES:
@@ -1524,6 +1649,7 @@ class Juego:
             return
 
         self.jugador.vidas -= 1
+        self.jugador.filo_anima = False
         self.audio.reproducir("daño")
         self.particulas.daño(self.jugador.rect.centerx, self.jugador.rect.centery)
         self.camara.sacudir(9.0, 0.22, dir_x=-self.jugador.direccion, dir_y=-0.5)

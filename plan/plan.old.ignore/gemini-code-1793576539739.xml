@@ -1,0 +1,83 @@
+<orquestacion_maestria_in_crypta version="1.0.0" proyecto="IN CRYPTA">
+  <metadatos>
+    <autor>Equipo 6 - UNAHUR</autor>
+    <entorno>Python 3.11+ / GDevelop 5.6.285 / HTML5 Web Runtime</entorno>
+    <resolucion_virtual>1024x576 (Zoom 1.25x en ventana HD 1280x720)</resolucion_virtual>
+    <principios>Single Source of Truth, Cero Assets Externos Manuales, 60 FPS Inviolables, Paridad 1:1</principios>
+  </metadatos>
+
+  <directivas_generales>
+    <regla id="R1">Trabajar con asignación estricta de jurisdicción de archivos por subagente para prevenir condiciones de carrera.</regla>
+    <regla id="R2">Mantener la compatibilidad total con la suite de certificación: test_logica.py, test_hud.py, test_export_constantes.py, test_export_gravedad.py, test_export_pipeline.py y test_fisica_gdjs.js.</regla>
+    <regla id="R3">Garantizar que todo texto de UI y cuadros de diálogo tenga tono de novela gráfica gótica humana, eliminando mensajes robóticos o genéricos.</regla>
+    <regla id="R4">Exportar toda la música y efectos sintéticos a WAV de 44.1 kHz estéreo e integrarlos mediante hornear_assets_unificados.py para sostener la paridad Web/GDevelop.</regla>
+  </directivas_generales>
+
+  <subagentes>
+    <agente id="A1_CORE_FISICA" rol="Especialista en Física Celeste y Paridad GDevelop">
+      <jurisdiccion>config.py, entidades.py, tools/generar_proyecto_nativo.py, tools/exportador/gdevelop.py</jurisdiccion>
+      <tareas>
+        <tarea>Sincronizar las constantes COYOTE_TIME (0.10s), JUMP_BUFFER (0.12s), APEX_VY_UMBRAL (70.0) y POST_DASH_DURACION (0.06s) en el generador de eventos.</tarea>
+        <tarea>Implementar el bloque único determinista de decisión de gravedad por frame en GDevelop: Dash (0) > Post-Dash (750) > Ápice (825) > Normal (1500).</tarea>
+        <tarea>Eliminar las variables muertas de velocidad vertical sin actualizar y utilizar las funciones nativas PlatformBehavior::CurrentJumpSpeed() y CurrentFallSpeed().</tarea>
+      </tareas>
+    </agente>
+
+    <agente id="A2_LEVEL_DESIGN_PLATAFORMAS" rol="Arquitecto de Niveles en Curva Sierra y Geometría">
+      <jurisdiccion>nivel.py, niveles.py, niveles_rediseñados.py</jurisdiccion>
+      <tareas>
+        <tarea>Revisar las plataformas móviles horizontales (M) y verticales (V), agregando suavizado sinusoidal en los extremos de su recorrido.</tarea>
+        <tarea>Ajustar la inercia del jugador al saltar desde elevadores verticales para evitar la pérdida de velocidad ascendente.</tarea>
+        <tarea>Verificar la separación pedagógica de fosos: 3-4 tiles para salto puro, 6-8 tiles para salto+dash, 11+ tiles para combo pisotón-dash.</tarea>
+        <tarea>Mantener las 3 salas de pruebas aisladas en niveles_rediseñados.py para evaluación rápida en 45 segundos.</tarea>
+      </tareas>
+    </agente>
+
+    <agente id="A3_FEEDBACK_UX_HUMANA" rol="Diseñador de UI/UX, Diálogos y Game Feel">
+      <jurisdiccion>hud.py, juego.py, efectos.py, camara.py, particulas.py</jurisdiccion>
+      <tareas>
+        <tarea>Rediseñar los cuadros de texto con tipografía legible, bordes de hierro/cera y diálogos de tono gótico sobrio.</tarea>
+        <tarea>Implementar HitstopManager con micro-congelamientos de 3 a 8 frames según la contundencia del golpe.</tarea>
+        <tarea>Aplicar la fórmula de trauma cuadrático (T^2) para sacudidas de cámara orgánicas con decaimiento continuo.</tarea>
+        <tarea>Garantizar el desacoplamiento de la barra de vida del Custodio en el riel superior de 1232x72 px sin desorganización del layout.</tarea>
+      </tareas>
+    </agente>
+
+    <agente id="A4_MUSICA_AUDIO_PROCEDURAL" rol="Ingeniero de Sonido y Síntesis Chiptune Multicanal">
+      <jurisdiccion>audio.py, tools/hornear_assets_unificados.py, tools/integrar_assets_gdevelop.py</jurisdiccion>
+      <tareas>
+        <tarea>Implementar el sintetizador multicanal de 4 vías (Pulse 1, Pulse 2, Triangle, Noise) usando numpy y audio PCM a 44100 Hz estéreo.</tarea>
+        <tarea>Componer la música del juego en escala menor armónica gótica (Do menor armónico) con envolventes ADSR.</tarea>
+        <tarea>Generar y exportar los archivos de audio WAV a la carpeta de assets para garantizar paridad exacta en la versión HTML5/GDevelop.</tarea>
+        <tarea>Añadir jitter micro-tonal (+/- 2.5%) en los SFX percusivos para evitar la habituación auditiva.</tarea>
+      </tareas>
+    </agente>
+
+    <agente id="A5_EXPORTADOR_GDEVELOP_WEB" rol="Especialista en Empaquetado y Servicio Web">
+      <jurisdiccion>tools/exportar_todo.py, tools/empaquetar_gd_games.py, publicar_gd_games.sh, jugar_web.sh, export/gdevelop/*</jurisdiccion>
+      <tareas>
+        <tarea>Garantizar que exportar_todo.py compile sin errores tanto el JSON nativo de GDevelop 5.6 como el build Web autónomo.</tarea>
+        <tarea>Hacer que cualquier fallo en la integración de assets detenga el proceso devolviendo un código de salida distinto de cero.</tarea>
+        <tarea>Mantener operativos los scripts POSIX (.sh) con permisos de ejecución en entornos Linux.</tarea>
+      </tareas>
+    </agente>
+
+    <agente id="A6_QA_CERTIFICACION" rol="Auditor de Calidad y Pruebas Headless">
+      <jurisdiccion>tests/*, tools/validar_eventos_gd.py, tools/verificar_paridad.py, reports/resumen.json</jurisdiccion>
+      <tareas>
+        <tarea>Ejecutar las 8 suites de pruebas headless (SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy).</tarea>
+        <tarea>Validar que la verificación de eventos devuelva EVENTOS_OK y que la paridad geométrica y física devuelva PARIDAD_OK.</tarea>
+        <tarea>Generar el informe final en reports/resumen.json registrando la salida limpia sin errores de compilación.</tarea>
+      </tareas>
+    </agente>
+  </subagentes>
+
+  <flujo_ejecucion>
+    <paso n="1">A1 corrige las constantes y fijos de gravedad en el exportador nativo.</paso>
+    <paso n="2">A2 suaviza las plataformas móviles M y V en el motor de nivel y verifica fosos.</paso>
+    <paso n="3">A3 aplica el HitstopManager, la cámara T^2 y limpia los textos del HUD para asegurar legibilidad humana.</paso>
+    <paso n="4">A4 ejecuta la síntesis del motor multicanal de audio y hornea los archivos WAV en la carpeta de assets.</paso>
+    <paso n="5">A5 ejecuta la exportación unificada para regenerar export/gdevelop_nativo/ y export/gdevelop/.</paso>
+    <paso n="6">A6 corre toda la suite de certificación y valida el código de salida 0.</paso>
+  </flujo_ejecucion>
+</orquestacion_maestria_in_crypta>

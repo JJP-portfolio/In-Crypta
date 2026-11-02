@@ -1,0 +1,46 @@
+pygame-ce 2.5.8 (SDL 2.32.10, Python 3.14.8)
+niveles: OK
+parser: OK
+gravedad: OK
+salto: OK
+dash: OK
+pozo de dash: OK
+primer salto de La Cripta: OK
+alma: OK
+almas y vida extra: OK
+reset de almas al morir: OK
+enemigo: OK
+enemigo melee: OK
+camara: OK
+estados y meta: OK
+pala y contacto: OK
+pala y límites: OK
+power-up dash y checkpoints: OK
+plataformas: OK
+vidas: OK
+reiniciar nivel: OK
+titulo: OK
+ataque de pala: OK
+jefe final: OK
+mini-boss carcelero: OK
+altar de la guadaña sellado: OK
+progresión de habilidades y moveset: OK
+pisotón encadenado sobre voladores: OK
+farol: consagración, curación y manto: OK
+mapa final: OK
+salto ventana nivel 2: OK
+salas de prueba: OK
+menú principal y selector de niveles: OK
+tutorial: OK
+pausa y campaña continua: OK
+transición de almas y vidas: OK
+feedback derrota y reintento: OK
+accesibilidad reducir movimiento: OK
+combo almas: OK
+pinchos: OK
+prioridad 3 UI/UX y 4 tipos de interfaz: OK
+física salto+dash game feel: OK
+menú configuración y presets teclado: OK
+juego headless: OK
+
+TESTS_INCRYPTA_OK

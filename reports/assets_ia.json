@@ -1,0 +1,387 @@
+{
+  "proyecto": "IN CRYPTA",
+  "modulo": "assets_ia",
+  "generado": "2026-11-01T22:14:41.418779",
+  "manifiesto": "/home/sanodesu/unahur/PlataformeroMDA/plan/manifest_assets.json",
+  "total": 53,
+  "resumen": {
+    "OK": 0,
+    "ESPERANDO_ENTREGA": 53,
+    "FALLA": 0,
+    "PENDIENTE_HERRAMIENTA": 0,
+    "BLOQUEADA": 0
+  },
+  "assets": [
+    {
+      "id": "salto",
+      "categoria": "sfx",
+      "archivo": "sfx/salto.wav",
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "falta /home/sanodesu/unahur/PlataformeroMDA/assets_in_crypta/entrega/sfx/salto.wav"
+    },
+    {
+      "id": "dash",
+      "categoria": "sfx",
+      "archivo": "sfx/dash.wav",
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "falta /home/sanodesu/unahur/PlataformeroMDA/assets_in_crypta/entrega/sfx/dash.wav"
+    },
+    {
+      "id": "ataque",
+      "categoria": "sfx",
+      "archivo": "sfx/ataque.wav",
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "falta /home/sanodesu/unahur/PlataformeroMDA/assets_in_crypta/entrega/sfx/ataque.wav"
+    },
+    {
+      "id": "pala",
+      "categoria": "sfx",
+      "archivo": "sfx/pala.wav",
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "falta /home/sanodesu/unahur/PlataformeroMDA/assets_in_crypta/entrega/sfx/pala.wav"
+    },
+    {
+      "id": "stomp",
+      "categoria": "sfx",
+      "archivo": "sfx/stomp.wav",
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "falta /home/sanodesu/unahur/PlataformeroMDA/assets_in_crypta/entrega/sfx/stomp.wav"
+    },
+    {
+      "id": "alma_ref",
+      "categoria": "sfx",
+      "archivo": "sfx/alma_ref.wav",
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "falta /home/sanodesu/unahur/PlataformeroMDA/assets_in_crypta/entrega/sfx/alma_ref.wav"
+    },
+    {
+      "id": "onda",
+      "categoria": "sfx",
+      "archivo": "sfx/onda.wav",
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "falta /home/sanodesu/unahur/PlataformeroMDA/assets_in_crypta/entrega/sfx/onda.wav"
+    },
+    {
+      "id": "jefe_aviso",
+      "categoria": "sfx",
+      "archivo": "sfx/jefe_aviso.wav",
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "falta /home/sanodesu/unahur/PlataformeroMDA/assets_in_crypta/entrega/sfx/jefe_aviso.wav"
+    },
+    {
+      "id": "jefe_fase",
+      "categoria": "sfx",
+      "archivo": "sfx/jefe_fase.wav",
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "falta /home/sanodesu/unahur/PlataformeroMDA/assets_in_crypta/entrega/sfx/jefe_fase.wav"
+    },
+    {
+      "id": "pala_recoger",
+      "categoria": "sfx",
+      "archivo": "sfx/pala_recoger.wav",
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "falta /home/sanodesu/unahur/PlataformeroMDA/assets_in_crypta/entrega/sfx/pala_recoger.wav"
+    },
+    {
+      "id": "dash_recoger",
+      "categoria": "sfx",
+      "archivo": "sfx/dash_recoger.wav",
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "falta /home/sanodesu/unahur/PlataformeroMDA/assets_in_crypta/entrega/sfx/dash_recoger.wav"
+    },
+    {
+      "id": "checkpoint",
+      "categoria": "sfx",
+      "archivo": "sfx/checkpoint.wav",
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "falta /home/sanodesu/unahur/PlataformeroMDA/assets_in_crypta/entrega/sfx/checkpoint.wav"
+    },
+    {
+      "id": "vida_extra",
+      "categoria": "sfx",
+      "archivo": "sfx/vida_extra.wav",
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "falta /home/sanodesu/unahur/PlataformeroMDA/assets_in_crypta/entrega/sfx/vida_extra.wav"
+    },
+    {
+      "id": "ui",
+      "categoria": "sfx",
+      "archivo": "sfx/ui.wav",
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "falta /home/sanodesu/unahur/PlataformeroMDA/assets_in_crypta/entrega/sfx/ui.wav"
+    },
+    {
+      "id": "dano",
+      "categoria": "sfx",
+      "archivo": "sfx/dano.wav",
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "falta /home/sanodesu/unahur/PlataformeroMDA/assets_in_crypta/entrega/sfx/dano.wav"
+    },
+    {
+      "id": "muerte",
+      "categoria": "sfx",
+      "archivo": "sfx/muerte.wav",
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "falta /home/sanodesu/unahur/PlataformeroMDA/assets_in_crypta/entrega/sfx/muerte.wav"
+    },
+    {
+      "id": "meta",
+      "categoria": "sfx",
+      "archivo": "sfx/meta.wav",
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "falta /home/sanodesu/unahur/PlataformeroMDA/assets_in_crypta/entrega/sfx/meta.wav"
+    },
+    {
+      "id": "rebote_pala",
+      "categoria": "sfx",
+      "archivo": "sfx/rebote_pala.wav",
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "falta /home/sanodesu/unahur/PlataformeroMDA/assets_in_crypta/entrega/sfx/rebote_pala.wav"
+    },
+    {
+      "id": "corazon_latido",
+      "categoria": "sfx",
+      "archivo": "sfx/corazon_latido.wav",
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "falta /home/sanodesu/unahur/PlataformeroMDA/assets_in_crypta/entrega/sfx/corazon_latido.wav"
+    },
+    {
+      "id": "dron_catacumbas",
+      "categoria": "sfx",
+      "archivo": "sfx/dron_catacumbas.ogg",
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "falta /home/sanodesu/unahur/PlataformeroMDA/assets_in_crypta/entrega/sfx/dron_catacumbas.ogg"
+    },
+    {
+      "id": "mus_titulo",
+      "categoria": "musica",
+      "archivo": "musica/titulo.ogg",
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "falta /home/sanodesu/unahur/PlataformeroMDA/assets_in_crypta/entrega/musica/titulo.ogg"
+    },
+    {
+      "id": "mus_camposanto",
+      "categoria": "musica",
+      "archivo": "musica/camposanto.ogg",
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "falta /home/sanodesu/unahur/PlataformeroMDA/assets_in_crypta/entrega/musica/camposanto.ogg"
+    },
+    {
+      "id": "mus_cripta",
+      "categoria": "musica",
+      "archivo": "musica/cripta.ogg",
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "falta /home/sanodesu/unahur/PlataformeroMDA/assets_in_crypta/entrega/musica/cripta.ogg"
+    },
+    {
+      "id": "mus_osario",
+      "categoria": "musica",
+      "archivo": "musica/osario.ogg",
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "falta /home/sanodesu/unahur/PlataformeroMDA/assets_in_crypta/entrega/musica/osario.ogg"
+    },
+    {
+      "id": "mus_carcelero",
+      "categoria": "musica",
+      "archivo": "musica/carcelero.ogg",
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "falta /home/sanodesu/unahur/PlataformeroMDA/assets_in_crypta/entrega/musica/carcelero.ogg"
+    },
+    {
+      "id": "mus_custodio_f1",
+      "categoria": "musica",
+      "archivo": "musica/custodio_f1.ogg",
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "falta /home/sanodesu/unahur/PlataformeroMDA/assets_in_crypta/entrega/musica/custodio_f1.ogg"
+    },
+    {
+      "id": "mus_custodio_f2",
+      "categoria": "musica",
+      "archivo": "musica/custodio_f2.ogg",
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "falta /home/sanodesu/unahur/PlataformeroMDA/assets_in_crypta/entrega/musica/custodio_f2.ogg"
+    },
+    {
+      "id": "mus_victoria",
+      "categoria": "musica",
+      "archivo": "musica/victoria.ogg",
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "falta /home/sanodesu/unahur/PlataformeroMDA/assets_in_crypta/entrega/musica/victoria.ogg"
+    },
+    {
+      "id": "mus_derrota",
+      "categoria": "musica",
+      "archivo": "musica/derrota.ogg",
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "falta /home/sanodesu/unahur/PlataformeroMDA/assets_in_crypta/entrega/musica/derrota.ogg"
+    },
+    {
+      "id": "mus_creditos",
+      "categoria": "musica",
+      "archivo": "musica/creditos.ogg",
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "falta /home/sanodesu/unahur/PlataformeroMDA/assets_in_crypta/entrega/musica/creditos.ogg"
+    },
+    {
+      "id": "jugador_con_pala_idle",
+      "categoria": "sprites",
+      "archivo": null,
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "sin archivo de entrega definido en manifiesto"
+    },
+    {
+      "id": "jugador_con_pala_run",
+      "categoria": "sprites",
+      "archivo": null,
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "sin archivo de entrega definido en manifiesto"
+    },
+    {
+      "id": "jugador_con_pala_jump",
+      "categoria": "sprites",
+      "archivo": null,
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "sin archivo de entrega definido en manifiesto"
+    },
+    {
+      "id": "jugador_con_pala_caida",
+      "categoria": "sprites",
+      "archivo": null,
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "sin archivo de entrega definido en manifiesto"
+    },
+    {
+      "id": "jugador_con_pala_dash",
+      "categoria": "sprites",
+      "archivo": null,
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "sin archivo de entrega definido en manifiesto"
+    },
+    {
+      "id": "jugador_con_pala_ataque",
+      "categoria": "sprites",
+      "archivo": null,
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "sin archivo de entrega definido en manifiesto"
+    },
+    {
+      "id": "jugador_sin_pala_idle",
+      "categoria": "sprites",
+      "archivo": null,
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "sin archivo de entrega definido en manifiesto"
+    },
+    {
+      "id": "jugador_sin_pala_run",
+      "categoria": "sprites",
+      "archivo": null,
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "sin archivo de entrega definido en manifiesto"
+    },
+    {
+      "id": "jugador_sin_pala_jump",
+      "categoria": "sprites",
+      "archivo": null,
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "sin archivo de entrega definido en manifiesto"
+    },
+    {
+      "id": "jugador_sin_pala_caida",
+      "categoria": "sprites",
+      "archivo": null,
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "sin archivo de entrega definido en manifiesto"
+    },
+    {
+      "id": "jugador_sin_pala_dash",
+      "categoria": "sprites",
+      "archivo": null,
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "sin archivo de entrega definido en manifiesto"
+    },
+    {
+      "id": "morador_walk",
+      "categoria": "sprites",
+      "archivo": null,
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "sin archivo de entrega definido en manifiesto"
+    },
+    {
+      "id": "guardia_walk",
+      "categoria": "sprites",
+      "archivo": null,
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "sin archivo de entrega definido en manifiesto"
+    },
+    {
+      "id": "carcelero_walk",
+      "categoria": "sprites",
+      "archivo": null,
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "sin archivo de entrega definido en manifiesto"
+    },
+    {
+      "id": "custodio_walk",
+      "categoria": "sprites",
+      "archivo": null,
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "sin archivo de entrega definido en manifiesto"
+    },
+    {
+      "id": "onda_custodio",
+      "categoria": "sprites",
+      "archivo": null,
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "sin archivo de entrega definido en manifiesto"
+    },
+    {
+      "id": "alma",
+      "categoria": "sprites",
+      "archivo": null,
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "sin archivo de entrega definido en manifiesto"
+    },
+    {
+      "id": "farol_encendido",
+      "categoria": "sprites",
+      "archivo": null,
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "sin archivo de entrega definido en manifiesto"
+    },
+    {
+      "id": "farol_apagado",
+      "categoria": "sprites",
+      "archivo": null,
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "sin archivo de entrega definido en manifiesto"
+    },
+    {
+      "id": "pala_objeto",
+      "categoria": "sprites",
+      "archivo": null,
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "sin archivo de entrega definido en manifiesto"
+    },
+    {
+      "id": "amuleto_dash",
+      "categoria": "sprites",
+      "archivo": null,
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "sin archivo de entrega definido en manifiesto"
+    },
+    {
+      "id": "guadana_rango",
+      "categoria": "sprites",
+      "archivo": null,
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "sin archivo de entrega definido en manifiesto"
+    },
+    {
+      "id": "golpe_pala_der",
+      "categoria": "sprites",
+      "archivo": null,
+      "estado": "ESPERANDO_ENTREGA",
+      "motivo": "sin archivo de entrega definido en manifiesto"
+    }
+  ]
+}

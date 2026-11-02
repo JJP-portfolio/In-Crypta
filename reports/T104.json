@@ -1,0 +1,12 @@
+{
+  "tarea": "T104",
+  "estado": "ok",
+  "decision_ref": "D4",
+  "archivos_modificados": ["tools/generar_proyecto_nativo.py", "config.py"],
+  "comandos": [
+    {"cmd": "CMD_CONST", "codigo": 0, "esperado_encontrado": true, "salida_resumen": "TESTS_CONSTANTES_OK (5/5 pasan)"},
+    {"cmd": "CMD_LOGICA", "codigo": 0, "esperado_encontrado": true, "salida_resumen": "TESTS_INCRYPTA_OK"}
+  ],
+  "commit": "",
+  "notas": "T104 pasos 1-4 aplicados: dash_cd 0.60 (2 ocs) -> str(DASH_COOLDOWN); JumpSpeed 620 (3 ocs) -> str(int(-SALTO)); JumpSpeed 360 (5 ocs) -> str(int(REBOTE_ENEMIGO)); str(int(VELOCIDAD * 1.18)) (2 ocs) -> str(int(VELOCIDAD * DASH_JUMP_IMPULSO_X)). Importes agregados: DASH_COOLDOWN, DASH_JUMP_IMPULSO_X, REBOTE_ENEMIGO (SALTO, VELOCIDAD ya estaban). Valores numéricos iguales que antes (dash_cd 0.6; JumpSpeed 620 y 360; MaxSpeed 295). NOTA: el literal restante \"0.40\" del temporizador de embestida del MiniJefe (línea 2203) no estaba cubierto por los pasos de T104, pero el criterio exige TESTS_CONSTANTES_OK; se agregó MINIJEFE_TIMER_EMBESTIDA = 0.40 a config.py y se usó str(MINIJEFE_TIMER_EMBESTIDA), sin cambio de comportamiento (config.py también modificado)."
+}

@@ -1,0 +1,11 @@
+{
+  "tarea": "T100",
+  "estado": "ok",
+  "decision_ref": "",
+  "archivos_modificados": ["tests/test_export_constantes.py"],
+  "comandos": [
+    {"cmd": "CMD_CONST", "codigo": 1, "esperado_encontrado": true, "salida_resumen": "4 FAIL (buffer, coyote, ataque, literales), 1 PASS (velocidades_de_salto)"}
+  ],
+  "commit": "",
+  "notas": "El archivo existe, se ejecuta sin errores de importación y las fallas son exactamente las esperadas (buffer_salto 0.15 vs 0.12, coyote 0.18 vs 0.10, ataque_time 0.18, y 7 literales prohibidos). probar_velocidades_de_salto_usan_config pasa. El export aún no cambió."
+}

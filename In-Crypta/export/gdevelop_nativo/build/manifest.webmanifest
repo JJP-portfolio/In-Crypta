@@ -1,0 +1,12 @@
+{
+  "name": "IN CRYPTA - Nativo",
+  "short_name": "IN CRYPTA - Nativo",
+  "id": "com.equipo6.incrypta",
+  "description": "Proyecto GDevelop nativo generado desde el Pygame de IN CRYPTA.",
+  "orientation": "landscape",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "black",
+  "categories": ["games", "entertainment"],
+  "icons": []
+}

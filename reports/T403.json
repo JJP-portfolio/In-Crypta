@@ -1,0 +1,11 @@
+{
+  "tarea": "T403",
+  "estado": "ok",
+  "decision_ref": "",
+  "archivos_modificados": ["tests/test_export_pipeline.py"],
+  "comandos": [
+    {"cmd": "CMD_PIPE", "codigo": 0, "esperado_encontrado": true, "salida_resumen": "PASS probar_error_de_integracion_se_propaga"}
+  ],
+  "commit": "",
+  "notas": "El cambio de main() (llamadas directas a integrar_assets sin try/except, errores propagan) ya estaba presente en el estado actual del repo (líneas 3485-3489, comentario 'Cualquier fallo aqu\u00ed detiene la exportaci\u00f3n con c\u00f3digo distinto de cero'). Se cre\u00f3 tests/test_export_pipeline.py con la prueba probar_error_de_integracion_se_propaga que mockea generar_todos_los_assets para lanzar RuntimeError y verifica que main() lo propague. Prueba pasa."
+}

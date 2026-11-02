@@ -369,6 +369,62 @@ class Audio:
         self.sonido_dron = sintetizar_dron_funebre(duracion=4.0, volumen=0.08)
         self.sonidos["dron_catacumbas"] = self.sonido_dron
 
+        # 16. Losa quebradiza: crujido y fractura ósea seca
+        capas_losa = [
+            ("ruido", 0, 0, 0.65, None),
+            ("cuadrada", 95, -50, 0.45, None),
+            ("seno", 60, -30, 0.4, None),
+        ]
+        self.sonidos["losa_romper"] = sintetizar_sfx(0.19, capas_losa, adsr=(0.003, 0.04, 0.25, 0.147), volumen=0.28)
+        self.variaciones["losa_romper"] = [
+            sintetizar_sfx(0.19, capas_losa, adsr=(0.003, 0.04, 0.25, 0.147), volumen=0.28, detune=0.95),
+            self.sonidos["losa_romper"],
+            sintetizar_sfx(0.19, capas_losa, adsr=(0.003, 0.04, 0.25, 0.147), volumen=0.28, detune=1.05),
+        ]
+
+        # 17. Campana de resonancia / incensario: repique armónico en quinta justa
+        capas_campana = [
+            ("seno", 660, -20, 0.60, None),
+            ("fm", 990, -30, 0.40, (1980, 0.8)),
+            ("seno", 1320, -40, 0.25, None),
+            ("seno", 330, -10, 0.20, None),
+        ]
+        self.sonidos["campana_repique"] = sintetizar_sfx(0.55, capas_campana, adsr=(0.004, 0.08, 0.45, 0.466), volumen=0.26)
+        self.variaciones["campana_repique"] = [
+            sintetizar_sfx(0.55, capas_campana, adsr=(0.004, 0.08, 0.45, 0.466), volumen=0.26, detune=0.97),
+            self.sonidos["campana_repique"],
+            sintetizar_sfx(0.55, capas_campana, adsr=(0.004, 0.08, 0.45, 0.466), volumen=0.26, detune=1.03),
+        ]
+
+        # 18. Tiers del Farol: acordes litúrgicos ascendentes
+        # Tier 1: Arpegio reverente en Re menor (Re - Fa - La)
+        capas_tier1 = [
+            ("seno", 293.66, 0, 0.45, None),
+            ("seno", 349.23, 0, 0.40, None),
+            ("seno", 440.00, 0, 0.45, None),
+            ("fm", 587.33, 0, 0.25, (1174.66, 0.6)),
+        ]
+        self.sonidos["farol_tier_1"] = sintetizar_sfx(0.48, capas_tier1, adsr=(0.02, 0.10, 0.6, 0.36), volumen=0.22)
+
+        # Tier 2: Acorde triunfal Do mayor (Do - Mi - Sol - Do octava)
+        capas_tier2 = [
+            ("seno", 523.25, 0, 0.45, None),
+            ("seno", 659.25, 0, 0.40, None),
+            ("seno", 783.99, 0, 0.45, None),
+            ("fm", 1046.50, 0, 0.35, (2093.0, 0.8)),
+        ]
+        self.sonidos["farol_tier_2"] = sintetizar_sfx(0.58, capas_tier2, adsr=(0.015, 0.12, 0.65, 0.445), volumen=0.24)
+
+        # Tier 3: Fanfarria sacra polifónica resplandeciente con campana
+        capas_tier3 = [
+            ("seno", 587.33, 0, 0.45, None),
+            ("seno", 739.99, 0, 0.40, None),
+            ("seno", 880.00, 0, 0.40, None),
+            ("fm", 1174.66, 0, 0.35, (2349.32, 1.2)),
+            ("seno", 1320.00, -20, 0.25, None),
+        ]
+        self.sonidos["farol_tier_3"] = sintetizar_sfx(0.72, capas_tier3, adsr=(0.02, 0.15, 0.7, 0.55), volumen=0.26)
+
     # --- Función reproducir --- #
     def reproducir(self, nombre):
         if not self.activo:

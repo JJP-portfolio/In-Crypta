@@ -1,0 +1,11 @@
+{
+  "tarea": "T502",
+  "estado": "ok",
+  "decision_ref": "",
+  "archivos_modificados": [],
+  "comandos": [
+    {"cmd": "verificacion", "codigo": 0, "esperado_encontrado": true, "salida_resumen": "0 ocurrencias de pygame_gdevelop_exporter; GAME_ZOOM = CAMARA_ZOOM = 1.25 ya presente"}
+  ],
+  "commit": "",
+  "notas": "La documentación del exportador ya estaba corregida: ARQUITECTURA_EXPORTADOR_GDEVELOP.md usa los comandos reales (PYTHONPATH=. .venv/bin/python tools/exportar_todo.py y suite) y dice 'No hay paquete pip separado ni CLI externo'; EXPORTADOR_GDEVELOP.md ya tiene GAME_ZOOM = CAMARA_ZOOM = 1.25. Los precondicion de T502 buscaban anclas del estado anterior (pygame_gdevelop_exporter, RENDER_W / ANCHO = 1.5) ya ausentes. No hubo archivos que modificar ni commitear."
+}

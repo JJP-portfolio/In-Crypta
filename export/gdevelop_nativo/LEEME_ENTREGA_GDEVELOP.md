@@ -18,7 +18,7 @@ Podés abrir y jugar el proyecto inmediatamente tanto en la aplicación instalad
    export/gdevelop_nativo/IN_CRYPTA_NATIVO.json
    ```
 4. Presioná el botón **Preview** (ícono de reproducir ▶ en la barra superior).
-5. ¡Listo! El juego inicia en la pantalla de título a **1280x720** con Pixel-Art nítido.
+5. ¡Listo! El juego inicia en la pantalla de título a **1280x720** con fondos ajustados, composición limpia y escala suavizada.
 
 ### Opción B: En el Navegador Web (Sin Instalar)
 1. Abrí [https://editor.gdevelop.io/](https://editor.gdevelop.io/) en Chrome, Firefox o Edge.
@@ -52,22 +52,38 @@ Si la cátedra solicita un archivo `.zip` con la compilación web para correr en
 3. Elegí una carpeta de destino en tu disco (por ejemplo `export/gdevelop_nativo/build/html5/`) y hacé clic en **Export**.
 4. Una vez finalizada la exportación, comprimí el contenido de esa carpeta en un archivo `IN_CRYPTA_HTML5.zip` que contendrá el `index.html` y todos los assets empaquetados.
 
----
-
-## 4. Controles del Juego
-
-| Acción | Teclas Primarias | Teclas Alternativas |
-| :--- | :--- | :--- |
-| **Moverse** | <kbd>Flechas Izq / Der</kbd> | <kbd>A</kbd> / <kbd>D</kbd> |
-| **Saltar** | <kbd>Barra Espaciadora</kbd> | <kbd>W</kbd> / <kbd>Flecha Arriba</kbd> |
-| **Dash Espectral** | <kbd>Shift Izquierdo</kbd> | <kbd>Shift Derecho</kbd> |
-| **Atacar con Pala / Guadaña** | <kbd>J</kbd> | <kbd>Click Izquierdo</kbd> / <kbd>Z</kbd> |
-| **Pausa / Menú** | <kbd>Escape</kbd> | <kbd>P</kbd> |
-| **Accesibilidad (Reducir Sacudida)** | <kbd>F1</kbd> | En menú de pausa |
+**Build nativo actual:** `build/index.html` es la versión jugable del proyecto GDevelop. Para abrirla localmente, iniciá un servidor HTTP desde `export/gdevelop_nativo/build/` (por ejemplo, `python3 -m http.server 8000`) y entrá a `http://localhost:8000`. Para editar el juego, abrí `IN_CRYPTA_NATIVO.json` en GDevelop y mantené junto a él la carpeta `assets/`.
 
 ---
 
-## 5. Especificaciones de Arte Técnico (Prioridad 5)
+## 4. Controles del juego
+
+| Acción | Control |
+| :--- | :--- |
+| **Moverse** | Flechas izquierda / derecha |
+| **Saltar** | Barra espaciadora |
+| **Dash espectral** | X, después de obtener el amuleto |
+| **Atacar** | J o clic izquierdo, después de obtener la pala |
+| **Pausa / volver** | Escape |
+| **Reducir sacudida de cámara** | F1 |
+
+Cada acción tiene una asignación primaria. Shift ya no salta ni activa el dash; A/D, W/↑, Z/K/C y P no duplican acciones de juego. Las flechas arriba/abajo y Enter se reservan para navegar menús.
+
+## 5. HUD y estructura de escenas
+
+Las diez escenas jugables enlazan dos hojas de eventos de GDevelop: `IN_CRYPTA_CONTROLES` y `IN_CRYPTA_HUD`. La primera centraliza movimiento, salto, coyote, buffer y dash; la segunda mantiene corazones, avisos, controles contextuales e icono del amuleto con condiciones y acciones nativas. No quedan eventos JavaScript en el proyecto.
+
+Cada hoja y cada nivel incluye comentarios nativos visibles en el editor. Los comentarios de escena resumen el propósito de aprendizaje y el ritmo previsto: presentación, práctica segura, exigencia, combinación y dominio. Los cuatro destinos del menú son únicos: Tutorial, Nivel 1, Nivel 2 y Salas de prueba.
+
+El escenario usa fondos panorámicos propios que ya incluyen la ilustración de las plataformas. `Solido` conserva el comportamiento Platform y sus colisiones, pero se oculta al iniciar cada nivel para que no se dibuje por segunda vez encima del arte.
+
+- Cinco corazones muestran las vidas; el corazón turquesa indica el manto del farol activo.
+- El contador de almas muestra el progreso hacia la vida extra.
+- El ícono del dash se atenúa cuando todavía está bloqueado y durante la recarga.
+- El texto de controles cambia al obtener la pala y el amuleto.
+- Los avisos duran 3,2 segundos y no se borran por el aviso de última vida.
+
+## 6. Especificaciones técnicas del export
 
 Todos los sprites de esta versión han sido integrados con estética de **Pixel-Art gótico cohesivo**, sustituyendo figuras procedurales por secuencias de animación multipose completas:
 
@@ -80,17 +96,26 @@ Todos los sprites de esta versión han sido integrados con estética de **Pixel-
 * **Turquesa de Ánima (#5cbeae):** Eter bioluminiscente, fuego fatuo y estela de dash.
 * **Oro Litúrgico (#c69c3e):** Cruces de pala, mitra papal del jefe y runas sagradas.
 
-### Configuración de Render Pixel-Perfect
-* **Modo de Escala:** `scaleMode: "nearest"` en las propiedades del proyecto.
-* **Suavizado:** `smoothed: false` en todos los recursos de imagen para evitar bordes borrosos.
-* **Resolución Nativa:** $1280 \times 720\text{ px}$ con zoom $1.0\times$ (coincidencia $1:1$ exacta con Pygame).
-* **Paridad de Colisión:** Conservación del 100% en las cajas delimitadoras (`Hitboxes`) sin deformación de aspect-ratio:
-  - Jugador: $32 \times 32\text{ px}$ ($1:1$)
+### Configuración de Render y activos
+* **Modo de escala:** `scaleMode: "linear"` con `pixelsRounding: false`; suaviza los bordes al escalar la ventana y reduce el aspecto excesivamente cuadriculado.
+* **Recursos de imagen:** suavizado activado. Los sprites mantienen sus siluetas pixel-art; la interpolación se aplica al presentarlos en tamaños no enteros.
+* **Resolución lógica:** $1280 \times 720\text{ px}$.
+* **Fondos:** se conservaron las imágenes originales y se agregaron once variantes `_legible.png` con una curva de brillo moderada para recuperar detalle en las zonas oscuras. El proyecto referencia las variantes mejoradas y mantiene los originales como respaldo.
+* **Máscara de colisión del jugador:** el sprite se dibuja en $32 \times 32\text{ px}$ y usa una máscara efectiva de $24 \times 30\text{ px}$ para ajustar el contacto con plataformas y obstáculos.
+* **Salto nativo:** `PlatformerObject` usa impulso 620, caída máxima 900 y `JumpSustainTime` de 0,12 s. La hoja común añade coyote de 0,10 s y buffer de 0,12 s con eventos `SetCanJump`/`SimulateJumpKey`; no hay puente de gravedad en JS ni ajuste de gravedad en ápice.
+* **Dash:** X, desbloqueado por el amuleto; duración 0,20 s, enfriamiento 0,60 s y velocidad 560, todo aplicado al mismo `PlatformerObject`. Un pisotón puede restaurar la carga aérea.
+* **Extensiones:** el movimiento usa el comportamiento `PlatformerObject` incorporado en GDevelop y acciones/eventos del motor. El buffer, el coyote y el dash están declarados en la hoja externa; no se agrega la extensión comunitaria AdvancedJump ni hay un simulador de físicas en JavaScript.
+* **Movimiento:** flechas izquierda/derecha; las acciones `SimulateLeftKey`, `SimulateRightKey` y `SimulateJumpKey` delegan el movimiento y las colisiones al comportamiento de GDevelop.
+* **Tamaños visuales documentados para los demás objetos:**
   - Enemigos y Almas: $26 \times 26\text{ px}$ y $24 \times 24\text{ px}$ ($1:1$)
   - Farol y PowerUps: $20 \times 30\text{ px}$ ($0.667$)
   - MiniJefe: $36 \times 48\text{ px}$ ($0.75$)
   - Jefe Custodio: $48 \times 64\text{ px}$ ($0.75$)
   - Portón: $42 \times 58\text{ px}$ ($0.724$)
+
+**Buenas prácticas GDevelop aplicadas:** controles predeterminados desactivados para no duplicar teclas; una hoja externa para el bloque de controles común a las escenas; comentarios en las hojas para explicar mecánicas y propósito de cada tramo.
+
+**Documentación oficial consultada:** [Platformer behavior](https://wiki.gdevelop.io/gdevelop5/behaviors/platformer/), [referencia de acciones y condiciones](https://wiki.gdevelop.io/gdevelop5/all-features/platform-behavior/reference/), [eventos externos](https://wiki.gdevelop.io/gdevelop5/interface/events-editor/external-events/), [objetos y visibilidad](https://wiki.gdevelop.io/gdevelop5/objects/), [escala del juego](https://wiki.gdevelop.io/gdevelop5/interface/project-manager/properties/) y [suavizado de recursos](https://wiki.gdevelop.io/gdevelop5/interface/project-manager/resources/).
 
 ### Animaciones Integradas
 1. **Sepulturero (Jugador):**
@@ -113,14 +138,8 @@ Todos los sprites de esta versión han sido integrados con estética de **Pixel-
 
 ---
 
-## 6. Verificación Automática de Paridad
+## 7. Validación nativa
 
-Para certificar la integridad de todos los assets y paridad con Pygame antes de la entrega:
-```bash
-PYTHONPATH=. SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python tools/exportar_todo.py
-```
-Salida esperada:
-```
-PARIDAD_OK: el export coincide con el modelo del juego pygame
-✔ EXPORT COMPLETO
-```
+El proyecto se compiló con el core de GDevelop 5.6.285: 15 escenas y cero diagnósticos. El validador de eventos revisó las instrucciones y objetos de las escenas; el JavaScript generado pasó `node --check`. El build HTML5 usa el runtime incluido de GDevelop y los assets locales.
+
+Para editarlo, abrí `IN_CRYPTA_NATIVO.json` en GDevelop y mantené a su lado la carpeta `assets/`. Para jugar el build, serví la carpeta `build/` por HTTP y abrí `index.html` desde el servidor.

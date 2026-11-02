@@ -1,0 +1,53 @@
+# IN CRYPTA asset pipeline dependencies
+# Python 3.11 recommended (torch 2.1 / audiocraft 1.3 do not support 3.14).
+# ffmpeg and ffprobe must be installed system-wide (libvorbis enabled).
+#
+# torch wheels come from the CUDA 12.1 index. Keep the +cu121 local version
+# so pip does not silently install the CPU-only wheel from PyPI.
+--extra-index-url https://download.pytorch.org/whl/cu121
+
+torch==2.1.0+cu121
+torchaudio==2.1.0+cu121
+torchvision==0.16.0+cu121
+triton==2.1.0
+
+numpy==1.26.4
+pillow==10.3.0
+scipy==1.11.4
+soundfile==0.12.1
+pydub==0.25.1
+psutil
+requests
+tqdm
+
+transformers==4.40.2
+huggingface_hub==0.23.4
+diffusers==0.27.2
+accelerate==0.29.3
+peft==0.10.0
+safetensors==0.4.3
+omegaconf==2.3.0
+hydra-core==1.3.2
+hydra_colorlog==1.2.0
+einops==0.7.0
+librosa==0.10.2.post1
+julius==0.2.7
+flashy==0.0.2
+xformers==0.0.22.post7
+spacy==3.7.6
+click>=8.1,<9
+torchmetrics==1.4.0
+num2words==0.5.13
+sentencepiece==0.1.99
+protobuf==4.25.3
+
+# av 11 does not build against FFmpeg 9 headers (AVFMT_ALLOW_FLUSH was
+# removed). av 13 ships a portable manylinux wheel for CPython 3.11.
+av==13.1.0
+
+# audiocraft 1.3.0 is installed with --no-deps after the packages above:
+#   uv pip install --python /path/to/venv/bin/python "audiocraft==1.3.0" --no-deps
+# Its code imports the already pinned torch/torchaudio/transformers stack.
+# Keep this line commented so a plain `pip install -r` does not re-resolve
+# av<12 and try to compile it from source.
+# audiocraft==1.3.0

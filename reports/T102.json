@@ -1,0 +1,11 @@
+{
+  "tarea": "T102",
+  "estado": "ok",
+  "decision_ref": "",
+  "archivos_modificados": ["tools/generar_proyecto_nativo.py"],
+  "comandos": [
+    {"cmd": "CMD_CONST", "codigo": 0, "esperado_encontrado": true, "salida_resumen": "PASS probar_coyote_usa_config"}
+  ],
+  "commit": "",
+  "notas": "Ancla coyote = 0.18 (1 ocurrencia) reemplazada por str(COYOTE_TIME). COYOTE_TIME agregado a la importación de config. Prueba del coyote pasa."
+}

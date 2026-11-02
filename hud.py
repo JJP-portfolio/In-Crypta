@@ -250,6 +250,7 @@ class HudModel:
     tiene_pala: bool = False
     rango_ataque_mejorado: bool = False
     escudo_farol: bool = False
+    filo_anima: bool = False
     # Jefe
     jefe_vivo: bool = False
     jefe_vida: int = 0
@@ -876,6 +877,7 @@ class HudOrquestador:
         self.modelo.tiene_pala = j.tiene_pala if j else False
         self.modelo.rango_ataque_mejorado = getattr(j, "rango_ataque_mejorado", False) if j else False
         self.modelo.escudo_farol = getattr(j, "escudo_farol", False) if j else False
+        self.modelo.filo_anima = getattr(j, "filo_anima", False) if j else False
 
         minijefe_activo = None
         if n and hasattr(n, "minijefes") and not (jefe and getattr(jefe, "vivo", False)):
