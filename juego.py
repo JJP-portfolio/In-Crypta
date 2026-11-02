@@ -156,25 +156,25 @@ def _obtener_luz_perforacion(radio):
     if surf is None:
         surf = pygame.Surface((radio * 2, radio * 2), pygame.SRCALPHA)
         surf.fill((0, 0, 0, 0))
-        for r in range(radio, 0, -2):
+        for r in range(radio, 0, -1):
             norm = r / radio
-            factor = (1.0 - norm * norm) ** 1.5
-            alfa = int(65 * factor)
+            factor = max(0.0, (1.0 - norm * norm) ** 2.0)
+            alfa = int(45 * factor)
             pygame.draw.circle(surf, (0, 0, 0, alfa), (radio, radio), r)
         _CACHE_LUCES_JUEGO[clave] = surf
     return surf
 
 
-def _obtener_luz_calida(radio, color=(240, 196, 90), factor_mult=0.16):
+def _obtener_luz_calida(radio, color=(240, 196, 90), factor_mult=0.14):
     clave = ("add", radio, tuple(color), factor_mult)
     surf = _CACHE_LUCES_JUEGO.get(clave)
     if surf is None:
         surf = pygame.Surface((radio * 2, radio * 2), pygame.SRCALPHA)
         surf.fill((0, 0, 0, 0))
         cr, cg, cb = color
-        for r in range(radio, 0, -2):
+        for r in range(radio, 0, -1):
             norm = r / radio
-            factor = (1.0 - norm * norm) ** 1.5
+            factor = max(0.0, (1.0 - norm * norm) ** 2.0)
             pygame.draw.circle(
                 surf,
                 (
@@ -193,16 +193,42 @@ _CACHE_HAZ_LUNAR = None
 
 
 def _obtener_haz_lunar(h):
-    """Caché de haz diagonal de luz lunar proyectada desde ventanales góticos (60 FPS sin asignación)."""
+    """Caché de haz diagonal de luz lunar volumétrica y translúcida proyectada desde ventanales góticos."""
     global _CACHE_HAZ_LUNAR
     if _CACHE_HAZ_LUNAR is None or _CACHE_HAZ_LUNAR.get_height() != h:
-        surf = pygame.Surface((180, h), pygame.SRCALPHA)
-        # Haz diagonal exterior translúcido
-        puntos_ext = [(10, 0), (60, 0), (170, h), (80, h)]
-        pygame.draw.polygon(surf, (140, 185, 230, 20), puntos_ext)
-        # Núcleo interior más concentrado
-        puntos_core = [(22, 0), (48, 0), (145, h), (105, h)]
-        pygame.draw.polygon(surf, (190, 225, 255, 18), puntos_core)
+        w_surf = 190
+        surf = pygame.Surface((w_surf, h), pygame.SRCALPHA)
+        surf.fill((0, 0, 0, 0))
+
+        base_color = (135, 185, 235)
+        # Capas concéntricas con gradiente lateral suave para eliminar bordes poligonales rígidos
+        num_capas = 16
+        for i in range(num_capas, 0, -1):
+            t = i / float(num_capas)
+            top_w = 44 * t
+            bot_w = 120 * t
+            top_cx = 36
+            bot_cx = 125
+
+            # Alfa con caída cuadrática suave hacia los laterales
+            alfa_capa = int(22 * (1.0 - t * t))
+            if alfa_capa <= 0:
+                continue
+            pts = [
+                (int(top_cx - top_w // 2), 0),
+                (int(top_cx + top_w // 2), 0),
+                (int(bot_cx + bot_w // 2), h),
+                (int(bot_cx - bot_w // 2), h),
+            ]
+            pygame.draw.polygon(surf, (*base_color, alfa_capa), pts)
+
+        # Atenuación vertical suave (brillante junto al ventanal, disipándose hacia el suelo)
+        fade = pygame.Surface((w_surf, h), pygame.SRCALPHA)
+        for y in range(0, h, 6):
+            norm_y = y / float(h)
+            fade_a = int(255 * (1.0 - norm_y * 0.78))
+            pygame.draw.rect(fade, (255, 255, 255, fade_a), (0, y, w_surf, 6))
+        surf.blit(fade, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
         _CACHE_HAZ_LUNAR = surf.convert_alpha()
     return _CACHE_HAZ_LUNAR
 
@@ -2025,10 +2051,12 @@ class Juego:
         # Luna llena con halo — paralaje lejano suave (0.04)
         luna_x = int(w * 0.68) - int(self.camara.x * 0.04)
         luna_y = 72
-        halo_luna = pygame.Surface((120, 120), pygame.SRCALPHA)
-        pygame.draw.circle(halo_luna, (200, 200, 160, 20), (60, 60), 58)
-        pygame.draw.circle(halo_luna, (220, 220, 180, 30), (60, 60), 42)
-        destino.blit(halo_luna, (luna_x - 60, luna_y - 60), special_flags=pygame.BLEND_RGBA_ADD)
+        halo_luna = pygame.Surface((160, 160), pygame.SRCALPHA)
+        for r in range(76, 20, -4):
+            norm = (r - 20) / 56.0
+            a = int(24 * (1.0 - norm * norm))
+            pygame.draw.circle(halo_luna, (210, 215, 175, a), (80, 80), r)
+        destino.blit(halo_luna, (luna_x - 80, luna_y - 80))
         pygame.draw.circle(destino, (236, 230, 196), (luna_x, luna_y), 26)
         pygame.draw.circle(destino, (218, 210, 174), (luna_x + 6, luna_y - 4), 8)
 
@@ -2134,8 +2162,8 @@ class Juego:
             # Tracería gótica (cruz de plomo)
             pygame.draw.line(destino, (22, 26, 36), (wx + ww // 2, wy + 6), (wx + ww // 2, wy + wh), 1)
             pygame.draw.line(destino, (22, 26, 36), (wx, wy + 42), (wx + ww, wy + 42), 1)
-            # Haz de luz lunar diagonal proyectado hacia el suelo
-            destino.blit(haz_lunar, (wx - 10, wy + 10), special_flags=pygame.BLEND_RGBA_ADD)
+            # Haz de luz lunar diagonal proyectado hacia el suelo (translúcido y suave)
+            destino.blit(haz_lunar, (wx - 10, wy + 10))
 
         # Columnas de piedra gótica en bucle continuo (paralaje 0.28)
         col_w = 230
@@ -2164,10 +2192,12 @@ class Juego:
         for i in range(-1, int(w / torch_w) + 2):
             x = i * torch_w - offset_t + 110
             base_y = h - 160
-            halo_vela = pygame.Surface((40, 40), pygame.SRCALPHA)
-            pygame.draw.circle(halo_vela, (255, 175, 55, 26), (20, 20), 18)
-            pygame.draw.circle(halo_vela, (255, 205, 95, 48), (20, 20), 8)
-            destino.blit(halo_vela, (x - 20, base_y - 20), special_flags=pygame.BLEND_RGBA_ADD)
+            halo_vela = pygame.Surface((44, 44), pygame.SRCALPHA)
+            for r in range(20, 2, -2):
+                norm = r / 20.0
+                a = int(28 * (1.0 - norm * norm))
+                pygame.draw.circle(halo_vela, (255, 180, 60, a), (22, 22), r)
+            destino.blit(halo_vela, (x - 22, base_y - 22))
 
     def dibujar_fondo_osario(self, destino=None):
         if destino is None:
@@ -2664,19 +2694,20 @@ class Juego:
             p.dibujar(destino)
         self.dibujar_ui_espacial(destino, self.camara)
 
-        # Penumbra gótica y claroscuro sutil (alpha 65 / 255)
-        # Calidad Alta (0) y Media (1): activa máscara de penumbra.
+        # Penumbra gótica y claroscuro sutil (alpha 38 / 255)
+        # Calidad Alta (0) y Media (1): activa máscara de penumbra suave.
         # Calidad Baja (2): omite el blit de mascara_penumbra pesada para PCs antiguos (60 FPS garantizados).
         if getattr(self, "config_calidad_idx", 0) != 2:
-            self.mascara_penumbra.fill((9, 8, 13, 65))
+            self.mascara_penumbra.fill((8, 7, 12, 38))
             if self.jugador:
-                px = int(self.jugador.rect.centerx - self.camara.x)
-                py = int(self.jugador.rect.centery - self.camara.y)
-                radio_farol = 90
+                # Perforación centrada exactamente en el farol colgante del sepulturero
+                fx = int(self.jugador.rect.centerx + self.jugador.direccion * 11 - self.camara.x)
+                fy = int(self.jugador.rect.y + 19 - self.camara.y)
+                radio_farol = 95
                 luz_sub = _obtener_luz_perforacion(radio_farol)
                 self.mascara_penumbra.blit(
                     luz_sub,
-                    (px - radio_farol, py - radio_farol),
+                    (fx - radio_farol, fy - radio_farol),
                     special_flags=pygame.BLEND_RGBA_SUB,
                 )
             for cp in self.nivel.checkpoints:
@@ -2684,33 +2715,33 @@ class Juego:
                     cpx = int(cp.rect.centerx - self.camara.x)
                     cpy = int(cp.rect.centery - self.camara.y)
                     self.mascara_penumbra.blit(
-                        _obtener_luz_perforacion(60),
-                        (cpx - 60, cpy - 60),
+                        _obtener_luz_perforacion(65),
+                        (cpx - 65, cpy - 65),
                         special_flags=pygame.BLEND_RGBA_SUB,
                     )
             destino.blit(self.mascara_penumbra, (0, 0))
 
-        # Halos de luz aditivos según calidad:
+        # Halos de luz aditivos suaves según calidad:
         # Alta (0): Halos completos. Media (1): Halos suaves. Baja (2): Omitidos.
         calidad = getattr(self, "config_calidad_idx", 0)
         if calidad in (0, 1):
             if self.jugador:
-                px = int(self.jugador.rect.centerx - self.camara.x)
-                py = int(self.jugador.rect.centery - self.camara.y)
+                fx = int(self.jugador.rect.centerx + self.jugador.direccion * 11 - self.camara.x)
+                fy = int(self.jugador.rect.y + 19 - self.camara.y)
                 color_luz = (195, 80, 255) if getattr(self.jugador, "rango_ataque_mejorado", False) else (240, 196, 90)
-                factor_base = 0.20 if getattr(self.jugador, "rango_ataque_mejorado", False) else 0.16
-                factor_luz = factor_base if calidad == 0 else factor_base * 0.7
-                radio_luz = 85 if calidad == 0 else 65
+                factor_base = 0.12 if getattr(self.jugador, "rango_ataque_mejorado", False) else 0.09
+                factor_luz = factor_base if calidad == 0 else factor_base * 0.65
+                radio_luz = 90 if calidad == 0 else 70
                 luz_add = _obtener_luz_calida(radio_luz, color_luz, factor_luz)
-                destino.blit(luz_add, (px - radio_luz, py - radio_luz), special_flags=pygame.BLEND_RGB_ADD)
+                destino.blit(luz_add, (fx - radio_luz, fy - radio_luz), special_flags=pygame.BLEND_RGB_ADD)
 
             if calidad == 0:
                 for cp in self.nivel.checkpoints:
                     if cp.activo and self.camara.is_on_screen(cp.rect):
                         cpx = int(cp.rect.centerx - self.camara.x)
                         cpy = int(cp.rect.centery - self.camara.y)
-                        luz_cp = _obtener_luz_calida(65, (90, 200, 255), 0.18)
-                        destino.blit(luz_cp, (cpx - 65, cpy - 65), special_flags=pygame.BLEND_RGB_ADD)
+                        luz_cp = _obtener_luz_calida(70, (90, 200, 255), 0.12)
+                        destino.blit(luz_cp, (cpx - 70, cpy - 70), special_flags=pygame.BLEND_RGB_ADD)
 
         # Escalar mundo virtual a pantalla (zoom 1.25x cinematográfico)
         pygame.transform.scale(self.superficie_mundo, (ANCHO, ALTO), self.pantalla)

@@ -114,33 +114,50 @@ _CACHE_AURAS = {}
 
 
 def obtener_aura_custodio(w, h, color, alfa):
-    """Caché de aura translúcida del Custodio para cero asignaciones por frame."""
+    """Caché de aura translúcida con bordes difuminados del Custodio."""
     clave = (int(w), int(h), tuple(color[:3]), int(alfa))
     surf = _CACHE_AURAS.get(clave)
     if surf is None:
-        surf = pygame.Surface((int(w), int(h)), pygame.SRCALPHA)
-        pygame.draw.ellipse(surf, (*color[:3], int(alfa)), surf.get_rect())
+        w_i, h_i = int(w), int(h)
+        surf = pygame.Surface((w_i, h_i), pygame.SRCALPHA)
+        surf.fill((0, 0, 0, 0))
+        num_anillos = 6
+        for step in range(num_anillos, 0, -1):
+            t = step / float(num_anillos)
+            cur_w = max(4, int(w_i * t))
+            cur_h = max(4, int(h_i * t))
+            x_off = (w_i - cur_w) // 2
+            y_off = (h_i - cur_h) // 2
+            a = int(alfa * (1.0 - (t - 1.0 / num_anillos) ** 1.5))
+            if a > 0:
+                pygame.draw.ellipse(surf, (*color[:3], a), (x_off, y_off, cur_w, cur_h))
         surf = surf.convert_alpha()
         _CACHE_AURAS[clave] = surf
     return surf
 
 
 def obtener_estampa_luz(radio, color, max_alfa):
-    """Genera y cachea un halo radial con desvanecimiento cuadrático suave."""
+    """Genera y cachea un halo radial con caída cuadrática suave para blend aditivo."""
     clave = (int(radio), tuple(color[:3]), int(max_alfa))
     surf = _CACHE_LUCES.get(clave)
     if surf is None:
         diametro = int(radio * 2)
         surf = pygame.Surface((diametro, diametro), pygame.SRCALPHA)
+        surf.fill((0, 0, 0, 0))
         cx, cy = radio, radio
         r_int = int(radio)
-        paso = max(1, r_int // 18)
+        paso = max(1, r_int // 24)
+        cr, cg, cb = color[:3]
+        intensidad = max_alfa / 255.0
         for r in range(r_int, 0, -paso):
             norm = r / radio
-            factor = max(0.0, (1.0 - norm * norm) ** 1.5)
-            alfa = int(max_alfa * factor)
-            if alfa > 0:
-                pygame.draw.circle(surf, (*color[:3], alfa), (int(cx), int(cy)), r)
+            factor = max(0.0, (1.0 - norm * norm) ** 2.0)
+            rgb = (
+                int(cr * factor * intensidad),
+                int(cg * factor * intensidad),
+                int(cb * factor * intensidad),
+            )
+            pygame.draw.circle(surf, rgb, (int(cx), int(cy)), r)
         surf = surf.convert_alpha()
         _CACHE_LUCES[clave] = surf
     return surf
@@ -602,6 +619,14 @@ class Jugador:
             (rect.x + 1, base_y - 5, rect.width - 2, 8),
         )
 
+        # Luz ambiental translúcida proyectada por el farol (a espaldas del personaje para silueta nítida)
+        farol_x = centro_x + self.direccion * 11
+        farol_y = rect.y + 19
+        tiene_consagrado = getattr(self, "rango_ataque_mejorado", False)
+        color_halo = (195, 80, 255) if tiene_consagrado else FAROL_CÁLIDO
+        halo_farol = obtener_estampa_luz(85, color_halo, 28 if tiene_consagrado else 22)
+        surface.blit(halo_farol, (farol_x - 85, farol_y - 85), special_flags=pygame.BLEND_RGB_ADD)
+
         en_aire = pose in ("caida", "caida2") or not self.en_suelo
         atacando = pose in ("ataque1", "ataque2", "ataque3")
         moviendo = self.en_suelo and abs(self.vx) > 1 and not atacando
@@ -924,13 +949,9 @@ class Jugador:
         # Bufanda fúnebre
         pygame.draw.rect(surface, CARMESÍ_SANGRE, (centro_x - 7, cabeza_y + 5, 14, 3), border_radius=1)
 
-        # 7. Farol litúrgico diegético aditivo
+        # 7. Farol litúrgico diegético (farol y llama nítidos sin velo que opaque la figura)
         farol_x = centro_x + self.direccion * 11
         farol_y = rect.y + 19
-        tiene_consagrado = getattr(self, "rango_ataque_mejorado", False)
-        color_halo = (205, 80, 255) if tiene_consagrado else FAROL_CÁLIDO
-        halo_farol = obtener_estampa_luz(95, color_halo, 42 if tiene_consagrado else 35)
-        surface.blit(halo_farol, (farol_x - 95, farol_y - 95), special_flags=pygame.BLEND_RGB_ADD)
 
         # Montura de bronce del farol colgante
         pygame.draw.circle(surface, (115, 82, 34), (farol_x, farol_y), 6)
@@ -1723,7 +1744,7 @@ class Custodio:
         # Fase 2: "La Máscara de la Muerte Roja" - Aura ardiente carmesí con anillos sinusoidales
         if self.fase >= 2:
             aura = obtener_aura_custodio(rect.width + 24, rect.height + 22, CARMESÍ_SANGRE, int(22 + pulso * 24))
-            surface.blit(aura, (rect.x - 12, rect.y - 11), special_flags=pygame.BLEND_RGBA_ADD)
+            surface.blit(aura, (rect.x - 12, rect.y - 11))
             # Anillos sinusoidales concéntricos de fuego rojo
             for r_offset in (16, 26):
                 ondulacion = int(2.5 * math.sin(tiempo * 7.5 + r_offset * 0.3))
@@ -1737,13 +1758,13 @@ class Custodio:
         elif self.vulnerable:
             # Aura dorada de oportunidad en Fase 1 (cacheada)
             aura = obtener_aura_custodio(rect.width + 18, rect.height + 16, ORO_LITÚRGICO, 32)
-            surface.blit(aura, (rect.x - 9, rect.y - 8), special_flags=pygame.BLEND_RGBA_ADD)
+            surface.blit(aura, (rect.x - 9, rect.y - 8))
 
         # Telegrafía de pisotón o carga: resplandor ardiente telegrafiado
         if self.estado in ("telegrafia", "telegrafia_carga"):
             color_brillo = CARMESÍ_SANGRE if self.estado == "telegrafia_carga" else (180, 32, 42)
-            brillo = obtener_aura_custodio(rect.width + 48, rect.height + 40, color_brillo, int(65 + pulso * 45))
-            surface.blit(brillo, (rect.x - 24, rect.y - 20), special_flags=pygame.BLEND_RGBA_ADD)
+            brillo = obtener_aura_custodio(rect.width + 48, rect.height + 40, color_brillo, int(45 + pulso * 35))
+            surface.blit(brillo, (rect.x - 24, rect.y - 20))
 
         # Capa y joroba episcopal — carmesí fúnebre en Fase 2, litúrgico púrpura oscuro en Fase 1
         capa_color = (68, 16, 22) if self.fase >= 2 else (38, 28, 44)
@@ -1973,13 +1994,13 @@ class MiniJefe:
         # Sombra en el suelo
         pygame.draw.ellipse(surface, (10, 8, 14), (rect.x - 2, base_y - 6, rect.width + 4, 10))
 
-        # Aura de telegrafiado carmesí
+        # Aura de telegrafiado carmesí translúcida
         if self.estado == "telegrafo":
             pulso = 0.5 + 0.5 * math.sin(tiempo * 18)
             radio_alerta = int(24 + pulso * 6)
             alerta = pygame.Surface((radio_alerta * 2, radio_alerta * 2), pygame.SRCALPHA)
             pygame.draw.circle(alerta, (180, 20, 36, int(70 + pulso * 60)), (radio_alerta, radio_alerta), radio_alerta, 3)
-            surface.blit(alerta, (cx - radio_alerta, rect.centery - radio_alerta), special_flags=pygame.BLEND_RGBA_ADD)
+            surface.blit(alerta, (cx - radio_alerta, rect.centery - radio_alerta))
 
         # Aura de cansancio / vulnerabilidad dorada/ámbar
         if self.vulnerable:
@@ -2300,14 +2321,14 @@ class Alma:
         flotacion = int(math.sin(tiempo * 5 + rect.x * 0.03) * 3)
         centro = (rect.centerx, rect.centery + flotacion)
 
-        # Resplandor espectral translúcido (iluminación etérea, no círculo opaco)
+        # Resplandor espectral translúcido suave (iluminación etérea, sin quemado de blancos)
         pulso = 0.5 + 0.5 * math.sin(tiempo * 6 + rect.x * 0.04)
         halo_alma = pygame.Surface((44, 44), pygame.SRCALPHA)
         factor = 0.8 + 0.2 * pulso
-        pygame.draw.circle(halo_alma, (160, 90, 245, int(25 * factor)), (22, 22), 18)
-        pygame.draw.circle(halo_alma, (180, 120, 255, int(48 * factor)), (22, 22), 12)
-        pygame.draw.circle(halo_alma, (210, 180, 255, int(85 * factor)), (22, 22), 6)
-        surface.blit(halo_alma, (centro[0] - 22, centro[1] - 22), special_flags=pygame.BLEND_RGBA_ADD)
+        pygame.draw.circle(halo_alma, (160, 90, 245, int(22 * factor)), (22, 22), 18)
+        pygame.draw.circle(halo_alma, (180, 120, 255, int(42 * factor)), (22, 22), 12)
+        pygame.draw.circle(halo_alma, (210, 180, 255, int(70 * factor)), (22, 22), 6)
+        surface.blit(halo_alma, (centro[0] - 22, centro[1] - 22))
 
         # Núcleo sagrado de ánima
         pygame.draw.circle(surface, (220, 190, 255), centro, 3)
@@ -2366,7 +2387,6 @@ class PalaRecogible:
         surface.blit(
             brillo,
             (rect.centerx - 32, rect.centery - 32),
-            special_flags=pygame.BLEND_RGBA_ADD,
         )
         pygame.draw.circle(
             surface,
@@ -2466,7 +2486,6 @@ class RangoPowerUp:
         surface.blit(
             brillo,
             (rect.centerx - 32, rect.centery - 32),
-            special_flags=pygame.BLEND_RGBA_ADD,
         )
         pygame.draw.circle(
             surface,
@@ -2523,7 +2542,6 @@ class DashPowerUp:
         surface.blit(
             brillo,
             (rect.centerx - 32, rect.centery - 32),
-            special_flags=pygame.BLEND_RGBA_ADD,
         )
         pygame.draw.circle(
             surface,
@@ -2605,7 +2623,7 @@ class FarolCheckpoint:
             pygame.draw.circle(brillo, color_aura_ext, (bc, bc), radio_aura)
             pygame.draw.circle(brillo, color_aura_mid, (bc, bc), radio_aura // 2 + 2)
             pygame.draw.circle(brillo, color_aura_int, (bc, bc), 6)
-            surface.blit(brillo, (cx - bc, flame_y - bc), special_flags=pygame.BLEND_RGBA_ADD)
+            surface.blit(brillo, (cx - bc, flame_y - bc))
 
             radio_llama = int((4 if self.tier >= 3 else 3) + pulso * 2)
             color_llama = (255, 205, 90) if self.tier >= 3 else (120, 220, 255)
@@ -2783,7 +2801,7 @@ class IncensarioRebote:
         alfa_halo = int(60 + pulso * 40) if self.tiempo_repique > 0 else int(25 + pulso * 15)
         pygame.draw.circle(brillo, (92, 190, 174, alfa_halo), (brillo_radio, brillo_radio), brillo_radio)
         pygame.draw.circle(brillo, (180, 240, 230, int(alfa_halo * 0.7)), (brillo_radio, brillo_radio), brillo_radio // 2)
-        surface.blit(brillo, (centro_campana_x - brillo_radio, centro_campana_y - brillo_radio), special_flags=pygame.BLEND_RGBA_ADD)
+        surface.blit(brillo, (centro_campana_x - brillo_radio, centro_campana_y - brillo_radio))
 
         # Campana / Incensario de bronce/hierro gótico
         pygame.draw.rect(surface, (165, 120, 50), (centro_campana_x - 4, centro_campana_y - 12, 8, 4), border_radius=1)
@@ -2809,7 +2827,7 @@ class IncensarioRebote:
             alfa_onda = int((self.tiempo_repique / 0.45) * 160)
             onda_surf = pygame.Surface((radio_onda * 2 + 4, radio_onda * 2 + 4), pygame.SRCALPHA)
             pygame.draw.circle(onda_surf, (92, 190, 174, alfa_onda), (radio_onda + 2, radio_onda + 2), radio_onda, 2)
-            surface.blit(onda_surf, (centro_campana_x - radio_onda - 2, centro_campana_y - radio_onda - 2), special_flags=pygame.BLEND_RGBA_ADD)
+            surface.blit(onda_surf, (centro_campana_x - radio_onda - 2, centro_campana_y - radio_onda - 2))
 
 
 CampanaResonancia = IncensarioRebote

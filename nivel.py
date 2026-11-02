@@ -70,23 +70,30 @@ _HALO_META = None
 
 
 def _obtener_halo_vela() -> pygame.Surface:
-    """Halo translúcido cálido aditivo para iluminación litúrgica de velas."""
+    """Halo translúcido cálido con desvanecimiento suave para iluminación litúrgica de velas."""
     global _HALO_VELA
     if _HALO_VELA is None:
-        _HALO_VELA = pygame.Surface((36, 36), pygame.SRCALPHA)
-        pygame.draw.circle(_HALO_VELA, (255, 175, 55, 28), (18, 18), 16)
-        pygame.draw.circle(_HALO_VELA, (255, 205, 95, 50), (18, 18), 10)
-        pygame.draw.circle(_HALO_VELA, (255, 235, 140, 80), (18, 18), 5)
+        _HALO_VELA = pygame.Surface((40, 40), pygame.SRCALPHA)
+        _HALO_VELA.fill((0, 0, 0, 0))
+        for r in range(18, 1, -2):
+            norm = r / 18.0
+            alfa = int(32 * (1.0 - norm * norm))
+            pygame.draw.circle(_HALO_VELA, (255, 185, 65, alfa), (20, 20), r)
+        _HALO_VELA = _HALO_VELA.convert_alpha()
     return _HALO_VELA
 
 
 def _obtener_halo_meta() -> pygame.Surface:
-    """Halo suave para el portal/portón de meta."""
+    """Halo translúcido suave para el portal/portón de meta."""
     global _HALO_META
     if _HALO_META is None:
         _HALO_META = pygame.Surface((64, 64), pygame.SRCALPHA)
-        pygame.draw.circle(_HALO_META, (255, 200, 90, 32), (32, 32), 28)
-        pygame.draw.circle(_HALO_META, (255, 225, 130, 58), (32, 32), 16)
+        _HALO_META.fill((0, 0, 0, 0))
+        for r in range(30, 2, -2):
+            norm = r / 30.0
+            alfa = int(35 * (1.0 - norm * norm))
+            pygame.draw.circle(_HALO_META, (255, 205, 95, alfa), (32, 32), r)
+        _HALO_META = _HALO_META.convert_alpha()
     return _HALO_META
 
 
@@ -913,7 +920,7 @@ class Nivel:
     def _dibujar_vela(self, surface, rect):
         x = rect.centerx
         # Resplandor translúcido suave de la llama (iluminación litúrgica, no círculo opaco)
-        surface.blit(_obtener_halo_vela(), (x - 18, rect.y + 12 - 18), special_flags=pygame.BLEND_RGBA_ADD)
+        surface.blit(_obtener_halo_vela(), (x - 20, rect.y + 12 - 20))
         pygame.draw.rect(surface, (198, 188, 158), (x - 3, rect.y + 14, 6, 14), border_radius=2)
         pygame.draw.line(surface, NEGRO, (x, rect.y + 13), (x, rect.y + 9), 1)
         pygame.draw.polygon(
@@ -1061,7 +1068,7 @@ class Nivel:
         y = rect.bottom - alto
 
         # Halo místico suave del umbral (iluminación, no disco opaco)
-        surface.blit(_obtener_halo_meta(), (x - 32, y + 22 - 32), special_flags=pygame.BLEND_RGBA_ADD)
+        surface.blit(_obtener_halo_meta(), (x - 32, y + 22 - 32))
         pygame.draw.rect(surface, (7, 6, 10), (x - ancho // 2, y + 14, ancho, alto - 14))
         pygame.draw.circle(surface, (7, 6, 10), (x, y + 14), ancho // 2)
 
