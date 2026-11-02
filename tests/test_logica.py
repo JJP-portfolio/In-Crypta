@@ -807,7 +807,7 @@ def probar_salto_ventana_nivel_2():
 
 # --- Prueba: salas de prueba y selector --- #
 def probar_salas_prueba():
-    from niveles_rediseñados import SALAS_PRUEBA_RED
+    from niveles_redisenados import SALAS_PRUEBA_RED
 
     assert len(SALAS_PRUEBA) == 6  # 3 originales + 3 rediseñadas
     assert len(SALAS_PRUEBA_RED) == 3

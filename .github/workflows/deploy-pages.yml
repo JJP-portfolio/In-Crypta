@@ -1,0 +1,53 @@
+name: Despliegue Web Pygame en GitHub Pages (Pygbag)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Sincronizar y compilar paquete WebAssembly (Pygbag)
+        run: |
+          python tools/exportar_web_pygame.py --build
+
+      - name: Verificar artefactos y archivo .nojekyll
+        run: |
+          ls -la export/web_pygame/build/web/
+          test -f export/web_pygame/build/web/.nojekyll || touch export/web_pygame/build/web/.nojekyll
+          test -f export/web_pygame/build/web/index.html
+          test -f export/web_pygame/build/web/web_pygame.apk
+
+      - name: Desplegar en rama gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: export/web_pygame/build/web
+          publish_branch: gh-pages
+          enable_jekyll: false

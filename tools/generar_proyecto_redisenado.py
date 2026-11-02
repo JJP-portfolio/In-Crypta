@@ -29,7 +29,7 @@ from generar_proyecto_nativo import (  # noqa: E402
 PROJECT_NAME_RED = "IN_CRYPTA_ROOM_TESTS_NATIVO.json"
 from config import TILE  # noqa: E402
 from nivel import Nivel  # noqa: E402
-from niveles_rediseñados import NIVELES_RED  # noqa: E402
+from niveles_redisenados import NIVELES_RED  # noqa: E402
 
 
 def camara_seguir_jugador() -> list[dict]:

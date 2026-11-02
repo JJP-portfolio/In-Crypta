@@ -231,7 +231,7 @@ SALAS_PRUEBA = [
 ]
 
 try:
-    from niveles_rediseñados import SALAS_PRUEBA_RED
+    from niveles_redisenados import SALAS_PRUEBA_RED
 except ImportError:
     SALAS_PRUEBA_RED = []
 
