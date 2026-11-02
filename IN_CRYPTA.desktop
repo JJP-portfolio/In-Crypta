@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=IN CRYPTA
+Comment=Plataformero Gótico 2D
+Exec=bash -c "cd $(dirname %k) && ./jugar_pygame.sh"
+Terminal=true
+Categories=Game;
+StartupNotify=true

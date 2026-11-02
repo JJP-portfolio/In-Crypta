@@ -7,6 +7,7 @@
 # ============================================================
 
 import math
+from pathlib import Path
 import random
 import sys
 import textwrap
@@ -27,6 +28,7 @@ from config import (
     AZUL_OSCURO,
     BLANCO,
     CARMESÍ_SANGRE,
+    CAMARA_ZOOM,
     CELESTE,
     CITAS_POE,
     CREMA,
@@ -137,9 +139,10 @@ PRESET_RETRO = {
 
 PRESETS_TECLADO = (PRESET_MODERNO, PRESET_RETRO)
 
-# Esqueleto de opciones futuras ampliables:
+# Opciones configurables:
 OPCIONES_CALIDAD = ("Alta", "Media", "Baja")
 OPCIONES_HUD = ("Completo", "Compacto", "Inmersivo")
+OPCIONES_SHADER = ("Gótico (Bloom + CRT)", "Suave (Solo Bloom)", "Puro (Pixel Art Clásico)")
 
 # Constantes base de compatibilidad
 TECLAS_SALTO = PRESET_MODERNO["teclas_salto"]
@@ -344,10 +347,10 @@ class Juego:
         self.reloj = pygame.time.Clock()
         self.corriendo = True
         self.fuentes = {}
-        try:
-            self._ruta_fuente_gotica = "export/gdevelop_nativo/assets/NotoSerifDisplay-Bold.ttf"
-        except Exception:
-            self._ruta_fuente_gotica = None
+        p_font = Path("assets/NotoSerifDisplay-Bold.ttf")
+        if not p_font.exists():
+            p_font = Path("export/gdevelop_nativo/assets/NotoSerifDisplay-Bold.ttf")
+        self._ruta_fuente_gotica = str(p_font) if p_font.exists() else None
         self.fondos = {}
         self.vineta = self.crear_vineta(90)
         self.vineta_carmesi = self.crear_vineta_carmesi()
@@ -398,12 +401,14 @@ class Juego:
         self.tiempo_menu = 0.0
         self.superficie_mundo = pygame.Surface((VIRTUAL_ANCHO, VIRTUAL_ALTO))
 
-        # Configuración del santuario: Presets de teclado, calidad y modo de HUD
+        # Configuración del santuario: Presets de teclado, shaders, calidad y modo de HUD
         self.preset_teclado_idx = 0
         self.config_opcion = 0
+        self.config_shader_idx = 0   # 0: Gótico (Bloom + CRT), 1: Suave (Solo Bloom), 2: Puro
         self.config_calidad_idx = 0  # 0: Alta, 1: Media, 2: Baja
         self.config_hud_idx = 0      # 0: Completo, 1: Compacto, 2: Inmersivo
         self.origen_configuracion = "menu"
+        self._superficie_scanlines = self._crear_scanlines_goticas(ANCHO, ALTO)
         self.destello_manto = 0.0
         self._superficie_destello_manto = None
         self.teclas_salto = PRESETS_TECLADO[0]["teclas_salto"]
@@ -578,6 +583,26 @@ class Juego:
         nombre_preset = PRESETS_TECLADO[self.preset_teclado_idx]["etiqueta"]
         self.hud.mostrar_mensaje(f"CONTROL: {nombre_preset.upper()}", 1, 3.0)
 
+    def _crear_scanlines_goticas(self, ancho, alto):
+        surf = pygame.Surface((ancho, alto), pygame.SRCALPHA)
+        # Micro-scanlines cinematográficas cada 3px con alpha sutil (16/255)
+        for y in range(0, alto, 3):
+            pygame.draw.line(surf, (4, 3, 8, 16), (0, y), (ancho, y), 1)
+        return surf
+
+    def _aplicar_bloom(self, origen, destino, intensidad=0.12):
+        sw, sh = ANCHO // 4, ALTO // 4
+        mini = pygame.transform.smoothscale(origen, (sw, sh))
+        bloom = pygame.transform.smoothscale(mini, (ANCHO, ALTO))
+        bloom.set_alpha(int(255 * intensidad))
+        destino.blit(bloom, (0, 0), special_flags=pygame.BLEND_RGB_ADD)
+
+    def alternar_shader(self, delta=1):
+        self.config_shader_idx = (self.config_shader_idx + delta) % len(OPCIONES_SHADER)
+        self.audio.reproducir("ui")
+        shader = OPCIONES_SHADER[self.config_shader_idx]
+        self.hud.mostrar_mensaje(f"EFECTOS / SHADER: {shader.upper()}", 1, 3.0)
+
     # --- Calidad Gráfica con Impacto Real --- #
     # Opciones: Alta (0: 100% partículas + halos + penumbra), Media (1: 50% partículas + penumbra), Baja (2: 60 FPS sin penumbra)
     def alternar_calidad_grafica(self, delta=1):
@@ -709,7 +734,7 @@ class Juego:
                     continue
 
                 elif self.estado == "configuracion":
-                    total_config = 6
+                    total_config = 7
                     if evento.key in (pygame.K_UP, pygame.K_w):
                         self.config_opcion = (self.config_opcion - 1) % total_config
                         self.audio.reproducir("ui")
@@ -720,36 +745,42 @@ class Juego:
                         if self.config_opcion == 0:
                             self.alternar_preset_teclado(-1)
                         elif self.config_opcion == 1:
-                            self.alternar_calidad_grafica(-1)
+                            self.alternar_shader(-1)
                         elif self.config_opcion == 2:
-                            self.alternar_modo_hud(-1)
+                            self.alternar_calidad_grafica(-1)
                         elif self.config_opcion == 3:
-                            self.alternar_accesibilidad()
+                            self.alternar_modo_hud(-1)
                         elif self.config_opcion == 4:
+                            self.alternar_accesibilidad()
+                        elif self.config_opcion == 5:
                             self.audio.alternar()
                     elif evento.key in (pygame.K_RIGHT, pygame.K_d):
                         if self.config_opcion == 0:
                             self.alternar_preset_teclado(1)
                         elif self.config_opcion == 1:
-                            self.alternar_calidad_grafica(1)
+                            self.alternar_shader(1)
                         elif self.config_opcion == 2:
-                            self.alternar_modo_hud(1)
+                            self.alternar_calidad_grafica(1)
                         elif self.config_opcion == 3:
-                            self.alternar_accesibilidad()
+                            self.alternar_modo_hud(1)
                         elif self.config_opcion == 4:
+                            self.alternar_accesibilidad()
+                        elif self.config_opcion == 5:
                             self.audio.alternar()
                     elif evento.key in (pygame.K_RETURN, pygame.K_SPACE):
                         if self.config_opcion == 0:
                             self.alternar_preset_teclado(1)
                         elif self.config_opcion == 1:
-                            self.alternar_calidad_grafica(1)
+                            self.alternar_shader(1)
                         elif self.config_opcion == 2:
-                            self.alternar_modo_hud(1)
+                            self.alternar_calidad_grafica(1)
                         elif self.config_opcion == 3:
-                            self.alternar_accesibilidad()
+                            self.alternar_modo_hud(1)
                         elif self.config_opcion == 4:
-                            self.audio.alternar()
+                            self.alternar_accesibilidad()
                         elif self.config_opcion == 5:
+                            self.audio.alternar()
+                        elif self.config_opcion == 6:
                             if self.origen_configuracion == "pausa":
                                 self.estado = "pausa"
                             else:
@@ -2593,23 +2624,29 @@ class Juego:
         velo.fill((5, 4, 10, 175))
         self.pantalla.blit(velo, (0, 0))
 
-        pw, ph = 860, 630
+        pw, ph = 880, 650
         px = (ANCHO - pw) // 2
-        py = (ALTO - ph) // 2
+        py = (ALTO - ph) // 2 - 10
         self.dibujar_marco_heraldico(self.pantalla, px, py, pw, ph)
 
         # Encabezado
-        self.dibujar_texto("CONFIGURACIÓN DEL SANTUARIO", 0, py + 22, 38, HUD_ORO, centrado=True, sombra=True)
-        self.dibujar_texto("AJUSTES DE CONTROLES, INTERFAZ Y ACCESIBILIDAD", 0, py + 66, 14, HUD_MUTED, centrado=True)
-        pygame.draw.line(self.pantalla, (*HUD_ORO, 120), (ANCHO // 2 - 200, py + 88), (ANCHO // 2 + 200, py + 88), 1)
+        self.dibujar_texto("CONFIGURACIÓN DEL SANTUARIO", 0, py + 18, 36, HUD_ORO, centrado=True, sombra=True)
+        self.dibujar_texto("AJUSTES DE CONTROLES, SHADERS, INTERFAZ Y ACCESIBILIDAD", 0, py + 58, 13, HUD_MUTED, centrado=True)
+        pygame.draw.line(self.pantalla, (*HUD_ORO, 120), (ANCHO // 2 - 200, py + 78), (ANCHO // 2 + 200, py + 78), 1)
 
         # Estado de opciones
         preset_activo = PRESETS_TECLADO[self.preset_teclado_idx]
+        shader_activo = OPCIONES_SHADER[self.config_shader_idx]
         calidad_activa = OPCIONES_CALIDAD[self.config_calidad_idx]
         hud_activo = OPCIONES_HUD[self.config_hud_idx]
         acc_activa = "Activada" if self.reducir_movimiento else "Desactivada"
         audio_activo = "Activado" if getattr(self.audio, "activo", False) else "Silenciado"
 
+        desc_shader = (
+            "Bloom místico + scanlines CRT tenues para cohesión de pixel art y texto" if self.config_shader_idx == 0 else
+            "Resplandor suave difuso sin scanlines horizontales" if self.config_shader_idx == 1 else
+            "Renderizado plano directo sin filtros de post-procesado"
+        )
         desc_calidad = (
             "Halos de luz completos, penumbra y 100% de partículas" if self.config_calidad_idx == 0 else
             "Máscara de penumbra activa y 50% de partículas de bioma" if self.config_calidad_idx == 1 else
@@ -2623,6 +2660,7 @@ class Juego:
 
         opciones = [
             ("CONTROLES / TECLADO", preset_activo["etiqueta"], preset_activo["desc"]),
+            ("EFECTOS / SHADERS", shader_activo, desc_shader),
             ("CALIDAD GRÁFICA", calidad_activa, desc_calidad),
             ("MODO DE HUD", hud_activo, desc_hud),
             ("ACCESIBILIDAD", acc_activa, "Reducir movimiento: elimina sacudidas de cámara bruscas"),
@@ -2630,13 +2668,13 @@ class Juego:
             ("VOLVER AL MENÚ", "Guardar y regresar", "Aplicar cambios y regresar a la pantalla anterior"),
         ]
 
-        ancho_caja = 760
-        alto_caja = 56
+        ancho_caja = 800
+        alto_caja = 50
         x_caja = (ANCHO - ancho_caja) // 2
-        y_base = py + 100
+        y_base = py + 88
 
         for i, (titulo_op, valor_op, desc_op) in enumerate(opciones):
-            y_caja = y_base + i * 62
+            y_caja = y_base + i * 55
             seleccionada = (i == self.config_opcion)
 
             surf_op = pygame.Surface((ancho_caja, alto_caja), pygame.SRCALPHA)
@@ -2648,32 +2686,32 @@ class Juego:
             pygame.draw.rect(surf_op, color_borde, (0, 0, ancho_caja, alto_caja), grosor_borde, border_radius=6)
 
             if seleccionada:
-                pygame.draw.rect(surf_op, HUD_ORO, (0, 6, 4, alto_caja - 12), border_radius=2)
+                pygame.draw.rect(surf_op, HUD_ORO, (0, 5, 4, alto_caja - 10), border_radius=2)
 
             self.pantalla.blit(surf_op, (x_caja, y_caja))
 
             color_titulo = HUD_ORO if seleccionada else HUD_TEXTO
             prefijo = "▸  " if seleccionada else "   "
-            self.dibujar_texto(prefijo + titulo_op, x_caja + 16, y_caja + 10, 16, color_titulo, sombra=seleccionada)
-            self.dibujar_texto(desc_op, x_caja + 38, y_caja + 32, 11, CREMA if seleccionada else HUD_MUTED)
+            self.dibujar_texto(prefijo + titulo_op, x_caja + 14, y_caja + 8, 15, color_titulo, sombra=seleccionada)
+            self.dibujar_texto(desc_op, x_caja + 36, y_caja + 28, 11, CREMA if seleccionada else HUD_MUTED)
 
             # Valor a la derecha
             color_valor = TURQUESA if seleccionada else HUD_ORO
-            flechas_val = f"◂ {valor_op} ▸" if seleccionada and i < 5 else valor_op
-            self.dibujar_texto(flechas_val, x_caja + ancho_caja - 270, y_caja + 16, 14, color_valor, sombra=seleccionada)
+            flechas_val = f"◂ {valor_op} ▸" if seleccionada and i < 6 else valor_op
+            self.dibujar_texto(flechas_val, x_caja + ancho_caja - 270, y_caja + 14, 13, color_valor, sombra=seleccionada)
 
         # Panel de detalle dinámico del preset activo
-        y_desglose = y_base + len(opciones) * 62 + 6
+        y_desglose = y_base + len(opciones) * 55 + 4
         ancho_d = ancho_caja
-        alto_d = 70
+        alto_d = 62
         surf_d = pygame.Surface((ancho_d, alto_d), pygame.SRCALPHA)
         surf_d.fill((14, 11, 20, 225))
         pygame.draw.rect(surf_d, (*HUD_BORDE, 140), (0, 0, ancho_d, alto_d), 1, border_radius=6)
         self.pantalla.blit(surf_d, (x_caja, y_desglose))
 
-        self.dibujar_texto("DISTRIBUCIÓN DEL PRESET SELECCIONADO:", x_caja + 16, y_desglose + 8, 12, HUD_ORO)
-        self.dibujar_texto(preset_activo["resumen"], x_caja + 16, y_desglose + 28, 13, BLANCO)
-        self.dibujar_texto("Presiona [← / →] o [ENTER] sobre CONTROLES para alternar entre los 2 presets de teclado", x_caja + 16, y_desglose + 48, 11, HUD_MUTED)
+        self.dibujar_texto("DISTRIBUCIÓN DEL PRESET SELECCIONADO:", x_caja + 16, y_desglose + 6, 12, HUD_ORO)
+        self.dibujar_texto(preset_activo["resumen"], x_caja + 16, y_desglose + 24, 13, BLANCO)
+        self.dibujar_texto("Presiona [← / →] o [ENTER] para alternar opciones", x_caja + 16, y_desglose + 42, 11, HUD_MUTED)
 
         # Pie instructivo
         self.dibujar_texto(
@@ -2725,7 +2763,6 @@ class Juego:
         self.particulas.dibujar(destino, self.camara)
         for p in getattr(self, "particulas_bioma", []):
             p.dibujar(destino)
-        self.dibujar_ui_espacial(destino, self.camara)
 
         # Penumbra gótica y claroscuro sutil (alpha 38 / 255)
         # Calidad Alta (0) y Media (1): activa máscara de penumbra suave.
@@ -2779,6 +2816,18 @@ class Juego:
         # Escalar mundo virtual a pantalla (zoom 1.25x cinematográfico)
         pygame.transform.scale(self.superficie_mundo, (ANCHO, ALTO), self.pantalla)
 
+        # Filtros de post-procesado / Shaders (0: Gótico Bloom+CRT, 1: Suave Bloom, 2: Puro)
+        shader_modo = getattr(self, "config_shader_idx", 0)
+        calidad_modo = getattr(self, "config_calidad_idx", 0)
+
+        # 1. Bloom místico sutil (downscale/upscale aditivo) para unificar luces y pixel art
+        if shader_modo in (0, 1) and calidad_modo != 2:
+            self._aplicar_bloom(self.pantalla, self.pantalla, intensidad=0.12)
+
+        # 2. Scanlines CRT góticas tenues (integración óptica que evita el look "crudo")
+        if shader_modo == 0 and calidad_modo != 2:
+            self.pantalla.blit(self._superficie_scanlines, (0, 0))
+
         # Viñeta gótica en resolución nativa
         self.pantalla.blit(self.vineta, (0, 0))
 
@@ -2807,6 +2856,9 @@ class Juego:
                     2,
                 )
             self.pantalla.blit(self._superficie_destello_manto, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
+
+        # 3. UI Espacial en resolución nativa (1280x720) — carteles nítidos con sombra litúrgica
+        self.dibujar_ui_espacial(self.pantalla, self.camara)
 
         self.hud.dibujar(self.pantalla, self, self.dt)
 
@@ -3015,15 +3067,19 @@ class Juego:
         self.dibujar_texto("[↑/↓ / WASD] Elegir · [ENTER] Confirmar · [ESC / P] Continuar", 0, py + alto_panel - 26, 12, (150, 140, 155), centrado=True)
 
     # --- Función dibujar_ui_espacial --- #
-    def dibujar_ui_espacial(self, destino, camara):
-        """UI Espacial: carteles de enseñanza anclados a coordenadas del mundo virtual."""
+    def dibujar_ui_espacial(self, destino=None, camara=None):
+        """UI Espacial: carteles de enseñanza anclados a coordenadas de pantalla nativa (1280x720)."""
         if not self.jugador or not self.nivel:
             return
+        if destino is None:
+            destino = self.pantalla
+        if camara is None:
+            camara = self.camara
 
         jx = self.jugador.rect.centerx
         jy = self.jugador.rect.centery
         tiempo = pygame.time.get_ticks() / 1000.0
-        bobbing = math.sin(tiempo * 4.0) * 3
+        bobbing = math.sin(tiempo * 4.0) * 3.5
 
         puntos_clave = []
         es_retro = getattr(self, "preset_teclado_idx", 0) == 1
@@ -3067,38 +3123,43 @@ class Juego:
             puntos_clave.append((40 * TILE, 8 * TILE, "Foso de salto · Si caés, usá los escalones de la trinchera"))
             puntos_clave.append((74 * TILE, 8 * TILE, "[G] Portón del Umbral hacia El Camposanto"))
 
-        if 13 not in self.fuentes:
+        tamano_f = 15
+        if tamano_f not in self.fuentes:
             try:
-                self.fuentes[13] = pygame.font.Font(self._ruta_fuente_gotica, 13)
+                self.fuentes[tamano_f] = pygame.font.Font(self._ruta_fuente_gotica, tamano_f)
             except Exception:
-                self.fuentes[13] = pygame.font.Font(None, 13)
-        fuente = self.fuentes[13]
+                self.fuentes[tamano_f] = pygame.font.Font(None, tamano_f)
+        fuente = self.fuentes[tamano_f]
 
+        zoom = CAMARA_ZOOM
         for wx, wy, texto in puntos_clave:
             dist = math.hypot(jx - wx, jy - wy)
-            if dist <= 140:
-                alfa = int(min(240, max(0, (140 - dist) / 40.0 * 240)))
-                img_txt = fuente.render(texto, True, (245, 235, 220))
+            if dist <= 160:
+                alfa = int(min(240, max(0, (160 - dist) / 45.0 * 240)))
+                # Proyección a resolución de pantalla nativa
+                sx = int((wx - camara.x) * zoom)
+                sy = int((wy - camara.y) * zoom + bobbing)
+
+                img_txt = fuente.render(texto, True, (246, 238, 224))
                 tw, th = img_txt.get_size()
-                bw, bh = tw + 20, th + 10
+                bw, bh = tw + 24, th + 12
+                bx = sx - bw // 2
+                by = sy - bh - 24
 
-                # Coordenadas transformadas por camara.aplicar_rect
-                rect_mundo = pygame.Rect(
-                    int(wx - bw // 2),
-                    int(wy - bh - 24 + bobbing),
-                    bw,
-                    bh,
-                )
-                rect_pantalla = camara.aplicar_rect(rect_mundo)
+                if -180 <= bx <= ANCHO + 80 and -60 <= by <= ALTO + 60:
+                    burbuja = pygame.Surface((bw, bh + 6), pygame.SRCALPHA)
+                    pygame.draw.rect(burbuja, (12, 10, 16, min(alfa, 225)), (0, 0, bw, bh), border_radius=6)
+                    pygame.draw.rect(burbuja, (200, 160, 64, min(alfa, 230)), (0, 0, bw, bh), 1, border_radius=6)
+                    pygame.draw.polygon(burbuja, (200, 160, 64, min(alfa, 230)), [(bw // 2 - 5, bh), (bw // 2 + 5, bh), (bw // 2, bh + 5)])
+                    pygame.draw.polygon(burbuja, (12, 10, 16, min(alfa, 225)), [(bw // 2 - 4, bh - 1), (bw // 2 + 4, bh - 1), (bw // 2, bh + 4)])
 
-                if -150 <= rect_pantalla.x <= VIRTUAL_ANCHO + 150 and -50 <= rect_pantalla.y <= VIRTUAL_ALTO + 50:
-                    burbuja = pygame.Surface((bw, bh), pygame.SRCALPHA)
-                    pygame.draw.rect(burbuja, (12, 10, 16, min(alfa, 215)), (0, 0, bw, bh), border_radius=6)
-                    pygame.draw.rect(burbuja, (198, 156, 62, min(alfa, 235)), (0, 0, bw, bh), 1, border_radius=6)
-                    pygame.draw.polygon(burbuja, (198, 156, 62, min(alfa, 235)), [(bw // 2 - 4, bh), (bw // 2 + 4, bh), (bw // 2, bh + 4)])
+                    # Sombra envolvente suave
+                    img_sombra = fuente.render(texto, True, (0, 0, 0))
+                    for ox, oy in ((-1, 0), (1, 0), (0, -1), (0, 1), (1, 1)):
+                        burbuja.blit(img_sombra, (12 + ox, 6 + oy))
+                    burbuja.blit(img_txt, (12, 6))
 
-                    burbuja.blit(img_txt, (10, 5))
-                    destino.blit(burbuja, rect_pantalla.topleft)
+                    destino.blit(burbuja, (bx, by))
 
     def calcular_rango_liturgico(self):
         """Calcula el rango litúrgico de la campaña (S+, S, A, B, C) con base en tiempo, vidas y caídas."""
@@ -3248,15 +3309,16 @@ class Juego:
                 self.fuentes[tamano] = pygame.font.Font(None, tamano)
 
         if sombra:
-            imagen_sombra = self.fuentes[tamano].render(texto, True, NEGRO)
+            imagen_sombra = self.fuentes[tamano].render(texto, True, (8, 6, 12))
             rect_sombra = imagen_sombra.get_rect()
-            if centrado:
-                rect_sombra.center = (ANCHO // 2 + 3, y + 3)
-            elif derecha:
-                rect_sombra.topright = (x + 3, y + 3)
-            else:
-                rect_sombra.topleft = (x + 3, y + 3)
-            self.pantalla.blit(imagen_sombra, rect_sombra)
+            for ox, oy in ((-1, 0), (1, 0), (0, -1), (0, 1), (1, 1), (2, 2)):
+                if centrado:
+                    rect_sombra.center = (ANCHO // 2 + ox, y + oy)
+                elif derecha:
+                    rect_sombra.topright = (x + ox, y + oy)
+                else:
+                    rect_sombra.topleft = (x + ox, y + oy)
+                self.pantalla.blit(imagen_sombra, rect_sombra)
 
         imagen = self.fuentes[tamano].render(texto, True, color)
         rect = imagen.get_rect()
