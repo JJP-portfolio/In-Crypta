@@ -66,7 +66,7 @@ void main() {
 
 
 class PipelineGPU:
-    def __init__(self, ancho: int = 1280, alto: int = 720):
+    def __init__(self, ancho: int = 1280, alto: int = 720, usar_opengl: bool = False):
         self.ancho = ancho
         self.alto = alto
         self.activo = False
@@ -76,10 +76,12 @@ class PipelineGPU:
         self.vao = None
         self.textura = None
 
-        if HAS_MODERNGL and not sys.platform.startswith("emscripten"):
+        # En entornos Wayland / NVIDIA, crear un contexto standalone de ModernGL secuestra el contexto
+        # EGL del hilo de SDL2, provocando pantalla negra si la ventana de Pygame se creó sin pygame.OPENGL.
+        # Por tanto, el pipeline ModernGL solo se inicializa si usar_opengl=True y la ventana posee soporte GL.
+        if usar_opengl and HAS_MODERNGL and not sys.platform.startswith("emscripten"):
             try:
-                # Intentar crear contexto independiente o compartir el actual
-                self.ctx = moderngl.create_context(standalone=True)
+                self.ctx = moderngl.create_context()
                 self._inicializar_shaders()
                 self.activo = True
             except Exception:
