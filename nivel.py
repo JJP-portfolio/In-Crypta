@@ -44,6 +44,10 @@ from config import (
     VERDE_OSCURO,
     VIOLETA_POE,
 )
+
+# Paleta Grabado Xilográfico Gótico & Vitral
+MARFIL_XILOGRAFICO = (228, 224, 210)
+TINTA_ABISMO = (6, 5, 10)
 from entidades import (
     Alma,
     Araña,
@@ -706,21 +710,15 @@ class Nivel:
             # Marco exterior labrado
             pygame.draw.rect(surface, color_marco, rect, 2, border_radius=3)
 
-            # Bisel de piedra pulida en la superficie de paso (Walkable Edge Cue)
-            pygame.draw.line(
-                surface,
-                color_bisel,
-                (rect.x + 3, rect.y + 1),
-                (rect.right - 3, rect.y + 1),
-                2,
-            )
-            pygame.draw.line(
-                surface,
-                (10, 8, 14),
-                (rect.x + 3, rect.y + 3),
-                (rect.right - 3, rect.y + 3),
-                1,
-            )
+            # Acabado Grabado Xilográfico: cornisa en Marfil Xilográfico (3px) con muescas de cincel cada 16px
+            pygame.draw.line(surface, MARFIL_XILOGRAFICO, (rect.x + 2, rect.y + 1), (rect.right - 2, rect.y + 1), 3)
+            for cx_cincel in range(rect.x + 8, rect.right - 4, 16):
+                pygame.draw.line(surface, TINTA_ABISMO, (cx_cincel, rect.y), (cx_cincel, rect.y + 3), 1)
+            # Franja de tinta de abismo de 3px
+            pygame.draw.line(surface, TINTA_ABISMO, (rect.x + 2, rect.y + 4), (rect.right - 2, rect.y + 4), 3)
+            # Achurado vertical de 1px cada 8px
+            for ax in range(rect.x + 6, rect.right - 6, 8):
+                pygame.draw.line(surface, (18, 16, 24), (ax, rect.y + 7), (ax, rect.y + 12), 1)
 
             # Relieve de cruz gótica labrada en la tapa del sarcófago
             if rect.width >= 48:
@@ -836,8 +834,16 @@ class Nivel:
                     pygame.draw.rect(surface, color_piso, rect)
                     pygame.draw.rect(surface, color_borde, rect, 1)
                     pygame.draw.rect(surface, color_arriba, (rect.x, rect.y, rect.width, 5))
-                    pygame.draw.line(surface, c_bisel_top, (rect.x, rect.y), (rect.right, rect.y), 2)
-                    pygame.draw.line(surface, c_corte, (rect.x, rect.y + 2), (rect.right, rect.y + 2), 2)
+
+                    # 1. Cornisa en Marfil Xilográfico (228, 224, 210) de 3px con muescas de cincel cada 16px
+                    pygame.draw.line(surface, MARFIL_XILOGRAFICO, (rect.x, rect.y + 1), (rect.right, rect.y + 1), 3)
+                    for cx_cincel in range(rect.x + 8, rect.right, 16):
+                        pygame.draw.line(surface, TINTA_ABISMO, (cx_cincel, rect.y), (cx_cincel, rect.y + 3), 1)
+                    # 2. Franja de tinta negra (6, 5, 10) de 3px
+                    pygame.draw.line(surface, TINTA_ABISMO, (rect.x, rect.y + 4), (rect.right, rect.y + 4), 3)
+                    # 3. Trazos verticales de achurado (1px de ancho cada 8px)
+                    for hx in range(rect.x + 4, rect.right, 8):
+                        pygame.draw.line(surface, (20, 18, 26), (hx, rect.y + 7), (hx, rect.y + 13), 1)
 
                     for bx in range(rect.x + 3, rect.right - 2, 6):
                         alt = 2 + ((bx * 11) % 5)
@@ -875,8 +881,12 @@ class Nivel:
                 pygame.draw.rect(surface, color_cuerpo, rect, border_radius=2)
                 pygame.draw.rect(surface, color_marco, rect, 2, border_radius=2)
                 if not tiene_arriba:
-                    pygame.draw.line(surface, c_bisel_top, (rect.x + 2, rect.y), (rect.right - 2, rect.y), 2)
-                    pygame.draw.line(surface, c_corte, (rect.x + 2, rect.y + 2), (rect.right - 2, rect.y + 2), 2)
+                    pygame.draw.line(surface, MARFIL_XILOGRAFICO, (rect.x + 2, rect.y), (rect.right - 2, rect.y), 3)
+                    for cx_cincel in range(rect.x + 8, rect.right, 16):
+                        pygame.draw.line(surface, TINTA_ABISMO, (cx_cincel, rect.y), (cx_cincel, rect.y + 3), 1)
+                    pygame.draw.line(surface, TINTA_ABISMO, (rect.x + 2, rect.y + 3), (rect.right - 2, rect.y + 3), 3)
+                    for hx in range(rect.x + 6, rect.right - 4, 8):
+                        pygame.draw.line(surface, (20, 18, 26), (hx, rect.y + 6), (hx, rect.y + 11), 1)
                 for gx in range(rect.x + TILE, rect.right, TILE):
                     pygame.draw.line(surface, color_marco, (gx, rect.y + 3), (gx, rect.bottom - 2), 1)
                 if rect.height >= TILE * 2:

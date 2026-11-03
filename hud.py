@@ -772,20 +772,8 @@ class HudRenderer:
                 self._surf_riel_buffer.fill((0, 0, 0, 0))
                 destino_riel = self._surf_riel_buffer
 
-            # Fondo del riel
-            panel_riel = self._panel(self.layout.riel.w, self.layout.riel.h)
-            destino_riel.blit(panel_riel, self.layout.riel.topleft)
-
-            # Divisores góticos entre zonas
-            x_div1 = self.layout.zona_izq.right + HUD_GAP // 2
-            x_div2 = self.layout.zona_centro.right + HUD_GAP // 2
-            pygame.draw.line(destino_riel, (*HUD_BORDE, 100),
-                             (x_div1, self.layout.riel.top + 8),
-                             (x_div1, self.layout.riel.bottom - 8), 1)
-            pygame.draw.line(destino_riel, (*HUD_BORDE, 100),
-                             (x_div2, self.layout.riel.top + 8),
-                             (x_div2, self.layout.riel.bottom - 8), 1)
-
+            # Rediseño: NO se dibuja el fondo único que bloqueaba todo el riel superior.
+            # Cada zona heráldica flota de forma asimétrica e independiente, liberando el cielo.
             if DEBUG_HUD:
                 for rect in (self.layout.zona_izq, self.layout.zona_centro,
                              self.layout.zona_der, self.layout.canal_mensajes):
@@ -799,10 +787,17 @@ class HudRenderer:
                 self._surf_riel_buffer.set_alpha(alpha_riel)
                 pantalla.blit(self._surf_riel_buffer, (0, 0))
 
+        if modelo.jefe_vivo:
+            self._dibujar_barra_jefe_inferior(pantalla, modelo, reducir_movimiento, dt)
+
         self._dibujar_mensajes(pantalla, modelo, mensajes, reducir_movimiento, dt)
 
     # --- Zona izquierda: vida, corazones, tiempo ---
     def _dibujar_izquierda(self, pantalla, modelo, reducir_movimiento, dt):
+        # Panel heráldico independiente para la zona izquierda
+        panel_izq = self._panel(self.layout.zona_izq.w, self.layout.zona_izq.h)
+        pantalla.blit(panel_izq, self.layout.zona_izq.topleft)
+
         c = self.layout.contenido_izq
         # [HP] 3/5
         texto_hp = f"[HP] {modelo.vidas}/{modelo.vidas_max}"
@@ -829,7 +824,8 @@ class HudRenderer:
         if txt_bend:
             img_b = self._texto(txt_bend, self.tema.fuente_label, col_bend, sombra=True)
             pantalla.blit(img_b, (c.x + 82, c.y + 2))
-        # Corazones (2ª fila)
+
+        # Corazones como Cálices / Gemas de Rubí engarzados en oro
         pulso = 0.0
         if modelo.vidas == 1 and not reducir_movimiento:
             pulso = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() / 1000.0 * 1.2 * math.tau)
@@ -853,7 +849,7 @@ class HudRenderer:
     def _dibujar_centro(self, pantalla, modelo, reducir_movimiento, dt):
         c = self.layout.contenido_centro
         if modelo.jefe_vivo:
-            # Nombre del jefe
+            # En combate contra Jefe: nombre del jefe y fase
             nombre = modelo.jefe_nombre
             fuente_nombre = self._fuente(self.tema.fuente_nombre)
             if fuente_nombre.size(nombre)[0] > 300:
@@ -866,7 +862,7 @@ class HudRenderer:
             img_f = self._texto(fase_txt, self.tema.fuente_label,
                                 self.tema.rojo if modelo.jefe_fase >= 2 else self.tema.texto_secundario)
             pantalla.blit(img_f, (c.right - img_f.get_width(), c.y))
-            # Barra de jefe: segmentos según vida_max (con temblor reactivo si está herido o en Fase 2)
+            # Barra superior compacta (mantiene compatibilidad de datos del snapshot)
             offset_jefe_y = 0
             if not reducir_movimiento and (modelo.jefe_fase >= 2 or self.tween_jefe.esta_activo()):
                 offset_jefe_y = int(2.0 * math.sin(pygame.time.get_ticks() / 1000.0 * 30.0))
@@ -878,7 +874,6 @@ class HudRenderer:
             x_seg = c.x
             for i in range(vida_max):
                 if i > 0:
-                    # Separadores óseos entre cada segmento
                     pygame.draw.line(pantalla, (216, 200, 175), (x_seg - 2, barra_y + 1), (x_seg - 2, barra_y + segmento_h - 2), 1)
                 llena = i < modelo.jefe_vida
                 color = (self.tema.jefe_segmento_lleno if llena
@@ -888,32 +883,91 @@ class HudRenderer:
                 if not llena:
                     pygame.draw.rect(pantalla, (22, 16, 20), rect, 1, border_radius=4)
                 x_seg += segmento_w + gap
-            # Número y fase a la derecha de la barra
             num_txt = f"{modelo.jefe_vida}/{vida_max}"
             img_num = self._texto(num_txt, self.tema.fuente_label, self.tema.texto)
             pantalla.blit(img_num, (x_seg + 8, barra_y))
         else:
-            # Nivel
+            # Cartela central transparente: línea ornamental dorada con rombo central flotante
+            cx = c.centerx
+            cy = c.y + 8
+            pygame.draw.line(pantalla, (*self.tema.oro, 140), (cx - 130, cy), (cx - 14, cy), 1)
+            pygame.draw.line(pantalla, (*self.tema.oro, 140), (cx + 14, cy), (cx + 130, cy), 1)
+            pygame.draw.polygon(pantalla, self.tema.oro, [(cx, cy - 4), (cx + 4, cy), (cx, cy + 4), (cx - 4, cy)])
+
             if modelo.nivel_indice < 0:
                 nivel_txt = "PRELUDIO"
                 nombre_txt = "EL UMBRAL DEL SEPULTURERO"
             else:
                 nivel_txt = f"NIVEL {modelo.nivel_indice + 1}/{modelo.nivel_total} · {modelo.nivel_nombre.upper()}"
                 nombre_txt = "CAMPOSANTO" if "CAMPOSANTO" in modelo.nivel_nombre.upper() else ("LA CRIPTA" if "CRIPTA" in modelo.nivel_nombre.upper() else "EL OSARIO")
-            img_n = self._texto(nivel_txt, self.tema.fuente_label, self.tema.oro)
+            img_n = self._texto(nivel_txt, self.tema.fuente_label, self.tema.oro, sombra=True)
             img_nom = self._texto(nombre_txt, self.tema.fuente_nombre,
                                   self.tema.texto_secundario, sombra=True)
             x_n = c.x + (c.w - img_n.get_width()) // 2
             x_nom = c.x + (c.w - img_nom.get_width()) // 2
-            pantalla.blit(img_n, (x_n, c.y))
-            pantalla.blit(img_nom, (x_nom, c.y + 18))
+            pantalla.blit(img_n, (x_n, c.y + 16))
+            pantalla.blit(img_nom, (x_nom, c.y + 32))
 
-    # --- Zona derecha: grilla 2×2 (almas, vida extra, dash, pala) ---
+    # --- Barra Monumental del Jefe en el Borde Inferior (Catedral Gótica) ---
+    def _dibujar_barra_jefe_inferior(self, pantalla, modelo, reducir_movimiento, dt):
+        bw = 520
+        bh = 38
+        bx = (ANCHO - bw) // 2
+        by = ALTO - 56
+
+        offset_y = 0
+        if not reducir_movimiento and (modelo.jefe_fase >= 2 or self.tween_jefe.esta_activo()):
+            offset_y = int(2.5 * math.sin(pygame.time.get_ticks() / 1000.0 * 36.0))
+        by += offset_y
+
+        surf_jefe = pygame.Surface((bw, bh), pygame.SRCALPHA)
+        pygame.draw.rect(surf_jefe, (10, 8, 14, 230), (0, 0, bw, bh), border_radius=6)
+        color_borde = (215, 45, 55, 230) if modelo.jefe_fase >= 2 else (*HUD_BORDE, 220)
+        pygame.draw.rect(surf_jefe, color_borde, (0, 0, bw, bh), 1, border_radius=6)
+        pygame.draw.rect(surf_jefe, (218, 178, 86, 180), (2, 2, bw - 4, bh - 4), 1, border_radius=5)
+
+        self._icono_calavera(surf_jefe, 8, (bh - 16) // 2, (225, 45, 55) if modelo.jefe_fase >= 2 else (218, 178, 86))
+
+        nombre = "EL CUSTODIO" if "CUSTODIO" in modelo.jefe_nombre.upper() else "EL CARCELERO"
+        fase_txt = f"FASE {'II' if modelo.jefe_fase >= 2 else 'I'}"
+        lbl = f"{nombre} · {fase_txt}"
+        img_lbl = self._texto(lbl, 11, (218, 178, 86) if modelo.jefe_fase < 2 else (240, 70, 70), sombra=True)
+        surf_jefe.blit(img_lbl, (30, 4))
+
+        vida_max = getattr(modelo, "jefe_vida_max", JEFE_VIDA) or JEFE_VIDA
+        bar_x = 30
+        bar_y = 19
+        bar_w = bw - 90
+        bar_h = 13
+        segmento_w = (bar_w - (vida_max - 1) * 3) // vida_max
+        x_seg = bar_x
+        for i in range(vida_max):
+            if i > 0:
+                pygame.draw.line(surf_jefe, (216, 200, 175), (x_seg - 2, bar_y + 1), (x_seg - 2, bar_y + bar_h - 2), 1)
+            llena = i < modelo.jefe_vida
+            color = self.tema.jefe_segmento_lleno if llena else self.tema.jefe_segmento_vacio
+            rect_seg = pygame.Rect(x_seg, bar_y, segmento_w, bar_h)
+            pygame.draw.rect(surf_jefe, color, rect_seg, border_radius=2)
+            if not llena:
+                pygame.draw.rect(surf_jefe, (22, 16, 20), rect_seg, 1, border_radius=2)
+            x_seg += segmento_w + 3
+
+        txt_num = f"{modelo.jefe_vida}/{vida_max}"
+        img_num = self._texto(txt_num, 12, (230, 220, 210), sombra=True)
+        surf_jefe.blit(img_num, (bw - 50, (bh - img_num.get_height()) // 2))
+
+        pantalla.blit(surf_jefe, (bx, by))
+
+    # --- Zona derecha: medallones flotantes de habilidades y almas ---
     def _dibujar_derecha(self, pantalla, modelo, reducir_movimiento, dt):
+        # Panel heráldico independiente para la zona derecha
+        panel_der = self._panel(self.layout.zona_der.w, self.layout.zona_der.h)
+        pantalla.blit(panel_der, self.layout.zona_der.topleft)
+
         c = self.layout.contenido_der
         celda_w, celda_h = 164, 22
         gap_x, gap_y = 8, 4
-        # Fila 1: [ALMA] X/Y | [DASH] estado
+
         # Col 0: Almas
         x0 = c.x
         y0 = c.y
@@ -924,13 +978,15 @@ class HudRenderer:
         txt_alma = f"[ALMA] {modelo.almas}/{modelo.almas_total}"
         img_a = self._texto(txt_alma, self.tema.fuente_contador, self.tema.oro)
         pantalla.blit(img_a, (x0 + 24, y0))
+
         # Almas volátiles (en riesgo hasta consagrar en el próximo Farol)
         volatiles = getattr(modelo, "almas_volatiles", 0)
         if volatiles > 0:
             txt_vol = f"(+{volatiles})"
             img_vol = self._texto(txt_vol, self.tema.fuente_label, (120, 220, 255), sombra=True)
             pantalla.blit(img_vol, (x0 + 24 + img_a.get_width() + 4, y0 + 1))
-        # Col 1: Dash
+
+        # Col 1: Dash en medallón circular
         x1 = x0 + celda_w + gap_x
         txt_dash = fmt_dash(modelo)
         listo = modelo.tiene_dash and modelo.dash_cooldown <= 0
@@ -941,15 +997,17 @@ class HudRenderer:
             pulso_d = 1.0 - self.tween_dash.t
             pygame.draw.circle(pantalla, (220, 255, 250), (x1 + 10, y0 + 8), int(10 + pulso_d * 6), 1)
         pantalla.blit(img_d, (x1 + 24, y0))
-        # Fila 2: VIDA EXTRA X/10 + pips | [PALA] estado
+
+        # Fila 2: VIDA EXTRA X/10 + rosario | [PALA] estado
         y1 = y0 + celda_h + gap_y
-        # Col 0: Vida extra
         txt_ve = f"VIDA EXTRA {modelo.almas_para_vida}/{ALMAS_POR_VIDA}"
         img_ve = self._texto(txt_ve, self.tema.fuente_contador,
                              self.tema.oro if modelo.almas_para_vida < ALMAS_POR_VIDA else self.muted_color())
         pantalla.blit(img_ve, (x0, y1))
-        # Pips del rosario (10 cuentas de marfil con fulgor turquesa)
+
+        # Pips del rosario (10 cuentas de marfil con fulgor turquesa sobre hilo dorado)
         pip_y = y1 + 17
+        pygame.draw.line(pantalla, (160, 130, 60), (x0 + 4, pip_y + 2), (x0 + 4 + 9 * 8 + 6, pip_y + 2), 1)
         es_consagracion = modelo.almas_para_vida >= ALMAS_POR_VIDA
         for i in range(ALMAS_POR_VIDA):
             bx = x0 + 4 + i * 8
@@ -964,6 +1022,7 @@ class HudRenderer:
             pygame.draw.circle(pantalla, color_cuenta, (bx + 3, pip_y + 2), 2)
             if llena and not es_consagracion:
                 pygame.draw.circle(pantalla, (220, 255, 250), (bx + 3, pip_y + 2), 1)
+
         # Col 1: Pala/Guadaña
         txt_arma = fmt_arma(modelo)
         color_arma = (self.tema.guadaña if modelo.rango_ataque_mejorado
@@ -975,7 +1034,7 @@ class HudRenderer:
             pygame.draw.circle(pantalla, (255, 230, 160), (x1 + 10, y1 + 8), int(9 + pulso_ar * 5), 1)
         pantalla.blit(img_ar, (x1 + 24, y1))
 
-    # --- Canal de mensajes ---
+    # --- Canal de mensajes con Lápida de Obsidiana y Keycaps Físicos ---
     def _dibujar_mensajes(self, pantalla, modelo, mensajes, reducir_movimiento, dt):
         if modelo.estado != "jugando":
             return
@@ -986,31 +1045,62 @@ class HudRenderer:
         if alpha <= 0:
             return
 
-        # Superficie compuesta con canal alfa propio: garantiza orden z correcto y nitidez total
         caja = pygame.Surface((m.w, m.h), pygame.SRCALPHA)
         caja.fill((0, 0, 0, 0))
 
-        # 1. Fondo y marcos góticos del panel
-        pygame.draw.rect(caja, (*self.tema.panel_bg[:3], 230),
+        # 1. Fondo de Lápida de Obsidiana Grabada con doble marco biselado en oro viejo
+        pygame.draw.rect(caja, (*self.tema.panel_bg[:3], min(235, alpha)),
                          caja.get_rect(), border_radius=10)
-        pygame.draw.rect(caja, (*self.tema.panel_border, self.tema.panel_border_alpha),
+        pygame.draw.rect(caja, (*self.tema.panel_border, min(self.tema.panel_border_alpha, alpha)),
                          caja.get_rect(), 1, border_radius=10)
-        pygame.draw.rect(caja, (*self.tema.oro, 220), (0, 0, 4, m.h), border_radius=2)
+        pygame.draw.rect(caja, (218, 178, 86, min(200, alpha)),
+                         (2, 2, m.w - 4, m.h - 4), 1, border_radius=8)
+        pygame.draw.rect(caja, (*self.tema.oro, alpha), (0, 0, 4, m.h), border_radius=2)
 
-        # 2. Icono verticalmente centrado
-        icono_x = 8
+        # 2. Medallón circular a la izquierda con icono
+        med_cx, med_cy = 18, m.h // 2
+        pygame.draw.circle(caja, (24, 20, 28, alpha), (med_cx, med_cy), 11)
+        pygame.draw.circle(caja, (218, 178, 86, alpha), (med_cx, med_cy), 11, 1)
+
         color_icono = self.tema.rojo if mensajes.prioridad >= 3 else self.tema.oro
-        icono_y = (m.h - 16) // 2
         if mensajes.prioridad >= 3:
-            self._icono_calavera(caja, icono_x, icono_y, color_icono)
+            self._icono_calavera(caja, med_cx - 8, med_cy - 8, color_icono)
         else:
-            self._icono_reloj(caja, icono_x, icono_y, color_icono)
+            self._icono_reloj(caja, med_cx - 8, med_cy - 8, color_icono)
 
-        # 3. Texto verticalmente centrado sobre el fondo
-        texto_x = 32
-        ancho_util = m.w - 40
+        # 3. Detección de Keycap Físico Biselado
+        texto_crudo = mensajes.texto.strip()
+        keycap_tag = None
+        texto_resto = texto_crudo
+        if texto_crudo.startswith("[") and "]" in texto_crudo:
+            idx_fin = texto_crudo.find("]")
+            keycap_tag = texto_crudo[1:idx_fin].strip()
+            texto_resto = texto_crudo[idx_fin + 1:].strip()
+            if texto_resto.startswith("·") or texto_resto.startswith(":"):
+                texto_resto = texto_resto[1:].strip()
+
+        texto_x = 38
+        if keycap_tag:
+            fuente_kc = self._fuente(11)
+            kw, kh = fuente_kc.size(keycap_tag)
+            kc_w = kw + 12
+            kc_h = 20
+            kc_x = texto_x
+            kc_y = (m.h - kc_h) // 2
+
+            # Botón marfil / oro con bisel físico
+            pygame.draw.rect(caja, (150, 115, 45, alpha), (kc_x, kc_y + 2, kc_w, kc_h - 2), border_radius=4)
+            pygame.draw.rect(caja, (228, 195, 110, alpha), (kc_x, kc_y, kc_w, kc_h - 2), border_radius=4)
+            pygame.draw.rect(caja, (24, 20, 16, alpha), (kc_x, kc_y, kc_w, kc_h), 1, border_radius=4)
+
+            img_kc = fuente_kc.render(keycap_tag, True, (24, 18, 20))
+            caja.blit(img_kc, (kc_x + (kc_w - kw) // 2, kc_y + 2))
+
+            texto_x = kc_x + kc_w + 8
+
+        ancho_util = m.w - texto_x - 12
         fuente = self._fuente(self.tema.fuente_contador)
-        lineas = envolver(mensajes.texto, fuente, ancho_util, max_lineas=2)
+        lineas = envolver(texto_resto, fuente, ancho_util, max_lineas=2)
         alto_bloque = len(lineas) * 18
         texto_y = max(4, (m.h - alto_bloque) // 2)
 
@@ -1018,7 +1108,6 @@ class HudRenderer:
             img = self._texto(linea, self.tema.fuente_contador, self.tema.texto, sombra=True)
             caja.blit(img, (texto_x, texto_y + i * 18))
 
-        # 4. Blit único con alfa global suave (sin BLEND_RGBA_ADD que quema colores)
         if alpha < 255:
             caja.set_alpha(alpha)
         pantalla.blit(caja, (m.x, m.y + mensajes.offset_y()))

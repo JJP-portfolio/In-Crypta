@@ -944,18 +944,31 @@ class Jugador:
             ],
         )
 
-        # Sombrero de ala ancha caído hacia el frente
+        # Sombrero gótico puntiagudo de ala ancha con hebilla dorada
         ala_caida_y = cabeza_y - 6
         pygame.draw.ellipse(surface, NEGRO_NOCHE, (rect.x - 2 - dw // 2, ala_caida_y, rect.width + 4 + dw, 6))
-        pygame.draw.rect(surface, (32, 26, 36), (rect.x + 5, cabeza_y - 11, rect.width - 10, 6), border_radius=2)
+        # Copa cónica puntiaguda inclinada hacia atrás
+        puntos_sombrero = [
+            (rect.x + 4, ala_caida_y),
+            (rect.right - 4, ala_caida_y),
+            (centro_x - self.direccion * 4, cabeza_y - 15),
+        ]
+        pygame.draw.polygon(surface, (26, 20, 30), puntos_sombrero)
+        pygame.draw.polygon(surface, NEGRO_NOCHE, puntos_sombrero, 1)
+        # Cinta y hebilla dorada en ORO_LITÚRGICO
         pygame.draw.rect(surface, CARMESÍ_SANGRE, (rect.x + 5, cabeza_y - 8, rect.width - 10, 2))
+        pygame.draw.rect(surface, (218, 178, 86), (centro_x - 2, cabeza_y - 9, 4, 3), 1)
 
         # Dos ojos luminosos azul pálido fulgurando en la penumbra
         ojo_base_x = centro_x + self.direccion * 2
         pygame.draw.circle(surface, (160, 215, 255), (ojo_base_x, cabeza_y), 1)
         pygame.draw.circle(surface, (160, 215, 255), (ojo_base_x + self.direccion * 3, cabeza_y), 1)
 
-        # Bufanda fúnebre
+        # Cuello alto fúnebre y bufanda
+        pygame.draw.polygon(surface, (30, 24, 36), [
+            (centro_x - 8, cabeza_y + 3), (centro_x - 4, cabeza_y + 8),
+            (centro_x + 4, cabeza_y + 8), (centro_x + 8, cabeza_y + 3)
+        ])
         pygame.draw.rect(surface, CARMESÍ_SANGRE, (centro_x - 7, cabeza_y + 5, 14, 3), border_radius=1)
 
         # 7. Farol litúrgico diegético (farol y llama nítidos sin velo que opaque la figura)
@@ -966,16 +979,28 @@ class Jugador:
         pygame.draw.circle(surface, (115, 82, 34), (farol_x, farol_y), 6)
         pygame.draw.circle(surface, (165, 120, 50), (farol_x, farol_y), 6, 1)
 
-        # Llama diegética: chispa turquesa brillante si dash_listo(), ámbar tenue si en cooldown o gastado
+        # Llama diegética: chispas orbitantes turquesas si dash_listo(), humo tenue si en cooldown
         dash_disponible = self.tiene_dash and self.dash_listo()
         if dash_disponible:
             color_llama = (70, 235, 220)  # Turquesa brillante
             pygame.draw.circle(surface, color_llama, (farol_x, farol_y), 4)
             pygame.draw.circle(surface, (235, 255, 255), (farol_x, farol_y), 2)  # Chispa brillante
+            # 2 chispas orbitantes turquesas
+            t_orb = tiempo * 5.5
+            sp1_x = farol_x + int(math.cos(t_orb) * 6)
+            sp1_y = farol_y + int(math.sin(t_orb) * 6)
+            sp2_x = farol_x + int(math.cos(t_orb + math.pi) * 6)
+            sp2_y = farol_y + int(math.sin(t_orb + math.pi) * 6)
+            pygame.draw.circle(surface, (92, 220, 200), (sp1_x, sp1_y), 1)
+            pygame.draw.circle(surface, (140, 245, 255), (sp2_x, sp2_y), 1)
         else:
             color_llama = (175, 115, 45)  # Ámbar tenue
             pygame.draw.circle(surface, color_llama, (farol_x, farol_y), 3)
             pygame.draw.circle(surface, (205, 145, 55), (farol_x, farol_y), 1)  # Centro ámbar tenue
+            # Partícula sutil de humo ascendente
+            humo_y = farol_y - 4 - int((tiempo * 18) % 6)
+            humo_x = farol_x - self.direccion * int((tiempo * 8) % 4)
+            pygame.draw.circle(surface, (140, 95, 45), (humo_x, humo_y), 1)
         # Cadena de sujeción
         pygame.draw.line(
             surface,
@@ -1242,10 +1267,15 @@ class Enemigo:
                 ],
             )
 
-            # Cráneo con Rim Light
+            # Cráneo con recorte cenital marfil de 2px (estilo grabado xilográfico)
             pygame.draw.circle(surface, HUESO, (centro_x, rect.y + 9 + salto), 8)
             pygame.draw.circle(surface, NEGRO, (centro_x, rect.y + 9 + salto), 8, 1)
-            pygame.draw.arc(surface, TURQUESA_ÁNIMA, (centro_x - 8, rect.y + 1 + salto, 16, 16), 0.2, math.pi - 0.2, 2)
+            pygame.draw.arc(surface, (228, 224, 210), (centro_x - 8, rect.y + 1 + salto, 16, 16), 0.2, math.pi - 0.2, 2)
+
+            # Estela ocular roja de 4px detrás de las pupilas
+            trail_dx = -self.direccion * 4
+            pygame.draw.line(surface, (200, 20, 30), (centro_x - 3 + ojo_offset, rect.y + 8 + salto), (centro_x - 3 + ojo_offset + trail_dx, rect.y + 8 + salto), 2)
+            pygame.draw.line(surface, (200, 20, 30), (centro_x + 3 + ojo_offset, rect.y + 8 + salto), (centro_x + 3 + ojo_offset + trail_dx, rect.y + 8 + salto), 2)
 
             # Ojos con halo carmesí y centro blanco
             pygame.draw.circle(surface, (180, 20, 30), (centro_x - 3 + ojo_offset, rect.y + 8 + salto), 3)
@@ -1466,10 +1496,15 @@ class EnemigoMelee:
             pygame.draw.polygon(surface, (68, 38, 80), [(rect.x + 3, rect.y + 17 + salto), (rect.x + 10, rect.y + 23 + salto), (rect.x + 7, rect.y + 28 + salto), (rect.x + 1, rect.y + 21 + salto)])
             pygame.draw.polygon(surface, (38, 22, 46), [(rect.right - 1, rect.y + 13 + salto), (rect.right - 10, rect.y + 22 + salto), (rect.right - 4, rect.y + 28 + salto), (rect.right + 1, rect.y + 19 + salto)])
 
-            # Cráneo con Rim Light
+            # Cráneo con recorte cenital marfil de 2px
             pygame.draw.circle(surface, HUESO_MARFIL, (centro_x, rect.y + 9 + salto), 8)
             pygame.draw.circle(surface, NEGRO_NOCHE, (centro_x, rect.y + 9 + salto), 8, 1)
-            pygame.draw.arc(surface, TURQUESA_ÁNIMA, (centro_x - 8, rect.y + 1 + salto, 16, 16), 0.2, math.pi - 0.2, 2)
+            pygame.draw.arc(surface, (228, 224, 210), (centro_x - 8, rect.y + 1 + salto, 16, 16), 0.2, math.pi - 0.2, 2)
+
+            # Estela ocular roja de 4px detrás de las pupilas
+            trail_dx = -self.direccion * 4
+            pygame.draw.line(surface, CARMESÍ_SANGRE, (centro_x - 3 + ojo_offset, ojo_y), (centro_x - 3 + ojo_offset + trail_dx, ojo_y), 2)
+            pygame.draw.line(surface, CARMESÍ_SANGRE, (centro_x + 3 + ojo_offset, ojo_y), (centro_x + 3 + ojo_offset + trail_dx, ojo_y), 2)
 
             # Ojos
             if self.aviso_tiempo > 0:

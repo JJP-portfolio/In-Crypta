@@ -1952,18 +1952,18 @@ class Juego:
     # --- Función actualizar_tutorial_contextual --- #
     def actualizar_tutorial_contextual(self):
         col = self.jugador.rect.x // TILE
-        if col < 26:
+        if col < 24:
             zona = 1
-            msg = "MOVIMIENTO Y SALTO · WASD / FLECHAS: Mover · ESPACIO: Salto variable (tap corto / mantener)"
-        elif col < 32:
+            msg = "[ESPACIO] Salto Variable: toque corto (bajo) o mantener (alto)"
+        elif col < 54:
             zona = 2
-            msg = "FOSO DE SALTO · Medí tu impulso. Si caés, usá los escalones de la trinchera para subir"
-        elif col < 58:
+            msg = "[CAMPANA] Cruzá las losas (~~) y caé sobre la Campana (I) para rebotar en el aire"
+        elif col < 82:
             zona = 3
-            msg = "FAROL DE REPOSO (F) · Con 5 o más almas consagradas recibís el Manto Protector"
+            msg = "[FAROL] Con 5 almas el Farol (F) te da el Manto Protector: probalo ante el Morador"
         else:
             zona = 4
-            msg = "PORTÓN DEL UMBRAL (G) · Cruzá hacia El Camposanto"
+            msg = "[UMBRAL] Impulsate en la Campana hacia las almas altas y cruzá el Portón (G)"
 
         if getattr(self, "tutorial_zona_actual", None) != zona:
             self.tutorial_zona_actual = zona
@@ -2343,20 +2343,32 @@ class Juego:
             )
 
     def dibujar_tumba_lejana(self, destino, x, base_y, escala):
-        ancho = int(22 * escala)
-        alto = int(32 * escala)
-        pygame.draw.rect(
-            destino,
-            (18, 24, 36),
-            (x, base_y - alto, ancho, alto),
-            border_radius=3,
-        )
-        pygame.draw.circle(
-            destino,
-            (18, 24, 36),
-            (x + ancho // 2, base_y - alto),
-            ancho // 2,
-        )
+        ancho = int(32 * escala)
+        alto = int(48 * escala)
+        # Mausoleo gótico con arco ojival y rosetón calado (luminancia Y < 30)
+        c_muro = (16, 22, 32)
+        c_marco = (10, 14, 22)
+        pygame.draw.rect(destino, c_muro, (x, base_y - alto, ancho, alto), border_radius=2)
+        # Techo a dos aguas / frontón ojival
+        puntos_techo = [
+            (x - 2, base_y - alto),
+            (x + ancho + 2, base_y - alto),
+            (x + ancho // 2, base_y - alto - int(18 * escala)),
+        ]
+        pygame.draw.polygon(destino, c_muro, puntos_techo)
+        pygame.draw.polygon(destino, c_marco, puntos_techo, 1)
+        # Rosetón gótico calado en el frontón
+        r_rose = max(2, int(6 * escala))
+        rose_cy = base_y - alto - int(6 * escala)
+        pygame.draw.circle(destino, (8, 10, 16), (x + ancho // 2, rose_cy), r_rose)
+        pygame.draw.circle(destino, (24, 32, 46), (x + ancho // 2, rose_cy), r_rose, 1)
+        # Portal ojival
+        puerta_w = int(14 * escala)
+        puerta_h = int(22 * escala)
+        px = x + (ancho - puerta_w) // 2
+        py = base_y - puerta_h
+        pygame.draw.rect(destino, (8, 10, 16), (px, py, puerta_w, puerta_h))
+        pygame.draw.arc(destino, (24, 32, 46), (px, py - int(6 * escala), puerta_w, int(12 * escala)), 0.0, 3.14, 1)
 
     def dibujar_fondo_cripta(self, destino=None):
         if destino is None:
@@ -2378,9 +2390,11 @@ class Juego:
             # Cristal lunar translúcido
             pygame.draw.rect(destino, (22, 30, 44), (wx, wy + 18, ww, wh - 18))
             pygame.draw.arc(destino, (22, 30, 44), (wx, wy + 2, ww, 34), 0.0, 3.14, 2)
-            # Tracería gótica (cruz de plomo)
+            # Tracería gótica (cruz de plomo y rosetón superior calado)
             pygame.draw.line(destino, (15, 18, 26), (wx + ww // 2, wy + 6), (wx + ww // 2, wy + wh), 1)
             pygame.draw.line(destino, (15, 18, 26), (wx, wy + 42), (wx + ww, wy + 42), 1)
+            pygame.draw.circle(destino, (14, 13, 20), (wx + ww // 2, wy + 16), 6)
+            pygame.draw.circle(destino, (24, 32, 48), (wx + ww // 2, wy + 16), 6, 1)
             # Haz de luz lunar diagonal proyectado hacia el suelo (solo en Alta/Media)
             if haz_lunar is not None:
                 destino.blit(haz_lunar, (wx - 10, wy + 10))
@@ -2877,6 +2891,29 @@ class Juego:
                 )
             self.pantalla.blit(self._superficie_destello_manto, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
 
+        # UI Meta en Lente: Filigrana de vitral celeste en las 4 esquinas cuando el Manto del Farol está activo
+        if calidad_modo != 2 and self.jugador and getattr(self.jugador, "escudo_farol", False):
+            pulso_meta = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() / 1000.0 * 3.5)
+            alfa_meta = int(55 + 35 * pulso_meta)
+            color_meta = (110, 215, 255, alfa_meta)
+            f_size = 54
+            if getattr(self, "_superficie_manto_esquinas", None) is None or self._superficie_manto_esquinas.get_size() != (pw, ph):
+                self._superficie_manto_esquinas = pygame.Surface((pw, ph), pygame.SRCALPHA)
+            self._superficie_manto_esquinas.fill((0, 0, 0, 0))
+            for (cx, cy, dx, dy) in ((0, 0, 1, 1), (pw, 0, -1, 1), (0, ph, 1, -1), (pw, ph, -1, -1)):
+                arc_rect = pygame.Rect(
+                    cx - (0 if dx > 0 else f_size * 2),
+                    cy - (0 if dy > 0 else f_size * 2),
+                    f_size * 2, f_size * 2
+                )
+                pygame.draw.arc(self._superficie_manto_esquinas, color_meta, arc_rect, 0.0, 6.28, 2)
+                pygame.draw.line(self._superficie_manto_esquinas, color_meta, (cx, cy + dy * 12), (cx + dx * 36, cy + dy * 12), 1)
+                pygame.draw.line(self._superficie_manto_esquinas, color_meta, (cx + dx * 12, cy), (cx + dx * 12, cy + dy * 36), 1)
+                pygame.draw.polygon(self._superficie_manto_esquinas, color_meta, [
+                    (cx + dx * 12, cy + dy * 12), (cx + dx * 18, cy + dy * 12), (cx + dx * 12, cy + dy * 18)
+                ])
+            self.pantalla.blit(self._superficie_manto_esquinas, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
+
         # 3. UI Espacial en resolución nativa — carteles nítidos con sombra litúrgica
         self.dibujar_ui_espacial(self.pantalla, self.camara)
 
@@ -2981,32 +3018,63 @@ class Juego:
         if self.mostrar_ayuda > 0 and self.estado == "jugando":
             self.dibujar_pista()
 
-    # --- Función dibujar_pista (Ubicación Superior Contextual) (+20%) --- #
+    # --- Función dibujar_pista (Lápida de Obsidiana con Keycap Físico) --- #
     def dibujar_pista(self):
         texto = getattr(self, "texto_ayuda", None) or (self.nivel.pista if self.nivel else "")
         if not texto:
             return
 
-        # Máximo 2 líneas visibles para no bloquear el área de juego
-        lineas_todas = textwrap.wrap(texto, width=64)
+        keycap_tag = None
+        texto_resto = texto.strip()
+        if texto_resto.startswith("[") and "]" in texto_resto:
+            idx = texto_resto.find("]")
+            keycap_tag = texto_resto[1:idx].strip()
+            texto_resto = texto_resto[idx + 1:].strip()
+            if texto_resto.startswith("·") or texto_resto.startswith(":"):
+                texto_resto = texto_resto[1:].strip()
+
+        lineas_todas = textwrap.wrap(texto_resto, width=54 if keycap_tag else 64)
         lineas = lineas_todas[:2]
-        alto = 26 + 20 * len(lineas)
-        ancho = 640
+        alto = max(44, 26 + 18 * len(lineas))
+        ancho = 660
         x = (ANCHO - ancho) // 2
         y = 98 if (self.jefe is not None and self.jefe.vivo) else 16
 
-        # Fade suave al desaparecer
         alpha = int(225 * min(1.0, self.mostrar_ayuda / 0.8)) if self.mostrar_ayuda < 0.8 else 225
 
         caja = pygame.Surface((ancho, alto), pygame.SRCALPHA)
-        pygame.draw.rect(caja, (14, 11, 18, alpha), (0, 0, ancho, alto), border_radius=10)
+        # 1. Lápida de obsidiana con doble marco biselado en oro
+        pygame.draw.rect(caja, (12, 10, 16, alpha), (0, 0, ancho, alto), border_radius=10)
         pygame.draw.rect(caja, (*HUD_BORDE, min(200, alpha)), (0, 0, ancho, alto), 1, border_radius=10)
-        pygame.draw.rect(caja, (*HUD_ORO, alpha), (0, 0, 4, alto), border_radius=2)
+        pygame.draw.rect(caja, (218, 178, 86, min(180, alpha)), (2, 2, ancho - 4, alto - 4), 1, border_radius=8)
+        pygame.draw.rect(caja, (218, 178, 86, alpha), (0, 0, 4, alto), border_radius=2)
+
+        # 2. Medallón circular a la izquierda
+        med_cx, med_cy = 18, alto // 2
+        pygame.draw.circle(caja, (24, 20, 28, alpha), (med_cx, med_cy), 11)
+        pygame.draw.circle(caja, (218, 178, 86, alpha), (med_cx, med_cy), 11, 1)
+        pygame.draw.circle(caja, (218, 178, 86, alpha), (med_cx, med_cy), 3)
+
         self.pantalla.blit(caja, (x, y))
 
-        self.dibujar_texto("GUÍA DEL SEPULTURERO", x + 16, y + 5, 11, HUD_ORO)
+        tx = x + 38
+        if keycap_tag:
+            fuente_kc = self.fuentes.get(11) or self.obtener_fuente(11)
+            kw, kh = fuente_kc.size(keycap_tag)
+            kc_w = kw + 12
+            kc_h = 20
+            kc_x = tx
+            kc_y = y + (alto - kc_h) // 2
+            pygame.draw.rect(self.pantalla, (150, 115, 45), (kc_x, kc_y + 2, kc_w, kc_h - 2), border_radius=4)
+            pygame.draw.rect(self.pantalla, (228, 195, 110), (kc_x, kc_y, kc_w, kc_h - 2), border_radius=4)
+            pygame.draw.rect(self.pantalla, (24, 20, 16), (kc_x, kc_y, kc_w, kc_h), 1, border_radius=4)
+            img_kc = fuente_kc.render(keycap_tag, True, (24, 18, 20))
+            self.pantalla.blit(img_kc, (kc_x + (kc_w - kw) // 2, kc_y + 2))
+            tx += kc_w + 10
+
+        self.dibujar_texto("GUÍA DEL SEPULTURERO", tx, y + 4, 10, HUD_ORO)
         for i, linea in enumerate(lineas):
-            self.dibujar_texto(linea, x + 16, y + 21 + i * 20, 13, HUD_TEXTO)
+            self.dibujar_texto(linea, tx, y + 17 + i * 18, 13, HUD_TEXTO)
 
     # --- Función dibujar_relicario_fin_nivel --- #
     def dibujar_relicario_fin_nivel(self):
@@ -3134,9 +3202,9 @@ class Juego:
 
         self.dibujar_texto("[W/S o Flechas] Elegir | [ENTER] Confirmar | [ESC o P] Continuar", 0, py + alto_panel - 22, 12, HUD_MUTED, centrado=True)
 
-    # --- Función dibujar_ui_espacial --- #
+    # --- Función dibujar_ui_espacial (Hilo de Luz Conector y Keycaps) --- #
     def dibujar_ui_espacial(self, destino=None, camara=None):
-        """UI Espacial: carteles de enseñanza anclados a coordenadas de pantalla nativa (1280x720)."""
+        """UI Espacial: carteles con hilo de luz conector y keycaps biselados sobre objetos interactivos."""
         if not self.jugador or not self.nivel:
             return
         if destino is None:
@@ -3158,74 +3226,93 @@ class Juego:
         # 1. Dash Power-ups en el nivel (Altar D)
         for dp in getattr(self.nivel, "power_ups_dash", []):
             if not getattr(dp, "recogida", False) and not getattr(dp, "recogido", False):
-                puntos_clave.append((dp.rect.centerx, dp.rect.top, f"[{tecla_dsh}] Altar de Sombras · Desbloquea el Dash"))
+                puntos_clave.append((dp.rect.centerx, dp.rect.top, tecla_dsh, "Desbloquear el Dash"))
 
         # 2. Palas en el nivel (Altar W)
         for p in getattr(self.nivel, "palas", []):
             if not getattr(p, "recogida", False) and not getattr(p, "recogido", False):
-                puntos_clave.append((p.rect.centerx, p.rect.top, f"[{tecla_atk}] Pala de Hierro · Atacar y rebotar"))
+                puntos_clave.append((p.rect.centerx, p.rect.top, tecla_atk, "Atacar y Rebotar"))
 
-        # 3. Power-Up X de Rango / Guadaña en el nivel (Altar X)
+        # 3. Power-Up X de Rango / Guadaña (Altar X)
         for pr in getattr(self.nivel, "power_ups_rango", []):
             if not getattr(pr, "recogida", False) and not getattr(pr, "recogido", False):
                 if getattr(pr, "sellado", False):
-                    puntos_clave.append((pr.rect.centerx, pr.rect.top, "[X] Altar de Guadaña Sellado · Vence al Carcelero"))
+                    puntos_clave.append((pr.rect.centerx, pr.rect.top, "X", "Sellada · Vencé al Carcelero"))
                 else:
-                    puntos_clave.append((pr.rect.centerx, pr.rect.top, "[X] Guadaña Consagrada · Alcance y filo ampliado"))
+                    puntos_clave.append((pr.rect.centerx, pr.rect.top, "X", "Guadaña Consagrada"))
 
         # 4. Faroles de Checkpoint (F)
         for cp in getattr(self.nivel, "checkpoints", []):
             if not getattr(cp, "activo", False):
-                puntos_clave.append((cp.rect.centerx, cp.rect.top, "[F] Farol de Reposo · Consagrar almas y curar"))
+                puntos_clave.append((cp.rect.centerx, cp.rect.top, "FAROL", "Consagrar almas y curar"))
             else:
-                tier_txt = {1: "Tier 1: Purificación", 2: "Tier 2: Bendición del Manto", 3: "Tier 3: Filo de Ánima y Manto"}.get(cp.tier, "Consagrado")
-                puntos_clave.append((cp.rect.centerx, cp.rect.top, f"[F] Farol Consagrado · {tier_txt}"))
+                tier_txt = {1: "Tier 1: Purificación", 2: "Tier 2: Manto Protector", 3: "Tier 3: Filo de Ánima"}.get(cp.tier, "Consagrado")
+                puntos_clave.append((cp.rect.centerx, cp.rect.top, "FAROL", tier_txt))
 
         # 5. Campanas de Resonancia / Incensarios (I)
         for inc in getattr(self.nivel, "incensarios", []):
-            puntos_clave.append((inc.rect.centerx, inc.rect.top, f"[{tecla_atk}] Campana · Repicar para rebotar y recargar Dash"))
+            puntos_clave.append((inc.rect.centerx, inc.rect.top, "CAMPANA", "Rebotar en el aire"))
 
         # 6. Puntos pedagógicos del Preludio / Tutorial:
         if getattr(self, "es_tutorial", False):
-            puntos_clave.append((18 * TILE, 8 * TILE, f"[{tecla_jmp}] Salto variable (tap corto / mantener alto)"))
-            puntos_clave.append((40 * TILE, 8 * TILE, "Foso de salto · Si caés, usá los escalones de la trinchera"))
-            puntos_clave.append((74 * TILE, 8 * TILE, "[G] Portón del Umbral hacia El Camposanto"))
+            puntos_clave.append((18 * TILE, 8 * TILE, tecla_jmp, "Salto Variable (tap/mantener)"))
+            puntos_clave.append((41 * TILE, 6 * TILE, "CAMPANA", "Caé sobre ella para rebotar"))
+            puntos_clave.append((69 * TILE, 7 * TILE, "FAROL", "Pacto del Manto Protector"))
+            for e in getattr(self.nivel, "enemigos", []):
+                puntos_clave.append((e.rect.centerx, e.rect.top, "MORADOR", "El Manto absorbe el golpe"))
+            puntos_clave.append((96 * TILE, 7 * TILE, "PORTÓN", "Umbral hacia El Camposanto"))
 
-        tamano_f = 15
-        if tamano_f not in self.fuentes:
-            try:
-                self.fuentes[tamano_f] = pygame.font.Font(self._ruta_fuente_gotica, tamano_f)
-            except Exception:
-                self.fuentes[tamano_f] = pygame.font.Font(None, tamano_f)
-        fuente = self.fuentes[tamano_f]
-
+        fuente_kc = self.fuentes.get(10) or self.obtener_fuente(10)
+        fuente_lbl = self.fuentes.get(12) or self.obtener_fuente(12)
         zoom = CAMARA_ZOOM
-        for wx, wy, texto in puntos_clave:
+
+        for wx, wy, keycap_tag, label_corta in puntos_clave:
             dist = math.hypot(jx - wx, jy - wy)
-            if dist <= 160:
-                alfa = int(min(240, max(0, (160 - dist) / 45.0 * 240)))
-                # Proyección a resolución de pantalla nativa
+            if dist <= 165:
+                alfa = int(min(240, max(0, (165 - dist) / 45.0 * 240)))
+                # Proyección a coordenadas nativas con bobbing suave
                 sx = int((wx - camara.x) * zoom)
                 sy = int((wy - camara.y) * zoom + bobbing)
 
-                img_txt = fuente.render(texto, True, (246, 238, 224))
-                tw, th = img_txt.get_size()
-                bw, bh = tw + 24, th + 12
+                kw, kh = fuente_kc.size(keycap_tag)
+                lw, lh = fuente_lbl.size(label_corta)
+                bw = max(kw + 20, lw + 24)
+                bh = 40
                 bx = sx - bw // 2
-                by = sy - bh - 24
+                by = sy - bh - 26
 
                 if -180 <= bx <= ANCHO + 80 and -60 <= by <= ALTO + 60:
-                    burbuja = pygame.Surface((bw, bh + 6), pygame.SRCALPHA)
+                    # 1. Hilo de luz vertical conector y rombo luminoso sobre el objeto
+                    pygame.draw.line(destino, (218, 178, 86, min(alfa, 190)), (sx, by + bh), (sx, sy), 1)
+                    pygame.draw.polygon(destino, (255, 235, 160, min(alfa, 240)), [
+                        (sx, sy - 3), (sx + 3, sy), (sx, sy + 3), (sx - 3, sy)
+                    ])
+                    pygame.draw.circle(destino, (255, 255, 255, min(alfa, 255)), (sx, sy), 1)
+
+                    # 2. Tablilla espacial de obsidiana
+                    burbuja = pygame.Surface((bw, bh), pygame.SRCALPHA)
                     pygame.draw.rect(burbuja, (12, 10, 16, min(alfa, 225)), (0, 0, bw, bh), border_radius=6)
                     pygame.draw.rect(burbuja, (200, 160, 64, min(alfa, 230)), (0, 0, bw, bh), 1, border_radius=6)
-                    pygame.draw.polygon(burbuja, (200, 160, 64, min(alfa, 230)), [(bw // 2 - 5, bh), (bw // 2 + 5, bh), (bw // 2, bh + 5)])
-                    pygame.draw.polygon(burbuja, (12, 10, 16, min(alfa, 225)), [(bw // 2 - 4, bh - 1), (bw // 2 + 4, bh - 1), (bw // 2, bh + 4)])
+                    pygame.draw.rect(burbuja, (218, 178, 86, min(alfa, 140)), (2, 2, bw - 4, bh - 4), 1, border_radius=5)
 
-                    # Sombra envolvente suave
-                    img_sombra = fuente.render(texto, True, (0, 0, 0))
-                    for ox, oy in ((-1, 0), (1, 0), (0, -1), (0, 1), (1, 1)):
-                        burbuja.blit(img_sombra, (12 + ox, 6 + oy))
-                    burbuja.blit(img_txt, (12, 6))
+                    # 3. Keycap Físico Biselado centrado en la parte superior
+                    kc_w = kw + 10
+                    kc_h = 16
+                    kc_x = (bw - kc_w) // 2
+                    kc_y = 4
+                    pygame.draw.rect(burbuja, (150, 115, 45, alfa), (kc_x, kc_y + 1, kc_w, kc_h - 1), border_radius=3)
+                    pygame.draw.rect(burbuja, (228, 195, 110, alfa), (kc_x, kc_y, kc_w, kc_h - 1), border_radius=3)
+                    pygame.draw.rect(burbuja, (24, 20, 16, alfa), (kc_x, kc_y, kc_w, kc_h), 1, border_radius=3)
+                    img_kc = fuente_kc.render(keycap_tag, True, (24, 18, 20))
+                    burbuja.blit(img_kc, (kc_x + (kc_w - kw) // 2, kc_y + 1))
+
+                    # 4. Texto explicativo inferior
+                    img_lbl = fuente_lbl.render(label_corta, True, (246, 238, 224))
+                    img_sombra = fuente_lbl.render(label_corta, True, (0, 0, 0))
+                    lx = (bw - lw) // 2
+                    ly = 22
+                    burbuja.blit(img_sombra, (lx + 1, ly + 1))
+                    burbuja.blit(img_lbl, (lx, ly))
 
                     destino.blit(burbuja, (bx, by))
 
@@ -3368,13 +3455,18 @@ class Juego:
         self.dibujar_texto("[ENTER] Reintentar · [ESC] Volver al Menú",
                            0, py + 396, 16, HUD_ORO, centrado=True, sombra=True)
 
-    # --- Función dibujar_texto --- #
-    def dibujar_texto(self, texto, x, y, tamano=24, color=BLANCO, centrado=False, sombra=False, derecha=False):
+    # --- Función obtener_fuente --- #
+    def obtener_fuente(self, tamano):
         if tamano not in self.fuentes:
             try:
                 self.fuentes[tamano] = pygame.font.Font(self._ruta_fuente_gotica, tamano)
             except Exception:
                 self.fuentes[tamano] = pygame.font.Font(None, tamano)
+        return self.fuentes[tamano]
+
+    # --- Función dibujar_texto --- #
+    def dibujar_texto(self, texto, x, y, tamano=24, color=BLANCO, centrado=False, sombra=False, derecha=False):
+        fuente = self.obtener_fuente(tamano)
 
         if sombra:
             imagen_sombra = renderizar_texto_cacheado(
