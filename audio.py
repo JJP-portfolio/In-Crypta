@@ -209,6 +209,7 @@ class Audio:
         self.sonido_dron = None
         self.sonido_latido = None
         self.tiempo_ultimo_latido = 0.0
+        self.musica_actual = None
 
         try:
             if pygame.mixer.get_init() is None:
@@ -436,7 +437,7 @@ class Audio:
 
         # 15. Dron fúnebre ambiental
         if "dron_catacumbas" not in self.sonidos:
-            self.sonido_dron = self._sonido("dron_catacumbas", lambda: sintetizar_dron_funebre(duracion=4.0, volumen=0.08))
+            self.sonido_dron = self._sonido("dron_catacumbas", lambda: sintetizar_dron_funebre(duracion=4.0, volumen=0.045))
             self.sonidos["dron_catacumbas"] = self.sonido_dron
         else:
             self.sonido_dron = self.sonidos["dron_catacumbas"]
@@ -577,8 +578,11 @@ class Audio:
         return None
 
     def reproducir_musica(self, id_musica: str, bucle: bool = True, fade_ms: int = 800):
-        """Reproduce música con pygame.mixer.music. No toca el canal del dron."""
+        """Reproduce música con pygame.mixer.music sin reiniciar si ya suena la misma pista."""
         if not self.activo:
+            self.musica_actual = id_musica
+            return
+        if self.musica_actual == id_musica and pygame.mixer.music.get_busy():
             return
         ruta = self._ruta_musica_por_id(id_musica)
         if ruta is None:
@@ -591,12 +595,15 @@ class Audio:
             try:
                 loops = -1 if bucle else 0
                 pygame.mixer.music.load(str(ruta))
+                pygame.mixer.music.set_volume(0.45)
                 pygame.mixer.music.play(loops=loops, fade_ms=fade_ms)
+                self.musica_actual = id_musica
             except pygame.error:
                 pass
 
     def detener_musica(self, fade_ms: int = 800):
         """Detiene la música con fade out. No toca el canal del dron."""
+        self.musica_actual = None
         try:
             pygame.mixer.music.fadeout(fade_ms)
         except pygame.error:

@@ -33,6 +33,70 @@ from config import (
 
 
 # --- Clase Particula estándar --- #
+class HitSpark:
+    """Destello de impacto de combate (Modelos D1 NES, D2 SNES, D3 PROC)."""
+    def __init__(self, x, y, direccion=1, mejorado=False):
+        self.x = float(x)
+        self.y = float(y)
+        self.direccion = direccion
+        self.mejorado = mejorado
+        self.vida = 0.07
+        self.vida_inicial = 0.07
+
+    def actualizar(self, dt):
+        self.vida -= dt
+
+    def dibujar(self, surface, camara):
+        if self.vida <= 0:
+            return
+        import config
+        estilo = config.resolver_estilo(getattr(config, "ESTILO_EFECTOS", "AUTO"))
+        cx = int(camara.aplicar_x(self.x))
+        cy = int(camara.aplicar_y(self.y))
+        progreso = max(0.0, self.vida / self.vida_inicial)
+        color_centro = (255, 255, 255)
+        color_puntas = (215, 80, 255) if self.mejorado else (216, 180, 104)
+
+        if estilo == "NES":
+            # Modelo D1 (NES): Cruz ortogonal 8-bit de 2px
+            radio = int(6 * progreso) + 2
+            pygame.draw.line(surface, color_puntas, (cx - radio, cy), (cx + radio, cy), 2)
+            pygame.draw.line(surface, color_puntas, (cx, cy - radio), (cx, cy + radio), 2)
+            pygame.draw.rect(surface, color_centro, (cx - 1, cy - 1, 3, 3))
+        elif estilo == "SNES":
+            # Modelo D2 (SNES): Destello biseccionado con halo
+            radio = int(8 * progreso) + 3
+            pygame.draw.line(surface, color_puntas, (cx - radio, cy), (cx + radio, cy), 2)
+            pygame.draw.line(surface, color_puntas, (cx, cy - radio), (cx, cy + radio), 2)
+            pygame.draw.line(surface, color_centro, (cx - radio // 2, cy - radio // 2), (cx + radio // 2, cy + radio // 2), 1)
+            pygame.draw.line(surface, color_centro, (cx - radio // 2, cy + radio // 2), (cx + radio // 2, cy - radio // 2), 1)
+            pygame.draw.circle(surface, color_centro, (cx, cy), 2)
+        else:
+            # Modelo D3 (PROC): Estrella gótica de 4 puntas afiladas con núcleo blanco
+            radio = int(10 * progreso) + 4
+            puntos = [
+                (cx, cy - radio),
+                (cx + 2, cy - 2),
+                (cx + radio, cy),
+                (cx + 2, cy + 2),
+                (cx, cy + radio),
+                (cx - 2, cy + 2),
+                (cx - radio, cy),
+                (cx - 2, cy - 2),
+            ]
+            pygame.draw.polygon(surface, color_puntas, puntos)
+            pygame.draw.polygon(surface, color_centro, [
+                (cx, cy - radio // 2),
+                (cx + 1, cy - 1),
+                (cx + radio // 2, cy),
+                (cx + 1, cy + 1),
+                (cx, cy + radio // 2),
+                (cx - 1, cy + 1),
+                (cx - radio // 2, cy),
+                (cx - 1, cy - 1),
+            ])
+
+
 class Particula:
     def __init__(self, x, y, vx, vy, vida, color, tamano, gravedad=700.0):
         self.x = float(x)
@@ -102,7 +166,12 @@ class SistemaParticulas:
     def __init__(self):
         self.particulas = []
         self.plumas = []
+        self.sparks = []
         self.factor_calidad = 1.0
+
+    def hit_spark(self, x, y, direccion=1, mejorado=False):
+        """Registra un destello de impacto de combate."""
+        self.sparks.append(HitSpark(x, y, direccion, mejorado))
 
     # --- Función emitir genérica --- #
     def emitir(self, x, y, cantidad, colores, velocidad=180.0, vida=0.45, tamano=4.0, gravedad=700.0):
@@ -312,9 +381,15 @@ class SistemaParticulas:
             pluma.actualizar(dt)
         self.plumas = [pl for pl in self.plumas if pl.vida > 0]
 
+        for spark in self.sparks:
+            spark.actualizar(dt)
+        self.sparks = [s for s in self.sparks if s.vida > 0]
+
     # --- Función dibujar --- #
     def dibujar(self, surface, camara):
         for pluma in self.plumas:
             pluma.dibujar(surface, camara)
         for particula in self.particulas:
             particula.dibujar(surface, camara)
+        for spark in self.sparks:
+            spark.dibujar(surface, camara)

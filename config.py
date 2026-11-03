@@ -193,3 +193,39 @@ HUD_ESQUINAS_X = [14, 478, 14, 0]
 HUD_ESQUINAS_Y = [12, 12, 82, 12]
 HUD_ESQUINAS_ANCHO = [292, 324, 292, HUD_MAX_ANCHO-14]
 HUD_ESQUINAS_ALTO = [36, 36, 36, HUD_MAX_ANCHO-14]
+
+# --- Selector de Modelos Visuales (Argon Overhaul) ---
+# Valores válidos: "NES" (8-bit puro, ideal Vaio), "SNES" (16-bit biselado),
+#                  "PROC" (Procedural Gótico detallado), "AUTO" (según Calidad)
+ESTILO_HUD = "AUTO"       # Modelos A1 ("NES"), A2 ("SNES"), A3 ("PROC")
+ESTILO_MUNDO = "AUTO"     # Modelos B1 ("NES"), B2 ("SNES"), B3 ("PROC")
+ESTILO_ENEMIGOS = "AUTO"  # Modelos C1 ("NES"), C2 ("SNES"), C3 ("PROC")
+ESTILO_EFECTOS = "AUTO"   # Modelos D1 ("NES"), D2 ("SNES"), D3 ("PROC")
+CALIDAD_GLOBAL_ACTIVA = PERFIL_WEB_CALIDAD if ES_WEB else 0
+
+# --- Paleta de Alto Contraste y Separación de Planos (Luminancia calibrada) ---
+BG_NOCHE_PROFUNDA = (9, 10, 18)       # Y = 10.6 (Plano 3: Fondo profundo)
+BG_PIEDRA_NIEBLA = (20, 24, 38)       # Y = 24.4 (Plano 3: Siluetas lejanas)
+BG_SILUETA_FRIA = (28, 34, 50)        # Y = 34.0 (Plano 3: Medio fondo)
+
+TILE_CUERPO_SOMBRA = (38, 36, 46)     # Y = 37.7 (Plano 2: Relleno de muro)
+TILE_MAMPOSTERIA = (58, 56, 70)       # Y = 58.2 (Plano 2: Ladrillo medio)
+TILE_BISEL_LUZ = (172, 182, 202)      # Y = 181.3 (Plano 2: Walkable Edge Cue)
+TILE_SOMBRA_CORTE = (10, 8, 14)       # Y = 9.3 (Plano 2: Corte bajo bisel)
+
+ENEMIGO_MORTAJA = (36, 48, 72)        # Y = 47.2 (Plano 1: Cuerpo frío despegado)
+ENEMIGO_PURPURA = (52, 28, 64)        # Y = 39.8 (Plano 1: Variante melee)
+ENEMIGO_RIM_LUZ = (225, 228, 240)     # Y = 228.5 (Plano 1: Recorte silueta)
+ENEMIGO_OJO_FUEGO = (255, 52, 68)     # Punto focal cálido saturado
+MELEE_ACERO_CLARO = (165, 178, 198)   # Y = 176.4 (Acero guardia)
+FX_IMPACTO_BLANCO = (250, 248, 240)   # Y = 248.0 (Damage Flash 2 frames)
+
+
+def resolver_estilo(preferencia: str, calidad_idx: int = None) -> str:
+    """Devuelve 'NES', 'SNES' o 'PROC' según la preferencia o el nivel de calidad."""
+    if calidad_idx is None:
+        calidad_idx = CALIDAD_GLOBAL_ACTIVA
+    if preferencia in ("NES", "SNES", "PROC"):
+        return preferencia
+    return {0: "PROC", 1: "SNES", 2: "NES"}.get(calidad_idx, "PROC")
+

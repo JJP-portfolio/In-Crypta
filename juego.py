@@ -444,6 +444,9 @@ class Juego:
         self.teclas_ataque = PRESETS_TECLADO[0]["teclas_ataque"]
         self.particulas_bioma = []
         self.reiniciar_particulas_bioma("camposanto")
+        self.debug_colisiones = False
+        self.estilos_visuales = ("AUTO", "NES", "SNES", "PROC")
+        self.estilo_visual_idx = 0
 
         if sala_inicial is not None:
             self.cargar_sala_prueba(sala_inicial)
@@ -451,6 +454,7 @@ class Juego:
             self.cargar_nivel(0, vidas=VIDAS_INICIALES)
             self.estado = "titulo"
             self.mostrar_ayuda = 0.0
+            self.audio.reproducir_musica("titulo", bucle=True, fade_ms=600)
 
     def reiniciar_particulas_bioma(self, tema="camposanto"):
         """Inicializa o recicla las partículas ambientales según la calidad gráfica (60 FPS sin lag)."""
@@ -510,6 +514,7 @@ class Juego:
         self.hud_aviso_altar = 0.0
         # Iniciar dron fúnebre ambiental de la cripta
         self.audio.iniciar_dron()
+        self.audio.reproducir_musica(self.nivel.tema, bucle=True, fade_ms=800)
         # Cita literaria de Edgar Allan Poe al comenzar cada nivel
         cita = CITAS_POE.get(self.nivel_indice, "")
         if cita:
@@ -557,6 +562,7 @@ class Juego:
         self.hud_aviso_altar = 0.0
         # Iniciar dron fúnebre ambiental
         self.audio.iniciar_dron()
+        self.audio.reproducir_musica("camposanto", bucle=True, fade_ms=800)
         cita = CITAS_POE.get("tutorial", "")
         if cita:
             self.hud.mostrar_mensaje(cita, 1, 5.0)
@@ -571,6 +577,7 @@ class Juego:
         self.menu_opcion = 0
         self.audio.detener_dron()
         self.audio.reproducir("ui")
+        self.audio.reproducir_musica("titulo", bucle=True, fade_ms=600)
 
     # --- Función abrir_seleccion_nivel --- #
     def abrir_seleccion_nivel(self):
@@ -584,6 +591,7 @@ class Juego:
         self.estado = "creditos"
         self.audio.detener_dron()
         self.audio.reproducir("ui")
+        self.audio.reproducir_musica("creditos", bucle=True, fade_ms=600)
 
     # --- Métodos del Módulo de Configuración del Santuario --- #
     def abrir_configuracion(self, origen="menu"):
@@ -636,6 +644,10 @@ class Juego:
     # Opciones: Alta (0: 100% partículas + halos + penumbra), Media (1: 50% partículas + penumbra), Baja (2: 60 FPS sin penumbra)
     def alternar_calidad_grafica(self, delta=1):
         self.config_calidad_idx = (self.config_calidad_idx + delta) % len(OPCIONES_CALIDAD)
+        import config
+        config.CALIDAD_GLOBAL_ACTIVA = self.config_calidad_idx
+        if hasattr(self, "hud") and hasattr(self.hud, "renderer"):
+            self.hud.renderer._paneles_cache.clear()
         self.audio.reproducir("ui")
         factores = {0: 1.0, 1: 0.5, 2: 0.25}
         self.particulas.factor_calidad = factores.get(self.config_calidad_idx, 1.0)
@@ -729,6 +741,7 @@ class Juego:
         self.almas_totales += self.jugador.almas
         if self.nivel_indice + 1 >= len(NIVELES):
             self.estado = "victoria"
+            self.audio.reproducir_musica("victoria", bucle=False, fade_ms=500)
             return
         self.cargar_nivel(self.nivel_indice + 1, vidas=self.jugador.vidas)
 
@@ -924,6 +937,25 @@ class Juego:
                     self.hud.mostrar_mensaje(f"ACCESIBILIDAD: REDUCIR MOVIMIENTO {estado_str}", 3, 2.5)
                     self.audio.reproducir("ui")
 
+                elif evento.key == pygame.K_F3:
+                    self.debug_colisiones = not self.debug_colisiones
+                    estado_f3 = "ACTIVADO" if self.debug_colisiones else "DESACTIVADO"
+                    self.hud.mostrar_mensaje(f"DEBUG HITBOX/HURTBOX (F3): {estado_f3}", 1, 3.0)
+                    self.audio.reproducir("ui")
+
+                elif evento.key == pygame.K_F4:
+                    import config
+                    self.estilo_visual_idx = (self.estilo_visual_idx + 1) % len(self.estilos_visuales)
+                    modo_estilo = self.estilos_visuales[self.estilo_visual_idx]
+                    config.ESTILO_HUD = modo_estilo
+                    config.ESTILO_MUNDO = modo_estilo
+                    config.ESTILO_ENEMIGOS = modo_estilo
+                    config.ESTILO_EFECTOS = modo_estilo
+                    if hasattr(self, "hud") and hasattr(self.hud, "renderer"):
+                        self.hud.renderer._paneles_cache.clear()
+                    self.hud.mostrar_mensaje(f"MODELO VISUAL (F4): {modo_estilo}", 1, 3.0)
+                    self.audio.reproducir("ui")
+
                 elif evento.key == pygame.K_r and self.estado not in ("titulo", "menu", "seleccion_nivel", "creditos"):
                     if self.sala_prueba:
                         self.cargar_sala_prueba(self.sala_prueba_indice)
@@ -1095,6 +1127,7 @@ class Juego:
             elif self.nivel_indice + 1 >= len(NIVELES):
                 self.almas_totales += self.jugador.almas
                 self.estado = "victoria"
+                self.audio.reproducir_musica("victoria", bucle=False, fade_ms=500)
             else:
                 self.estado = "nivel_completado"
 
@@ -1269,6 +1302,9 @@ class Juego:
         for enemigo in self.nivel.enemigos:
             if not enemigo.vivo or not golpe.colliderect(enemigo.rect):
                 continue
+            enemigo.tiempo_flash = 0.06
+            inter = golpe.clip(enemigo.rect)
+            self.particulas.hit_spark(inter.centerx, inter.centery, self.jugador.direccion, self.jugador.rango_ataque_mejorado)
             enemigo.vivo = False
             self.jugador.ataque_golpeado = True
             self.jugador.dash_usos_aire = DASH_USOS_AIRE
@@ -1286,6 +1322,9 @@ class Juego:
             for cuervo in self.nivel.cuervos:
                 if not cuervo.vivo or not golpe.colliderect(cuervo.rect):
                     continue
+                cuervo.tiempo_flash = 0.06
+                inter = golpe.clip(cuervo.rect)
+                self.particulas.hit_spark(inter.centerx, inter.centery, self.jugador.direccion, self.jugador.rango_ataque_mejorado)
                 cuervo.vivo = False
                 self.jugador.ataque_golpeado = True
                 self.jugador.dash_usos_aire = DASH_USOS_AIRE
@@ -1303,6 +1342,9 @@ class Juego:
             for polilla in self.nivel.polillas:
                 if not polilla.vivo or not golpe.colliderect(polilla.rect):
                     continue
+                polilla.tiempo_flash = 0.06
+                inter = golpe.clip(polilla.rect)
+                self.particulas.hit_spark(inter.centerx, inter.centery, self.jugador.direccion, self.jugador.rango_ataque_mejorado)
                 polilla.vivo = False
                 self.jugador.ataque_golpeado = True
                 self.jugador.dash_usos_aire = DASH_USOS_AIRE
@@ -1320,6 +1362,9 @@ class Juego:
             for araña in self.nivel.aranias:
                 if not araña.vivo or not golpe.colliderect(araña.rect):
                     continue
+                araña.tiempo_flash = 0.06
+                inter = golpe.clip(araña.rect)
+                self.particulas.hit_spark(inter.centerx, inter.centery, self.jugador.direccion, self.jugador.rango_ataque_mejorado)
                 araña.vivo = False
                 self.jugador.ataque_golpeado = True
                 self.jugador.dash_usos_aire = DASH_USOS_AIRE
@@ -1337,6 +1382,9 @@ class Juego:
             for enemigo_melee in self.nivel.enemigos_melee:
                 if not enemigo_melee.vivo or not golpe.colliderect(enemigo_melee.rect):
                     continue
+                enemigo_melee.tiempo_flash = 0.06
+                inter = golpe.clip(enemigo_melee.rect)
+                self.particulas.hit_spark(inter.centerx, inter.centery, self.jugador.direccion, self.jugador.rango_ataque_mejorado)
                 enemigo_melee.vivo = False
                 self.jugador.ataque_golpeado = True
                 self.jugador.dash_usos_aire = DASH_USOS_AIRE
@@ -1354,6 +1402,10 @@ class Juego:
             for mj in getattr(self.nivel, "minijefes", []):
                 if not mj.vivo or not golpe.colliderect(mj.rect):
                     continue
+                if hasattr(mj, "tiempo_flash"):
+                    mj.tiempo_flash = 0.06
+                inter = golpe.clip(mj.rect)
+                self.particulas.hit_spark(inter.centerx, inter.centery, self.jugador.direccion, self.jugador.rango_ataque_mejorado)
                 self.jugador.ataque_golpeado = True
                 if mj.recibir_golpe_pala():
                     self.jugador.dash_usos_aire = DASH_USOS_AIRE
@@ -1377,6 +1429,10 @@ class Juego:
             and self.jefe.rect.colliderect(golpe)
         ):
             self.jugador.ataque_golpeado = True
+            inter = golpe.clip(self.jefe.rect)
+            self.particulas.hit_spark(inter.centerx, inter.centery, self.jugador.direccion, self.jugador.rango_ataque_mejorado)
+            if hasattr(self.jefe, "tiempo_flash"):
+                self.jefe.tiempo_flash = 0.06
             self.dañar_jefe_pala()
 
     # --- Función actualizar_jefe --- #
@@ -1462,6 +1518,7 @@ class Juego:
                 self.mostrar_ayuda = 4.5
                 self.hud.mostrar_mensaje("PUNTO DE CONTROL · La antesala del Custodio del Osario", 1, 3.5)
                 self.audio.reproducir("ui")
+                self.audio.reproducir_musica("custodio_f1", bucle=True, fade_ms=600)
 
         return False
 
@@ -1580,6 +1637,7 @@ class Juego:
             self.hud.mostrar_mensaje("¡EL CUSTODIO CAYÓ! · La cripta se abre…", 5, 4.0)
         elif self.jefe.estado == "cambio":
             self.audio.reproducir("jefe_fase")
+            self.audio.reproducir_musica("custodio_f2", bucle=True, fade_ms=400)
             self.camara.sacudir(11.0, 0.26, dir_x=0.0, dir_y=1.0)
             self.particulas.emitir(
                 self.jefe.rect.centerx,
@@ -1688,6 +1746,9 @@ class Juego:
             if not mj.vivo:
                 continue
 
+            if abs(mj.rect.centerx - self.jugador.rect.centerx) < 450:
+                self.audio.reproducir_musica("carcelero", bucle=True, fade_ms=600)
+
             if mj.aviso_recien:
                 # Telegrafía: brillo carmesí (dibujar) + sonido de aviso.
                 self.audio.reproducir("jefe_aviso")
@@ -1731,6 +1792,7 @@ class Juego:
         self.hud.mostrar_mensaje(
             f"¡EL CARCELERO HA CAÍDO! · El altar de la Guadaña se abre (+{ALMAS_MINIJEFE} Almas)", 2, 4.0
         )
+        self.audio.reproducir_musica(self.nivel.tema, bucle=True, fade_ms=800)
 
     # --- Función _sumar_almas_para_vida --- #
     def _sumar_almas_para_vida(self, cantidad):
@@ -1945,6 +2007,7 @@ class Juego:
             self.estado = "derrota"
             self.audio.detener_dron()
             self.audio.reproducir("muerte")
+            self.audio.reproducir_musica("derrota", bucle=False, fade_ms=400)
             return
 
         self.hitstop = 0.08
@@ -2030,11 +2093,11 @@ class Juego:
     def crear_fondo(self, tema, w=ANCHO, h=ALTO):
         fondo = pygame.Surface((w, h))
         if tema == "cripta":
-            arriba, abajo = (8, 7, 14), (25, 20, 26)
+            arriba, abajo = (6, 5, 10), (16, 14, 20)
         elif tema == "osario":
-            arriba, abajo = (12, 5, 9), (34, 13, 17)
+            arriba, abajo = (9, 5, 8), (22, 10, 14)
         else:
-            arriba, abajo = (14, 20, 36), (28, 42, 62)
+            arriba, abajo = (9, 12, 22), (18, 26, 40)
 
         for y in range(h):
             proporcion = y / h
@@ -2055,9 +2118,9 @@ class Juego:
             pygame.draw.arc(fondo, (42, 58, 62), (vx + 10, 48, 130, 70), 0, math.pi, 4)
         elif tema == "osario":
             cx = int(w * 0.76)
-            pygame.draw.circle(fondo, (52, 16, 22), (cx, 120), 80)
-            pygame.draw.circle(fondo, (94, 26, 32), (cx, 120), 54)
-            pygame.draw.circle(fondo, (150, 48, 38), (cx, 120), 28)
+            pygame.draw.circle(fondo, (40, 12, 16), (cx, 120), 80)
+            pygame.draw.circle(fondo, (68, 18, 24), (cx, 120), 54)
+            pygame.draw.circle(fondo, (108, 34, 28), (cx, 120), 28)
         return fondo
 
     # --- Función crear_vineta --- #
@@ -2172,12 +2235,12 @@ class Juego:
             bx = i * hill_w - offset_h
             pygame.draw.polygon(
                 destino,
-                (22, 34, 52),
+                (15, 22, 34),
                 [(bx, h), (bx + 150, int(h * 0.52) + 32), (bx + 300, h)],
             )
             pygame.draw.polygon(
                 destino,
-                (28, 42, 62),
+                (20, 28, 42),
                 [(bx + 75, h), (bx + 195, int(h * 0.58) + 32), (bx + 320, h)],
             )
 
@@ -2196,7 +2259,7 @@ class Juego:
 
     def dibujar_arbol_muerto(self, destino, x, base_y, escala):
         alto = int(150 * escala)
-        color = (24, 30, 44)
+        color = (16, 20, 30)
         pygame.draw.polygon(
             destino,
             color,
@@ -2222,13 +2285,13 @@ class Juego:
         alto = int(32 * escala)
         pygame.draw.rect(
             destino,
-            (28, 38, 54),
+            (18, 24, 36),
             (x, base_y - alto, ancho, alto),
             border_radius=3,
         )
         pygame.draw.circle(
             destino,
-            (28, 38, 54),
+            (18, 24, 36),
             (x + ancho // 2, base_y - alto),
             ancho // 2,
         )
@@ -2247,14 +2310,14 @@ class Juego:
             wy = 24
             ww, wh = 38, 86
             # Marco exterior de piedra oscura
-            pygame.draw.rect(destino, (20, 18, 28), (wx - 2, wy + 16, ww + 4, wh - 16))
-            pygame.draw.arc(destino, (20, 18, 28), (wx - 2, wy, ww + 4, 36), 0.0, 3.14, 3)
+            pygame.draw.rect(destino, (14, 13, 20), (wx - 2, wy + 16, ww + 4, wh - 16))
+            pygame.draw.arc(destino, (14, 13, 20), (wx - 2, wy, ww + 4, 36), 0.0, 3.14, 3)
             # Cristal lunar translúcido
-            pygame.draw.rect(destino, (32, 45, 64), (wx, wy + 18, ww, wh - 18))
-            pygame.draw.arc(destino, (32, 45, 64), (wx, wy + 2, ww, 34), 0.0, 3.14, 2)
+            pygame.draw.rect(destino, (22, 30, 44), (wx, wy + 18, ww, wh - 18))
+            pygame.draw.arc(destino, (22, 30, 44), (wx, wy + 2, ww, 34), 0.0, 3.14, 2)
             # Tracería gótica (cruz de plomo)
-            pygame.draw.line(destino, (22, 26, 36), (wx + ww // 2, wy + 6), (wx + ww // 2, wy + wh), 1)
-            pygame.draw.line(destino, (22, 26, 36), (wx, wy + 42), (wx + ww, wy + 42), 1)
+            pygame.draw.line(destino, (15, 18, 26), (wx + ww // 2, wy + 6), (wx + ww // 2, wy + wh), 1)
+            pygame.draw.line(destino, (15, 18, 26), (wx, wy + 42), (wx + ww, wy + 42), 1)
             # Haz de luz lunar diagonal proyectado hacia el suelo (translúcido y suave)
             destino.blit(haz_lunar, (wx - 10, wy + 10))
 
@@ -2263,12 +2326,12 @@ class Juego:
         offset_c = int(self.camara.x * 0.28) % col_w
         for i in range(-1, int(w / col_w) + 2):
             x = i * col_w - offset_c
-            pygame.draw.rect(destino, (22, 20, 32), (x, 162, 54, h - 162))
-            pygame.draw.rect(destino, (34, 33, 42), (x + 6, 168, 42, h - 168), 2)
-            pygame.draw.rect(destino, (24, 23, 30), (x - 8, 152, 70, 14))
-            pygame.draw.rect(destino, (24, 23, 30), (x - 4, 136, 62, 10))
+            pygame.draw.rect(destino, (15, 14, 22), (x, 162, 54, h - 162))
+            pygame.draw.rect(destino, (24, 23, 30), (x + 6, 168, 42, h - 168), 2)
+            pygame.draw.rect(destino, (16, 15, 20), (x - 8, 152, 70, 14))
+            pygame.draw.rect(destino, (16, 15, 20), (x - 4, 136, 62, 10))
             for y in range(192, h, 48):
-                pygame.draw.line(destino, (28, 27, 34), (x + 8, y), (x + 46, y), 1)
+                pygame.draw.line(destino, (20, 19, 28), (x + 8, y), (x + 46, y), 1)
 
         # Cadenas colgantes continuas (paralaje 0.40)
         chain_w = 280
@@ -2277,7 +2340,7 @@ class Juego:
             x = i * chain_w - offset_ch + 60
             largo = 100 + ((i * 37) % 60)
             for y in range(0, largo, 12):
-                pygame.draw.ellipse(destino, (42, 42, 50), (x - 3, y, 6, 12), 1)
+                pygame.draw.ellipse(destino, (28, 28, 36), (x - 3, y, 6, 12), 1)
 
         # Resplandor de velas lejanas (paralaje 0.48, iluminación translúcida)
         torch_w = 360
@@ -2302,8 +2365,8 @@ class Juego:
         offset_a = int(self.camara.x * 0.22) % arc_w
         for i in range(-1, int(w / arc_w) + 2):
             x = i * arc_w - offset_a
-            pygame.draw.arc(destino, (54, 34, 34), (x, 182, 280, 320), 3.14, 6.28, 9)
-            pygame.draw.arc(destino, (42, 28, 30), (x + 40, 222, 220, 280), 3.14, 6.28, 5)
+            pygame.draw.arc(destino, (36, 22, 24), (x, 182, 280, 320), 3.14, 6.28, 9)
+            pygame.draw.arc(destino, (28, 18, 20), (x + 40, 222, 220, 280), 3.14, 6.28, 5)
 
         # Cadenas de osario continuas (paralaje 0.38)
         chain_w = 260
@@ -2311,10 +2374,10 @@ class Juego:
         for i in range(-1, int(w / chain_w) + 2):
             x = i * chain_w - offset_ch + 50
             largo = 120 + ((i * 43) % 70)
-            pygame.draw.line(destino, (40, 28, 30), (x, 0), (x + 8, largo), 5)
-            pygame.draw.line(destino, (40, 28, 30), (x + 8, largo), (x - 12, largo + 24), 3)
+            pygame.draw.line(destino, (26, 18, 20), (x, 0), (x + 8, largo), 5)
+            pygame.draw.line(destino, (26, 18, 20), (x + 8, largo), (x - 12, largo + 24), 3)
 
-        pygame.draw.ellipse(destino, (58, 16, 20), (w // 2 - 260, h - 68, 520, 120))
+        pygame.draw.ellipse(destino, (38, 11, 14), (w // 2 - 260, h - 68, 520, 120))
 
     def dibujar_niebla(self, destino=None, tema="camposanto"):
         if destino is None:
@@ -2842,6 +2905,10 @@ class Juego:
                         luz_cp = _obtener_luz_calida(70, (90, 200, 255), 0.12)
                         destino.blit(luz_cp, (cpx - 70, cpy - 70), special_flags=pygame.BLEND_RGB_ADD)
 
+        # Inspección visual de colisiones en vivo (Tecla F3)
+        if getattr(self, "debug_colisiones", False):
+            self.dibujar_debug_colisiones(destino, self.camara)
+
         # Escalar mundo virtual a pantalla (zoom 1.25x cinematográfico)
         pw, ph = self.pantalla.get_size()
         pygame.transform.scale(self.superficie_mundo, (pw, ph), self.pantalla)
@@ -2928,6 +2995,51 @@ class Juego:
             self.dibujar_derrota()
         elif self.estado == "victoria":
             self.dibujar_victoria()
+
+    # --- Visualizador de Debug F3 --- #
+    def dibujar_debug_colisiones(self, destino, camara):
+        """Visualizador F3 de Hitbox / Hurtbox / Peligros para inspección en vivo."""
+        # 1. Peligros: violeta (200, 80, 255)
+        if self.nivel and hasattr(self.nivel, "peligros"):
+            for pel in self.nivel.peligros:
+                if camara.is_on_screen(pel):
+                    r_pel = camara.aplicar_rect(pel)
+                    pygame.draw.rect(destino, (200, 80, 255), r_pel, 1)
+
+        # 2. Hurtboxes de enemigos, minijefes, jefes y ondas: naranja (255, 165, 30)
+        col_hurt = (255, 165, 30)
+        if self.nivel:
+            grupos = [self.nivel.enemigos, getattr(self.nivel, "enemigos_melee", []),
+                      self.nivel.cuervos, self.nivel.polillas, self.nivel.aranias,
+                      getattr(self.nivel, "minijefes", [])]
+            for grupo in grupos:
+                for ent in grupo:
+                    if getattr(ent, "vivo", True) and camara.is_on_screen(ent.rect):
+                        r_ent = camara.aplicar_rect(ent.rect)
+                        pygame.draw.rect(destino, col_hurt, r_ent, 1)
+
+        if self.jefe and self.jefe.vivo and camara.is_on_screen(self.jefe.rect):
+            r_jefe = camara.aplicar_rect(self.jefe.rect)
+            pygame.draw.rect(destino, col_hurt, r_jefe, 2)
+
+        for onda in self.ondas_jefe:
+            if getattr(onda, "vivo", True) and camara.is_on_screen(onda.rect):
+                r_onda = camara.aplicar_rect(onda.rect)
+                pygame.draw.rect(destino, (255, 120, 20), r_onda, 1)
+
+        # 3. Hurtbox de jugador: verde (40, 255, 120)
+        if self.jugador and camara.is_on_screen(self.jugador.rect):
+            r_jug = camara.aplicar_rect(self.jugador.rect)
+            pygame.draw.rect(destino, (40, 255, 120), r_jug, 1)
+
+        # 4. Hitbox activo jugador.rect_ataque(): rojo (255, 40, 60) de 2px con cruz
+        if self.jugador and self.jugador.ataque_tiempo > 0:
+            hitbox = self.jugador.rect_ataque()
+            r_atk = camara.aplicar_rect(hitbox)
+            col_atk = (255, 40, 60)
+            pygame.draw.rect(destino, col_atk, r_atk, 2)
+            pygame.draw.line(destino, col_atk, r_atk.topleft, r_atk.bottomright, 1)
+            pygame.draw.line(destino, col_atk, r_atk.topright, r_atk.bottomleft, 1)
 
     # --- Función dibujar_hud --- #
     def dibujar_hud(self):
