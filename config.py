@@ -12,7 +12,7 @@ import sys
 ES_WEB = sys.platform == "emscripten"
 # Perfil de render al arrancar en el navegador (el jugador puede cambiarlo en Configuración).
 PERFIL_WEB_SHADER = 2   # 2: Puro (sin bloom ni scanlines CRT: lo más costoso por frame)
-PERFIL_WEB_CALIDAD = 1  # 1: Media (penumbra y halos reducidos, 50% de partículas)
+PERFIL_WEB_CALIDAD = 2  # 2: Baja en Web por defecto (60 FPS garantizados en navegador y Vaio)
 
 # --- Identidad ---
 TITULO = "IN CRYPTA"

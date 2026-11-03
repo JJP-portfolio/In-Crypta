@@ -308,27 +308,27 @@ class Audio:
             self.sonidos["stomp"],
         ]
 
-        # 6. Almas espectrales y escala pentatónica de ánimas
-        if "alma" in self.sonidos:
-            for idx in range(1, 7):
-                self.sonidos[f"alma_{idx}"] = self.sonidos["alma"]
-        else:
-            notas_almas = [523, 587, 659, 784, 880, 1046]
-            for idx, nota in enumerate(notas_almas, 1):
-                capas_a = [
-                    ("seno", nota, 120, 0.7, None),
-                    ("fm", nota * 2, 80, 0.3, (nota * 3, 0.8)),
-                ]
-                snd_alma = sintetizar_sfx(0.22, capas_a, adsr=(0.01, 0.06, 0.6, 0.15), volumen=0.16)
-                self.sonidos[f"alma_{idx}"] = snd_alma
-            self.sonidos["alma"] = self.sonidos.get("alma_3", self.sonidos.get("alma_1"))
-
-        self.variaciones["alma"] = [
-            self.sonidos["alma_1"],
-            self.sonidos["alma_2"],
-            self.sonidos["alma_3"],
-            self.sonidos["alma_4"],
-        ]
+        # 6. Chimes escalonados de Almas / Gemas (Escala Pentatónica Mayor Cristalina: C5, D5, E5, G5, A5, C6)
+        # SIEMPRE procedural para conservar el ascenso armónico al encadenar recolecciones.
+        notas_almas = [523.25, 587.33, 659.25, 783.99, 880.00, 1046.50]
+        for idx, nota in enumerate(notas_almas, 1):
+            # Síntesis de chime cristalino: fundamental pura + octava brillante + campana FM + destello armónico
+            capas_chime = [
+                ("seno", nota, 0, 0.65, None),
+                ("seno", nota * 2.0, 15, 0.35, None),
+                ("fm", nota * 1.5, 0, 0.28, (nota * 3.0, 0.9)),
+                ("seno", nota * 3.0, 40, 0.15, None),
+            ]
+            snd_alma = sintetizar_sfx(
+                0.34,
+                capas_chime,
+                adsr=(0.004, 0.07, 0.45, 0.266),
+                volumen=0.22,
+            )
+            self.sonidos[f"alma_{idx}"] = snd_alma
+        self.sonidos["alma"] = self.sonidos["alma_1"]
+        # Eliminar 'alma' de self.variaciones para que reproducir('alma_X') respete siempre el peldaño exacto de la escala
+        self.variaciones.pop("alma", None)
 
         # 7. Onda del Custodio: retumbar de osario
         if "onda" not in self.sonidos:

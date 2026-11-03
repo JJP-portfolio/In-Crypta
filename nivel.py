@@ -887,8 +887,23 @@ class Nivel:
                         salt_alt = 3 + ((sx * 7) % 5)
                         pygame.draw.line(surface, SALITRE_CRIPTA, (sx, rect.bottom), (sx, rect.bottom + salt_alt), 2)
                         pygame.draw.circle(surface, SALITRE_CRIPTA, (sx, rect.bottom + salt_alt), 1)
+                    if rect.height >= 48 and not tiene_arriba:
+                        for ay in range(rect.y + 24, rect.bottom - 16, 48):
+                            ax = rect.x + 12
+                            if ax + 8 < rect.right:
+                                pygame.draw.circle(surface, (24, 26, 32), (ax, ay), 5, 2)
+                                pygame.draw.circle(surface, (44, 48, 58), (ax, ay - 4), 2)
+
+                elif tema == "camposanto":
+                    for rx in range(rect.x + 12, rect.right - 10, 48):
+                        pygame.draw.line(surface, (36, 52, 34), (rx, rect.y + 4), (rx + 2, rect.y + 10), 2)
+                        pygame.draw.line(surface, (28, 40, 26), (rx + 2, rect.y + 10), (rx - 1, rect.y + 16), 1)
 
                 if tema == "osario" and rect.width >= 32 and rect.height >= 24:
+                    for vx in range(rect.x + 14, rect.right - 12, 32):
+                        vy = rect.y + 12 + ((vx * 3) % 12)
+                        if vy + 6 < rect.bottom:
+                            pygame.draw.line(surface, (58, 20, 24), (vx, vy), (vx + 6, vy + 4), 1)
                     for nx in range(rect.x + 8, rect.right - 20, 36):
                         ny = rect.y + 5
                         if ny + 18 <= rect.bottom - 2:
@@ -948,8 +963,10 @@ class Nivel:
 
     def _dibujar_vela(self, surface, rect):
         x = rect.centerx
-        # Resplandor translúcido suave de la llama (iluminación litúrgica, no círculo opaco)
-        surface.blit(_obtener_halo_vela(), (x - 20, rect.y + 12 - 20))
+        import config
+        estilo = config.resolver_estilo(getattr(config, "ESTILO_MUNDO", "AUTO"))
+        if estilo != "NES":
+            surface.blit(_obtener_halo_vela(), (x - 20, rect.y + 12 - 20))
         pygame.draw.rect(surface, (198, 188, 158), (x - 3, rect.y + 14, 6, 14), border_radius=2)
         pygame.draw.line(surface, NEGRO, (x, rect.y + 13), (x, rect.y + 9), 1)
         pygame.draw.polygon(
