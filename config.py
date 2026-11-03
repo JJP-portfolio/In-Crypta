@@ -18,7 +18,7 @@ PERFIL_WEB_CALIDAD = 2  # 2: Baja en Web por defecto (60 FPS garantizados en nav
 TITULO = "IN CRYPTA"
 SUBTITULO = "El sepulturero de la cripta"
 EQUIPO = "Equipo 6"
-VERSION = "0.2.4"
+VERSION = "1.0.3"
 INTEGRANTES = (
     "Ovelar Alejandro Ezequiel",
     "Joaquín Cardiel Gomez",
@@ -228,4 +228,9 @@ def resolver_estilo(preferencia: str, calidad_idx: int = None) -> str:
     if preferencia in ("NES", "SNES", "PROC"):
         return preferencia
     return {0: "PROC", 1: "SNES", 2: "NES"}.get(calidad_idx, "PROC")
+
+
+# Variante vertical del Osario (2 pisos, 36 filas). False = progresión original.
+# Ver REPORTE_SISTEMA_NIVELES_v3.md, sección 3.
+OSARIO_VERTICAL = True
 

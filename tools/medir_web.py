@@ -4,8 +4,7 @@
 tools/medir_web.py
 ==================
 Mide cualquier página HTML5 de IN CRYPTA en un Chromium real (Playwright).
-Sirve para la build Pygbag (WebAssembly) y para el runtime JS (GDevelop/PixiJS),
-así podés comparar las dos versiones en la misma máquina.
+Sirve para la build Pygbag (WebAssembly) de Pygame-CE.
 
 Modos:
   - pygbag : aparece el botón de inicio (--boton). Se hace click y se mide

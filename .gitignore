@@ -16,3 +16,5 @@ build/
 scratch/
 verificacion/
 
+wheels/
+*.whl

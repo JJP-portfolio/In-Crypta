@@ -37,16 +37,53 @@ class Camara:
     # --- Función actualizar --- #
     def actualizar(self, jugador, nivel, dt):
         objetivo_x = jugador.rect.centerx - VIRTUAL_ANCHO // 2
-        objetivo_y = jugador.rect.centery - VIRTUAL_ALTO // 2
 
-        factor = min(1.0, CAMARA_SUAVIZADO * dt)
-        self.x += (objetivo_x - self.x) * factor
-        self.y += (objetivo_y - self.y) * factor
+        # Encuadre vertical modular por bandas de piso (método de 18*TILE = VIRTUAL_ALTO).
+        # Centra perfectamente cada nivel/piso entre su techo y su suelo, agnóstico
+        # a cuántos pisos extras se agreguen arriba o abajo.
+        if nivel.alto <= VIRTUAL_ALTO:
+            objetivo_y = float(nivel.alto - VIRTUAL_ALTO)
+        else:
+            banda = VIRTUAL_ALTO
+            num_pisos = max(1, nivel.alto // banda)
+            piso_idx = int(jugador.rect.centery) // banda
+            piso_idx = max(0, min(piso_idx, num_pisos - 1))
+
+            # Base ideal del piso: sitúa el techo en Y=0 de la pantalla y el suelo abajo
+            base_piso_y = float(piso_idx * banda)
+
+            # Durante desplazamientos normales (correr, saltar), la cámara permanece
+            # fija en la base del piso para mostrar techo y suelo perfectamente encuadrados.
+            # Si el jugador cae por un pozo o fosa de transición vertical, la cámara lo
+            # acompaña fluidamente asegurando que no se escape de la vista.
+            margen_inf = 48
+            margen_sup = 32
+            min_cam_y = jugador.rect.bottom + margen_inf - VIRTUAL_ALTO
+            max_cam_y = jugador.rect.top - margen_sup
+
+            objetivo_y = base_piso_y
+            if objetivo_y < min_cam_y:
+                objetivo_y = min_cam_y
+            if objetivo_y > max_cam_y:
+                objetivo_y = max_cam_y
+
+        factor_x = min(1.0, CAMARA_SUAVIZADO * dt)
+        factor_y = min(1.0, max(CAMARA_SUAVIZADO, 14.0) * dt)
+        self.x += (objetivo_x - self.x) * factor_x
+        self.y += (objetivo_y - self.y) * factor_y
 
         max_x = max(0, nivel.ancho - VIRTUAL_ANCHO)
         max_y = max(0, nivel.alto - VIRTUAL_ALTO)
         self.x = max(0.0, min(self.x, max_x))
         self.y = max(0.0, min(self.y, max_y))
+
+        # Garantía estricta de encuadre en caídas verticales extremas
+        if nivel.alto > VIRTUAL_ALTO:
+            if self.y < jugador.rect.bottom - VIRTUAL_ALTO + 10:
+                self.y = jugador.rect.bottom - VIRTUAL_ALTO + 10
+            if self.y > jugador.rect.top - 10:
+                self.y = jugador.rect.top - 10
+            self.y = max(0.0, min(self.y, max_y))
 
         if nivel.ancho < VIRTUAL_ANCHO:
             self.x = (nivel.ancho - VIRTUAL_ANCHO) / 2

@@ -15,7 +15,6 @@ DIR_PIXELART = RAIZ / "assets_pixelart"
 DIR_LUCES = DIR_PIXELART / "luces"
 DIR_HUD = DIR_PIXELART / "hud"
 DIR_SPRITESHEETS = DIR_PIXELART / "spritesheets"
-DIR_GD_ASSETS = RAIZ / "export" / "gdevelop_nativo" / "assets"
 
 _CACHE_ENTIDADES = {}
 _CACHE_LUCES = {}
@@ -71,7 +70,7 @@ def obtener_spritesheet(nombre: str) -> pygame.Surface:
     if clave in _CACHE_SHEETS:
         return _CACHE_SHEETS[clave]
 
-    for carpeta in (DIR_SPRITESHEETS, DIR_GD_ASSETS):
+    for carpeta in (DIR_SPRITESHEETS,):
         ruta = carpeta / fname
         if ruta.exists():
             surf = _optimizar_superficie(pygame.image.load(str(ruta)))
@@ -91,7 +90,6 @@ def _buscar_superficie_base_entidad(stem: str) -> pygame.Surface:
         DIR_PIXELART / "interactivos",
         DIR_PIXELART / "escenario",
         DIR_HUD,
-        DIR_GD_ASSETS,
         DIR_SPRITESHEETS,
     )
     for carpeta in carpetas:
@@ -163,7 +161,7 @@ def obtener_textura_luz(nombre: str, ancho: int = None, alto: int = None, alpha_
     else:
         fname = f"{stem}.png"
         base = None
-        for carpeta in (DIR_LUCES, DIR_GD_ASSETS):
+        for carpeta in (DIR_LUCES,):
             ruta = carpeta / fname
             if ruta.exists():
                 base = pygame.image.load(str(ruta))
@@ -210,7 +208,7 @@ def obtener_icono_hud(nombre: str, ancho: int = None, alto: int = None) -> pygam
     else:
         fname = f"{stem}.png"
         surf = None
-        for carpeta in (DIR_HUD, DIR_GD_ASSETS):
+        for carpeta in (DIR_HUD,):
             ruta = carpeta / fname
             if ruta.exists():
                 surf = pygame.image.load(str(ruta))

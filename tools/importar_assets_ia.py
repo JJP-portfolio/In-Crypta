@@ -12,8 +12,6 @@
 #                          en assets_in_crypta/entrega/ quedan ESPERANDO_ENTREGA.
 #                          Genera reports/assets_ia.json. Exit 0.
 #   --solo <ID>            Procesa un solo asset por id.
-#   --gdevelop             F4-1: copia a export/gdevelop_nativo/assets/ solo los
-#                          assets que pasaron (estado OK).
 #
 # P2: no se generan imágenes ni audio. Si falta un archivo, ESPERANDO_ENTREGA.
 # ============================================================================
@@ -38,7 +36,6 @@ DIR_SPRITESHEETS = RAIZ / "assets_pixelart" / "spritesheets"
 MANIFIESTO_SHEETS_PATH = DIR_SPRITESHEETS / "spritesheets_manifest.json"
 REPORTS_DIR = RAIZ / "reports"
 REPORT_PATH = REPORTS_DIR / "assets_ia.json"
-DIR_GD_ASSETS = RAIZ / "export" / "gdevelop_nativo" / "assets"
 
 # Estados permitidos (ver orquestacion_assets_goal.xml, formato_evidencia).
 ESPERANDO_ENTREGA = "ESPERANDO_ENTREGA"
@@ -509,86 +506,15 @@ def procesar_solo(manifiesto, asset_id):
     return []
 
 
-def copiar_gdevelop():
-    """F4-1. Copia a export/gdevelop_nativo/assets/ solo los assets OK."""
-    if not REPORT_PATH.exists():
-        return False, "reporte no existente"
-    reporte = json.loads(REPORT_PATH.read_text(encoding="utf-8"))
-    DIR_GD_ASSETS.mkdir(parents=True, exist_ok=True)
-    copiados = 0
-    for entrada in reporte.get("assets", []):
-        if entrada.get("estado") != OK:
-            continue
-        archivo = entrada.get("archivo")
-        if not archivo:
-            continue
-        src = RAIZ / "assets" / archivo
-        dst = DIR_GD_ASSETS / Path(archivo).name
-        if src.exists():
-            dst.parent.mkdir(parents=True, exist_ok=True)
-            import shutil
-            shutil.copy2(src, dst)
-            copiados += 1
-    return True, f"{copiados} assets copiados"
-
-
-# --------------------------------------------------------------------------- #
-# CLI
-# --------------------------------------------------------------------------- #
-def cmd_validar_manifiesto():
-    manifiesto = cargar_manifiesto()
-    ok1, err1 = validar_manifiesto(manifiesto)
-    ok2, err2 = verificar_contra_codigo(manifiesto)
-    asegurar_carpetas()
-    errores = err1 + err2
-    print(f"F0-1 validación manifiesto: {'OK' if ok1 else 'FALLA'}")
-    print(f"F0-2 verificación código:   {'OK' if ok2 else 'FALLA'}")
-    print(f"F0-3 carpetas:              {'OK' if asegurar_carpetas() else 'FALLA'}")
-    for e in errores:
-        print(f"  - {e}")
-    if errores:
-        print("RESULTADO: FALLA")
-        return 1
-    print("RESULTADO: OK")
-    return 0
-
-
-def cmd_todo(manifiesto):
-    entries = procesar_todo(manifiesto)
-    reporte = escribir_reporte(entries)
-    resumen = reporte["resumen"]
-    print(f"F1/F3 --todo: total={reporte['total']} OK={resumen.get(OK,0)} "
-          f"ESPERANDO_ENTREGA={resumen.get(ESPERANDO_ENTREGA,0)} "
-          f"FALLA={resumen.get(FALLA,0)} PENDIENTE_HERRAMIENTA={resumen.get(PENDIENTE_HERRAMIENTA,0)}")
-    print(f"Reporte: {REPORT_PATH}")
-    return 0
-
-
-def cmd_solo(manifiesto, asset_id):
-    entries = procesar_solo(manifiesto, asset_id)
-    if not entries:
-        print(f"Asset '{asset_id}' no encontrado en el manifiesto.")
-        return 1
-    escribir_reporte(entries)
-    for e in entries:
-        print(f"{e['id']} [{e['categoria']}]: {e['estado']} — {e['motivo']}")
-    return 0
-
-
 def main():
     parser = argparse.ArgumentParser(description="Importador de assets IA de IN CRYPTA")
     parser.add_argument("--validar-manifiesto", action="store_true", help="F0: valida manifiesto y crea carpetas")
     parser.add_argument("--todo", action="store_true", help="Procesa todos los assets y genera reports/assets_ia.json")
     parser.add_argument("--solo", metavar="ID", help="Procesa un solo asset por id")
-    parser.add_argument("--gdevelop", action="store_true", help="F4-1: copia assets OK a export/gdevelop_nativo/assets/")
     args = parser.parse_args()
 
     if args.validar_manifiesto:
         return cmd_validar_manifiesto()
-    if args.gdevelop:
-        ok, msg = copiar_gdevelop()
-        print(msg)
-        return 0 if ok else 1
 
     manifiesto = cargar_manifiesto()
     if args.todo:

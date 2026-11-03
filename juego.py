@@ -19,6 +19,7 @@ import pygame
 from audio import Audio
 from camara import Camara
 from config import (
+    OSARIO_VERTICAL,
     ALMAS_FILO_ANIMA,
     ALMAS_MANTO_FAROL,
     ALMAS_POR_VIDA,
@@ -108,7 +109,7 @@ from entidades import (
 )
 from hud import HudOrquestador
 from nivel import Nivel
-from niveles import NIVELES, SALAS_PRUEBA, NIVEL_TUTORIAL
+from niveles import NIVELES, NIVELES_VERTICALES, SALAS_PRUEBA, NIVEL_TUTORIAL
 from particulas import SistemaParticulas
 
 _CACHE_LUCES_JUEGO = {}
@@ -366,6 +367,13 @@ class ParticulaBioma:
 
 
 # --- Clase Juego --- #
+# Franja de piso: bloques de 18 filas. Los niveles de 18 filas tienen una sola
+# franja, así que este filtro no cambia su comportamiento.
+def _mismo_piso(rect, y_referencia):
+    banda = 18 * TILE
+    return rect.y // banda == int(y_referencia) // banda
+
+
 class Juego:
     def __init__(self, sala_inicial=None):
         import warnings
@@ -486,6 +494,9 @@ class Juego:
         if sala is None:
             self.nivel_indice = indice
             datos = NIVELES[indice]
+            # Variante vertical del Osario (ver config.OSARIO_VERTICAL).
+            if indice == 2 and OSARIO_VERTICAL and len(NIVELES_VERTICALES) > 0:
+                datos = NIVELES_VERTICALES[0]
             # Progresión de habilidades fija por nivel (Matriz MDA):
             #   Nivel 1 (0): sin dash ni pala → recoge 'D' a mitad del nivel.
             #   Nivel 2 (1): inicia con dash → recoge el arma 'W'.
@@ -1092,7 +1103,12 @@ class Juego:
         # Partículas ambientales de bioma (fuegos fatuos, polvo de cripta, cenizas/brasas de osario)
         intensificar_bioma = False
         if getattr(self.nivel, "tema", "") == "osario" and self.jugador:
-            if self.jefe is not None and (getattr(self.jefe, "salud", 0) < getattr(self.jefe, "salud_maxima", 5) or self.jugador.rect.x >= 268 * TILE):
+            en_arena_jefe = (
+                abs(self.jugador.rect.centerx - self.jefe.rect.centerx) <= 22 * TILE
+                if (OSARIO_VERTICAL and getattr(self, "nivel_indice", 0) == 2 and self.jefe is not None)
+                else (self.jugador.rect.x >= 268 * TILE)
+            )
+            if self.jefe is not None and (getattr(self.jefe, "salud", 0) < getattr(self.jefe, "salud_maxima", 5) or en_arena_jefe):
                 intensificar_bioma = True
         for p in getattr(self, "particulas_bioma", []):
             p.actualizar(dt, intensificar=intensificar_bioma)
@@ -2039,8 +2055,9 @@ class Juego:
             self.jugador.almas = getattr(self, "almas_consagradas", 0)
             self.jugador.almas_para_vida = getattr(self, "almas_vida_consagradas", 0)
             checkpoint_x = self.punto_reintento[0]
+            checkpoint_y = self.punto_reintento[1]
             for alma in self.nivel.almas:
-                if alma.rect.x >= checkpoint_x:
+                if alma.rect.x >= checkpoint_x and _mismo_piso(alma.rect, checkpoint_y):
                     alma.reiniciar()
             tenia_guadaña = self.jugador.rango_ataque_mejorado
             tenia_pala = self.jugador.tiene_pala
@@ -2082,14 +2099,15 @@ class Juego:
             self.jugador.almas = getattr(self, "almas_consagradas", 0)
             self.jugador.almas_para_vida = getattr(self, "almas_vida_consagradas", 0)
             checkpoint_x = self.punto_reintento[0]
+            checkpoint_y = self.punto_reintento[1]
             for alma in self.nivel.almas:
-                if alma.rect.x >= checkpoint_x:
+                if alma.rect.x >= checkpoint_x and _mismo_piso(alma.rect, checkpoint_y):
                     alma.reiniciar()
             for enemigo in self.nivel.enemigos:
-                if enemigo.rect.x >= checkpoint_x - TILE * 2:
+                if enemigo.rect.x >= checkpoint_x - TILE * 2 and _mismo_piso(enemigo.rect, checkpoint_y):
                     enemigo.reiniciar()
             for em in self.nivel.enemigos_melee:
-                if em.rect.x >= checkpoint_x - TILE * 2:
+                if em.rect.x >= checkpoint_x - TILE * 2 and _mismo_piso(em.rect, checkpoint_y):
                     em.reiniciar()
             for mj in getattr(self.nivel, "minijefes", []):
                 # Un Carcelero ya derrotado no resucita: el altar sigue libre.
@@ -2426,14 +2444,17 @@ class Juego:
         w, h = destino.get_width(), destino.get_height()
         calidad = getattr(self, "config_calidad_idx", 0)
         tiempo = pygame.time.get_ticks() / 1000.0
+        cam_y = getattr(self.camara, "y", 0.0)
+        offset_y_arc = int(cam_y * 0.16)
+        offset_y_chain = int(cam_y * 0.26)
         
-        # Arcos de huesos continuos (paralaje 0.22)
+        # Arcos de huesos continuos (paralaje X: 0.22, paralaje Y: 0.16)
         arc_w = 300
         offset_a = int(self.camara.x * 0.22) % arc_w
         for i in range(-1, int(w / arc_w) + 2):
             x = i * arc_w - offset_a
-            pygame.draw.arc(destino, (36, 22, 24), (x, 182, 280, 320), 3.14, 6.28, 9)
-            pygame.draw.arc(destino, (28, 18, 20), (x + 40, 222, 220, 280), 3.14, 6.28, 5)
+            pygame.draw.arc(destino, (36, 22, 24), (x, 182 - offset_y_arc, 280, 320), 3.14, 6.28, 9)
+            pygame.draw.arc(destino, (28, 18, 20), (x + 40, 222 - offset_y_arc, 220, 280), 3.14, 6.28, 5)
 
         # Pilares de cráneos apilados y osamentas (paralaje 0.30, Calidad Alta/Media)
         if calidad in (0, 1):
@@ -2441,23 +2462,23 @@ class Juego:
             offset_sc = int(self.camara.x * 0.30) % skull_col_w
             for i in range(-1, int(w / skull_col_w) + 2):
                 sx = i * skull_col_w - offset_sc + 40
-                pygame.draw.rect(destino, (28, 18, 20), (sx - 10, 120, 20, h - 120))
+                pygame.draw.rect(destino, (28, 18, 20), (sx - 10, 120 - offset_y_arc, 20, h - 120 + offset_y_arc))
                 for sy in range(130, h - 40, 32):
-                    pygame.draw.circle(destino, (48, 34, 34), (sx, sy), 9)
-                    pygame.draw.circle(destino, (18, 10, 12), (sx - 3, sy - 1), 2)
-                    pygame.draw.circle(destino, (18, 10, 12), (sx + 3, sy - 1), 2)
-                    pygame.draw.line(destino, (18, 10, 12), (sx - 3, sy + 4), (sx + 3, sy + 4), 1)
+                    pygame.draw.circle(destino, (48, 34, 34), (sx, sy - offset_y_arc), 9)
+                    pygame.draw.circle(destino, (18, 10, 12), (sx - 3, sy - 1 - offset_y_arc), 2)
+                    pygame.draw.circle(destino, (18, 10, 12), (sx + 3, sy - 1 - offset_y_arc), 2)
+                    pygame.draw.line(destino, (18, 10, 12), (sx - 3, sy + 4 - offset_y_arc), (sx + 3, sy + 4 - offset_y_arc), 1)
 
-        # Cadenas de osario continuas (paralaje 0.38)
+        # Cadenas de osario continuas (paralaje X: 0.38, paralaje Y: 0.26)
         chain_w = 260
         offset_ch = int(self.camara.x * 0.38) % chain_w
         for i in range(-1, int(w / chain_w) + 2):
             x = i * chain_w - offset_ch + 50
             largo = 120 + ((i * 43) % 70)
-            pygame.draw.line(destino, (26, 18, 20), (x, 0), (x + 8, largo), 5)
-            pygame.draw.line(destino, (26, 18, 20), (x + 8, largo), (x - 12, largo + 24), 3)
+            pygame.draw.line(destino, (26, 18, 20), (x, -offset_y_chain), (x + 8, largo - offset_y_chain), 5)
+            pygame.draw.line(destino, (26, 18, 20), (x + 8, largo - offset_y_chain), (x - 12, largo + 24 - offset_y_chain), 3)
 
-        pygame.draw.ellipse(destino, (38, 11, 14), (w // 2 - 260, h - 68, 520, 120))
+        pygame.draw.ellipse(destino, (38, 11, 14), (w // 2 - 260, h - 68 - int(cam_y * 0.12), 520, 120))
 
         # Brasas ascendentes deterministas en Calidad Alta/Media (paralaje 0.45)
         if calidad in (0, 1):
