@@ -7,6 +7,7 @@
 # ============================================================
 
 import asyncio
+from collections import OrderedDict
 import math
 from pathlib import Path
 import random
@@ -155,6 +156,28 @@ TECLAS_ATAQUE = PRESET_MODERNO["teclas_ataque"]
 # Tolerancia vertical del pisotón: rect.bottom <= enemigo.rect.top + 18.
 TOLERANCIA_PISOTON = 18
 ALMAS_MINIJEFE = 5
+
+
+TEXTO_CACHE_MAX = 256
+
+
+def renderizar_texto_cacheado(cache, fuente, tamano, texto, color, maximo=TEXTO_CACHE_MAX):
+    """Renderiza texto con caché LRU acotado.
+
+    La pantalla de título y los menús repiten los mismos textos cuadro a cuadro,
+    y rasterizar TTF cada frame es caro en WASM. Las superficies cacheadas solo
+    se leen (get_rect y blit), así que reutilizarlas no cambia el resultado.
+    """
+    clave = (tamano, texto, tuple(color))
+    imagen = cache.get(clave)
+    if imagen is not None:
+        cache.move_to_end(clave)
+        return imagen
+    imagen = fuente.render(texto, True, color)
+    cache[clave] = imagen
+    if len(cache) > maximo:
+        cache.popitem(last=False)
+    return imagen
 
 
 def _obtener_luz_perforacion(radio):
@@ -351,6 +374,7 @@ class Juego:
         self.reloj = pygame.time.Clock()
         self.corriendo = True
         self.fuentes = {}
+        self._cache_texto = OrderedDict()
         p_font = Path("assets/NotoSerifDisplay-Bold.ttf")
         if not p_font.exists():
             p_font = Path("export/gdevelop_nativo/assets/NotoSerifDisplay-Bold.ttf")
@@ -3328,7 +3352,8 @@ class Juego:
                 self.fuentes[tamano] = pygame.font.Font(None, tamano)
 
         if sombra:
-            imagen_sombra = self.fuentes[tamano].render(texto, True, (8, 6, 12))
+            imagen_sombra = renderizar_texto_cacheado(
+                self._cache_texto, self.fuentes[tamano], tamano, texto, (8, 6, 12))
             rect_sombra = imagen_sombra.get_rect()
             for ox, oy in ((-1, 0), (1, 0), (0, -1), (0, 1), (1, 1), (2, 2)):
                 if centrado:
@@ -3339,7 +3364,7 @@ class Juego:
                     rect_sombra.topleft = (x + ox, y + oy)
                 self.pantalla.blit(imagen_sombra, rect_sombra)
 
-        imagen = self.fuentes[tamano].render(texto, True, color)
+        imagen = renderizar_texto_cacheado(self._cache_texto, self.fuentes[tamano], tamano, texto, color)
         rect = imagen.get_rect()
         if centrado:
             rect.center = (ANCHO // 2, y)
