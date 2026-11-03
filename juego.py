@@ -368,6 +368,13 @@ class ParticulaBioma:
 # --- Clase Juego --- #
 class Juego:
     def __init__(self, sala_inicial=None):
+        import warnings
+        warnings.filterwarnings("ignore", category=UserWarning)
+        try:
+            if pygame.mixer.get_init() is None:
+                pygame.mixer.pre_init(44100, -16, 2, 2048)
+        except Exception:
+            pass
         pygame.init()
         self.pantalla = pygame.display.set_mode((ANCHO, ALTO))
         pygame.display.set_caption(TITULO)
@@ -454,7 +461,13 @@ class Juego:
             self.cargar_nivel(0, vidas=VIDAS_INICIALES)
             self.estado = "titulo"
             self.mostrar_ayuda = 0.0
+            self.audio.detener_dron()
             self.audio.reproducir_musica("titulo", bucle=True, fade_ms=600)
+
+        print("[IN CRYPTA] Motor de juego inicializado.")
+        print(f"[IN CRYPTA] Pygame: {pygame.__version__} | Canvas virtual: {VIRTUAL_ANCHO}x{VIRTUAL_ALTO} (Zoom {CAMARA_ZOOM}x)")
+        print(f"[IN CRYPTA] Calidad inicial: {OPCIONES_CALIDAD[self.config_calidad_idx]} | Shader: {OPCIONES_SHADER[self.config_shader_idx]}")
+        print("[IN CRYPTA] Audio: Procedural + Banco SFX/Musica cargado.")
 
     def reiniciar_particulas_bioma(self, tema="camposanto"):
         """Inicializa o recicla las partículas ambientales según la calidad gráfica (60 FPS sin lag)."""
@@ -2536,11 +2549,10 @@ class Juego:
             if seleccionada:
                 pygame.draw.rect(self.pantalla, HUD_ORO, (x_caja, y_caja + 8, 4, alto_caja - 16), border_radius=2)
 
-            prefijo = "▸  " if seleccionada else ""
             color_txt = HUD_ORO if seleccionada else HUD_TEXTO
-            self.dibujar_texto(prefijo + titulo_op, 0, y_caja + 25, 19, color_txt, centrado=True, sombra=seleccionada)
+            self.dibujar_texto(titulo_op, 0, y_caja + 25, 19, color_txt, centrado=True, sombra=seleccionada)
 
-        self.dibujar_texto("[↑/↓] Navegar · [ENTER] Seleccionar · [ESC] Atrás", 0, py + ph - 26, 13, HUD_MUTED, centrado=True)
+        self.dibujar_texto("[W/S o Flechas] Navegar | [ENTER] Seleccionar | [ESC] Salir", 0, py + ph - 26, 13, HUD_MUTED, centrado=True)
 
     # --- Función dibujar_seleccion_nivel (Capítulos Limpios sin Slop Técnico) --- #
     def dibujar_seleccion_nivel(self):
@@ -2557,11 +2569,11 @@ class Juego:
         pygame.draw.line(self.pantalla, (*HUD_ORO, 130), (ANCHO // 2 - 140, py + 66), (ANCHO // 2 + 140, py + 66), 1)
 
         datos_niveles = (
-            ("0", "PRELUDIO · EL UMBRAL", "El ritual de iniciación del sepulturero"),
-            ("I", "ACTO I · EL CAMPOSANTO", "Tumbas abiertas bajo la niebla lunar"),
-            ("II", "ACTO II · LA CRIPTA", "Sillería húmeda y moradores en penumbra"),
-            ("III", "ACTO III · EL OSARIO", "La cámara del Custodio y la Muerte Roja"),
-            ("★", "SALAS DE PRUEBA", "Desafíos de precisión y combate"),
+            ("0", "PRELUDIO - EL UMBRAL", "El ritual de iniciación del sepulturero"),
+            ("I", "ACTO I - EL CAMPOSANTO", "Tumbas abiertas bajo la niebla lunar"),
+            ("II", "ACTO II - LA CRIPTA", "Sillería húmeda y moradores en penumbra"),
+            ("III", "ACTO III - EL OSARIO", "La cámara del Custodio y la Muerte Roja"),
+            ("V", "SALAS DE PRUEBA", "Desafíos de precisión y combate"),
         )
 
         ancho_t = 540
@@ -2582,7 +2594,7 @@ class Juego:
             self.dibujar_texto(titulo_n, x_t + 68, y_t + 11, 17, HUD_ORO if sel else HUD_TEXTO, sombra=sel)
             self.dibujar_texto(sub_n, x_t + 68, y_t + 35, 13, CREMA if sel else HUD_MUTED)
 
-        self.dibujar_texto("[↑/↓] Elegir · [ENTER] Jugar · [ESC] Volver", 0, py + ph - 26, 13, HUD_MUTED, centrado=True)
+        self.dibujar_texto("[W/S o Flechas] Elegir | [ENTER] Jugar | [ESC] Volver", 0, py + ph - 26, 13, HUD_MUTED, centrado=True)
 
     # --- Función dibujar_selector_pruebas --- #
     def dibujar_selector_pruebas(self):
@@ -2615,14 +2627,13 @@ class Juego:
             color_num = HUD_ORO if seleccionada else HUD_MUTED
             self.dibujar_texto(str(i + 1), x_tarjeta + 20, y_tarjeta + 14, 24, color_num, sombra=seleccionada)
 
-            prefijo = "▸  " if seleccionada else ""
             color_tit = HUD_ORO if seleccionada else HUD_TEXTO
             nombre_sala = sala.get("nombre", f"Sala de Prueba {i + 1}")
             desc_sala = sala.get("desc", "Verificación de mecánicas")
-            self.dibujar_texto(prefijo + nombre_sala, x_tarjeta + 60, y_tarjeta + 10, 16, color_tit, sombra=seleccionada)
+            self.dibujar_texto(nombre_sala, x_tarjeta + 60, y_tarjeta + 10, 16, color_tit, sombra=seleccionada)
             self.dibujar_texto(desc_sala, x_tarjeta + 60, y_tarjeta + 32, 12, CREMA if seleccionada else HUD_MUTED)
 
-        self.dibujar_texto("[↑/↓] Elegir · [1-6 / ENTER] Probar · [ESC] Volver", 0, py + ph - 24, 12, HUD_MUTED, centrado=True)
+        self.dibujar_texto("[W/S o Flechas] Elegir | [1-6 o ENTER] Probar | [ESC] Volver", 0, py + ph - 24, 12, HUD_MUTED, centrado=True)
 
     # --- Función dibujar_creditos (Sin Slop de Apuntes de Cátedra) --- #
     def dibujar_creditos(self):
@@ -2643,7 +2654,7 @@ class Juego:
             self.dibujar_texto(nombre, 0, py + 148 + idx * 34, 19, HUD_TEXTO, centrado=True, sombra=True)
 
         self.dibujar_texto("Inspirado en la obra de Edgar Allan Poe", 0, py + 280, 14, CREMA, centrado=True)
-        self.dibujar_texto("[ENTER / ESC] Volver al Menú", 0, py + ph - 30, 14, TURQUESA, centrado=True)
+        self.dibujar_texto("[ENTER o ESC] Volver al Menú", 0, py + ph - 30, 14, TURQUESA, centrado=True)
 
     # --- Función dibujar_configuracion (Solo Opciones Esenciales y Claras) --- #
     def dibujar_configuracion(self):
@@ -2682,15 +2693,15 @@ class Juego:
             pygame.draw.rect(self.pantalla, (32, 24, 44) if sel else (16, 13, 22), rect_c, border_radius=6)
             pygame.draw.rect(self.pantalla, HUD_ORO if sel else HUD_BORDE, rect_c, 2 if sel else 1, border_radius=6)
 
-            prefijo = "▸ " if sel else "  "
+            prefijo = "> " if sel else "  "
             self.dibujar_texto(prefijo + etiqueta, x_c + 16, y_c + 11, 16, HUD_ORO if sel else HUD_TEXTO, sombra=sel)
             if valor:
-                val_fmt = f"◂ {valor} ▸" if sel else valor
+                val_fmt = f"< {valor} >" if sel else valor
                 self.dibujar_texto(val_fmt, x_c + ancho_c - 18, y_c + 11, 15, TURQUESA if sel else CREMA, derecha=True, sombra=sel)
 
         # Leyenda compacta del mapeo activo
         self.dibujar_texto(preset_activo["resumen"], 0, py + ph - 54, 13, CREMA, centrado=True)
-        self.dibujar_texto("[↑/↓] Elegir · [←/→ / ENTER] Cambiar · [F4] Estilo Visual · [ESC] Volver", 0, py + ph - 24, 12, HUD_MUTED, centrado=True)
+        self.dibujar_texto("[W/S] Elegir | [A/D o ENTER] Cambiar | [F4] Estilo Visual | [ESC] Volver", 0, py + ph - 24, 12, HUD_MUTED, centrado=True)
 
     # --- Función dibujar --- #
     def dibujar(self):
@@ -3097,11 +3108,10 @@ class Juego:
             if activa:
                 pygame.draw.rect(self.pantalla, HUD_ORO, (x_caja, y_caja + 6, 4, alto_caja - 12), border_radius=2)
 
-            prefijo = "▸ " if activa else ""
             color_txt = HUD_ORO if activa else HUD_TEXTO
-            self.dibujar_texto(f"{prefijo}{nombre_op}", 0, y_caja + 22, 16, color_txt, centrado=True, sombra=activa)
+            self.dibujar_texto(nombre_op, 0, y_caja + 22, 16, color_txt, centrado=True, sombra=activa)
 
-        self.dibujar_texto("[↑/↓] Elegir · [ENTER] Confirmar · [ESC / P] Continuar", 0, py + alto_panel - 22, 12, HUD_MUTED, centrado=True)
+        self.dibujar_texto("[W/S o Flechas] Elegir | [ENTER] Confirmar | [ESC o P] Continuar", 0, py + alto_panel - 22, 12, HUD_MUTED, centrado=True)
 
     # --- Función dibujar_ui_espacial --- #
     def dibujar_ui_espacial(self, destino=None, camara=None):

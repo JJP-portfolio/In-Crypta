@@ -217,7 +217,7 @@ class Audio:
                     frequency=FRECUENCIA_MUESTREO,
                     size=-16,
                     channels=2,
-                    buffer=512,
+                    buffer=2048,
                 )
             self._construir_banco()
             self.activo = True
