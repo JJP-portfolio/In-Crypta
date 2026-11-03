@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<incrypta_master_orchestration version="3.0" fecha="2026-11-03" os="Arch Linux / CachyOS Rolling Release">
+  <!-- ===================================================================== -->
+  <!-- 1. METADATOS Y REGLAS NUEVAS INQUEBRANTABLES                          -->
+  <!-- ===================================================================== -->
+  <metadatos_y_reglas>
+    <entorno_sistema>
+      <distro>CachyOS / Arch Linux (Rolling Release, kernel optimizado x86-64-v3/v4)</distro>
+      <cli_runner>agy-cli con modelo Gemini 3.8 Flash y delegación en Sub-Agentes</cli_runner>
+      <directorio_raiz>/home/sanodesu/unahur</directorio_raiz>
+      <repo_canonico>/home/sanodesu/unahur/PlataformeroMDA</repo_canonico>
+      <repo_vertical>/home/sanodesu/unahur/IN_CRYPTA_v1.0.0_Desktop_Release</repo_vertical>
+    </entorno_sistema>
+
+    <nuevas_reglas_duras>
+      <regla id="R1" severidad="CRITICA">
+        GDEVELOP QUEDA 100% DESCARTADO Y ERRADICADO: Eliminar cualquier rastro, carpeta, referencia o script de GDevelop (tools/generar_proyecto_redisenado.py, tools/previsualizar_nativo.py, jugar_web.bat que apunta a export/gdevelop, referencias a DIR_GD_ASSETS en assets_loader.py, hornear_assets_unificados.py e importar_assets_ia.py). El único motor oficial es Pygame-CE.
+      </regla>
+      <regla id="R2" severidad="CRITICA">
+        MATRIZ DE DECISIÓN DE UNIFICACIÓN (QUÉ NOS QUEDAMOS Y QUÉ DEJAMOS):
+        - NOS QUEDAMOS CON (De PlataformeroMDA @ feat/menu-clean-procedural-chimes 2af109a):
+          * Overhaul Sensorial Argon (Modelos A1..A3, B1..B3, C1..C3, D1..D3, F3 Debug, F4 Selector).
+          * Chimes pentatónicos procedurales de las gemas/almas (C5 a C6: 523.25..1046.50 Hz) con combo timer de 2.2s.
+          * Menús minimalistas sin slop académico y sin glifos tofu.
+          * Caché LRU de textos TTF (renderizar_texto_cacheado) y buffer de audio a 2048 muestras sin dron en título.
+          * Pipeline WebAssembly (Pygbag) con wheel local de pygame-ce (cero HTTP 404 ni pantalla gris).
+        - NOS QUEDAMOS CON (De IN_CRYPTA_v1.0.0_Desktop_Release @ feature/osario-vertical eb4dd0a):
+          * Nivel 3 Vertical de 36 filas y 2 pisos interconectados (NIVEL_3_VERTICAL y NIVELES_VERTICALES en niveles.py).
+          * Cámara modular 2D por bandas de 18 tiles (camara.py) que muestra siempre el techo y acompaña caídas por pozo.
+          * Función _mismo_piso(), paralaje vertical Y en el Osario (arcos 16%, cadenas 26%) y trigger euclidiano del jefe.
+          * Ruedas offline Linux (wheels/ cp310..cp314), tools/validar_niveles.py y tests/test_niveles_verticales.py.
+        - DESCARTAMOS (Slop a mover a /home/sanodesu/unahur/.garbage/):
+          * Todos los scripts y carpetas de GDevelop / PixiJS / GDJS.
+          * Scripts duplicados *-pygbag.py y parches viejos ya aplicados (optimizacion_v2.patch, plan/optimizacion_web.patch).
+      </regla>
+      <regla id="R3" severidad="CRITICA">
+        ARQUITECTURA DE 2 PROYECTOS EN PARALELO (DOBLE FORK):
+        1. PROYECTO 1 — ENTREGA ACADÉMICA EN 15 DÍAS (Congelado y Estable):
+           - Ruta: `/home/sanodesu/unahur/IN_CRYPTA_v1.0.3_Entrega` (Rama `main`, tag `v1.0.3-entrega`).
+           - Dependencias puras: Solo `pygame-ce` y `pygbag` (100% compatible con WebAssembly y con la Sony Vaio en Calidad Baja).
+           - Suite de tests: 100% verde (51 pytest + 11 verticales + test_logica + validar_niveles).
+        2. PROYECTO 2 — FORK COMERCIAL EN PLENA PRODUCCIÓN (Next-Gen Indie):
+           - Ruta: `/home/sanodesu/unahur/IN_CRYPTA_Commercial_Edition` (Rama `main` / `feat/commercial-production`).
+           - Nacido como fork limpio a partir de `v1.0.3-entrega`.
+           - Integra librerías visuales y sonoras de producción comercial en CachyOS: `numpy`, `scipy` (DSP de audio, reverberación de catedral, filtros paso-bajo y chimes estéreo), `moderngl` (luces dinámicas 2D por GPU, CRT/Bloom GLSL y aberración cromática) y `pymunk` / física Verlet (cadenas y candelabros reactivos), manteniendo Fallback automático para la Vaio.
+      </regla>
+    </nuevas_reglas_duras>
+  </metadatos_y_reglas>
+
+  <!-- ===================================================================== -->
+  <!-- 2. FASE 1: ESPECIFICACIÓN DE RECOLECCIÓN DE AUDITORÍA PARA AGY-CLI    -->
+  <!-- ===================================================================== -->
+  <fase_1_recoleccion_diagnostico salida="/home/sanodesu/unahur/REPORTE_AUDITORIA_PARA_FORK.xml">
+    <objetivo>
+      Antes de ejecutar el merge o si el usuario desea inspeccionar el estado exacto de ambos árboles en CachyOS, el Sub-Agente 1 debe extraer y volcar en `REPORTE_AUDITORIA_PARA_FORK.xml` la siguiente información real del sistema:
+    </objetivo>
+    <comandos_extraccion>
+      <cmd id="sys_info">uname -a &amp;&amp; pacman -Qi python sdl2 ffmpeg 2&gt;/dev/null | grep -E "Name|Version"</cmd>
+      <cmd id="git_canonico">cd /home/sanodesu/unahur/PlataformeroMDA &amp;&amp; git status -sb &amp;&amp; git branch -vv &amp;&amp; git log --oneline --graph --all -n 25 &amp;&amp; git tag -l</cmd>
+      <cmd id="git_vertical">cd /home/sanodesu/unahur/IN_CRYPTA_v1.0.0_Desktop_Release &amp;&amp; git status -sb &amp;&amp; git branch -vv &amp;&amp; git log --oneline --graph --all -n 15</cmd>
+      <cmd id="diff_archivos_clave">
+        diff -u /home/sanodesu/unahur/PlataformeroMDA/camara.py /home/sanodesu/unahur/IN_CRYPTA_v1.0.0_Desktop_Release/camara.py || true
+        diff -u /home/sanodesu/unahur/PlataformeroMDA/niveles.py /home/sanodesu/unahur/IN_CRYPTA_v1.0.0_Desktop_Release/niveles.py || true
+        diff -u /home/sanodesu/unahur/PlataformeroMDA/config.py /home/sanodesu/unahur/IN_CRYPTA_v1.0.0_Desktop_Release/config.py || true
+        diff -u /home/sanodesu/unahur/PlataformeroMDA/juego.py /home/sanodesu/unahur/IN_CRYPTA_v1.0.0_Desktop_Release/juego.py || true
+      </cmd>
+      <cmd id="rastros_gdevelop">
+        grep -rnI -i "gdevelop\|gdjs\|DIR_GD_ASSETS" /home/sanodesu/unahur/PlataformeroMDA/ --exclude-dir=.venv --exclude-dir=.git --exclude-dir=repomix --exclude-dir=plan || true
+      </cmd>
+    </comandos_extraccion>
+  </fase_1_recoleccion_diagnostico>
+
+  <!-- ===================================================================== -->
+  <!-- 3. FASE 2: PURGA DE GDEVELOP Y MERGE DEFINITIVO A MAIN (v1.0.3)       -->
+  <!-- ===================================================================== -->
+  <fase_2_unificacion_y_merge_main>
+    <purga_gdevelop>
+      <archivos_a_mover_a_garbage>
+        <archivo>tools/generar_proyecto_redisenado.py</archivo>
+        <archivo>tools/previsualizar_nativo.py</archivo>
+        <archivo>jugar_web.bat</archivo>
+        <archivo>optimizacion_v2.patch</archivo>
+        <archivo>plan/optimizacion_web.patch</archivo>
+      </archivos_a_mover_a_garbage>
+      <limpieza_en_codigo>
+        <item archivo="assets_loader.py">Eliminar `DIR_GD_ASSETS` y dejar únicamente las carpetas nativas de `assets_pixelart`.</item>
+        <item archivo="tools/hornear_assets_unificados.py">Eliminar `DIR_GD_ASSETS` y las escrituras duplicadas hacia `export/gdevelop_nativo/assets`.</item>
+        <item archivo="tools/importar_assets_ia.py">Eliminar `DIR_GD_ASSETS`, `copiar_gdevelop()` y el flag `--gdevelop`.</item>
+        <item archivo="tests/test_importar_assets.py">Asegurar que ningún test invoque `--gdevelop` ni dependa de carpetas de GDevelop.</item>
+      </limpieza_en_codigo>
+    </purga_gdevelop>
+
+    <integracion_vertical_en_plataformeromda>
+      <paso n="1" archivo="camara.py">
+        Copiar el método `actualizar()` de `IN_CRYPTA_v1.0.0_Desktop_Release/camara.py` que implementa la cámara modular por bandas de 18 tiles (`banda = VIRTUAL_ALTO = 576 px`, `piso_idx = jugador.rect.centery // banda`), garantizando que en niveles de 18 filas funcione idéntico y en el Nivel 3 de 36 filas encuadre el piso superior y el piso inferior sin cortar el techo.
+      </paso>
+      <paso n="2" archivo="niveles.py">
+        Integrar `NIVEL_3_VERTICAL` y `NIVELES_VERTICALES` desde `IN_CRYPTA_v1.0.0_Desktop_Release/niveles.py`.
+      </paso>
+      <paso n="3" archivo="config.py">
+        Actualizar `VERSION = "1.0.3"`, añadir `OSARIO_VERTICAL = True` y mantener `PERFIL_WEB_CALIDAD = 2` (Modo 8-bit NES sin penumbra para 60 FPS en Web y en la Sony Vaio).
+      </paso>
+      <paso n="4" archivo="juego.py">
+        Integrar desde `IN_CRYPTA_v1.0.0_Desktop_Release/juego.py`:
+        - Función `_mismo_piso(self, y_a, y_b)` para que enemigos/minijefes/checkpoints de un piso no se activen desde el otro piso en niveles de 36 filas.
+        - Selección de `NIVELES_VERTICALES` cuando `getattr(config, "OSARIO_VERTICAL", True)` esté activo en `cargar_nivel()`.
+        - Paralaje vertical Y en `dibujar_fondo_osario()` (arcos `0.16`, cadenas `0.26`) y trigger euclidiano de partículas de jefe (`abs(dx) &lt;= 22 * TILE`).
+        - Preservar intactos el Overhaul Sensorial Argon (`F3`, `F4`), los menús sin slop, el caché LRU de texto y el combo de chimes pentatónicos de `2.2s`.
+      </paso>
+      <paso n="5" archivo="tools/ y tests/">
+        Copiar `tools/validar_niveles.py`, `tests/test_niveles_verticales.py` y los wheels offline de `wheels/` desde `IN_CRYPTA_v1.0.0_Desktop_Release`.
+      </paso>
+    </integracion_vertical_en_plataformeromda>
+
+    <comandos_git_merge_a_main><![CDATA[
+# 1. Remover el worktree temporal que bloquea la rama 'main'
+cd /home/sanodesu/unahur/PlataformeroMDA
+git worktree remove ../in-crypta-base --force || rm -rf /home/sanodesu/unahur/in-crypta-base
+git worktree prune
+
+# 2. Crear rama candidata de lanzamiento desde el estado actual (feat/menu-clean-procedural-chimes)
+git checkout -b release/v1.0.3
+
+# (Aquí los sub-agentes aplican la purga de GDevelop y la fusión vertical y verifican los tests)
+
+# 3. Ejecutar suite completa de validación antes del merge a main
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/pytest tests/ -q
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python tests/test_logica.py
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy .venv/bin/python tools/validar_niveles.py
+
+# 4. Hacer commit de la unificación v1.0.3 y mergear a main
+git add -A
+git commit -m "release(v1.0.3): unificacion Argon sensorial, chimes, osario vertical y purga total de GDevelop"
+git checkout main
+git merge --no-ff release/v1.0.3 -m "Merge release/v1.0.3 into main (Entrega Final en 15 dias)"
+git tag -a v1.0.3-entrega -m "IN CRYPTA v1.0.3 — Version de Entrega Academica Consolidada"
+]]></comandos_git_merge_a_main>
+  </fase_2_unificacion_y_merge_main>
+
+  <!-- ===================================================================== -->
+  <!-- 4. FASE 3: CREACIÓN DE LOS 2 PROYECTOS PARALELOS FORKEADOS EN CACHYOS -->
+  <!-- ===================================================================== -->
+  <fase_3_creacion_dos_forks_paralelos>
+    <proyecto_1_entrega_academica>
+      <ruta>/home/sanodesu/unahur/IN_CRYPTA_v1.0.3_Entrega</ruta>
+      <rama>main (tag v1.0.3-entrega)</rama>
+      <proposito>Proyecto congelado, limpio y 100% verificado para la entrega académica en 15 días (Desktop + Web Pygbag + Soporte Vaio Calidad Baja).</proposito>
+    </proyecto_1_entrega_academica>
+
+    <proyecto_2_fork_comercial>
+      <ruta>/home/sanodesu/unahur/IN_CRYPTA_Commercial_Edition</ruta>
+      <rama>main + feat/commercial-nextgen-libs</rama>
+      <proposito>Fork independiente para desarrollo comercial a gran escala con librerías avanzadas de audio DSP, shaders GPU ModernGL y física secundaria.</proposito>
+      <comandos_creacion_fork_cachyos><![CDATA[
+# 1. Clonar el fork comercial desde el repositorio canónico ya consolidado en v1.0.3
+git clone /home/sanodesu/unahur/PlataformeroMDA /home/sanodesu/unahur/IN_CRYPTA_Commercial_Edition
+
+# 2. Renombrar/consolidar el repositorio de entrega de 15 días
+mv /home/sanodesu/unahur/PlataformeroMDA /home/sanodesu/unahur/IN_CRYPTA_v1.0.3_Entrega
+
+# 3. Configurar el entorno virtual del Fork Comercial en CachyOS / Arch Linux con librerías avanzadas
+cd /home/sanodesu/unahur/IN_CRYPTA_Commercial_Edition
+git checkout -b feat/commercial-nextgen-libs
+python -m venv .venv
+.venv/bin/pip install --upgrade pip
+.venv/bin/pip install "pygame-ce>=2.5.0,<3" "numpy>=2.0" "scipy>=1.13" "moderngl>=5.10" "pymunk>=6.8" "pytest>=8.0"
+]]></comandos_creacion_fork_cachyos>
+      <modulos_comerciales_a_inyectar>
+        <modulo archivo="audio_dsp.py">Motor DSP con NumPy + SciPy: Reverberación de catedral gótica (Schroeder/Ping-Pong en retardos primos 37ms, 73ms, 113ms), chimes estéreo con chorus micro-tonal y filtro paso-bajo Butterworth reactivo a 1 HP.</modulo>
+        <modulo archivo="gpu_pipeline.py">Pipeline OpenGL 3.3+ con ModernGL: Point lights dinámicas por hardware, aberración cromática de impacto, niebla volumétrica por shader y CRT/Bloom con costo 0 en CPU (con Fallback automático al renderizador Pygame si se corre en la Sony Vaio sin OpenGL 3.3).</modulo>
+        <modulo archivo="fisica_decorativa.py">Simulación física secundaria (Verlet / Pymunk) para cadenas colgantes, candelabros e incensarios que reaccionan al viento del Dash y a las ondas del Custodio sin alterar las colisiones deterministas del jugador.</modulo>
+      </modulos_comerciales_a_inyectar>
+    </proyecto_2_fork_comercial>
+  </fase_3_creacion_dos_forks_paralelos>
+</incrypta_master_orchestration>

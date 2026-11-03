@@ -65,11 +65,7 @@ FUENTE_NOMBRE = 18
 
 # Ruta absoluta de la fuente gótica
 _RAIZ_HUD = Path(__file__).resolve().parent
-_RUTA_FUENTE = (
-    _RAIZ_HUD / "assets/NotoSerifDisplay-Bold.ttf"
-    if (_RAIZ_HUD / "assets/NotoSerifDisplay-Bold.ttf").exists()
-    else _RAIZ_HUD / "export/gdevelop_nativo/assets/NotoSerifDisplay-Bold.ttf"
-)
+_RUTA_FUENTE = _RAIZ_HUD / "assets/NotoSerifDisplay-Bold.ttf"
 
 DEBUG_HUD = False
 
@@ -500,6 +496,11 @@ class HudRenderer:
         self._iconos_cache = {}
         self._panel_der_surface = None
         self._surf_riel_buffer = None
+        # Tweens reactivos para feedback de eventos
+        self.tween_alma = Tween(0.25, 0.25, "out_back")
+        self.tween_dash = Tween(0.30, 0.30, "out_back")
+        self.tween_arma = Tween(0.25, 0.25, "out_back")
+        self.tween_jefe = Tween(0.22, 0.22, "out_cubic")
 
     def _fuente(self, tamano):
         if tamano not in self._fuentes:
@@ -514,27 +515,64 @@ class HudRenderer:
 
     # --- Paneles cacheados ---
     def _panel(self, ancho, alto, alpha=None):
-        clave = (ancho, alto, alpha)
+        import config
+        estilo = config.resolver_estilo(getattr(config, "ESTILO_HUD", "AUTO"))
+        clave = (ancho, alto, alpha, estilo)
         surf = self._paneles_cache.get(clave)
         if surf is None:
-            a = alpha if alpha is not None else self.tema.panel_bg[3]
-            surf = pygame.Surface((ancho, alto), pygame.SRCALPHA)
-            pygame.draw.rect(surf, (*self.tema.panel_bg[:3], a),
-                             surf.get_rect(), border_radius=12)
-            pygame.draw.rect(surf, (*self.tema.panel_border,
-                                    self.tema.panel_border_alpha),
-                             surf.get_rect(), 1, border_radius=12)
-            pygame.draw.line(surf, self.tema.linea_oro, (12, 1), (ancho - 12, 1), 1)
-            # Vértices góticos
-            w_lim = ancho - 1
-            h_lim = alto - 1
-            for vx, vy, vdx, vdy in ((0, 0, 1, 1), (w_lim, 0, -1, 1),
-                                     (0, h_lim, 1, -1), (w_lim, h_lim, -1, -1)):
-                pygame.draw.line(surf, HUD_ORO, (vx + 4 * vdx, vy),
-                                 (vx + 16 * vdx, vy), 1)
-                pygame.draw.line(surf, HUD_ORO, (vx, vy + 4 * vdy),
-                                 (vx, vy + 14 * vdy), 1)
-            surf = surf.convert_alpha()
+            if estilo == "NES":
+                # Modelo A1: 100% opaco, esquinas escalonadas de 4px, cero costo de alpha para Vaio
+                surf = pygame.Surface((ancho, alto))
+                surf.fill((9, 8, 13))
+                pygame.draw.rect(surf, (104, 82, 52), (0, 0, ancho, alto), 1)
+                pygame.draw.rect(surf, (216, 180, 104), (3, 3, ancho - 6, alto - 6), 1)
+                for cx, cy in ((0, 0), (ancho - 4, 0), (0, alto - 4), (ancho - 4, alto - 4)):
+                    pygame.draw.rect(surf, (9, 8, 13), (cx, cy, 4, 4))
+                    pygame.draw.rect(surf, (216, 180, 104), (cx + 1, cy + 1, 2, 2))
+                try:
+                    surf = surf.convert()
+                except Exception:
+                    pass
+            elif estilo == "SNES":
+                # Modelo A2: Marco biselado 3D con remaches en esquinas
+                a = alpha if alpha is not None else 225
+                surf = pygame.Surface((ancho, alto), pygame.SRCALPHA)
+                pygame.draw.rect(surf, (16, 14, 26, a), (0, 0, ancho, alto), border_radius=6)
+                pygame.draw.line(surf, (238, 202, 118), (4, 1), (ancho - 5, 1), 2)
+                pygame.draw.line(surf, (216, 180, 104), (1, 4), (1, alto - 5), 2)
+                pygame.draw.line(surf, (72, 52, 28), (4, alto - 2), (ancho - 5, alto - 2), 2)
+                pygame.draw.line(surf, (72, 52, 28), (ancho - 2, 4), (ancho - 2, alto - 5), 2)
+                pygame.draw.rect(surf, (140, 110, 65, 240), (3, 3, ancho - 6, alto - 6), 1, border_radius=4)
+                for rx, ry in ((7, 7), (ancho - 8, 7), (7, alto - 8), (ancho - 8, alto - 8)):
+                    pygame.draw.circle(surf, (40, 30, 20), (rx, ry), 3)
+                    pygame.draw.circle(surf, (238, 202, 118), (rx, ry), 2)
+                try:
+                    surf = surf.convert_alpha()
+                except Exception:
+                    pass
+            else:
+                # Modelo A3: Marco gótico detallado con filigrana
+                a = alpha if alpha is not None else self.tema.panel_bg[3]
+                surf = pygame.Surface((ancho, alto), pygame.SRCALPHA)
+                pygame.draw.rect(surf, (*self.tema.panel_bg[:3], a),
+                                 surf.get_rect(), border_radius=12)
+                pygame.draw.rect(surf, (*self.tema.panel_border,
+                                        self.tema.panel_border_alpha),
+                                 surf.get_rect(), 1, border_radius=12)
+                pygame.draw.rect(surf, (58, 46, 36, 180), (3, 3, ancho - 6, alto - 6), 1, border_radius=9)
+                pygame.draw.line(surf, self.tema.linea_oro, (12, 1), (ancho - 12, 1), 1)
+                w_lim = ancho - 1
+                h_lim = alto - 1
+                for vx, vy, vdx, vdy in ((0, 0, 1, 1), (w_lim, 0, -1, 1),
+                                         (0, h_lim, 1, -1), (w_lim, h_lim, -1, -1)):
+                    pygame.draw.line(surf, HUD_ORO, (vx + 4 * vdx, vy),
+                                     (vx + 18 * vdx, vy), 2)
+                    pygame.draw.line(surf, HUD_ORO, (vx, vy + 4 * vdy),
+                                     (vx, vy + 16 * vdy), 2)
+                try:
+                    surf = surf.convert_alpha()
+                except Exception:
+                    pass
             self._paneles_cache[clave] = surf
         return surf
 
@@ -548,10 +586,56 @@ class HudRenderer:
         return (cx, cy, r, top_y, tip_y, lleno, t)
 
     def dibujar_corazon(self, pantalla, cx, cy, lleno, escala=1.0):
+        import config
+        estilo = config.resolver_estilo(getattr(config, "ESTILO_HUD", "AUTO"))
         t = self.tema
         r = int(t.corazon_radio * escala)
         top_y = cy - 4
         tip_y = cy + 14
+
+        if estilo == "NES":
+            # Modelo A1: Corazón pixel-art ortogonal de 8-bits sin alpha pesada
+            c_fill = (235, 30, 54) if lleno else (30, 24, 34)
+            c_rim = (216, 180, 104) if lleno else (70, 56, 42)
+            c_shine = (255, 230, 235) if lleno else None
+            pygame.draw.rect(pantalla, c_rim, (cx - 10, cy - 6, 8, 3))
+            pygame.draw.rect(pantalla, c_rim, (cx + 2, cy - 6, 8, 3))
+            pygame.draw.rect(pantalla, c_fill, (cx - 9, cy - 5, 6, 2))
+            pygame.draw.rect(pantalla, c_fill, (cx + 3, cy - 5, 6, 2))
+            pygame.draw.rect(pantalla, c_rim, (cx - 12, cy - 3, 24, 6))
+            pygame.draw.rect(pantalla, c_fill, (cx - 10, cy - 3, 20, 6))
+            pygame.draw.rect(pantalla, c_rim, (cx - 9, cy + 3, 18, 4))
+            pygame.draw.rect(pantalla, c_fill, (cx - 7, cy + 3, 14, 4))
+            pygame.draw.rect(pantalla, c_rim, (cx - 5, cy + 7, 10, 3))
+            pygame.draw.rect(pantalla, c_fill, (cx - 3, cy + 7, 6, 3))
+            pygame.draw.rect(pantalla, c_rim, (cx - 2, cy + 10, 4, 2))
+            if c_shine:
+                pygame.draw.rect(pantalla, c_shine, (cx - 7, cy - 2, 3, 3))
+            return
+
+        if estilo == "SNES":
+            # Modelo A2: Gema octogonal facetada con engarce de oro 16-bit
+            c_base = (215, 24, 48) if lleno else (36, 28, 42)
+            c_borde_oro = (238, 202, 118)
+            puntos = [
+                (cx - 5, cy - 7), (cx + 5, cy - 7),
+                (cx + 10, cy - 2), (cx + 10, cy + 4),
+                (cx + 5, cy + 10), (cx - 5, cy + 10),
+                (cx - 10, cy + 4), (cx - 10, cy - 2)
+            ]
+            pygame.draw.polygon(pantalla, (40, 30, 20), [(p[0], p[1] + 1) for p in puntos])
+            pygame.draw.polygon(pantalla, c_base, puntos)
+            pygame.draw.polygon(pantalla, c_borde_oro, puntos, 1)
+            if lleno:
+                pygame.draw.polygon(pantalla, (140, 16, 32), [
+                    (cx, cy + 1), (cx + 10, cy + 4), (cx + 5, cy + 10), (cx, cy + 10)
+                ])
+                pygame.draw.line(pantalla, (255, 120, 145), (cx - 5, cy - 7), (cx, cy + 1), 1)
+                pygame.draw.line(pantalla, (255, 120, 145), (cx + 5, cy - 7), (cx, cy + 1), 1)
+                pygame.draw.circle(pantalla, (255, 240, 245), (cx - 3, cy - 3), 2)
+            return
+
+        # Modelo A3: Procedural Gótico (Corazón Delator)
         if lleno:
             color_base = t.corazon_lleno
             color_borde = (160, 18, 32)
@@ -649,6 +733,21 @@ class HudRenderer:
     # --- Dibujo principal ---
     def dibujar(self, pantalla, modelo: HudModel, mensajes: MensajeHUD,
                 reducir_movimiento=False, dt=0.0, modo_hud=0, timer_inmersivo=0.0):
+        # Disparo y avance de tweens según eventos reactivos del modelo
+        if not reducir_movimiento:
+            if modelo.evento_alma_recogida():
+                self.tween_alma.reiniciar(0.25, "out_back")
+            if modelo.evento_dash_listo():
+                self.tween_dash.reiniciar(0.30, "out_back")
+            if modelo.evento_arma_listo():
+                self.tween_arma.reiniciar(0.25, "out_back")
+            if modelo.evento_jefe_dañado() or modelo.evento_jefe_cambio_fase():
+                self.tween_jefe.reiniciar(0.22, "out_cubic")
+            self.tween_alma.update(dt)
+            self.tween_dash.update(dt)
+            self.tween_arma.update(dt)
+            self.tween_jefe.update(dt)
+
         # Modo de HUD: 0: Completo, 1: Compacto (alpha 140), 2: Inmersivo (oculto salvo jefe o evento)
         if modo_hud == 0:
             alpha_riel = 255
@@ -767,14 +866,20 @@ class HudRenderer:
             img_f = self._texto(fase_txt, self.tema.fuente_label,
                                 self.tema.rojo if modelo.jefe_fase >= 2 else self.tema.texto_secundario)
             pantalla.blit(img_f, (c.right - img_f.get_width(), c.y))
-            # Barra de jefe: segmentos según vida_max
-            barra_y = c.y + 30
+            # Barra de jefe: segmentos según vida_max (con temblor reactivo si está herido o en Fase 2)
+            offset_jefe_y = 0
+            if not reducir_movimiento and (modelo.jefe_fase >= 2 or self.tween_jefe.esta_activo()):
+                offset_jefe_y = int(2.0 * math.sin(pygame.time.get_ticks() / 1000.0 * 30.0))
+            barra_y = c.y + 30 + offset_jefe_y
             vida_max = getattr(modelo, "jefe_vida_max", JEFE_VIDA) or JEFE_VIDA
             segmento_w = 68 if vida_max == JEFE_VIDA else 138
             segmento_h = 12
             gap = 4
             x_seg = c.x
             for i in range(vida_max):
+                if i > 0:
+                    # Separadores óseos entre cada segmento
+                    pygame.draw.line(pantalla, (216, 200, 175), (x_seg - 2, barra_y + 1), (x_seg - 2, barra_y + segmento_h - 2), 1)
                 llena = i < modelo.jefe_vida
                 color = (self.tema.jefe_segmento_lleno if llena
                          else self.tema.jefe_segmento_vacio)
@@ -813,6 +918,9 @@ class HudRenderer:
         x0 = c.x
         y0 = c.y
         self._icono_alma(pantalla, x0 + 4, y0 + 3, self.tema.alma)
+        if self.tween_alma.esta_activo() and not reducir_movimiento:
+            pulso_a = 1.0 - self.tween_alma.t
+            pygame.draw.circle(pantalla, (180, 240, 255), (x0 + 10, y0 + 11), int(8 + pulso_a * 6), 1)
         txt_alma = f"[ALMA] {modelo.almas}/{modelo.almas_total}"
         img_a = self._texto(txt_alma, self.tema.fuente_contador, self.tema.oro)
         pantalla.blit(img_a, (x0 + 24, y0))
@@ -829,6 +937,9 @@ class HudRenderer:
         color_dash = self.tema.dash_turquesa if listo else self.muted_color()
         img_d = self._texto(txt_dash, self.tema.fuente_contador, color_dash)
         self._icono_ala_dash(pantalla, x1 + 2, y0, color_dash)
+        if listo and self.tween_dash.esta_activo() and not reducir_movimiento:
+            pulso_d = 1.0 - self.tween_dash.t
+            pygame.draw.circle(pantalla, (220, 255, 250), (x1 + 10, y0 + 8), int(10 + pulso_d * 6), 1)
         pantalla.blit(img_d, (x1 + 24, y0))
         # Fila 2: VIDA EXTRA X/10 + pips | [PALA] estado
         y1 = y0 + celda_h + gap_y
@@ -859,6 +970,9 @@ class HudRenderer:
                       else self.tema.pala) if modelo.tiene_pala else self.muted_color()
         img_ar = self._texto(txt_arma, self.tema.fuente_contador, color_arma)
         self._icono_pala(pantalla, x1 + 2, y1, modelo.rango_ataque_mejorado, color_arma)
+        if self.tween_arma.esta_activo() and not reducir_movimiento:
+            pulso_ar = 1.0 - self.tween_arma.t
+            pygame.draw.circle(pantalla, (255, 230, 160), (x1 + 10, y1 + 8), int(9 + pulso_ar * 5), 1)
         pantalla.blit(img_ar, (x1 + 24, y1))
 
     # --- Canal de mensajes ---

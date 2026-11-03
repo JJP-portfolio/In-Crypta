@@ -2,17 +2,17 @@
 # ============================================================
 # tools/hornear_assets_unificados.py
 # ============================================================
-# Genera y consolida los assets PNG compartidos entre Pygame y GDevelop:
+# Genera y consolida los assets PNG de IN CRYPTA (Pygame-CE):
 #   1. Rampas de color estrictas de 4 tonos (Highlight -> Base -> Shadow ->
 #      Outline 1px oscuro (12, 10, 16)) coherentes con la paleta gótica de IN CRYPTA.
 #   2. Texturas de iluminación con caída cuadrática suave intensity = (1.0 - norm) ** 2.2
 #      y borde exactamente en 0 para r >= radius - 1 (evitando bordes cuadrados al blitear)
-#      en assets_pixelart/luces/ y export/gdevelop_nativo/assets/.
+#      en assets_pixelart/luces/.
 #   3. Iconos y paneles del HUD de alto detalle gótico (relicarios biselados,
 #      corazones de rubí facetado con engarce de oro, barra_hud.png y barra_pista.png)
-#      en assets_pixelart/hud/ y export/gdevelop_nativo/assets/.
-#   4. Spritesheets consolidados en assets_pixelart/spritesheets/ y
-#      export/gdevelop_nativo/assets/ (+ manifiesto JSON de coordenadas).
+#      en assets_pixelart/hud/.
+#   4. Spritesheets consolidados en assets_pixelart/spritesheets/
+#      (+ manifiesto JSON de coordenadas).
 # ============================================================
 
 import json
@@ -30,7 +30,6 @@ DIR_PIXELART = RAIZ / "assets_pixelart"
 DIR_LUCES = DIR_PIXELART / "luces"
 DIR_HUD = DIR_PIXELART / "hud"
 DIR_SPRITESHEETS = DIR_PIXELART / "spritesheets"
-DIR_GD_ASSETS = RAIZ / "export" / "gdevelop_nativo" / "assets"
 
 # Outline oscuro universal de 1px (estilo gótico IN CRYPTA)
 OUTLINE_OSCURO = (12, 10, 16)
@@ -243,7 +242,6 @@ def _crear_barra_pista_obsidiana(ancho: int = 560, alto: int = 48) -> pygame.Sur
 def generar_iconos_hud() -> dict:
     """Genera los iconos individuales y barras del HUD usando rampas de 4 tonos + outline 1px."""
     DIR_HUD.mkdir(parents=True, exist_ok=True)
-    DIR_GD_ASSETS.mkdir(parents=True, exist_ok=True)
 
     iconos = {}
     iconos["corazon_lleno"] = _dibujar_corazon_icono(True, False)
@@ -314,16 +312,13 @@ def generar_iconos_hud() -> dict:
     for nombre, surf in iconos.items():
         fname = f"{nombre}.png"
         pygame.image.save(surf, str(DIR_HUD / fname))
-        pygame.image.save(surf, str(DIR_GD_ASSETS / fname))
 
     # También hornear barra_hud.png y barra_pista.png actualizados
     barra_hud = _crear_barra_hud_relicario(436, 86)
     pygame.image.save(barra_hud, str(DIR_HUD / "barra_hud.png"))
-    pygame.image.save(barra_hud, str(DIR_GD_ASSETS / "barra_hud.png"))
 
     barra_pista = _crear_barra_pista_obsidiana(560, 48)
     pygame.image.save(barra_pista, str(DIR_HUD / "barra_pista.png"))
-    pygame.image.save(barra_pista, str(DIR_GD_ASSETS / "barra_pista.png"))
 
     return iconos
 
@@ -380,18 +375,15 @@ def hornear_todo():
     DIR_LUCES.mkdir(parents=True, exist_ok=True)
     DIR_HUD.mkdir(parents=True, exist_ok=True)
     DIR_SPRITESHEETS.mkdir(parents=True, exist_ok=True)
-    DIR_GD_ASSETS.mkdir(parents=True, exist_ok=True)
 
     # 1. Texturas de iluminación radiales y nieblas
     for fname, w, h, color, max_a in LUCES_RADIALES:
         surf = crear_luz_radial(w, h, color, max_a)
         pygame.image.save(surf, str(DIR_LUCES / fname))
-        pygame.image.save(surf, str(DIR_GD_ASSETS / fname))
 
     for fname, w, h, color, a_top, a_bot in NIEBLAS_VERTICALES:
         surf = crear_niebla_vertical(w, h, color, a_top, a_bot)
         pygame.image.save(surf, str(DIR_LUCES / fname))
-        pygame.image.save(surf, str(DIR_GD_ASSETS / fname))
 
     # 2. Iconos del HUD
     iconos_hud = generar_iconos_hud()
@@ -401,14 +393,9 @@ def hornear_todo():
 
     # 3a. Jugador
     rutas_jugador = sorted((DIR_PIXELART / "jugador").glob("*.png"))
-    for extra in ("jugador.png", "jugador_izq.png", "jugador_sin_pala.png", "jugador_izq_sin_pala.png"):
-        p_extra = DIR_GD_ASSETS / extra
-        if p_extra.exists():
-            rutas_jugador.append(p_extra)
     items_jugador = cargar_sprites_categoria(rutas_jugador)
     sheet_jugador, meta_jugador = empaquetar_spritesheet(items_jugador, cols=8)
     pygame.image.save(sheet_jugador, str(DIR_SPRITESHEETS / "spritesheet_jugador.png"))
-    pygame.image.save(sheet_jugador, str(DIR_GD_ASSETS / "spritesheet_jugador.png"))
     manifiesto["spritesheet_jugador.png"] = meta_jugador
 
     # 3b. Enemigos (moradores / enemigos básicos)
@@ -416,14 +403,9 @@ def hornear_todo():
         p for p in (DIR_PIXELART / "enemigos").glob("*.png")
         if p.stem.startswith("enemy")
     )
-    for extra in ("enemy.png", "enemymelee.png"):
-        p_extra = DIR_GD_ASSETS / extra
-        if p_extra.exists():
-            rutas_enemigos.append(p_extra)
     items_enemigos = cargar_sprites_categoria(rutas_enemigos)
     sheet_enemigos, meta_enemigos = empaquetar_spritesheet(items_enemigos, cols=4)
     pygame.image.save(sheet_enemigos, str(DIR_SPRITESHEETS / "spritesheet_enemigos.png"))
-    pygame.image.save(sheet_enemigos, str(DIR_GD_ASSETS / "spritesheet_enemigos.png"))
     manifiesto["spritesheet_enemigos.png"] = meta_enemigos
 
     # 3c. Jefes (Custodio del Osario y Carcelero del Osario + onda)
@@ -431,45 +413,34 @@ def hornear_todo():
         p for p in (DIR_PIXELART / "enemigos").glob("*.png")
         if p.stem.startswith("jefe") or p.stem.startswith("minijefe")
     )
-    for extra in ("jefe.png", "minijefe.png", "onda_jefe.png"):
-        p_extra = (DIR_PIXELART / "escenario" / extra) if (DIR_PIXELART / "escenario" / extra).exists() else (DIR_GD_ASSETS / extra)
+    for extra in ("onda_jefe.png",):
+        p_extra = DIR_PIXELART / "escenario" / extra
         if p_extra.exists():
             rutas_jefes.append(p_extra)
     items_jefes = cargar_sprites_categoria(rutas_jefes)
     sheet_jefes, meta_jefes = empaquetar_spritesheet(items_jefes, cols=4)
     pygame.image.save(sheet_jefes, str(DIR_SPRITESHEETS / "spritesheet_jefes.png"))
-    pygame.image.save(sheet_jefes, str(DIR_GD_ASSETS / "spritesheet_jefes.png"))
     manifiesto["spritesheet_jefes.png"] = meta_jefes
 
     # 3d. Interactivos y escenario
     rutas_inter = sorted((DIR_PIXELART / "interactivos").glob("*.png")) + sorted((DIR_PIXELART / "escenario").glob("*.png"))
-    for extra in ("alma.png", "farolcheckpoint.png", "pala.png", "powerupdash.png", "poweruprango.png"):
-        p_extra = DIR_GD_ASSETS / extra
-        if p_extra.exists():
-            rutas_inter.append(p_extra)
     items_inter = cargar_sprites_categoria(rutas_inter)
     sheet_inter, meta_inter = empaquetar_spritesheet(items_inter, cols=6)
     pygame.image.save(sheet_inter, str(DIR_SPRITESHEETS / "spritesheet_interactivos.png"))
-    pygame.image.save(sheet_inter, str(DIR_GD_ASSETS / "spritesheet_interactivos.png"))
     manifiesto["spritesheet_interactivos.png"] = meta_inter
 
     # 3e. HUD
     items_hud = list(iconos_hud.items())
-    for extra in ("barra_hud.png", "barra_pista.png"):
-        p_extra = DIR_GD_ASSETS / extra
-        if p_extra.exists():
-            items_hud.append((p_extra.stem, pygame.image.load(str(p_extra))))
     sheet_hud, meta_hud = empaquetar_spritesheet(items_hud, cols=5)
     pygame.image.save(sheet_hud, str(DIR_SPRITESHEETS / "spritesheet_hud.png"))
-    pygame.image.save(sheet_hud, str(DIR_GD_ASSETS / "spritesheet_hud.png"))
     manifiesto["spritesheet_hud.png"] = meta_hud
 
     with open(DIR_SPRITESHEETS / "spritesheets_manifest.json", "w", encoding="utf-8") as f:
         json.dump(manifiesto, f, indent=2, ensure_ascii=False)
 
-    print(f"[OK] Luces generadas: {len(LUCES_RADIALES) + len(NIEBLAS_VERTICALES)} en {DIR_LUCES} y {DIR_GD_ASSETS}")
-    print(f"[OK] Iconos HUD generados: {len(iconos_hud)} (+ barras) en {DIR_HUD} y {DIR_GD_ASSETS}")
-    print(f"[OK] Spritesheets generados: {len(manifiesto)} en {DIR_SPRITESHEETS} y {DIR_GD_ASSETS}")
+    print(f"[OK] Luces generadas: {len(LUCES_RADIALES) + len(NIEBLAS_VERTICALES)} en {DIR_LUCES}")
+    print(f"[OK] Iconos HUD generados: {len(iconos_hud)} (+ barras) en {DIR_HUD}")
+    print(f"[OK] Spritesheets generados: {len(manifiesto)} en {DIR_SPRITESHEETS}")
 
 
 if __name__ == "__main__":

@@ -16,18 +16,24 @@
 import asyncio
 import os
 import sys
+import warnings
 from pathlib import Path
 
-# Import directo a nivel módulo. El escáner de Pygbag (PEP 723) sólo analiza
-# los imports del archivo de entrada; no entra en juego.py ni en hud.py.
-# Sin esta línea, Pygbag no descarga el wheel de pygame-ce para WebAssembly.
-import pygame
+# Suprimir avisos de librerías externas obsoletas
+warnings.filterwarnings("ignore", category=UserWarning)
 
-# Asegurar que el directorio de trabajo y sys.path apunten siempre a la raíz del juego
 RAIZ = Path(__file__).resolve().parent
 os.chdir(RAIZ)
 if str(RAIZ) not in sys.path:
     sys.path.insert(0, str(RAIZ))
+
+# Si existe el entorno virtual del proyecto con pygame-ce y numpy, preferirlo automáticamente
+venv_python = RAIZ / ".venv" / "bin" / "python"
+if venv_python.exists() and sys.executable != str(venv_python) and not os.environ.get("_IN_CRYPTA_VENV_ACTIVE"):
+    os.environ["_IN_CRYPTA_VENV_ACTIVE"] = "1"
+    os.execv(str(venv_python), [str(venv_python)] + sys.argv)
+
+import pygame
 
 from juego import Juego
 

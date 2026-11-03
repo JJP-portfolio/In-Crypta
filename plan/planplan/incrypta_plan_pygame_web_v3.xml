@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<incrypta_plan_web version="3.0" fecha="2026-11-03">
+
+  <metadata>
+    <proyecto>IN CRYPTA</proyecto>
+    <repositorio>https://github.com/JJP-portfolio/In-Crypta</repositorio>
+    <rama_trabajo>perf/web-v2-medicion</rama_trabajo>
+    <estado_academico>Entrega formal en Pygame (Pygame-CE) APROBADA por el docente/cátedra.</estado_academico>
+    <objetivo>Garantizar que IN CRYPTA sea 100% jugable online mediante navegador (Pygbag / WebAssembly) sin pantalla gris, eliminando por completo GDevelop del proyecto y logrando una experiencia 'cero configuración' donde el profesor sólo deba abrir un enlace para jugar.</objetivo>
+    <restriccion_cardinal>NO reconstruir ni reescribir el juego en otro motor (Godot, Phaser, PixiJS) ni rehacer el código base de Pygame. El juego está completo, verificado y aprobado.</restriccion_cardinal>
+    <decision_motor>GDevelop queda 100% descartado, borrado y fuera del flujo de trabajo.</decision_motor>
+  </metadata>
+
+  <estado_actual_y_mediciones_v2>
+    <diagnostico_comparativo>
+      <medicion id="pygbag_base" motor="Pygbag Base (7d676ce)">
+        <fps_titulo>24.7</fps_titulo>
+        <fps_gameplay>29.6</fps_gameplay>
+        <peso_apk_mib>4.73</peso_apk_mib>
+        <estado>Estable, reproduce el juego completo con audio y assets al 100%.</estado>
+      </medicion>
+      <medicion id="pygbag_v2" motor="Pygbag v2 con Caché LRU (df604ad)">
+        <fps_titulo>25.5</fps_titulo>
+        <fps_gameplay>29.2</fps_gameplay>
+        <peso_apk_mib>4.73</peso_apk_mib>
+        <estado>Caché LRU funcional (7/7 tests passed), suprime regeneración masiva de TTF por cuadro.</estado>
+      </medicion>
+      <medicion id="js_custom" motor="export/gdevelop PixiJS">
+        <fps_gameplay>29.4</fps_gameplay>
+        <errores>5 HTTP 404 por assets faltantes y 5 excepciones de página Event.</errores>
+        <conclusion>No cumple el umbral de fluidez (exigía >= 55 FPS) y presenta inconsistencias de assets.</conclusion>
+      </medicion>
+      <medicion id="gdjs_oficial" motor="GDevelop 5.6 Nativo">
+        <arranco>false</arranco>
+        <errores>gdjs is not defined. libGD.js falla al compilar eventos con Node v26.</errores>
+        <conclusion>Completamente inoperable en la plataforma web actual.</conclusion>
+      </medicion>
+    </diagnostico_comparativo>
+    <conclusion_definitiva>
+      La ruta de motores JS queda cerrada definitivamente. Se unifica el 100% del esfuerzo en la versión Pygame WebAssembly (Pygbag).
+    </conclusion_definitiva>
+  </estado_actual_y_mediciones_v2>
+
+  <diagnostico_pantalla_gris>
+    <sintoma_reportado>
+      El usuario abre http://localhost:8000/index.html en su navegador y observa una pantalla gris (#7f7f7f) con el recuadro del canvas vacío sin iniciar el juego.
+    </sintoma_reportado>
+    <causa_raiz_verificada>
+      En los logs del servidor HTTP (task-220) se constató la petición:
+        "GET /cdn/cp312/pygame_ce-2.5.7-cp312-cp312-wasm32_bi_emscripten.whl HTTP/1.1" 404 (File not found)
+      El loader de Pygbag (pythons.js / cpythonrc.py) intenta descargar el paquete binario de pygame-ce usando una ruta absoluta relativa al origen host (/cdn/cp312/...) en lugar de consultar la CDN de GitHub Pages. Al dar 404, el intérprete Python en WebAssembly no puede importar pygame y la ejecución aborta antes de ejecutar main.py.
+    </causa_raiz_verificada>
+    <factores_asociados>
+      <factor id="F1">Dependencia de red frágil: El runtime descarga más de 10 MiB de dependencias externas en tiempo de ejecución desde pygame-web.github.io.</factor>
+      <factor id="F2">Autoplay de audio en navegadores: Si el usuario no interactúa con un elemento visible, el AudioContext de WebAudio queda suspendido.</factor>
+      <factor id="F3">Overlay de inicio: Si el botón de inicio no es pulsado o el script de Pygbag espera engagement sin feedback visual claro, la pantalla permanece estática.</factor>
+    </factores_asociados>
+  </diagnostico_pantalla_gris>
+
+  <estrategia_solucion_pygame_web>
+    <eje id="1" nombre="Eliminación total de GDevelop">
+      - Depurar y borrar scripts obsoletos relacionados a GDevelop (exportar_todo.sh, compilar_proyecto_gd.js, empaquetar_gd_games.py, etc.).
+      - Eliminar carpetas residuales export/gdevelop/ y export/gdevelop_nativo/.
+      - Limpiar referencias en Makefile, README.md y documentación técnica.
+      - Quedarse exclusivamente con el pipeline limpio de Pygame: juego.py, main.py, exportar_web_pygame.py.
+    </eje>
+    <eje id="2" nombre="Resolución de pantalla gris y auto-suficiencia de Pygbag">
+      - Alojar localmente en export/web_pygame/build/web/cdn/cp312/ el wheel 'pygame_ce-2.5.7-cp312-cp312-wasm32_bi_emscripten.whl'.
+      - Servir el wheel directamente desde el host local / remoto para que la petición nunca devuelva HTTP 404.
+      - Ajustar index.html y la plantilla de Pygbag para apuntar a rutas consistentes y evitar caídas por CORS o bloqueo de CDN externo.
+      - Garantizar que el botón de inicio gótico (#incrypta-inicio-btn) sea visible inmediatamente, reaccione al primer clic y desbloquee el AudioContext.
+    </eje>
+    <eje id="3" nombre="Entrega Online para el Profesor">
+      - La versión online debe vivir en una URL accesible con 1 clic (GitHub Pages o Render).
+      - El profesor no debe clonar git, no debe instalar Python, no debe ejecutar bash ni escribir comandos en terminal.
+      - Abrir la URL debe mostrar el juego arrancando de forma autónoma.
+    </eje>
+  </estrategia_solucion_pygame_web>
+
+  <plan_fases_v3>
+    <fase id="F1_LIMPIEZA" nombre="Eliminación de GDevelop">
+      - Desvincular todas las tareas y scripts de GDJS/GDevelop.
+      - Eliminar export/gdevelop y export/gdevelop_nativo.
+      - Mantener sólo el código de Pygame, assets originales y exportar_web_pygame.py.
+    </fase>
+    <fase id="F2_WHEEL_LOCAL" nombre="Solución al 404 de pygame-ce">
+      - Descargar o enlazar pygame_ce-2.5.7-cp312-cp312-wasm32_bi_emscripten.whl dentro del build en cdn/cp312/.
+      - Probar en servidor local que la petición /cdn/cp312/... responda HTTP 200 OK.
+    </fase>
+    <fase id="F3_OVERLAY_Y_AUDIO" nombre="Aseguramiento de Arranque y Feedback">
+      - Asegurar que la pantalla de carga muestre progreso y que el botón de inicio permita arrancar el juego sin congelamiento.
+      - Validar que tras el clic, el canvas 1280x720 pase al estado de Título sin pantalla gris.
+    </fase>
+    <fase id="F4_VALIDACION" nombre="Playtest Automatizado y en Navegador">
+      - Medir con medir_web.py que no haya respuestas HTTP >= 400.
+      - Verificar arranque en Playwright y en el navegador del usuario.
+    </fase>
+    <fase id="F5_PUBLICACION" nombre="Publicación Web para el Profesor">
+      - Generar el build final autocontenido en la rama de despliegue (gh-pages o Render).
+      - Proveer la URL final para que la cátedra juegue online inmediatamente.
+    </fase>
+  </plan_fases_v3>
+
+  <reglas_duras>
+    <regla id="R1">PROHIBIDO reconstruir el juego en otro motor (Godot, Phaser, PixiJS, etc.) o reescribir la lógica de Pygame.</regla>
+    <regla id="R2">GDevelop queda 100% borrado y desestimado de todo el proyecto.</regla>
+    <regla id="R3">El entregable online debe funcionar al primer clic en el navegador, sin pantalla gris ni configuración previa.</regla>
+    <regla id="R4">No se realiza push ni despliegue a producción sin aprobación explícita del usuario.</regla>
+  </reglas_duras>
+
+</incrypta_plan_web>

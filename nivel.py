@@ -692,27 +692,34 @@ class Nivel:
             if tema == "osario":
                 color_losa = (60, 46, 48)
                 color_marco = (28, 20, 22)
-                color_bisel = (160, 130, 125)
+                color_bisel = (218, 208, 186)
             elif tema == "cripta":
                 color_losa = (50, 52, 64)
                 color_marco = (22, 24, 32)
-                color_bisel = (155, 165, 182)
+                color_bisel = (180, 198, 222)
             else:
                 color_losa = (56, 50, 62)
                 color_marco = (24, 20, 28)
-                color_bisel = (168, 160, 178)
+                color_bisel = (165, 185, 160)
 
             pygame.draw.rect(surface, color_losa, rect, border_radius=3)
             # Marco exterior labrado
             pygame.draw.rect(surface, color_marco, rect, 2, border_radius=3)
 
-            # Bisel de piedra pulida en la superficie de paso
+            # Bisel de piedra pulida en la superficie de paso (Walkable Edge Cue)
             pygame.draw.line(
                 surface,
                 color_bisel,
                 (rect.x + 3, rect.y + 1),
                 (rect.right - 3, rect.y + 1),
                 2,
+            )
+            pygame.draw.line(
+                surface,
+                (10, 8, 14),
+                (rect.x + 3, rect.y + 3),
+                (rect.right - 3, rect.y + 3),
+                1,
             )
 
             # Relieve de cruz gótica labrada en la tapa del sarcófago
@@ -754,23 +761,30 @@ class Nivel:
     def dibujar_solidos(self, surface, camara):
         tema = getattr(self, "tema", "camposanto")
         if tema == "cripta":
+            c_bisel_top = (180, 198, 222)
             color_piso = (48, 52, 62)
             color_piso_profundo = (30, 32, 40)
             color_borde = (20, 22, 28)
             color_arriba = (55, 78, 68)
             color_brizna = (82, 118, 102)
         elif tema == "osario":
+            c_bisel_top = (218, 208, 186)
             color_piso = (62, 45, 43)
             color_piso_profundo = (38, 26, 26)
             color_borde = (26, 18, 20)
             color_arriba = (96, 58, 52)
             color_brizna = (136, 86, 78)
         else:
+            c_bisel_top = (165, 185, 160)
             color_piso = (68, 52, 42)
             color_piso_profundo = (44, 32, 26)
             color_borde = (28, 20, 16)
             color_arriba = (48, 76, 44)
             color_brizna = (76, 114, 68)
+
+        import config
+        estilo = config.resolver_estilo(getattr(config, "ESTILO_MUNDO", "AUTO"))
+        c_corte = (10, 8, 14)
 
         for solido in self.solidos:
             if not camara.is_on_screen(solido):
@@ -787,23 +801,48 @@ class Nivel:
                 and self.filas[fila - 1][columna] == "#"
             )
 
+            # MODELO B1: NES (8-bit ortogonal, ultraligero para Vaio)
+            if estilo == "NES":
+                c_fill = color_piso_profundo if tiene_arriba else color_piso
+                pygame.draw.rect(surface, c_fill, rect)
+                pygame.draw.rect(surface, c_corte, rect, 1)
+                for gx in range(rect.x + TILE, rect.right, TILE):
+                    pygame.draw.line(surface, c_corte, (gx, rect.y), (gx, rect.bottom), 1)
+                if not tiene_arriba:
+                    pygame.draw.rect(surface, c_bisel_top, (rect.x, rect.y, rect.width, 3))
+                    pygame.draw.rect(surface, c_corte, (rect.x, rect.y + 3, rect.width, 2))
+                continue
+
+            # MODELO B2: SNES (16-bit con sillería estratificada y corona de 5px)
+            if estilo == "SNES":
+                desplazamiento = (TILE // 2) if fila % 2 == 1 else 0
+                c_ladrillo = (58, 56, 70) if tema == "cripta" else ((68, 54, 52) if tema == "osario" else (62, 58, 50))
+                pygame.draw.rect(surface, c_ladrillo, rect)
+                pygame.draw.rect(surface, c_corte, rect, 1)
+                start_y = rect.y + 7 if not tiene_arriba else rect.y
+                for gx in range(rect.x + desplazamiento, rect.right, TILE):
+                    pygame.draw.line(surface, c_corte, (gx, start_y), (gx, rect.bottom), 1)
+                    pygame.draw.line(surface, (84, 82, 98), (gx + 1, start_y), (gx + 1, rect.bottom), 1)
+                if not tiene_arriba:
+                    pygame.draw.rect(surface, c_bisel_top, (rect.x, rect.y, rect.width, 3))
+                    c_bisel_sub = (max(0, c_bisel_top[0] - 30), max(0, c_bisel_top[1] - 30), max(0, c_bisel_top[2] - 30))
+                    pygame.draw.rect(surface, c_bisel_sub, (rect.x, rect.y + 3, rect.width, 2))
+                    pygame.draw.rect(surface, c_corte, (rect.x, rect.y + 5, rect.width, 2))
+                continue
+
+            # MODELO B3: PROC (Procedural Gótico con Walkable Edge Cue obligatorio)
             if es_piso:
                 if not tiene_arriba:
-                    # Suelo superficial expuesto: estrato de tierra oscura con gravilla y losas
                     pygame.draw.rect(surface, color_piso, rect)
                     pygame.draw.rect(surface, color_borde, rect, 1)
-
-                    # Capa de hierba marchita / musgo superior
                     pygame.draw.rect(surface, color_arriba, (rect.x, rect.y, rect.width, 5))
-                    # Bisel luminoso superior de luz lunar
-                    pygame.draw.line(surface, color_brizna, (rect.x, rect.y), (rect.right, rect.y), 1)
+                    pygame.draw.line(surface, c_bisel_top, (rect.x, rect.y), (rect.right, rect.y), 2)
+                    pygame.draw.line(surface, c_corte, (rect.x, rect.y + 2), (rect.right, rect.y + 2), 2)
 
-                    # Briznas orgánicas de hierba marchita de alturas consistentes
                     for bx in range(rect.x + 3, rect.right - 2, 6):
                         alt = 2 + ((bx * 11) % 5)
                         pygame.draw.line(surface, color_brizna, (bx, rect.y), (bx, rect.y - alt), 1)
 
-                    # Losas de lápidas fracturadas incrustadas al ras de la tierra
                     for lx in range(rect.x + 16, rect.right - 24, 64):
                         ly = rect.y + 3
                         pygame.draw.rect(surface, (72, 70, 78), (lx, ly, 16, 8), border_radius=1)
@@ -811,55 +850,60 @@ class Nivel:
                         pygame.draw.line(surface, (20, 16, 22), (lx + 5, ly + 1), (lx + 9, ly + 7), 1)
                         pygame.draw.line(surface, (115, 120, 130), (lx + 1, ly + 1), (lx + 15, ly + 1), 1)
 
-                    # Textura de tierra con gravilla y piedritas
                     for gx in range(rect.x + 8, rect.right - 6, 16):
                         gy = rect.y + 12 + ((gx * 5) % 10)
                         pygame.draw.rect(surface, color_borde, (gx, gy, 3, 2))
                 else:
-                    # Suelo profundo (capa inferior): estrato continuo sin franja divisoria
                     pygame.draw.rect(surface, color_piso_profundo, rect)
                     pygame.draw.line(surface, color_borde, (rect.x, rect.y), (rect.x, rect.bottom), 1)
                     pygame.draw.line(surface, color_borde, (rect.right - 1, rect.y), (rect.right - 1, rect.bottom), 1)
-                    # Textura de roca oscura
                     for rx in range(rect.x + 14, rect.right - 12, 28):
                         ry = rect.y + 6 + ((rx * 3) % 14)
                         pygame.draw.line(surface, (20, 16, 22), (rx, ry), (rx + 6, ry + 4), 1)
                         pygame.draw.rect(surface, (54, 42, 36), (rx + 10, ry + 2, 4, 3))
             else:
-                # Plataformas sólidas elevadas (bloques de sillería de piedra gótica)
                 if tema == "osario":
                     color_cuerpo = (74, 52, 50)
                     color_marco = (36, 22, 24)
-                    color_borde_sup = (168, 140, 130)
                 elif tema == "cripta":
                     color_cuerpo = (52, 56, 68)
                     color_marco = (24, 26, 34)
-                    color_borde_sup = (140, 150, 172)
                 else:
                     color_cuerpo = (64, 62, 70)
                     color_marco = (26, 24, 30)
-                    color_borde_sup = (145, 148, 160)
 
                 pygame.draw.rect(surface, color_cuerpo, rect, border_radius=2)
-                # Juntas de mortero oscuras
                 pygame.draw.rect(surface, color_marco, rect, 2, border_radius=2)
-                # Bisel de luz lunar superior
-                pygame.draw.line(surface, color_borde_sup, (rect.x + 2, rect.y + 1), (rect.right - 2, rect.y + 1), 2)
-                # Líneas de sillería vertical
+                if not tiene_arriba:
+                    pygame.draw.line(surface, c_bisel_top, (rect.x + 2, rect.y), (rect.right - 2, rect.y), 2)
+                    pygame.draw.line(surface, c_corte, (rect.x + 2, rect.y + 2), (rect.right - 2, rect.y + 2), 2)
                 for gx in range(rect.x + TILE, rect.right, TILE):
                     pygame.draw.line(surface, color_marco, (gx, rect.y + 3), (gx, rect.bottom - 2), 1)
                 if rect.height >= TILE * 2:
                     pygame.draw.line(surface, color_marco, (rect.x + 3, rect.centery), (rect.right - 4, rect.centery), 1)
 
-                # Salitre mineral colgante en la Cripta
                 if tema == "cripta":
                     for sx in range(rect.x + 10, rect.right - 8, 28):
                         salt_alt = 3 + ((sx * 7) % 5)
                         pygame.draw.line(surface, SALITRE_CRIPTA, (sx, rect.bottom), (sx, rect.bottom + salt_alt), 2)
                         pygame.draw.circle(surface, SALITRE_CRIPTA, (sx, rect.bottom + salt_alt), 1)
+                    if rect.height >= 48 and not tiene_arriba:
+                        for ay in range(rect.y + 24, rect.bottom - 16, 48):
+                            ax = rect.x + 12
+                            if ax + 8 < rect.right:
+                                pygame.draw.circle(surface, (24, 26, 32), (ax, ay), 5, 2)
+                                pygame.draw.circle(surface, (44, 48, 58), (ax, ay - 4), 2)
 
-                # Catacumbas del Osario: nichos esculpidos repletos de fémures y calaveras
+                elif tema == "camposanto":
+                    for rx in range(rect.x + 12, rect.right - 10, 48):
+                        pygame.draw.line(surface, (36, 52, 34), (rx, rect.y + 4), (rx + 2, rect.y + 10), 2)
+                        pygame.draw.line(surface, (28, 40, 26), (rx + 2, rect.y + 10), (rx - 1, rect.y + 16), 1)
+
                 if tema == "osario" and rect.width >= 32 and rect.height >= 24:
+                    for vx in range(rect.x + 14, rect.right - 12, 32):
+                        vy = rect.y + 12 + ((vx * 3) % 12)
+                        if vy + 6 < rect.bottom:
+                            pygame.draw.line(surface, (58, 20, 24), (vx, vy), (vx + 6, vy + 4), 1)
                     for nx in range(rect.x + 8, rect.right - 20, 36):
                         ny = rect.y + 5
                         if ny + 18 <= rect.bottom - 2:
@@ -919,8 +963,10 @@ class Nivel:
 
     def _dibujar_vela(self, surface, rect):
         x = rect.centerx
-        # Resplandor translúcido suave de la llama (iluminación litúrgica, no círculo opaco)
-        surface.blit(_obtener_halo_vela(), (x - 20, rect.y + 12 - 20))
+        import config
+        estilo = config.resolver_estilo(getattr(config, "ESTILO_MUNDO", "AUTO"))
+        if estilo != "NES":
+            surface.blit(_obtener_halo_vela(), (x - 20, rect.y + 12 - 20))
         pygame.draw.rect(surface, (198, 188, 158), (x - 3, rect.y + 14, 6, 14), border_radius=2)
         pygame.draw.line(surface, NEGRO, (x, rect.y + 13), (x, rect.y + 9), 1)
         pygame.draw.polygon(

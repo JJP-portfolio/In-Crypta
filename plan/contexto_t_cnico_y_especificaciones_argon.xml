@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<argon_sensory_overhaul project="IN CRYPTA" version="1.0" target_branch="art/overhaul-sensorial">
+  <metadata>
+    <purpose>Renovación sensorial integral (+30% a +55% de mejora visual y sonora) manteniendo estética indie/homebrew (8-bit NES, 16-bit SNES, Procedural Gótico) y garantizando 60 FPS en hardware modesto (Sony Vaio) y WebAssembly (Pygbag).</purpose>
+    <target_engine>Pygame / Pygame-ce + Pygbag (emscripten)</target_engine>
+    <execution_environment>agy-cli con soporte de sub-agentes y modo /goal</execution_environment>
+  </metadata>
+
+  <hard_guardrails>
+    <rule id="G1" severity="CRITICAL">PROHIBIDO modificar constantes físicas en config.py (GRAVEDAD, SALTO, VELOCIDAD, MAX_CAIDA, COYOTE_TIME, JUMP_BUFFER, CORTE_SALTO, DASH_VELOCIDAD, DASH_DURACION, DASH_COOLDOWN, ATAQUE_DURACION, ATAQUE_COOLDOWN, ATAQUE_ALCANCE, ATAQUE_ALCANCE_MEJORADO, TOLERANCIA_PISOTON).</rule>
+    <rule id="G2" severity="CRITICAL">PROHIBIDO alterar el tamaño, posición o lógica de colisión de self.rect en Jugador, Enemigo, EnemigoMelee, Custodio, MiniJefe, Cuervo, Polilla, Araña o Nivel.</rule>
+    <rule id="G3" severity="CRITICAL">PROHIBIDO alterar los mapas ASCII en niveles.py o la lógica de parseo de símbolos en nivel.py.</rule>
+    <rule id="G4" severity="CRITICAL">PROHIBIDO introducir dependencias externas fuera de la librería estándar de Python y pygame.</rule>
+    <rule id="G5" severity="CRITICAL">Toda la suite de pruebas (pytest tests/) debe pasar al 100% (51/51 tests en verde) y HudLayout.construir().solapamientos() debe devolver [].</rule>
+  </hard_guardrails>
+
+  <color_and_luminance_spec formula="Y = 0.299*R + 0.587*G + 0.114*B">
+    <plane level="3" name="Background (Fondo Atmosférico)" y_range="10..34">
+      <color name="BG_NOCHE_PROFUNDA" rgb="(9, 10, 18)" y="10.6" role="Cielo / Bóveda profunda" />
+      <color name="BG_PIEDRA_NIEBLA" rgb="(20, 24, 38)" y="24.4" role="Arquitectura lejana desaturada" />
+      <color name="BG_SILUETA_FRIA" rgb="(28, 34, 50)" y="34.0" role="Colinas y columnas secundarias" />
+    </plane>
+    <plane level="2" name="Midground (Terreno y Plataformas)" y_range="35..205">
+      <color name="TILE_CUERPO_SOMBRA" rgb="(38, 36, 46)" y="37.7" role="Relleno interior de bloques" />
+      <color name="TILE_MAMPOSTERIA" rgb="(58, 56, 70)" y="58.2" role="Ladrillo y sillería media" />
+      <color name="TILE_BISEL_LUZ" rgb="(172, 182, 202)" y="181.3" role="Walkable Edge Cue (Borde superior caminable)" />
+      <color name="TILE_SOMBRA_CORTE" rgb="(10, 8, 14)" y="9.3" role="Línea de corte negra de 2px bajo el bisel" />
+    </plane>
+    <plane level="1" name="Foreground (Entidades, Enemigos y Efectos)" y_range="40..250">
+      <color name="ENEMIGO_MORTAJA" rgb="(36, 48, 72)" y="47.2" role="Cuerpo frío que despega de fondos cálidos/tierra" />
+      <color name="ENEMIGO_PURPURA" rgb="(52, 28, 64)" y="39.8" role="Cuerpo de variante melee y guardia" />
+      <color name="ENEMIGO_RIM_LUZ" rgb="(225, 228, 240)" y="228.5" role="Rim Light / Silueta de recorte obligatorio (Delta Y > 170)" />
+      <color name="ENEMIGO_OJO_FUEGO" rgb="(255, 52, 68)" y="113.8" role="Punto focal ocular saturado al 100%" />
+      <color name="MELEE_ACERO_CLARO" rgb="(165, 178, 198)" y="176.4" role="Hoja de mandoble y yelmo" />
+      <color name="FX_IMPACTO_BLANCO" rgb="(250, 248, 240)" y="248.0" role="Damage Flash de 2 frames (0.06s)" />
+    </plane>
+  </color_and_luminance_spec>
+
+  <quality_tiers_matrix>
+    <tier index="0" label="Alta" auto_style="PROC">
+      <feature>Máscara de penumbra activa + perforación BLEND_RGBA_SUB + halos BLEND_RGB_ADD.</feature>
+      <feature>100% de partículas de impacto y 25 partículas de bioma.</feature>
+      <feature>Estilo Procedural Gótico (A3, B3, C3, D3) con filigrana, biseles biomáticos, anatomía ósea y estrellas góticas.</feature>
+    </tier>
+    <tier index="1" label="Media" auto_style="SNES">
+      <feature>Máscara de penumbra activa con 1 solo halo en jugador y 50% de partículas (12 de bioma).</feature>
+      <feature>Estilo SNES 16-Bit (A2, B2, C2, D2) con bisel 3D en HUD, mampostería escalonada y Rim Light cenital.</feature>
+    </tier>
+    <tier index="2" label="Baja (Modo Vaio / Accesibilidad Hardware)" auto_style="NES">
+      <feature>CERO superficies SRCALPHA de pantalla completa. Sin mascara_penumbra, sin smoothscale, sin bloom ni scanlines.</feature>
+      <feature>Paneles del HUD 100% opacos (.convert() sin canal alfa) y geometría ortogonal de 8-bits.</feature>
+      <feature>Estilo NES 8-Bit (A1, B1, C1, D1): contorno ectoplásmico sólido de 1px en enemigos, losa caminable de 4px con corte negro y Damage Flash directo por color primitivo.</feature>
+    </tier>
+  </quality_tiers_matrix>
+
+  <file_specifications>
+    <!-- ================================================================= -->
+    <!-- ARCHIVO 1: config.py                                              -->
+    <!-- ================================================================= -->
+    <file path="config.py" action="append_constants">
+      <description>Añadir constantes de estilos conmutables (NES, SNES, PROC, AUTO), paleta de luminancia calibrada y función resolver_estilo().</description>
+      <code_snippet><![CDATA[
+# --- Selector de Modelos Visuales (Argon Overhaul) ---
+# Valores válidos: "NES" (8-bit puro, ideal Vaio), "SNES" (16-bit biselado),
+#                  "PROC" (Procedural Gótico detallado), "AUTO" (según Calidad)
+ESTILO_HUD = "AUTO"       # Modelos A1 ("NES"), A2 ("SNES"), A3 ("PROC")
+ESTILO_MUNDO = "AUTO"     # Modelos B1 ("NES"), B2 ("SNES"), B3 ("PROC")
+ESTILO_ENEMIGOS = "AUTO"  # Modelos C1 ("NES"), C2 ("SNES"), C3 ("PROC")
+ESTILO_EFECTOS = "AUTO"   # Modelos D1 ("NES"), D2 ("SNES"), D3 ("PROC")
+CALIDAD_GLOBAL_ACTIVA = PERFIL_WEB_CALIDAD if ES_WEB else 0
+
+# --- Paleta de Alto Contraste y Separación de Planos (Luminancia calibrada) ---
+BG_NOCHE_PROFUNDA = (9, 10, 18)       # Y = 10.6 (Plano 3: Fondo profundo)
+BG_PIEDRA_NIEBLA = (20, 24, 38)       # Y = 24.4 (Plano 3: Siluetas lejanas)
+BG_SILUETA_FRIA = (28, 34, 50)        # Y = 34.0 (Plano 3: Medio fondo)
+
+TILE_CUERPO_SOMBRA = (38, 36, 46)     # Y = 37.7 (Plano 2: Relleno de muro)
+TILE_MAMPOSTERIA = (58, 56, 70)       # Y = 58.2 (Plano 2: Ladrillo medio)
+TILE_BISEL_LUZ = (172, 182, 202)      # Y = 181.3 (Plano 2: Walkable Edge Cue)
+TILE_SOMBRA_CORTE = (10, 8, 14)       # Y = 9.3 (Plano 2: Corte bajo bisel)
+
+ENEMIGO_MORTAJA = (36, 48, 72)        # Y = 47.2 (Plano 1: Cuerpo frío despegado)
+ENEMIGO_PURPURA = (52, 28, 64)        # Y = 39.8 (Plano 1: Variante melee)
+ENEMIGO_RIM_LUZ = (225, 228, 240)     # Y = 228.5 (Plano 1: Recorte silueta)
+ENEMIGO_OJO_FUEGO = (255, 52, 68)     # Punto focal cálido saturado
+MELEE_ACERO_CLARO = (165, 178, 198)   # Y = 176.4 (Acero guardia)
+FX_IMPACTO_BLANCO = (250, 248, 240)   # Y = 248.0 (Damage Flash 2 frames)
+
+
+def resolver_estilo(preferencia: str, calidad_idx: int = None) -> str:
+    """Devuelve 'NES', 'SNES' o 'PROC' según la preferencia o el nivel de calidad."""
+    if calidad_idx is None:
+        calidad_idx = CALIDAD_GLOBAL_ACTIVA
+    if preferencia in ("NES", "SNES", "PROC"):
+        return preferencia
+    return {0: "PROC", 1: "SNES", 2: "NES"}.get(calidad_idx, "PROC")
+]]></code_snippet>
+    </file>
+
+    <!-- ================================================================= -->
+    <!-- ARCHIVO 2: audio.py                                               -->
+    <!-- ================================================================= -->
+    <file path="audio.py" action="update_music_subsystem">
+      <description>Controlar self.musica_actual para no reiniciar pistas idénticas, ajustar volumen de música a 0.45 y reducir dron ambiental a 0.045 para mezcla limpia.</description>
+      <code_snippet><![CDATA[
+# En Audio.__init__:
+self.musica_actual = None
+
+# En Audio._construir_banco (ajuste de dron):
+if "dron_catacumbas" not in self.sonidos:
+    self.sonido_dron = self._sonido("dron_catacumbas", lambda: sintetizar_dron_funebre(duracion=4.0, volumen=0.045))
+
+# En Audio.reproducir_musica y Audio.detener_musica:
+def reproducir_musica(self, id_musica: str, bucle: bool = True, fade_ms: int = 800):
+    """Reproduce música con pygame.mixer.music sin reiniciar si ya suena la misma pista."""
+    if not self.activo:
+        self.musica_actual = id_musica
+        return
+    if self.musica_actual == id_musica and pygame.mixer.music.get_busy():
+        return
+    ruta = self._ruta_musica_por_id(id_musica)
+    if ruta is None:
+        for ext in (".ogg", ".wav", ".mp3"):
+            cand = Path(__file__).resolve().parent / "assets" / "audio" / "musica" / f"{id_musica}{ext}"
+            if cand.exists():
+                ruta = cand
+                break
+    if ruta and ruta.exists():
+        try:
+            loops = -1 if bucle else 0
+            pygame.mixer.music.load(str(ruta))
+            pygame.mixer.music.set_volume(0.45)
+            pygame.mixer.music.play(loops=loops, fade_ms=fade_ms)
+            self.musica_actual = id_musica
+        except pygame.error:
+            pass
+
+def detener_musica(self, fade_ms: int = 800):
+    """Detiene la música con fade out. No toca el canal del dron."""
+    self.musica_actual = None
+    try:
+        pygame.mixer.music.fadeout(fade_ms)
+    except pygame.error:
+        pass
+]]></code_snippet>
+    </file>
+
+    <!-- ================================================================= -->
+    <!-- ARCHIVO 3: hud.py                                                 -->
+    <!-- ================================================================= -->
+    <file path="hud.py" action="implement_3_hud_models_and_tweens">
+      <description>Implementar Modelos A1 (NES opaco), A2 (SNES biselado con gemas) y A3 (Procedural con filigrana), más tweens reactivos al recoger almas, recargar dash y dañar al jefe.</description>
+      <code_snippet><![CDATA[
+# En HudRenderer.__init__:
+self.tween_alma = Tween(0.25, 0.25, "out_back")
+self.tween_dash = Tween(0.30, 0.30, "out_back")
+self.tween_arma = Tween(0.25, 0.25, "out_back")
+self.tween_jefe = Tween(0.22, 0.22, "out_cubic")
+
+# En HudRenderer.dibujar (al inicio, disparar tweens según eventos del modelo):
+if not reducir_movimiento:
+    if modelo.evento_alma_recogida():
+        self.tween_alma.reiniciar(0.25, "out_back")
+    if modelo.evento_dash_listo():
+        self.tween_dash.reiniciar(0.30, "out_back")
+    if modelo.evento_arma_listo():
+        self.tween_arma.reiniciar(0.25, "out_back")
+    if modelo.evento_jefe_dañado() or modelo.evento_jefe_cambio_fase():
+        self.tween_jefe.reiniciar(0.25, "out_cubic")
+    self.tween_alma.update(dt)
+    self.tween_dash.update(dt)
+    self.tween_arma.update(dt)
+    self.tween_jefe.update(dt)
+
+# En HudRenderer._panel (soporte A1 NES, A2 SNES, A3 PROC):
+def _panel(self, ancho, alto, alpha=None):
+    import config
+    estilo = config.resolver_estilo(getattr(config, "ESTILO_HUD", "AUTO"))
+    clave = (ancho, alto, alpha, estilo)
+    surf = self._paneles_cache.get(clave)
+    if surf is None:
+        if estilo == "NES":
+            surf = pygame.Surface((ancho, alto))
+            surf.fill((9, 8, 13))
+            pygame.draw.rect(surf, (104, 82, 52), (0, 0, ancho, alto), 1)
+            pygame.draw.rect(surf, (216, 180, 104), (3, 3, ancho - 6, alto - 6), 1)
+            for cx, cy in ((0, 0), (ancho - 4, 0), (0, alto - 4), (ancho - 4, alto - 4)):
+                pygame.draw.rect(surf, (9, 8, 13), (cx, cy, 4, 4))
+                pygame.draw.rect(surf, (216, 180, 104), (cx + 1, cy + 1, 2, 2))
+            try:
+                surf = surf.convert()
+            except Exception:
+                pass
+        elif estilo == "SNES":
+            a = alpha if alpha is not None else 225
+            surf = pygame.Surface((ancho, alto), pygame.SRCALPHA)
+            pygame.draw.rect(surf, (16, 14, 26, a), (0, 0, ancho, alto), border_radius=6)
+            pygame.draw.line(surf, (238, 202, 118), (4, 1), (ancho - 5, 1), 2)
+            pygame.draw.line(surf, (216, 180, 104), (1, 4), (1, alto - 5), 2)
+            pygame.draw.line(surf, (72, 52, 28), (4, alto - 2), (ancho - 5, alto - 2), 2)
+            pygame.draw.line(surf, (72, 52, 28), (ancho - 2, 4), (ancho - 2, alto - 5), 2)
+            pygame.draw.rect(surf, (140, 110, 65, 240), (3, 3, ancho - 6, alto - 6), 1, border_radius=4)
+            for rx, ry in ((7, 7), (ancho - 8, 7), (7, alto - 8), (ancho - 8, alto - 8)):
+                pygame.draw.circle(surf, (40, 30, 20), (rx, ry), 3)
+                pygame.draw.circle(surf, (238, 202, 118), (rx, ry), 2)
+            try:
+                surf = surf.convert_alpha()
+            except Exception:
+                pass
+        else:
+            a = alpha if alpha is not None else self.tema.panel_bg[3]
+            surf = pygame.Surface((ancho, alto), pygame.SRCALPHA)
+            pygame.draw.rect(surf, (*self.tema.panel_bg[:3], a), surf.get_rect(), border_radius=12)
+            pygame.draw.rect(surf, (*self.tema.panel_border, self.tema.panel_border_alpha), surf.get_rect(), 1, border_radius=12)
+            pygame.draw.rect(surf, (58, 46, 36, 180), (3, 3, ancho - 6, alto - 6), 1, border_radius=9)
+            pygame.draw.line(surf, self.tema.linea_oro, (12, 1), (ancho - 12, 1), 1)
+            w_lim, h_lim = ancho - 1, alto - 1
+            for vx, vy, vdx, vdy in ((0, 0, 1, 1), (w_lim, 0, -1, 1), (0, h_lim, 1, -1), (w_lim, h_lim, -1, -1)):
+                pygame.draw.line(surf, HUD_ORO, (vx + 4 * vdx, vy), (vx + 18 * vdx, vy), 2)
+                pygame.draw.line(surf, HUD_ORO, (vx, vy + 4 * vdy), (vx, vy + 16 * vdy), 2)
+            try:
+                surf = surf.convert_alpha()
+            except Exception:
+                pass
+        self._paneles_cache[clave] = surf
+    return surf
+]]></code_snippet>
+    </file>
+
+    <!-- ================================================================= -->
+    <!-- ARCHIVO 4: nivel.py y juego.py (Fondos y Tiles B1, B2, B3)        -->
+    <!-- ================================================================= -->
+    <file path="nivel.py" action="implement_3_tile_models_and_edge_cues">
+      <description>Incorporar Walkable Edge Cue (bisel luminoso Y > 175 + línea negra de corte de 2px) en sólidos y plataformas móviles, diferenciando Modelos B1 (NES), B2 (SNES) y B3 (PROC) y haciendo que LosaQuebradiza se vea claramente hueca/agrietada.</description>
+    </file>
+
+    <file path="juego.py" action="attenuate_backgrounds_and_add_f3_f4_music">
+      <description>
+        1. Atenuar el contraste y luminancia de dibujar_fondo_camposanto, dibujar_fondo_cripta y dibujar_fondo_osario (Plano 3, Y entre 10 y 34).
+        2. Conectar las 10 pistas musicales en __init__, cargar_nivel, iniciar_tutorial, abrir_menu, abrir_creditos, actualizar_jefe, actualizar_minijefes, perder_vida y victoria.
+        3. Implementar tecla F3 (dibujar_debug_colisiones: Jugador=verde, Enemigos/Jefes=naranja, Hitbox ataque=rojo con cruz, Peligros=violeta).
+        4. Implementar tecla F4 (ciclar en vivo entre AUTO, NES, SNES y PROC limpiando el caché del HUD).
+      </description>
+    </file>
+
+    <!-- ================================================================= -->
+    <!-- ARCHIVO 5: entidades.py y particulas.py (Enemigos C1-C3 y Efectos)-->
+    <!-- ================================================================= -->
+    <file path="entidades.py" action="implement_enemy_contrast_and_attack_arc">
+      <description>
+        1. Añadir self.tiempo_flash = 0.0 y su actualización por dt en Enemigo, EnemigoMelee, Cuervo, Polilla y Araña.
+        2. En el método dibujar() de todos los enemigos: si tiempo_flash > 0, pintar silueta en FX_IMPACTO_BLANCO (250, 248, 240).
+        3. Implementar los 3 modelos en enemigos: C1 (NES: contorno ectoplásmico exterior de +2px en ENEMIGO_RIM_LUZ), C2 (SNES: mortaja fría + Rim Light cenital de 2px y acero claro en melee), C3 (PROC: anatomía ósea expuesta con núcleo pulsante turquesa/carmesí).
+        4. Alinear visualmente el tajo de pala/guadaña en Jugador.dibujar() con las dimensiones exactas de Jugador.rect_ataque() (34x26 px pala, 76x42 px guadaña).
+      </description>
+    </file>
+
+    <file path="particulas.py" action="implement_hit_spark_d1_d2_d3">
+      <description>Añadir clase HitSpark con soporte para modelos D1 (NES: cruz ortogonal 8-bit), D2 (SNES: destello biseccionado) y D3 (PROC: estrella gótica de 4 puntas) e invocarla en juego.py usando golpe.clip(enemigo.rect).</description>
+    </file>
+  </file_specifications>
+</argon_sensory_overhaul>
