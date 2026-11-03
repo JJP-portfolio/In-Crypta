@@ -1,5 +1,5 @@
 # ============================================================================
-# Makefile — Automatización DevEx para IN CRYPTA 1.0.0 (Linux / Multiplataforma)
+# Makefile — Automatización DevEx para IN CRYPTA 1.0.0 (Pygame / Pygame-CE)
 # ============================================================================
 
 SHELL := /usr/bin/env bash
@@ -9,46 +9,35 @@ ROOT_DIR := $(shell pwd)
 PYTHON := $(shell if [ -x "$(ROOT_DIR)/.venv/bin/python" ]; then echo "$(ROOT_DIR)/.venv/bin/python"; else command -v python3 || command -v python; fi)
 PORT ?= 8000
 
-.PHONY: help run web web-pygame docs export test validate
+.PHONY: help run web build-web docs test validate
 
 help: ## Muestra esta ayuda con los comandos disponibles
 	@echo "========================================================"
 	@echo "  IN CRYPTA 1.0.0 — Comandos de Desarrollo y Ejecución"
 	@echo "========================================================"
-	@echo "  make run        Inicia la versión Desktop (Pygame-CE)"
-	@echo "  make web        Inicia el servidor Web (GDevelop JS / PixiJS) en PORT=$(PORT)"
-	@echo "  make web-pygame Inicia el servidor Web (Pygame WebAssembly / Pygbag) en PORT=$(PORT)"
+	@echo "  make run        Inicia la versión Desktop nativa (Pygame-CE)"
+	@echo "  make web        Inicia el servidor WebAssembly (Pygbag) en PORT=$(PORT)"
+	@echo "  make build-web  Compila la versión WebAssembly lista para publicar"
 	@echo "  make docs       Muestra la documentación del proyecto (README.md)"
-	@echo "  make export     Ejecuta el pipeline completo de exportación, paridad y tests"
-	@echo "  make test       Ejecuta todas las suites de pruebas en modo headless (SDL dummy)"
-	@echo "  make validate   Verifica los scripts (.sh --check), eventos GD y paridad"
+	@echo "  make test       Ejecuta las suites de pruebas en modo headless (SDL dummy)"
+	@echo "  make validate   Verifica ejecutables y estado de la build Web"
 	@echo "========================================================"
 
 run: ## Inicia el juego en versión Desktop (Pygame)
 	@./jugar_pygame.sh
 
-web: ## Levanta el runtime Web en http://localhost:$(PORT)/export/gdevelop/index.html
-	@PORT=$(PORT) ./jugar_web.sh
-
-web-pygame: ## Levanta el runtime WebAssembly en http://localhost:$(PORT)/index.html
+web: ## Levanta el servidor WebAssembly en http://localhost:$(PORT)/index.html
 	@PORT=$(PORT) ./jugar_web_pygame.sh
+
+build-web: ## Compila la versión WebAssembly autónoma
+	@"$(PYTHON)" tools/exportar_web_pygame.py --build
 
 docs: ## Muestra la documentación del proyecto
 	@cat README.md
 
-export: ## Sincroniza exportadores GDevelop, valida paridad y ejecuta pruebas
-	@./exportar_todo.sh
-
-test: ## Ejecuta las suites de tests (Pygame + Exportador + GDJS) en modo headless
+test: ## Ejecuta las suites de tests de Pygame en modo headless
 	@PYTHONPATH="$(ROOT_DIR)" SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy "$(PYTHON)" -m pytest "$(ROOT_DIR)/tests" -q
-	@PYTHONPATH="$(ROOT_DIR)" SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy "$(PYTHON)" "$(ROOT_DIR)/tests/test_logica.py"
-	@PYTHONPATH="$(ROOT_DIR)" SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy "$(PYTHON)" "$(ROOT_DIR)/tests/test_hud.py"
-	@if command -v node >/dev/null 2>&1 && [ -f "$(ROOT_DIR)/tests/test_fisica_gdjs.js" ]; then \
-		node "$(ROOT_DIR)/tests/test_fisica_gdjs.js"; \
-	fi
 
-validate: ## Ejecuta la validación no interactiva de ejecutables, exportadores y documentos
+validate: ## Ejecuta la validación no interactiva de ejecutables y build Web
 	@./jugar_pygame.sh --check
-	@./exportar_todo.sh --check
-	@./jugar_web.sh --check
 	@./jugar_web_pygame.sh --check

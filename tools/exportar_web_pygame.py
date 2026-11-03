@@ -50,43 +50,152 @@ MARCADOR_INICIO = "<!-- incrypta:inicio-gotico -->"
 BLOQUE_INICIO = """
 <!-- incrypta:inicio-gotico -->
 <style>
-  #infobox { display: none !important; }
-  #incrypta-inicio {
-    position: fixed; inset: 0; z-index: 9999;
-    display: flex; align-items: center; justify-content: center;
-    background: rgba(8, 5, 4, 0.82);
+  /* Eliminar estilo gris y bordes por defecto de Pygbag */
+  html, body {
+    background-color: #080504 !important;
+    color: #e5c158;
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: Georgia, "Times New Roman", serif;
   }
-  #incrypta-inicio button {
+  .framed {
+    border: none !important;
+    top: 0 !important;
+    right: 0 !important;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.95), 0 0 2px #e5c158 !important;
+    max-width: 100vw;
+    max-height: 100vh;
+  }
+  #infobox { display: none !important; }
+  #transfer {
+    position: fixed;
+    bottom: 20px;
+    z-index: 10001;
+    color: #e5c158;
+    font-family: Georgia, serif;
+    font-size: 13px;
+  }
+  #transfer progress {
+    accent-color: #e5c158;
+  }
+
+  /* Overlay gótico de presentación y carga fluida */
+  #incrypta-inicio {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at center, rgba(22, 14, 12, 0.97) 0%, rgba(6, 4, 3, 0.99) 100%);
+    transition: opacity 0.6s ease;
+  }
+  #incrypta-inicio.desvanecer {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .incrypta-titulo {
+    font-size: clamp(32px, 6vw, 64px);
+    font-weight: bold;
+    letter-spacing: 0.15em;
+    color: #e5c158;
+    text-shadow: 0 0 20px rgba(229, 193, 88, 0.45), 0 4px 10px rgba(0, 0, 0, 0.9);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+  .incrypta-subtitulo {
+    font-size: clamp(14px, 2.2vw, 20px);
+    font-style: italic;
+    color: #a3957a;
+    margin-bottom: 32px;
+    letter-spacing: 0.06em;
+  }
+  #incrypta-inicio-btn {
     cursor: pointer;
     font-family: Georgia, "Times New Roman", serif;
-    font-size: clamp(16px, 3vw, 28px);
-    letter-spacing: 0.08em;
+    font-size: clamp(16px, 2.5vw, 24px);
+    letter-spacing: 0.1em;
     color: #e5c158;
-    background: #120c0a;
-    border: 3px solid #e5c158;
-    border-radius: 2px;
-    padding: 18px 36px;
-    box-shadow: 0 0 0 4px #120c0a, 0 0 0 6px #5a4520, 0 0 28px rgba(229, 193, 88, 0.35);
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    background: #140d0a;
+    border: 2px solid #e5c158;
+    border-radius: 4px;
+    padding: 16px 40px;
+    box-shadow: 0 0 0 3px #140d0a, 0 0 0 5px #6b5024, 0 0 30px rgba(229, 193, 88, 0.35);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    display: flex;
+    align-items: center;
+    gap: 12px;
   }
-  #incrypta-inicio button:hover,
-  #incrypta-inicio button:focus-visible {
-    outline: none;
+  #incrypta-inicio-btn:hover {
     transform: scale(1.04);
-    box-shadow: 0 0 0 4px #120c0a, 0 0 0 6px #8a6a2c, 0 0 40px rgba(229, 193, 88, 0.6);
+    box-shadow: 0 0 0 3px #140d0a, 0 0 0 5px #997433, 0 0 45px rgba(229, 193, 88, 0.65);
+    background: #1f1410;
+  }
+  .incrypta-estado {
+    margin-top: 18px;
+    font-family: monospace;
+    font-size: 13px;
+    color: #8c826e;
+    min-height: 20px;
+    text-align: center;
+  }
+  .incrypta-spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #3d301c;
+    border-top: 2px solid #e5c158;
+    border-radius: 50%;
+    animation: incrypta-spin 0.8s linear infinite;
+    display: inline-block;
+    vertical-align: middle;
+  }
+  @keyframes incrypta-spin {
+    to { transform: rotate(360deg); }
   }
 </style>
 <div id="incrypta-inicio">
-  <button type="button" id="incrypta-inicio-btn">&#9876;&#65039; IN CRYPTA &#9876;&#65039; — Haz click para comenzar</button>
+  <div class="incrypta-titulo">IN CRYPTA</div>
+  <div class="incrypta-subtitulo">El sepulturero de la cripta</div>
+  <button type="button" id="incrypta-inicio-btn">
+    <span>&#9876;&#65039; INICIAR JUEGO &#9876;&#65039;</span>
+  </button>
+  <div id="incrypta-estado" class="incrypta-estado"></div>
 </div>
 <script>
   (function () {
     var overlay = document.getElementById("incrypta-inicio");
     var boton = document.getElementById("incrypta-inicio-btn");
-    if (!overlay || !boton) { return; }
-    // El click burbujea hasta window, donde Pygbag registra el gesto de usuario (UME).
+    var estado = document.getElementById("incrypta-estado");
+    if (!overlay || !boton) return;
+
+    var inicioPulsado = false;
+
+    function esperarCanvasYDesvanecer() {
+      var chequeo = setInterval(function () {
+        var canvas = document.querySelector("canvas");
+        if (canvas && canvas.width === 1280 && canvas.height === 720) {
+          clearInterval(chequeo);
+          overlay.classList.add("desvanecer");
+          setTimeout(function () { overlay.remove(); }, 600);
+        }
+      }, 100);
+    }
+
     boton.addEventListener("click", function () {
-      overlay.remove();
+      if (inicioPulsado) return;
+      inicioPulsado = true;
+      boton.innerHTML = '<span class="incrypta-spinner"></span> <span>Cargando la cripta...</span>';
+      boton.style.cursor = "default";
+      if (estado) estado.innerText = "Iniciando WebAssembly y audio...";
+      esperarCanvasYDesvanecer();
     });
   })();
 </script>
@@ -253,20 +362,22 @@ def sincronizar_archivos(optimizar_audio=False):
 
 
 def personalizar_index_html():
-    """Reemplaza el aviso #infobox de Pygbag por un botón de inicio gótico.
-
-    Pygbag regenera index.html en cada build, así que el parche se reaplica
-    siempre. Falla en voz alta si no encuentra el punto de inserción, para no
-    publicar una página sin botón de inicio.
-    """
+    """Reemplaza el aviso #infobox de Pygbag por un botón de inicio gótico y elimina el fondo gris."""
     index = DIR_BUILD_WEB / "index.html"
     if not index.exists():
         print(f"✘ No se encontró {index} para personalizar.", file=sys.stderr)
         sys.exit(1)
 
     html = index.read_text(encoding="utf-8")
+
+    # 1. Eliminar fondo gris (#7f7f7f), powderblue y bordes de Pygbag
+    html = html.replace('platform.document.body.style.background = "#7f7f7f"', 'platform.document.body.style.background = "#080504"')
+    html = html.replace('background-color: powderblue;', 'background-color: #080504;')
+    html = html.replace('border: 1px solid black;', 'border: none;')
+
     if MARCADOR_INICIO in html:
         print("✔ index.html ya contenía el botón de inicio gótico.")
+        index.write_text(html, encoding="utf-8")
         return
 
     if "</body>" not in html:
@@ -275,11 +386,11 @@ def personalizar_index_html():
 
     html = html.replace("</body>", BLOQUE_INICIO + "\n</body>", 1)
     index.write_text(html, encoding="utf-8")
-    print(f"✔ Botón de inicio gótico insertado en: {index}")
+    print(f"✔ Interfaz gótica y personalización aplicadas en: {index}")
 
 
 def compilar_pygbag():
-    """Ejecuta pygbag --build sobre export/web_pygame/."""
+    """Ejecuta pygbag --build sobre export/web_pygame/ y asegura dependencias autónomas."""
     cmd = [sys.executable, "-m", "pygbag", "--build", "--disable-sound-format-error", str(DIR_WEB)]
     print(f"▶ Compilando WebAssembly con Pygbag: {' '.join(cmd)}")
     res = subprocess.run(cmd)
@@ -292,6 +403,24 @@ def compilar_pygbag():
     nojekyll = DIR_BUILD_WEB / ".nojekyll"
     nojekyll.touch()
     print(f"✔ Archivo .nojekyll verificado en: {nojekyll}")
+
+    # Suministro autónomo del wheel para evitar 404 al solicitar /cdn/cp312/
+    dir_cdn_whl = DIR_BUILD_WEB / "cdn" / "cp312"
+    dir_cdn_whl.mkdir(parents=True, exist_ok=True)
+    whl_name = "pygame_ce-2.5.7-cp312-cp312-wasm32_bi_emscripten.whl"
+    dest_whl = dir_cdn_whl / whl_name
+    src_whl = RAIZ / "tools" / "wheels" / whl_name
+    if src_whl.exists():
+        shutil.copy2(src_whl, dest_whl)
+        print(f"✔ Wheel local pygame-ce copiado desde {src_whl} a {dest_whl}")
+    else:
+        url_whl = f"https://pygame-web.github.io/cdn/cp312/{whl_name}"
+        print(f"⬇ Descargando wheel autónomo desde {url_whl}...")
+        import urllib.request
+        urllib.request.urlretrieve(url_whl, dest_whl)
+        src_whl.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(dest_whl, src_whl)
+        print(f"✔ Wheel descargado y guardado en {dest_whl}")
 
     personalizar_index_html()
 

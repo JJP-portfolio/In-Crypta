@@ -65,11 +65,7 @@ FUENTE_NOMBRE = 18
 
 # Ruta absoluta de la fuente gótica
 _RAIZ_HUD = Path(__file__).resolve().parent
-_RUTA_FUENTE = (
-    _RAIZ_HUD / "assets/NotoSerifDisplay-Bold.ttf"
-    if (_RAIZ_HUD / "assets/NotoSerifDisplay-Bold.ttf").exists()
-    else _RAIZ_HUD / "export/gdevelop_nativo/assets/NotoSerifDisplay-Bold.ttf"
-)
+_RUTA_FUENTE = _RAIZ_HUD / "assets/NotoSerifDisplay-Bold.ttf"
 
 DEBUG_HUD = False
 

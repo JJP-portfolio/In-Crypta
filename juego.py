@@ -376,8 +376,6 @@ class Juego:
         self.fuentes = {}
         self._cache_texto = OrderedDict()
         p_font = Path("assets/NotoSerifDisplay-Bold.ttf")
-        if not p_font.exists():
-            p_font = Path("export/gdevelop_nativo/assets/NotoSerifDisplay-Bold.ttf")
         self._ruta_fuente_gotica = str(p_font) if p_font.exists() else None
         self.fondos = {}
         self.vineta = self.crear_vineta(90)
