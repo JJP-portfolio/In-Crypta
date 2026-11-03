@@ -37,7 +37,7 @@ if [[ "${1:-}" == "--check" ]]; then
     fi
 
     # Verificar existencia de archivos obligatorios
-    for f in "$WEB_DIR/index.html" "$WEB_DIR/web_pygame.apk" "$WEB_DIR/.nojekyll"; do
+    for f in "$WEB_DIR/index.html" "$WEB_DIR/web_pygame.apk" "$WEB_DIR/.nojekyll" "$WEB_DIR/cdn/cp312/pygame_ce-2.5.7-cp312-cp312-wasm32_bi_emscripten.whl"; do
         if [[ ! -f "$f" ]]; then
             echo "✘ Error: Falta archivo requerido: $f" >&2
             exit 1
