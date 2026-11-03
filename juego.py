@@ -405,6 +405,25 @@ class Juego:
         self.hud = HudOrquestador()
         self.audio = Audio()
 
+        # Inicializar subsistemas Next-Gen comerciales con fallback seguro
+        try:
+            from audio_dsp import MotorAudioDSP
+            self.dsp = MotorAudioDSP()
+        except Exception:
+            self.dsp = None
+
+        try:
+            from gpu_pipeline import PipelineGPU
+            self.gpu_pipeline = PipelineGPU(ANCHO, ALTO)
+        except Exception:
+            self.gpu_pipeline = None
+
+        try:
+            from fisica_decorativa import SimuladorFisicaDecorativa
+            self.fisica_secundaria = SimuladorFisicaDecorativa()
+        except Exception:
+            self.fisica_secundaria = None
+
         self.nivel_indice = 0
         self.nivel = None
         self.jugador = None
@@ -476,6 +495,12 @@ class Juego:
         print(f"[IN CRYPTA] Pygame: {pygame.__version__} | Canvas virtual: {VIRTUAL_ANCHO}x{VIRTUAL_ALTO} (Zoom {CAMARA_ZOOM}x)")
         print(f"[IN CRYPTA] Calidad inicial: {OPCIONES_CALIDAD[self.config_calidad_idx]} | Shader: {OPCIONES_SHADER[self.config_shader_idx]}")
         print("[IN CRYPTA] Audio: Procedural + Banco SFX/Musica cargado.")
+        if getattr(self, "dsp", None) and self.dsp.disponible:
+            print("[IN CRYPTA Commercial] DSP: Motor SciPy/NumPy activo (Reverb Schroeder + Chimes Estéreo).")
+        if getattr(self, "gpu_pipeline", None) and self.gpu_pipeline.activo:
+            print("[IN CRYPTA Commercial] GPU: ModernGL Pipeline activo.")
+        if getattr(self, "fisica_secundaria", None):
+            print(f"[IN CRYPTA Commercial] Física: Cadenas/Incensarios {'Pymunk' if self.fisica_secundaria.tiene_pymunk else 'Verlet'} activos.")
 
     def reiniciar_particulas_bioma(self, tema="camposanto"):
         """Inicializa o recicla las partículas ambientales según la calidad gráfica (60 FPS sin lag)."""

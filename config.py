@@ -15,10 +15,10 @@ PERFIL_WEB_SHADER = 2   # 2: Puro (sin bloom ni scanlines CRT: lo más costoso p
 PERFIL_WEB_CALIDAD = 2  # 2: Baja en Web por defecto (60 FPS garantizados en navegador y Vaio)
 
 # --- Identidad ---
-TITULO = "IN CRYPTA"
-SUBTITULO = "El sepulturero de la cripta"
+TITULO = "IN CRYPTA — Commercial Edition"
+SUBTITULO = "El sepulturero de la cripta (Next-Gen Edition)"
 EQUIPO = "Equipo 6"
-VERSION = "1.0.3"
+VERSION = "1.0.3-commercial"
 INTEGRANTES = (
     "Ovelar Alejandro Ezequiel",
     "Joaquín Cardiel Gomez",
