@@ -425,6 +425,15 @@ class Nivel:
                     ENEMIGO_ALTO,
                 )
                 minimo_x, maximo_x = self._limites_patrulla(columna, fila)
+                if maximo_x - minimo_x <= 3 * TILE:
+                    izq = columna
+                    while izq > max(1, columna - 4) and texto[izq - 1] not in ("#", "^"):
+                        izq -= 1
+                    der = columna
+                    while der < min(self.columnas - 2, columna + 4) and texto[der + 1] not in ("#", "^"):
+                        der += 1
+                    minimo_x = izq * TILE
+                    maximo_x = (der + 1) * TILE
                 polillas.append(Polilla(rect, minimo_x, maximo_x))
         return polillas
 
@@ -441,7 +450,11 @@ class Nivel:
                     ENEMIGO_ANCHO,
                     ENEMIGO_ALTO,
                 )
-                minimo_x, maximo_x = self._limites_patrulla(columna, fila)
+                lim_izq, lim_der = self._limites_patrulla(columna, fila)
+                minimo_x = max(lim_izq + 8, (columna - 6) * TILE)
+                maximo_x = min(lim_der - 8, (columna + 7) * TILE)
+                if maximo_x - minimo_x < 2 * TILE:
+                    minimo_x, maximo_x = lim_izq, lim_der
                 aranias.append(Araña(rect, minimo_x, maximo_x))
         return aranias
 
@@ -476,8 +489,13 @@ class Nivel:
                     MINIJEFE_ANCHO,
                     MINIJEFE_ALTO,
                 )
-                minimo_x = max(0, (columna - 12) * TILE)
-                maximo_x = min(self.ancho - MINIJEFE_ANCHO, (columna + 12) * TILE)
+                lim_izq, lim_der = self._limites_patrulla(columna, fila)
+                if lim_der - lim_izq >= 4 * TILE:
+                    minimo_x = lim_izq + 8
+                    maximo_x = max(minimo_x + TILE, lim_der - MINIJEFE_ANCHO - 8)
+                else:
+                    minimo_x = max(0, (columna - 10) * TILE)
+                    maximo_x = min(self.ancho - MINIJEFE_ANCHO, (columna + 10) * TILE)
                 minijefes.append(MiniJefe(rect, minimo_x, maximo_x))
         return minijefes
     def _crear_plataformas(self):
@@ -1151,35 +1169,34 @@ class Nivel:
         pygame.draw.circle(surface, (120, 118, 134), (x_base + balanceo, rect.bottom - 2), 3, 1)
 
     def _dibujar_gargola(self, surface, rect):
-        """'g': Gárgola ornamental esculpida en piedra grabada con recorte cenital marfil."""
+        """'g': Acrotera / gárgola arquitectónica de piedra erosionada en segundo plano (sin rasgos de enemigo)."""
         cx = rect.centerx
         base_y = rect.bottom
-        # Pedestal / ménsula de cornisa
-        pygame.draw.rect(surface, TINTA_ABISMO, (cx - 11, base_y - 6, 22, 6))
-        pygame.draw.rect(surface, (52, 50, 64), (cx - 10, base_y - 5, 20, 4))
-        pygame.draw.line(surface, MARFIL_XILOGRAFICO, (cx - 10, base_y - 5), (cx + 10, base_y - 5), 1)
+        # Zócalo escalonado de piedra pizarra oscura
+        pygame.draw.rect(surface, (16, 18, 24), (cx - 11, base_y - 7, 22, 7))
+        pygame.draw.rect(surface, (30, 32, 42), (cx - 9, base_y - 6, 18, 5))
+        pygame.draw.line(surface, (44, 48, 60), (cx - 9, base_y - 6), (cx + 9, base_y - 6), 1)
+        # Musgo húmedo en la junta del pedestal
+        pygame.draw.line(surface, (38, 54, 44), (cx - 7, base_y - 2), (cx + 5, base_y - 2), 2)
 
-        # Alas plegadas en ángulo gótico
-        pts_alas = [
-            (cx - 12, base_y - 22),
-            (cx - 4, base_y - 28),
-            (cx, base_y - 18),
-            (cx + 4, base_y - 28),
-            (cx + 12, base_y - 22),
-            (cx + 8, base_y - 6),
-            (cx - 8, base_y - 6),
+        # Contrafuerte alado tallado en bajorrelieve pétreo (bajo contraste, fundido al fondo)
+        pts_piedra = [
+            (cx - 10, base_y - 19),
+            (cx - 6, base_y - 25),
+            (cx, base_y - 22),
+            (cx + 6, base_y - 25),
+            (cx + 10, base_y - 19),
+            (cx + 7, base_y - 7),
+            (cx - 7, base_y - 7),
         ]
-        pygame.draw.polygon(surface, TINTA_ABISMO, pts_alas)
-        pygame.draw.polygon(surface, (44, 42, 54), pts_alas[1:-1])
-        pygame.draw.lines(surface, MARFIL_XILOGRAFICO, False, [pts_alas[0], pts_alas[1], pts_alas[2], pts_alas[3], pts_alas[4]], 1)
+        pygame.draw.polygon(surface, (18, 20, 28), pts_piedra)
+        pygame.draw.polygon(surface, (28, 30, 40), pts_piedra[1:-1])
+        pygame.draw.lines(surface, (42, 46, 58), False, [pts_piedra[0], pts_piedra[1], pts_piedra[2], pts_piedra[3], pts_piedra[4]], 1)
 
-        # Torso encorvado y cráneo cornudo
-        pygame.draw.ellipse(surface, (58, 56, 70), (cx - 7, base_y - 20, 14, 14))
-        pygame.draw.circle(surface, (68, 66, 82), (cx, base_y - 21), 5)
-        pygame.draw.arc(surface, MARFIL_XILOGRAFICO, (cx - 5, base_y - 26, 10, 8), 0.2, math.pi - 0.2, 2)
-        # Ojos rubí vigilantes
-        pygame.draw.circle(surface, (210, 28, 50), (cx - 2, base_y - 21), 1)
-        pygame.draw.circle(surface, (210, 28, 50), (cx + 2, base_y - 21), 1)
+        # Busto pétreo erosionado y grietas verticales de cantería (sin ojos ni brillos)
+        pygame.draw.rect(surface, (24, 26, 36), (cx - 5, base_y - 21, 10, 14), border_radius=3)
+        pygame.draw.line(surface, (16, 18, 24), (cx, base_y - 20), (cx, base_y - 9), 1)
+        pygame.draw.line(surface, (38, 54, 44), (cx - 4, base_y - 14), (cx - 1, base_y - 12), 1)
 
     def _dibujar_urna_cineraria(self, surface, rect):
         """'u': Urna funeraria tallada en piedra y bronce relicario sobre el suelo."""

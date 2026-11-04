@@ -84,6 +84,7 @@ from config import (
     SALITRE_CRIPTA,
     SALTO,
     SANGRE,
+    TILE,
     TOLERANCIA_PISOTON,
     TURQUESA,
     TURQUESA_ÁNIMA,
@@ -1988,7 +1989,22 @@ class Custodio:
             return
 
         if self.estado == "espera":
-            if abs(jugador.rect.centerx - self.rect.centerx) > 60:
+            dist_x_j = abs(jugador.rect.centerx - self.rect.centerx)
+            dist_y_j = abs(jugador.rect.centery - self.rect.centery)
+            en_rango_jefe = (dist_y_j <= 14 * TILE and dist_x_j <= 28 * TILE) or (self.vida < JEFE_VIDA and dist_y_j <= 14 * TILE)
+            if not en_rango_jefe:
+                # Patrulla centinela silenciosa en su catedral sin sacudir la cámara en otros pisos
+                self.x += self.direccion * (JEFE_VELOCIDAD * 0.65) * dt
+                if self.x <= self.minimo_x:
+                    self.x = float(self.minimo_x)
+                    self.direccion = 1
+                elif self.x >= self.maximo_x:
+                    self.x = float(self.maximo_x)
+                    self.direccion = -1
+                self.rect.x = round(self.x)
+                return
+
+            if dist_x_j > 60:
                 self.direccion = 1 if jugador.rect.centerx > self.rect.centerx else -1
                 self.x += self.direccion * JEFE_VELOCIDAD * dt
                 self.x = max(self.minimo_x, min(self.maximo_x, self.x))
@@ -2231,9 +2247,9 @@ class MiniJefe:
         self.aviso_recien = False
         self.choque_recien = False
 
-    def _aplicar_dano(self):
-        # Patrón justo: solo recibe daño en su ventana de cansancio (1.3 s).
-        if not self.vivo or self.invulnerable > 0 or not self.vulnerable:
+    def _aplicar_dano_vertical(self):
+        # El Carcelero porta blindaje frontal pesado: solo recibe daño desde arriba (rebote/pisotón).
+        if not self.vivo or self.invulnerable > 0:
             return False
         self.vida -= 1
         self.tiempo_flash = 0.12
@@ -2249,13 +2265,14 @@ class MiniJefe:
         return True
 
     def recibir_golpe_pala(self):
-        return self._aplicar_dano()
+        # Escudo de hierro frontal: los ataques laterales rebotan siempre; debe ser vencido desde arriba.
+        return False
 
     def recibir_pisaton(self):
-        return self._aplicar_dano()
+        return self._aplicar_dano_vertical()
 
     def recibir_golpe(self):
-        return self._aplicar_dano()
+        return self.recibir_golpe_pala()
 
     def actualizar(self, dt, jugador):
         self.aviso_recien = False
@@ -2268,14 +2285,38 @@ class MiniJefe:
         if self.tiempo_flash > 0:
             self.tiempo_flash = max(0.0, self.tiempo_flash - dt)
 
-        self.temporizador -= dt
-
         dist_x = jugador.rect.centerx - self.rect.centerx
+        dist_y = jugador.rect.centery - self.rect.centery
         dir_jugador = 1 if dist_x > 0 else -1
+        en_arena = abs(dist_y) <= 4 * TILE and abs(dist_x) <= 13 * TILE
+
+        if not en_arena and self.estado == "patrulla":
+            # Patrulla centinela de lado a lado sin clavarse en el borde antes de que el jugador suba
+            self.vulnerable = False
+            self.temporizador = max(self.temporizador, 1.0)
+            self.vx = self.direccion * (MINIJEFE_VELOCIDAD * 0.85)
+            self.x += self.vx * dt
+            if self.x <= self.minimo_x:
+                self.x = float(self.minimo_x)
+                self.direccion = 1
+            elif self.x >= self.maximo_x:
+                self.x = float(self.maximo_x)
+                self.direccion = -1
+            self.rect.x = int(self.x)
+            return
+
+        self.temporizador -= dt
 
         if self.estado == "patrulla":
             self.vulnerable = False
-            self.direccion = dir_jugador
+            # Si el jugador aún está fuera de los bordes de su losa, patrullar sin clavarse en la esquina
+            if (self.x <= self.minimo_x + 2 and dir_jugador < 0) or (self.x >= self.maximo_x - 2 and dir_jugador > 0):
+                if self.x <= self.minimo_x + 2:
+                    self.direccion = 1
+                elif self.x >= self.maximo_x - 2:
+                    self.direccion = -1
+            else:
+                self.direccion = dir_jugador
             self.vx = self.direccion * MINIJEFE_VELOCIDAD
             self.x += self.vx * dt
             if abs(dist_x) < 170 or self.temporizador <= 0:
@@ -2636,7 +2677,7 @@ class Araña:
             return
         if getattr(self, "tiempo_flash", 0.0) > 0:
             self.tiempo_flash = max(0.0, self.tiempo_flash - dt)
-        self.x += self.direccion * (VELOCIDAD_ENEMIGO * 0.5) * dt
+        self.x += self.direccion * (VELOCIDAD_ENEMIGO * 0.8) * dt
         self.rect.x = round(self.x)
         if self.rect.left <= self.minimo_x:
             self.rect.left = self.minimo_x

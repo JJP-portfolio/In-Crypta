@@ -1161,29 +1161,29 @@ def probar_minijefe():
     assert mj.vivo
     assert mj.rect.size == (36, 48)
 
-    # Fuera de la ventana de cansancio no recibe daño (patrón justo)
-    assert not mj.vulnerable
+    # El golpe frontal de pala SIEMPRE rebota en su blindaje frontal (solo vulnerable desde arriba)
     assert not mj.recibir_golpe_pala()
-    assert not mj.recibir_pisaton()
+    _cansar(mj)
+    assert not mj.recibir_golpe_pala()
     assert mj.vida == 3
 
-    # Daño por golpe de pala
-    _cansar(mj)
-    assert mj.recibir_golpe_pala()
+    # Daño exclusivo desde arriba (pisotón / rebote aéreo)
+    assert mj.recibir_pisaton()
     assert mj.vida == 2
 
-    # Daño por pisotón
-    _cansar(mj)
+    # Durante la ventana de invulnerabilidad post-impacto no recibe segundo daño instantáneo
+    assert not mj.recibir_pisaton()
+    mj.invulnerable = 0.0
     assert mj.recibir_pisaton()
     assert mj.vida == 1
 
-    # Tercer golpe: derrota
-    _cansar(mj)
-    assert mj.recibir_golpe_pala()
+    # Tercer impacto desde arriba: derrota
+    mj.invulnerable = 0.0
+    assert mj.recibir_pisaton()
     assert mj.vida == 0
     assert not mj.vivo
 
-    # Patrón: patrulla -> telegrafía 0.55 s (con aviso) -> embestida -> cansado 1.3 s
+    # Patrón en arena: patrulla -> telegrafía 0.55 s (con aviso) -> embestida -> cansado 1.3 s
     from entidades import Jugador
     mj = MiniJefe(pygame.Rect(100, 100, 36, 48), 50, 250)
     objetivo = Jugador(160, 100)
@@ -1198,13 +1198,12 @@ def probar_minijefe():
     assert mj.estado == "cansado" and mj.vulnerable
     assert abs(mj.temporizador - MINIJEFE_VULNERABLE) < 1e-9
 
-    # En Juego: pisotón con pala lo daña y rebota (recargando el dash)
+    # En Juego: pisotón con pala desde arriba lo daña y rebota (recargando el dash)
     juego = Juego()
     juego.cargar_nivel(0)
     mj2 = MiniJefe(pygame.Rect(200, 200, 36, 48), 100, 300)
     juego.nivel.minijefes = [mj2]
     almas_antes = juego.jugador.almas
-    _cansar(mj2)
     juego.jugador.rect.midbottom = (mj2.rect.centerx, mj2.rect.top + 1)
     juego.jugador.vy = 200
     juego.jugador.dash_usos_aire = 0
@@ -1214,11 +1213,8 @@ def probar_minijefe():
     assert juego.jugador.vy < 0, "Debe rebotar tras pisotón al mini-jefe"
     assert juego.jugador.dash_usos_aire == DASH_USOS_AIRE
 
-    # Pisotón fuera de la ventana: rebota sin dañarlo ni dañar al jugador
-    mj2.estado = "patrulla"
-    mj2.temporizador = 5.0
-    mj2.vulnerable = False
-    mj2.invulnerable = 0
+    # Durante su invulnerabilidad breve post-impacto: rebota sin dañarlo ni dañar al jugador
+    mj2.invulnerable = 0.25
     juego.jugador.invulnerable = 0
     vidas = juego.jugador.vidas
     juego.jugador.rect.midbottom = (mj2.rect.centerx, mj2.rect.top + 1)
@@ -1229,15 +1225,15 @@ def probar_minijefe():
     assert juego.jugador.vy < 0
 
     # Regresión: caer lejos del Carcelero NO dispara un pisotón fantasma
-    _cansar(mj2)
+    mj2.invulnerable = 0.0
     juego.jugador.rect.midbottom = (mj2.rect.centerx + 400, mj2.rect.top - 100)
     juego.jugador.vy = 200
     juego.actualizar_minijefes(1 / 60)
     assert mj2.vida == 2
     assert juego.jugador.vy == 200
 
-    # Golpe letal: entrega 5 almas
-    _cansar(mj2)
+    # Golpe letal desde arriba: entrega 5 almas
+    mj2.invulnerable = 0.0
     mj2.vida = 1
     juego.jugador.rect.midbottom = (mj2.rect.centerx, mj2.rect.top + 1)
     juego.jugador.vy = 200
@@ -1245,20 +1241,24 @@ def probar_minijefe():
     assert not mj2.vivo
     assert juego.jugador.almas == almas_antes + 5, "Derrotar al mini-jefe debe otorgar 5 almas"
 
-    # Derrota con pala (golpe frontal) en el Juego
+    # En el Juego: el ataque frontal con pala rebota y NO lo mata; el rebote desde arriba sí lo derrota
     juego = Juego()
     juego.cargar_nivel(2)
     mj3 = juego.nivel.minijefes[0]
     jugador = juego.jugador
     assert jugador.tiene_pala
+    jugador.rect.midbottom = (mj3.rect.left - 20, mj3.rect.bottom)
+    jugador.direccion = 1
+    jugador.ataque_cooldown = 0.0
+    jugador.ataque_tiempo = 0.0
+    assert jugador.pedir_ataque()
+    juego.actualizar_ataque()
+    assert mj3.vida == 3, "El ataque frontal no debe dañar al Carcelero"
     for _ in range(3):
-        _cansar(mj3)
-        jugador.rect.midbottom = (mj3.rect.left - 20, mj3.rect.bottom)
-        jugador.direccion = 1
-        jugador.ataque_cooldown = 0.0
-        jugador.ataque_tiempo = 0.0
-        assert jugador.pedir_ataque()
-        juego.actualizar_ataque()
+        mj3.invulnerable = 0.0
+        jugador.rect.midbottom = (mj3.rect.centerx, mj3.rect.top + 1)
+        jugador.vy = 200
+        juego.actualizar_minijefes(1 / 60)
     assert not mj3.vivo
     print("mini-boss carcelero: OK")
 

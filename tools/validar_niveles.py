@@ -38,6 +38,7 @@ from config import DASH_DURACION, DASH_VELOCIDAD, GRAVEDAD, SALTO, TILE, VELOCID
 
 # --- Símbolos del mapa ---------------------------------------------------
 SOLIDO = set("#~MV")            # bloquea el cuerpo y sirve de apoyo
+TRAMPOLIN = "I"                 # campana de resonancia: permite rebotar y recargar dash sin bloquear el paso
 PELIGRO = "^"                   # daño al pisar o caer en él
 APOYADAS = set("EKBLAFWDX")     # entidades que deben tener suelo debajo (I2)
 FAROL = "F"
@@ -207,8 +208,10 @@ def _es_solido(filas, c, r):
 
 
 def _apoyo(filas, c, r):
-    """La celda (c, r+1) sirve de suelo para un personaje que está en (c, r)."""
-    return _es_solido(filas, c, r + 1)
+    """La celda (c, r+1) sirve de suelo o campana de rebote (I) para un personaje que está en (c, r)."""
+    if c < 0 or c >= len(filas[0]) or r + 1 < 0 or r + 1 >= len(filas):
+        return True
+    return _es_solido(filas, c, r + 1) or filas[r + 1][c] == TRAMPOLIN
 
 
 
@@ -293,13 +296,16 @@ def _alcanzable(filas, habilidades, inicio=None, meta=None, usar_k=True, usar_b=
         #    el arco choca). La columna de llegada solo se comprueba en su
         #    propia altura de aterrizaje. Se recorre columna a columna y se
         #    corta en la primera columna que bloquea el arco.
-        if all(not _es_solido(filas, c, y) for y in range(r - JH_ARCO - 1, r)):
+        es_rebote_campana = (r + 1 < len(filas) and filas[r + 1][c] == TRAMPOLIN)
+        arco_h = 2 if es_rebote_campana else JH_ARCO
+        max_dy = 2 if es_rebote_campana else JH_LLEGADA
+        if all(not _es_solido(filas, c, y) for y in range(max(1, r - arco_h - 1), r)):
             for sentido in (-1, 1):
                 for k in range(1, jx + 1):
                     nx = c + sentido * k
                     if nx < 0 or nx >= nc:
                         break
-                    for dy in range(0, JH_LLEGADA + 1):
+                    for dy in range(0, max_dy + 1):
                         ny = r - dy
                         if ny < 1:
                             continue
@@ -315,7 +321,7 @@ def _alcanzable(filas, habilidades, inicio=None, meta=None, usar_k=True, usar_b=
                                 sucesores.append((nx, pie))
                     # Esta columna bloquea las siguientes si el arco la cruza.
                     if any(_es_solido(filas, nx, y)
-                           for y in range(r - JH_ARCO - 1, r)):
+                           for y in range(max(1, r - arco_h - 1), r)):
                         break
 
         for nx, ny in sucesores:

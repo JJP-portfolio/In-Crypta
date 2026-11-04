@@ -682,46 +682,51 @@ class HudRenderer:
         # 1. RELICARIO SUPERIOR IZQUIERDO (Cálices de Sangre + Cuerda del Rosario)
         self._dibujar_relicario_izquierdo(surface, layout.zona_izq, modelo, alfa_global)
 
-        # 2. CARTELA SUPERIOR CENTRAL (Respaldo de obsidiana translúcido que protege el título del techo)
-        self._dibujar_cartela_central_transparente(surface, layout.zona_centro, modelo, alfa_global)
+        # 2. ZONA SUPERIOR CENTRAL: Barra Catedralicia del Jefe (cuando está visible) O Cartela del Nivel
+        if modelo.jefe_vivo:
+            self._dibujar_barra_jefe_catedral(surface, modelo)
+        else:
+            self._dibujar_cartela_central_transparente(surface, layout.zona_centro, modelo, alfa_global)
 
         # 3. MEDALLONES SUPERIORES DERECHOS (Diales circulares con iconos de Dash y Arma + Urna de Almas)
         self._dibujar_medallones_derechos(surface, layout.zona_der, modelo, alfa_global)
 
-        # 4. BARRA DE SALUD DEL JEFE / MINI-JEFE EN LA ZONA SUPERIOR CENTRAL (Cero obstrucción del suelo)
-        if modelo.jefe_vivo:
-            self._dibujar_barra_jefe_catedral(surface, modelo)
-
-        # 5. CANAL DE MENSAJES LITÚRGICOS (Pergamino de obsidiana y bronce)
+        # 4. CANAL DE MENSAJES LITÚRGICOS (Pergamino de obsidiana y bronce)
         if mensajes and mensajes.esta_visible() and mensajes.alpha() > 0:
             self._dibujar_mensajes(surface, modelo, mensajes, reducir_movimiento, dt)
 
     def _dibujar_relicario_izquierdo(self, surface: pygame.Surface, rect: pygame.Rect, modelo: HudModel, alfa: int) -> None:
-        """Medallón heráldico compacto con Cálices de Rubí arriba, Rosario de 10 cuentas debajo y estado de bendición."""
+        """Medallón heráldico compacto con Cálices de Rubí arriba, Rosario de 10 cuentas debajo y bisel de 1px legible."""
         vidas_max = max(getattr(modelo, "vidas_maximas", getattr(modelo, "vidas_max", 5)), 5)
-        w_vis = max(224, 68 + vidas_max * 28)
-        h_vis = rect.height - 8
-        clave_izq = ("relicario_izq", w_vis, h_vis, alfa)
+        w_vis = max(230, 74 + vidas_max * 28)
+        h_vis = rect.height - 6
+        clave_izq = ("relicario_izq_v3", w_vis, h_vis, alfa)
         panel = self._paneles_cache.get(clave_izq)
         if panel is None:
             panel = pygame.Surface((w_vis, h_vis), pygame.SRCALPHA)
-            pts_fondo = [
-                (0, 0), (w_vis - 20, 0), (w_vis - 2, h_vis // 2),
-                (w_vis - 26, h_vis - 1), (0, h_vis - 1)
+            pts_ext = [
+                (0, 0), (w_vis - 18, 0), (w_vis - 1, h_vis // 2),
+                (w_vis - 22, h_vis - 1), (0, h_vis - 1)
             ]
-            pygame.draw.polygon(panel, (12, 10, 18, int(alfa * 0.90)), pts_fondo)
-            pygame.draw.polygon(panel, (218, 178, 86, alfa), pts_fondo, 2)
-            pygame.draw.line(panel, (104, 82, 52, int(alfa * 0.85)), (42, h_vis // 2 + 2), (w_vis - 24, h_vis // 2 + 2), 1)
+            pts_int = [
+                (2, 2), (w_vis - 19, 2), (w_vis - 3, h_vis // 2),
+                (w_vis - 23, h_vis - 3), (2, h_vis - 3)
+            ]
+            pygame.draw.polygon(panel, (10, 8, 16, int(alfa * 0.94)), pts_ext)
+            pygame.draw.polygon(panel, (4, 3, 8, alfa), pts_ext, 1)
+            pygame.draw.polygon(panel, (198, 162, 82, int(alfa * 0.92)), pts_int, 1)
+            pygame.draw.line(panel, (92, 74, 48, int(alfa * 0.65)), (46, h_vis // 2 + 2), (w_vis - 26, h_vis // 2 + 2), 1)
             self._paneles_cache[clave_izq] = panel
-        surface.blit(panel, (rect.x, rect.y + 4))
+        surface.blit(panel, (rect.x, rect.y + 3))
 
         # Emblema izquierdo de Manto / Filo de Ánima / Corazón
-        emblema_cx, emblema_cy = rect.x + 22, rect.centery
-        pygame.draw.circle(surface, (18, 14, 26), (emblema_cx, emblema_cy), 14)
+        emblema_cx, emblema_cy = rect.x + 24, rect.centery
+        pygame.draw.circle(surface, (16, 12, 24), (emblema_cx, emblema_cy), 14)
         tiene_manto = getattr(modelo, "escudo_farol", False)
         tiene_filo = getattr(modelo, "filo_anima", False)
-        color_aro = (92, 220, 200) if tiene_manto else ((255, 215, 100) if tiene_filo else (218, 178, 86))
-        pygame.draw.circle(surface, color_aro, (emblema_cx, emblema_cy), 14, 2)
+        color_aro = (92, 220, 200) if tiene_manto else ((255, 215, 100) if tiene_filo else (198, 162, 82))
+        pygame.draw.circle(surface, (4, 3, 8), (emblema_cx, emblema_cy), 15, 1)
+        pygame.draw.circle(surface, color_aro, (emblema_cx, emblema_cy), 14, 1)
         if tiene_manto:
             pygame.draw.polygon(surface, (140, 235, 255), [
                 (emblema_cx, emblema_cy - 8), (emblema_cx + 7, emblema_cy),
@@ -733,23 +738,23 @@ class HudRenderer:
             pygame.draw.circle(surface, (210, 28, 50), (emblema_cx, emblema_cy), 5)
 
         # Cálices de Sangre (Vidas)
-        x_caliz = rect.x + 50
+        x_caliz = rect.x + 54
         y_caliz = rect.y + 20
         for i in range(vidas_max):
             cx = x_caliz + i * 26
             lleno = i < modelo.vidas
             pts_gema = [(cx, y_caliz - 8), (cx + 8, y_caliz), (cx, y_caliz + 9), (cx - 8, y_caliz)]
-            pygame.draw.polygon(surface, (24, 18, 28), pts_gema)
+            pygame.draw.polygon(surface, (20, 14, 24), pts_gema)
             if lleno:
                 col_rubi = (235, 45, 68) if (modelo.vidas == 1 and int(getattr(self, "tiempo", 0.0) * 8) % 2 == 0) else (210, 28, 50)
                 pygame.draw.polygon(surface, col_rubi, [(cx, y_caliz - 6), (cx + 6, y_caliz), (cx, y_caliz + 7), (cx - 6, y_caliz)])
-                pygame.draw.circle(surface, (255, 210, 215), (cx - 2, y_caliz - 2), 2)
-            pygame.draw.polygon(surface, (218, 178, 86) if lleno else (95, 82, 68), pts_gema, 1)
+                pygame.draw.circle(surface, (255, 215, 220), (cx - 2, y_caliz - 2), 2)
+            pygame.draw.polygon(surface, (218, 178, 86) if lleno else (88, 76, 64), pts_gema, 1)
 
         # Cuerda del Rosario de 10 cuentas debajo (progreso hacia +1 Vida)
         y_rosario = rect.y + 50
-        x_rosario_ini = rect.x + 50
-        pygame.draw.line(surface, (140, 115, 65), (x_rosario_ini, y_rosario), (x_rosario_ini + 9 * 14, y_rosario), 1)
+        x_rosario_ini = rect.x + 54
+        pygame.draw.line(surface, (130, 106, 60), (x_rosario_ini, y_rosario), (x_rosario_ini + 9 * 14, y_rosario), 1)
         cuentas_activas = getattr(modelo, "almas_para_vida", modelo.almas % 10)
         for c_idx in range(10):
             bx = x_rosario_ini + c_idx * 14
@@ -758,50 +763,52 @@ class HudRenderer:
                 pygame.draw.circle(surface, (92, 220, 200), (bx, y_rosario), 4)
                 pygame.draw.circle(surface, (235, 255, 255), (bx, y_rosario), 1)
             else:
-                pygame.draw.circle(surface, (28, 24, 34), (bx, y_rosario), 3)
-                pygame.draw.circle(surface, (110, 95, 70), (bx, y_rosario), 3, 1)
+                pygame.draw.circle(surface, (24, 20, 30), (bx, y_rosario), 3)
+                pygame.draw.circle(surface, (104, 88, 66), (bx, y_rosario), 3, 1)
 
     def _dibujar_cartela_central_transparente(self, surface: pygame.Surface, rect: pygame.Rect, modelo: HudModel, alfa: int = 235) -> None:
-        """Cartela central compacta con respaldo de obsidiana translúcido para evitar colisión visual con el techo."""
+        """Cartela central con respaldo de obsidiana de alto contraste y bisel limpio de 1px."""
         cx = rect.centerx
         nom = getattr(modelo, "nombre_nivel", "") or getattr(modelo, "nivel_nombre", "")
         titulo = nom.upper() if nom else "EL UMBRAL"
-        jefe_activo = getattr(modelo, "jefe_vivo", False)
-        tam_fuente = 11 if jefe_activo else 13
-        img_txt = self._texto(titulo, tam_fuente, (228, 224, 210), sombra=True)
+        img_txt = self._texto(titulo, 14, (238, 232, 218), sombra=True)
 
-        w_cartela = max(220 if jefe_activo else 236, img_txt.get_width() + 44)
-        h_cartela = 24 if jefe_activo else 34
+        w_cartela = max(244, img_txt.get_width() + 52)
+        h_cartela = 36
         x_cartela = cx - w_cartela // 2
-        y_cartela = rect.y + (0 if jefe_activo else 4)
+        y_cartela = rect.y + 6
 
-        clave_c = ("cartela_centro", w_cartela, h_cartela, alfa)
+        clave_c = ("cartela_centro_v3", w_cartela, h_cartela, alfa)
         panel_c = self._paneles_cache.get(clave_c)
         if panel_c is None:
             panel_c = pygame.Surface((w_cartela, h_cartela), pygame.SRCALPHA)
-            pts_c = [
-                (10, 0), (w_cartela - 10, 0), (w_cartela - 1, h_cartela // 2),
-                (w_cartela - 10, h_cartela - 1), (10, h_cartela - 1), (1, h_cartela // 2)
+            pts_ext = [
+                (12, 0), (w_cartela - 12, 0), (w_cartela - 1, h_cartela // 2),
+                (w_cartela - 12, h_cartela - 1), (12, h_cartela - 1), (1, h_cartela // 2)
             ]
-            pygame.draw.polygon(panel_c, (10, 8, 16, int(alfa * 0.86)), pts_c)
-            pygame.draw.polygon(panel_c, (218, 178, 86, int(alfa * 0.85)), pts_c, 1)
-            # Filigranas laterales internas
-            pygame.draw.circle(panel_c, (218, 178, 86, alfa), (9, h_cartela // 2), 2)
-            pygame.draw.circle(panel_c, (218, 178, 86, alfa), (w_cartela - 9, h_cartela // 2), 2)
+            pts_int = [
+                (13, 2), (w_cartela - 13, 2), (w_cartela - 3, h_cartela // 2),
+                (w_cartela - 13, h_cartela - 3), (13, h_cartela - 3), (3, h_cartela // 2)
+            ]
+            pygame.draw.polygon(panel_c, (10, 8, 16, int(alfa * 0.92)), pts_ext)
+            pygame.draw.polygon(panel_c, (4, 3, 8, alfa), pts_ext, 1)
+            pygame.draw.polygon(panel_c, (198, 162, 82, int(alfa * 0.90)), pts_int, 1)
+            pygame.draw.circle(panel_c, (218, 178, 86, alfa), (11, h_cartela // 2), 2)
+            pygame.draw.circle(panel_c, (218, 178, 86, alfa), (w_cartela - 11, h_cartela // 2), 2)
             self._paneles_cache[clave_c] = panel_c
 
         surface.blit(panel_c, (x_cartela, y_cartela))
         surface.blit(img_txt, (cx - img_txt.get_width() // 2, y_cartela + (h_cartela - img_txt.get_height()) // 2))
 
     def _dibujar_medallones_derechos(self, surface: pygame.Surface, rect: pygame.Rect, modelo: HudModel, alfa: int) -> None:
-        """Dos medallones circulares biselados con iconos reales (Dash y Pala/Guadaña) + Urna de Almas y Reloj."""
-        cy_med = rect.centery - 4
+        """Dos medallones circulares biselados con etiquetas de 11px de alta legibilidad + Urna de Almas y Reloj."""
+        cy_med = rect.centery - 6
         # Medallón 1: Dash Espectral con icono de ala y arco radial de recarga
-        cx_dash = rect.x + 36
+        cx_dash = rect.x + 34
         dash_listo = getattr(modelo, "dash_listo", modelo.dash_cooldown <= 0 and (modelo.en_suelo or modelo.dash_usos_aire > 0))
         prog_dash = 1.0 if dash_listo else max(0.0, 1.0 - min(1.0, modelo.dash_cooldown / max(0.01, DASH_COOLDOWN)))
         self._dibujar_dial_circular(
-            surface, cx_dash, cy_med, 20,
+            surface, cx_dash, cy_med, 19,
             desbloqueado=modelo.tiene_dash,
             progreso=prog_dash,
             color_activo=(92, 220, 200),
@@ -814,27 +821,28 @@ class HudRenderer:
         es_guadana = getattr(modelo, "rango_mejorado", getattr(modelo, "rango_ataque_mejorado", False))
         prog_arma = 1.0 if modelo.ataque_cooldown <= 0 else max(0.0, 1.0 - min(1.0, modelo.ataque_cooldown / max(0.01, ATAQUE_COOLDOWN)))
         self._dibujar_dial_circular(
-            surface, cx_arma, cy_med, 20,
+            surface, cx_arma, cy_med, 19,
             desbloqueado=modelo.tiene_pala,
             progreso=prog_arma,
             color_activo=(195, 85, 250) if es_guadana else (218, 178, 86),
-            etiqueta="[J] GUADAÑA" if (modelo.tiene_pala and es_guadana) else ("[J] PALA" if modelo.tiene_pala else "PALA"),
+            etiqueta="[J] HOJA" if (modelo.tiene_pala and es_guadana) else ("[J] PALA" if modelo.tiene_pala else "PALA"),
             tipo_icono="guadana" if es_guadana else "pala",
         )
 
-        # Urna de Almas y Reloj a la derecha (compacta y con total de almas + reloj)
-        urna_rect = pygame.Rect(rect.x + 128, rect.y + 6, rect.width - 132, rect.height - 12)
-        clave_u = ("urna_der", urna_rect.width, urna_rect.height, alfa)
+        # Urna de Almas y Reloj a la derecha (con bisel limpio de 1px y tipografías ampliadas)
+        urna_rect = pygame.Rect(rect.x + 128, rect.y + 4, rect.width - 130, rect.height - 8)
+        clave_u = ("urna_der_v3", urna_rect.width, urna_rect.height, alfa)
         panel_u = self._paneles_cache.get(clave_u)
         if panel_u is None:
             panel_u = pygame.Surface((urna_rect.width, urna_rect.height), pygame.SRCALPHA)
-            pygame.draw.rect(panel_u, (12, 10, 18, int(alfa * 0.90)), (0, 0, urna_rect.width, urna_rect.height), border_radius=8)
-            pygame.draw.rect(panel_u, (218, 178, 86, alfa), (0, 0, urna_rect.width, urna_rect.height), 2, border_radius=8)
-            pygame.draw.line(panel_u, (104, 82, 52, int(alfa * 0.8)), (10, urna_rect.height // 2 + 4), (urna_rect.width - 10, urna_rect.height // 2 + 4), 1)
+            pygame.draw.rect(panel_u, (10, 8, 16, int(alfa * 0.94)), (0, 0, urna_rect.width, urna_rect.height), border_radius=8)
+            pygame.draw.rect(panel_u, (4, 3, 8, alfa), (0, 0, urna_rect.width, urna_rect.height), 1, border_radius=8)
+            pygame.draw.rect(panel_u, (198, 162, 82, int(alfa * 0.92)), (2, 2, urna_rect.width - 4, urna_rect.height - 4), 1, border_radius=7)
+            pygame.draw.line(panel_u, (92, 74, 48, int(alfa * 0.65)), (12, urna_rect.height // 2 + 2), (urna_rect.width - 12, urna_rect.height // 2 + 2), 1)
             self._paneles_cache[clave_u] = panel_u
         surface.blit(panel_u, urna_rect.topleft)
 
-        # Fila superior de la urna: Orbe de ánima + contador almas de total (+volátiles)
+        # Fila superior de la urna: Orbe de ánima + contador almas de total (+volátiles) en 15px
         orb_x, orb_y = urna_rect.x + 18, urna_rect.y + 18
         pygame.draw.circle(surface, (92, 220, 200), (orb_x, orb_y), 6)
         pygame.draw.circle(surface, (235, 255, 255), (orb_x, orb_y), 2)
@@ -844,14 +852,14 @@ class HudRenderer:
             txt_almas = f"{modelo.almas:02d}"
         if getattr(modelo, "almas_volatiles", 0) > 0:
             txt_almas += f" (+{modelo.almas_volatiles})"
-        img_n = self._texto(txt_almas, 14, (228, 224, 210), sombra=True)
+        img_n = self._texto(txt_almas, 15, (242, 236, 222), sombra=True)
         surface.blit(img_n, (orb_x + 12, orb_y - img_n.get_height() // 2))
 
-        # Fila inferior de la urna: Reloj del nivel
-        rel_x, rel_y = urna_rect.x + 10, urna_rect.y + 36
-        self._icono_reloj(surface, rel_x, rel_y, (198, 156, 62))
+        # Fila inferior de la urna: Reloj del nivel en 13px
+        rel_x, rel_y = urna_rect.x + 10, urna_rect.y + 37
+        self._icono_reloj(surface, rel_x, rel_y, (212, 172, 76))
         txt_t = fmt_tiempo(getattr(modelo, "tiempo", 0.0))
-        img_t = self._texto(txt_t, 12, (190, 178, 156), sombra=True)
+        img_t = self._texto(txt_t, 13, (214, 200, 174), sombra=True)
         surface.blit(img_t, (rel_x + 20, rel_y + 8 - img_t.get_height() // 2))
 
     def _dibujar_dial_circular(
@@ -859,10 +867,11 @@ class HudRenderer:
         desbloqueado: bool, progreso: float, color_activo: tuple, etiqueta: str,
         tipo_icono: str = "dash",
     ) -> None:
-        pygame.draw.circle(surface, (12, 10, 18), (cx, cy), radio)
+        pygame.draw.circle(surface, (10, 8, 16), (cx, cy), radio + 1)
+        pygame.draw.circle(surface, (4, 3, 8), (cx, cy), radio + 1, 1)
         if not desbloqueado:
-            color_apagado = (72, 64, 78)
-            pygame.draw.circle(surface, color_apagado, (cx, cy), radio, 2)
+            color_apagado = (76, 68, 84)
+            pygame.draw.circle(surface, color_apagado, (cx, cy), radio, 1)
             if tipo_icono == "dash":
                 self._icono_ala_dash(surface, cx - 8, cy - 8, color_apagado)
             else:
@@ -870,52 +879,64 @@ class HudRenderer:
             # Pequeño candado de hierro en el borde inferior del medallón
             pygame.draw.rect(surface, (36, 30, 42), (cx - 4, cy + radio - 5, 8, 6), border_radius=1)
             pygame.draw.rect(surface, (120, 108, 92), (cx - 4, cy + radio - 5, 8, 6), 1, border_radius=1)
-            img_t = self._texto(etiqueta, 9, (120, 110, 100), sombra=True)
-            surface.blit(img_t, (cx - img_t.get_width() // 2, cy + radio + 2))
+            img_t = self._texto(etiqueta, 11, (140, 130, 118), sombra=True)
+            pw, ph = img_t.get_width() + 8, img_t.get_height() + 2
+            pygame.draw.rect(surface, (10, 8, 16), (cx - pw // 2, cy + radio + 2, pw, ph), border_radius=3)
+            surface.blit(img_t, (cx - img_t.get_width() // 2, cy + radio + 3))
             return
 
         if progreso >= 0.99:
             pygame.draw.circle(surface, color_activo, (cx, cy), radio, 2)
         else:
-            pygame.draw.circle(surface, (75, 68, 58), (cx, cy), radio, 2)
+            pygame.draw.circle(surface, (75, 68, 58), (cx, cy), radio, 1)
             rect_arc = pygame.Rect(cx - radio, cy - radio, radio * 2, radio * 2)
             pygame.draw.arc(surface, color_activo, rect_arc, math.pi / 2, math.pi / 2 + math.tau * progreso, 3)
 
-        color_ic = color_activo if progreso >= 0.99 else (130, 122, 112)
+        color_ic = color_activo if progreso >= 0.99 else (140, 132, 122)
         if tipo_icono == "dash":
             self._icono_ala_dash(surface, cx - 8, cy - 8, color_ic)
         else:
             self._icono_pala(surface, cx - 8, cy - 8, tipo_icono == "guadana", color_ic)
 
-        img_t = self._texto(etiqueta, 9, (218, 178, 86), sombra=True)
-        surface.blit(img_t, (cx - img_t.get_width() // 2, cy + radio + 2))
+        img_t = self._texto(etiqueta, 11, (236, 206, 126), sombra=True)
+        pw, ph = img_t.get_width() + 8, img_t.get_height() + 2
+        pygame.draw.rect(surface, (10, 8, 16), (cx - pw // 2, cy + radio + 2, pw, ph), border_radius=3)
+        pygame.draw.rect(surface, (110, 90, 52), (cx - pw // 2, cy + radio + 2, pw, ph), 1, border_radius=3)
+        surface.blit(img_t, (cx - img_t.get_width() // 2, cy + radio + 3))
 
     def _dibujar_barra_jefe_catedral(self, surface: pygame.Surface, modelo: HudModel) -> None:
-        """Barra gótica de jefe integrada en la zona superior central (y = 58..76), dejando 100% libre el suelo."""
+        """Barra gótica de jefe en el centro del riel superior (reemplaza la cartela del nivel sin apilarse)."""
         sw = surface.get_width()
-        bw, bh = 460, 16
+        bw, bh = 440, 14
         bx = (sw - bw) // 2
-        by = 60
+        by = 46
         tiempo = getattr(self, "tiempo", 0.0)
         temblor_x = int(math.sin(tiempo * 45.0) * 2) if getattr(modelo, "jefe_fase", 1) >= 2 else 0
         bx += temblor_x
 
-        # Nombre litúrgico del Jefe arriba de la barra (dentro de zona_centro, y = 42)
+        # Placa catedralicia de respaldo para el nombre y la barra (y = 16..68)
+        placa_w, placa_h = bw + 32, 52
+        placa_x, placa_y = (sw - placa_w) // 2, 16
+        pygame.draw.rect(surface, (10, 8, 16), (placa_x, placa_y, placa_w, placa_h), border_radius=6)
+        pygame.draw.rect(surface, (4, 3, 8), (placa_x, placa_y, placa_w, placa_h), 1, border_radius=6)
+        pygame.draw.rect(surface, (198, 162, 82), (placa_x + 2, placa_y + 2, placa_w - 4, placa_h - 4), 1, border_radius=5)
+
+        # Nombre litúrgico del Jefe en 13px marfil/oro (y = 22)
         nombre_jefe = getattr(modelo, "jefe_nombre", "EL CUSTODIO DEL OSARIO").upper()
         if getattr(modelo, "jefe_fase", 1) >= 2:
             nombre_jefe += " · FASE II"
-        img_j = self._texto(nombre_jefe, 12, (218, 178, 86), sombra=True)
-        surface.blit(img_j, (sw // 2 - img_j.get_width() // 2, by - 18))
+        img_j = self._texto(nombre_jefe, 13, (242, 224, 168), sombra=True)
+        surface.blit(img_j, (sw // 2 - img_j.get_width() // 2, placa_y + 6))
 
-        # Marco de obsidiana y filigrana de oro/hueso
-        pygame.draw.rect(surface, (8, 6, 12), (bx - 3, by - 3, bw + 6, bh + 6), border_radius=4)
-        pygame.draw.rect(surface, (218, 178, 86), (bx - 3, by - 3, bw + 6, bh + 6), 2, border_radius=4)
+        # Marco de obsidiana y filigrana de la barra de sangre
+        pygame.draw.rect(surface, (6, 4, 10), (bx - 2, by - 2, bw + 4, bh + 4), border_radius=3)
+        pygame.draw.rect(surface, (186, 150, 74), (bx - 2, by - 2, bw + 4, bh + 4), 1, border_radius=3)
 
         vida_max = max(1, modelo.jefe_vida_max)
         proporcion = max(0.0, min(1.0, modelo.jefe_vida / float(vida_max)))
         ancho_lleno = int(bw * proporcion)
         if ancho_lleno > 0:
-            col_barra = (210, 28, 50) if getattr(modelo, "jefe_fase", 1) >= 2 else (168, 32, 46)
+            col_barra = (210, 28, 50) if getattr(modelo, "jefe_fase", 1) >= 2 else (172, 34, 48)
             pygame.draw.rect(surface, col_barra, (bx, by, ancho_lleno, bh), border_radius=2)
             pygame.draw.line(surface, (255, 150, 160), (bx + 2, by + 2), (bx + max(2, ancho_lleno - 2), by + 2), 2)
 
@@ -926,14 +947,14 @@ class HudRenderer:
             pygame.draw.line(surface, (6, 5, 10), (sx, by), (sx, by + bh), 2)
             pygame.draw.line(surface, (228, 224, 210), (sx + 1, by + 2), (sx + 1, by + bh - 2), 1)
 
-        # Aviso de Fase II del Jefe debajo de la barra superior (sin tocar jamás el suelo)
+        # Aviso de Fase II del Jefe debajo de la placa superior (sin tocar jamás el suelo)
         if getattr(modelo, "aviso_jefe", 0.0) > 0:
-            aviso_txt = "¡FASE II! LA PALA REBOTA — SOLO EL PISOTÓN DESDE ARRIBA LO DAÑA"
-            img_av = self._texto(aviso_txt, 12, (255, 110, 120), sombra=True)
-            av_w = img_av.get_width() + 16
+            aviso_txt = "¡FASE II! LA PALA REBOTA — USA LA GUADAÑA CONSAGRADA (X)"
+            img_av = self._texto(aviso_txt, 12, (255, 120, 130), sombra=True)
+            av_w = img_av.get_width() + 18
             av_x = sw // 2 - av_w // 2
-            av_y = by + bh + 6
-            pygame.draw.rect(surface, (10, 8, 14), (av_x, av_y, av_w, img_av.get_height() + 4), border_radius=4)
+            av_y = placa_y + placa_h + 4
+            pygame.draw.rect(surface, (10, 8, 16), (av_x, av_y, av_w, img_av.get_height() + 4), border_radius=4)
             pygame.draw.rect(surface, (210, 45, 65), (av_x, av_y, av_w, img_av.get_height() + 4), 1, border_radius=4)
             surface.blit(img_av, (sw // 2 - img_av.get_width() // 2, av_y + 2))
 
@@ -1079,12 +1100,13 @@ class HudOrquestador:
         jefe_cerca = False
         if jefe is not None and getattr(jefe, "vivo", False):
             if hasattr(jefe, "rect") and j is not None and hasattr(j, "rect"):
-                mismo_piso = (j.rect.centery // (18 * 32)) == (jefe.rect.centery // (18 * 32))
                 dist_x = abs(j.rect.centerx - jefe.rect.centerx)
-                jefe_cerca = mismo_piso and (
-                    dist_x < 36 * 32
-                    or getattr(juego, "aviso_jefe", 0.0) > 0
-                    or getattr(jefe, "vida", JEFE_VIDA) < JEFE_VIDA
+                dist_y = abs(j.rect.centery - jefe.rect.centery)
+                en_camara = getattr(juego, "camara", None) is not None and juego.camara.is_on_screen(jefe.rect)
+                jefe_cerca = (dist_y <= 220) and (
+                    en_camara
+                    or dist_x <= 420
+                    or (getattr(jefe, "vida", JEFE_VIDA) < JEFE_VIDA and dist_x <= 680)
                 )
             else:
                 jefe_cerca = True
@@ -1094,12 +1116,13 @@ class HudOrquestador:
             for mj in n.minijefes:
                 if mj.vivo and mj.estado != "muerto":
                     if j is not None and hasattr(j, "rect") and hasattr(mj, "rect"):
-                        mismo_piso_mj = (j.rect.centery // (18 * 32)) == (mj.rect.centery // (18 * 32))
-                        dist = abs(j.rect.centerx - mj.rect.centerx)
-                        if mismo_piso_mj and (
-                            dist < 520
-                            or mj.estado in ("ataque", "telegrafo", "recuperacion", "cansado")
-                            or getattr(mj, "vida", 3) < 3
+                        dist_x = abs(j.rect.centerx - mj.rect.centerx)
+                        dist_y = abs(j.rect.centery - mj.rect.centery)
+                        en_camara_mj = getattr(juego, "camara", None) is not None and juego.camara.is_on_screen(mj.rect)
+                        if (dist_y <= 150) and (
+                            en_camara_mj
+                            or dist_x <= 380
+                            or (getattr(mj, "vida", 3) < 3 and dist_x <= 540)
                         ):
                             minijefe_activo = mj
                             break

@@ -1289,8 +1289,11 @@ class Juego:
             if incensario.puede_rebotar() and golpe.colliderect(incensario.rect):
                 incensario.activar_rebote()
                 self.jugador.ataque_golpeado = True
+                self.jugador.rect.bottom = min(self.jugador.rect.bottom, incensario.rect.top)
+                self.jugador.y = float(self.jugador.rect.y)
                 self.jugador.vy = -REBOTE_ENEMIGO
                 self.jugador.en_suelo = False
+                self.jugador.dash_tiempo = 0.0
                 self.jugador.dash_usos_aire = DASH_USOS_AIRE
                 self.jugador.dash_cooldown = 0.0
                 self.audio.reproducir("campana_repique")
@@ -1332,13 +1335,13 @@ class Juego:
                 self.flash_color = AMARILLO
                 break
 
-        # Mini-Jefes (El Carcelero del Osario)
+        # Mini-Jefes (El Carcelero del Osario): blindaje frontal impenetrable, solo vulnerable desde arriba (rebote)
         if not self.jugador.ataque_golpeado:
             for mj in getattr(self.nivel, "minijefes", []):
                 if not mj.vivo or not golpe.colliderect(mj.rect):
                     continue
                 if hasattr(mj, "tiempo_flash"):
-                    mj.tiempo_flash = 0.06
+                    mj.tiempo_flash = 0.04
                 inter = golpe.clip(mj.rect)
                 self.particulas.hit_spark(inter.centerx, inter.centery, self.jugador.direccion, self.jugador.rango_ataque_mejorado)
                 self.jugador.ataque_golpeado = True
@@ -1354,6 +1357,8 @@ class Juego:
                     self._comprobar_muerte_minijefe(mj)
                 else:
                     self._rebote_minijefe_guardia(mj)
+                    self.jugador.vx = -self.jugador.direccion * 150.0
+                    self.hud.mostrar_mensaje("¡BLINDAJE FRONTAL! Usa las campanas y véncelo rebotando desde arriba", 2, 2.6)
                 break
 
         # Jefe — pala: daña en Fase 1, rebota con chispas en Fase 2.
@@ -1378,7 +1383,12 @@ class Juego:
         jefe = self.jefe
         jefe.actualizar(dt, self.jugador)
 
-        if jefe.aviso_recien:
+        cerca_jefe = (
+            abs(self.jugador.rect.centerx - jefe.rect.centerx) < 22 * TILE
+            and abs(self.jugador.rect.centery - jefe.rect.centery) < 10 * TILE
+        )
+
+        if jefe.aviso_recien and cerca_jefe:
             self.audio.reproducir("jefe_aviso")
             self.camara.sacudir(3.0, 0.12)
 
@@ -1402,18 +1412,19 @@ class Juego:
                         direccion,
                         velocidad * 1.35,
                     ))
-            self.audio.reproducir("onda")
-            self.camara.sacudir(8.0, 0.20)
-            self.particulas.emitir(
-                jefe.rect.centerx,
-                jefe.rect.bottom - 4,
-                16,
-                (HUESO, CREMA, (126, 100, 68)),
-                190,
-                0.55,
-                5,
-                620,
-            )
+            if cerca_jefe:
+                self.audio.reproducir("onda")
+                self.camara.sacudir(8.0, 0.20)
+                self.particulas.emitir(
+                    jefe.rect.centerx,
+                    jefe.rect.bottom - 4,
+                    16,
+                    (HUESO, CREMA, (126, 100, 68)),
+                    190,
+                    0.55,
+                    5,
+                    620,
+                )
 
         for onda in self.ondas_jefe:
             onda.actualizar(dt)
@@ -1445,10 +1456,12 @@ class Juego:
                 self.perder_vida(causa="Poder abrumador del Custodio")
                 return True
 
-        if self.punto_reintento is None:
+        # Solo activar checkpoint de antesala si el jugador está en el mismo piso que el Jefe y sin farol previo
+        if self.punto_reintento is None and abs(self.jugador.rect.centery - jefe.rect.centery) < 5 * TILE:
             limite = jefe.minimo_x - 3 * TILE
-            if self.jugador.rect.right > limite:
-                self.punto_reintento = (limite, self.nivel.spawn[1])
+            if self.jugador.rect.right > limite and abs(self.jugador.rect.centerx - jefe.rect.centerx) < 26 * TILE:
+                y_piso_jefe = jefe.rect.bottom - self.jugador.rect.height
+                self.punto_reintento = (limite, y_piso_jefe)
                 self.texto_ayuda = "PUNTO DE CONTROL · LA ANTESALA DEL CUSTODIO"
                 self.mostrar_ayuda = 4.5
                 self.hud.mostrar_mensaje("PUNTO DE CONTROL · La antesala del Custodio del Osario", 1, 3.5)
@@ -2052,6 +2065,10 @@ class Juego:
         for mj in getattr(self.nivel, "minijefes", []):
             if mj.vivo:
                 mj.reiniciar()
+        for losa in getattr(self.nivel, "losas_quebradizas", []):
+            losa.reiniciar()
+        for inc in getattr(self.nivel, "incensarios", []):
+            inc.reiniciar()
         self.camara.actualizar(self.jugador, self.nivel, 1.0)
 
     # --- Función reintentar_nivel --- #
@@ -2079,6 +2096,10 @@ class Juego:
             if self.jefe is not None and self.jefe.vivo:
                 self.jefe.reiniciar()
                 self.ondas_jefe = []
+            for losa in getattr(self.nivel, "losas_quebradizas", []):
+                losa.reiniciar()
+            for inc in getattr(self.nivel, "incensarios", []):
+                inc.reiniciar()
             tenia_guadaña = self.jugador.rango_ataque_mejorado
             tenia_pala = self.jugador.tiene_pala
             tenia_dash = self.jugador.tiene_dash
@@ -3146,57 +3167,56 @@ class Juego:
                 else:
                     puntos_clave.append((pr.rect.centerx, pr.rect.top, tecla_atk, "Consagrar la Guadaña", True))
 
-        # 4. Faroles de Checkpoint (F)
+        # 4. Faroles de Checkpoint (F): solo mostrar tablilla flotante cuando el farol aún NO fue encendido
         for cp in getattr(self.nivel, "checkpoints", []):
             if not getattr(cp, "activo", False):
                 puntos_clave.append((cp.rect.centerx, cp.rect.top, "FAROL DE REPOSO", "Consagrar almas y guardar", False))
-            else:
-                tier_data = {
-                    1: ("CONSAGRACIÓN I", "Lumbre de Purificación"),
-                    2: ("CONSAGRACIÓN II", "Manto Protector Activo"),
-                    3: ("CONSAGRACIÓN III", "Filo de Ánima Activo"),
-                }
-                kc, txt = tier_data.get(cp.tier, ("FAROL ACTIVO", "Punto de retorno seguro"))
-                puntos_clave.append((cp.rect.centerx, cp.rect.top, kc, txt, False))
 
-        # 5. Campanas de Resonancia (I) — solo mostrar la más cercana dentro del radio para evitar superposición
-        inc_cercanos = [
-            inc for inc in getattr(self.nivel, "incensarios", [])
-            if math.hypot(jx - inc.rect.centerx, jy - inc.rect.top) <= 165
-        ]
-        if inc_cercanos:
-            inc_min = min(inc_cercanos, key=lambda inc: math.hypot(jx - inc.rect.centerx, jy - inc.rect.top))
-            puntos_clave.append((inc_min.rect.centerx, inc_min.rect.top, "CAMPANA DE IMPULSO", "Cae sobre ella para rebotar", False))
+        # 5. Campanas de Resonancia (I): textos contextuales según nivel y solo en campanas pedagógicas (sin invadir Nivel 3)
+        es_tut = getattr(self, "es_tutorial", False)
+        n_idx = getattr(self, "nivel_indice", 0)
+        if es_tut or n_idx < 2:
+            inc_cercanos = [
+                inc for inc in getattr(self.nivel, "incensarios", [])
+                if math.hypot(jx - inc.rect.centerx, jy - inc.rect.top) <= 125
+            ]
+            if inc_cercanos:
+                inc_min = min(inc_cercanos, key=lambda inc: math.hypot(jx - inc.rect.centerx, jy - inc.rect.top))
+                col_inc = inc_min.rect.centerx // TILE
+                if es_tut:
+                    if col_inc <= 28:
+                        puntos_clave.append((inc_min.rect.centerx, inc_min.rect.top, "CAMPANA DE BRONCE", "Cae sobre ella para rebotar", False))
+                elif n_idx == 0:
+                    if col_inc <= 100:
+                        puntos_clave.append((inc_min.rect.centerx, inc_min.rect.top, "CAMPANA + DASH", "Rebota encima y recarga Dash", False))
+                elif n_idx == 1:
+                    if col_inc <= 145 or (180 <= col_inc <= 186):
+                        puntos_clave.append((inc_min.rect.centerx, inc_min.rect.top, tecla_atk, "Golpea o pisa: rebote + Dash", True))
 
         # 6. Meta / Portón Litúrgico (G)
         if getattr(self.nivel, "meta", None):
             puntos_clave.append((self.nivel.meta.centerx, self.nivel.meta.top, "PORTÓN SACRO", "Cruzar al siguiente nivel", False))
 
-        # 7. Carcelero (K)
-        for mj in getattr(self.nivel, "minijefes", []):
-            if getattr(mj, "vivo", False):
-                puntos_clave.append((mj.rect.centerx, mj.rect.top, "EL CARCELERO", "Ataca tras su embestida", False))
-
-        # 8. Puntos pedagógicos específicos del Preludio / Tutorial:
-        if getattr(self, "es_tutorial", False):
+        # 7. Puntos pedagógicos específicos del Preludio / Tutorial:
+        if es_tut:
             puntos_clave.append((12 * TILE, 8 * TILE, tecla_jmp, "Toque corto o mantenido", True))
             if getattr(self.jugador, "escudo_farol", False):
                 enemigos_cercanos = [
                     e for e in getattr(self.nivel, "enemigos", [])
-                    if getattr(e, "vivo", True) and math.hypot(jx - e.rect.centerx, jy - e.rect.top) <= 165
+                    if getattr(e, "vivo", True) and math.hypot(jx - e.rect.centerx, jy - e.rect.top) <= 125
                 ]
                 if enemigos_cercanos:
                     e_min = min(enemigos_cercanos, key=lambda e: math.hypot(jx - e.rect.centerx, jy - e.rect.top))
                     puntos_clave.append((e_min.rect.centerx, e_min.rect.top, "MANTO ACTIVO", "Absorbe un golpe enemigo", False))
 
         fuente_kc = self.fuentes.get(10) or self.obtener_fuente(10)
-        fuente_lbl = self.fuentes.get(12) or self.obtener_fuente(12)
+        fuente_lbl = self.fuentes.get(11) or self.obtener_fuente(11)
         zoom = CAMARA_ZOOM
 
         for wx, wy, encabezado, label_corta, es_tecla in puntos_clave:
             dist = math.hypot(jx - wx, jy - wy)
-            if dist <= 165:
-                alfa = int(min(240, max(0, (165 - dist) / 45.0 * 240)))
+            if dist <= 125:
+                alfa = int(min(230, max(0, (125 - dist) / 40.0 * 230)))
                 if alfa <= 4:
                     continue
                 sx = int((wx - camara.x) * zoom)
@@ -3207,9 +3227,9 @@ class Juego:
 
                 kw, kh = fuente_kc.size(encabezado)
                 lw, lh = fuente_lbl.size(label_corta)
-                bw = max(kw + 24, lw + 24)
-                bh = 38
-                h_conector = 24
+                bw = max(kw + 20, lw + 20)
+                bh = 32
+                h_conector = 16
                 bh_total = bh + h_conector
                 bx = sx - bw // 2
                 by = sy - bh_total
@@ -3219,21 +3239,21 @@ class Juego:
                     cx_local = bw // 2
 
                     # 1. Hilo conector vertical y rombo luminoso con canal alfa real en SRCALPHA
-                    pygame.draw.line(lienzo, (218, 178, 86, min(alfa, 185)), (cx_local, bh), (cx_local, bh_total - 2), 1)
-                    pygame.draw.polygon(lienzo, (255, 235, 160, min(alfa, 235)), [
-                        (cx_local, bh_total - 5), (cx_local + 3, bh_total - 2),
-                        (cx_local, bh_total + 1), (cx_local - 3, bh_total - 2)
+                    pygame.draw.line(lienzo, (218, 178, 86, min(alfa, 170)), (cx_local, bh), (cx_local, bh_total - 2), 1)
+                    pygame.draw.polygon(lienzo, (255, 235, 160, min(alfa, 220)), [
+                        (cx_local, bh_total - 4), (cx_local + 2, bh_total - 2),
+                        (cx_local, bh_total), (cx_local - 2, bh_total - 2)
                     ])
 
-                    # 2. Tablilla espacial de obsidiana y bronce
-                    pygame.draw.rect(lienzo, (12, 10, 16, min(alfa, 225)), (0, 0, bw, bh), border_radius=6)
-                    pygame.draw.rect(lienzo, (200, 160, 64, min(alfa, 230)), (0, 0, bw, bh), 1, border_radius=6)
-                    pygame.draw.rect(lienzo, (218, 178, 86, min(alfa, 130)), (2, 2, bw - 4, bh - 4), 1, border_radius=5)
+                    # 2. Tablilla espacial compacta de obsidiana y bronce con bisel nítido de 1px
+                    pygame.draw.rect(lienzo, (10, 8, 16, min(alfa, 232)), (0, 0, bw, bh), border_radius=5)
+                    pygame.draw.rect(lienzo, (4, 3, 8, min(alfa, 240)), (0, 0, bw, bh), 1, border_radius=5)
+                    pygame.draw.rect(lienzo, (198, 162, 82, min(alfa, 210)), (1, 1, bw - 2, bh - 2), 1, border_radius=4)
 
                     # 3. Encabezado: Keycap Físico Biselado SOLO si es una tecla real; emblema dorado si es objeto del mundo
                     if es_tecla:
                         kc_w = kw + 10
-                        kc_h = 16
+                        kc_h = 14
                         kc_x = (bw - kc_w) // 2
                         kc_y = 3
                         pygame.draw.rect(lienzo, (150, 115, 45, alfa), (kc_x, kc_y + 1, kc_w, kc_h - 1), border_radius=3)
@@ -3241,21 +3261,21 @@ class Juego:
                         pygame.draw.rect(lienzo, (24, 20, 16, alfa), (kc_x, kc_y, kc_w, kc_h), 1, border_radius=3)
                         img_kc = fuente_kc.render(encabezado, True, (24, 18, 20))
                         img_kc.set_alpha(alfa)
-                        lienzo.blit(img_kc, (kc_x + (kc_w - kw) // 2, kc_y + 1))
+                        lienzo.blit(img_kc, (kc_x + (kc_w - kw) // 2, kc_y))
                     else:
-                        img_hdr = fuente_kc.render(encabezado, True, (218, 178, 86))
+                        img_hdr = fuente_kc.render(encabezado, True, (224, 188, 98))
                         img_hdr.set_alpha(alfa)
                         hx = (bw - kw) // 2
-                        lienzo.blit(img_hdr, (hx, 4))
-                        pygame.draw.line(lienzo, (140, 110, 52, min(alfa, 160)), (10, 18), (bw - 10, 18), 1)
+                        lienzo.blit(img_hdr, (hx, 3))
+                        pygame.draw.line(lienzo, (130, 102, 48, min(alfa, 145)), (8, 15), (bw - 8, 15), 1)
 
                     # 4. Leyenda inferior clara
-                    img_lbl = fuente_lbl.render(label_corta, True, (246, 238, 224))
+                    img_lbl = fuente_lbl.render(label_corta, True, (244, 238, 226))
                     img_sombra = fuente_lbl.render(label_corta, True, (0, 0, 0))
                     img_lbl.set_alpha(alfa)
                     img_sombra.set_alpha(alfa)
                     lx = (bw - lw) // 2
-                    ly = 20
+                    ly = 17
                     lienzo.blit(img_sombra, (lx + 1, ly + 1))
                     lienzo.blit(img_lbl, (lx, ly))
 
