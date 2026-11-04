@@ -209,6 +209,7 @@ class Audio:
         self.sonido_dron = None
         self.sonido_latido = None
         self.tiempo_ultimo_latido = 0.0
+        self.musica_actual = None
 
         try:
             if pygame.mixer.get_init() is None:
@@ -216,7 +217,7 @@ class Audio:
                     frequency=FRECUENCIA_MUESTREO,
                     size=-16,
                     channels=2,
-                    buffer=512,
+                    buffer=2048,
                 )
             self._construir_banco()
             self.activo = True
@@ -307,27 +308,27 @@ class Audio:
             self.sonidos["stomp"],
         ]
 
-        # 6. Almas espectrales y escala pentatónica de ánimas
-        if "alma" in self.sonidos:
-            for idx in range(1, 7):
-                self.sonidos[f"alma_{idx}"] = self.sonidos["alma"]
-        else:
-            notas_almas = [523, 587, 659, 784, 880, 1046]
-            for idx, nota in enumerate(notas_almas, 1):
-                capas_a = [
-                    ("seno", nota, 120, 0.7, None),
-                    ("fm", nota * 2, 80, 0.3, (nota * 3, 0.8)),
-                ]
-                snd_alma = sintetizar_sfx(0.22, capas_a, adsr=(0.01, 0.06, 0.6, 0.15), volumen=0.16)
-                self.sonidos[f"alma_{idx}"] = snd_alma
-            self.sonidos["alma"] = self.sonidos.get("alma_3", self.sonidos.get("alma_1"))
-
-        self.variaciones["alma"] = [
-            self.sonidos["alma_1"],
-            self.sonidos["alma_2"],
-            self.sonidos["alma_3"],
-            self.sonidos["alma_4"],
-        ]
+        # 6. Chimes escalonados de Almas / Gemas (Escala Pentatónica Mayor Cristalina: C5, D5, E5, G5, A5, C6)
+        # SIEMPRE procedural para conservar el ascenso armónico al encadenar recolecciones.
+        notas_almas = [523.25, 587.33, 659.25, 783.99, 880.00, 1046.50]
+        for idx, nota in enumerate(notas_almas, 1):
+            # Síntesis de chime cristalino: fundamental pura + octava brillante + campana FM + destello armónico
+            capas_chime = [
+                ("seno", nota, 0, 0.65, None),
+                ("seno", nota * 2.0, 15, 0.35, None),
+                ("fm", nota * 1.5, 0, 0.28, (nota * 3.0, 0.9)),
+                ("seno", nota * 3.0, 40, 0.15, None),
+            ]
+            snd_alma = sintetizar_sfx(
+                0.34,
+                capas_chime,
+                adsr=(0.004, 0.07, 0.45, 0.266),
+                volumen=0.22,
+            )
+            self.sonidos[f"alma_{idx}"] = snd_alma
+        self.sonidos["alma"] = self.sonidos["alma_1"]
+        # Eliminar 'alma' de self.variaciones para que reproducir('alma_X') respete siempre el peldaño exacto de la escala
+        self.variaciones.pop("alma", None)
 
         # 7. Onda del Custodio: retumbar de osario
         if "onda" not in self.sonidos:
@@ -436,7 +437,7 @@ class Audio:
 
         # 15. Dron fúnebre ambiental
         if "dron_catacumbas" not in self.sonidos:
-            self.sonido_dron = self._sonido("dron_catacumbas", lambda: sintetizar_dron_funebre(duracion=4.0, volumen=0.08))
+            self.sonido_dron = self._sonido("dron_catacumbas", lambda: sintetizar_dron_funebre(duracion=4.0, volumen=0.045))
             self.sonidos["dron_catacumbas"] = self.sonido_dron
         else:
             self.sonido_dron = self.sonidos["dron_catacumbas"]
@@ -577,8 +578,11 @@ class Audio:
         return None
 
     def reproducir_musica(self, id_musica: str, bucle: bool = True, fade_ms: int = 800):
-        """Reproduce música con pygame.mixer.music. No toca el canal del dron."""
+        """Reproduce música con pygame.mixer.music sin reiniciar si ya suena la misma pista."""
         if not self.activo:
+            self.musica_actual = id_musica
+            return
+        if self.musica_actual == id_musica and pygame.mixer.music.get_busy():
             return
         ruta = self._ruta_musica_por_id(id_musica)
         if ruta is None:
@@ -591,12 +595,15 @@ class Audio:
             try:
                 loops = -1 if bucle else 0
                 pygame.mixer.music.load(str(ruta))
+                pygame.mixer.music.set_volume(0.45)
                 pygame.mixer.music.play(loops=loops, fade_ms=fade_ms)
+                self.musica_actual = id_musica
             except pygame.error:
                 pass
 
     def detener_musica(self, fade_ms: int = 800):
         """Detiene la música con fade out. No toca el canal del dron."""
+        self.musica_actual = None
         try:
             pygame.mixer.music.fadeout(fade_ms)
         except pygame.error:

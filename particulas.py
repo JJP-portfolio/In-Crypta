@@ -31,6 +31,8 @@ from config import (
     VIOLETA_POE,
 )
 
+FX_IMPACTO_BLANCO = (250, 248, 240)
+
 
 # --- Clase Particula estándar --- #
 class HitSpark:
@@ -169,9 +171,45 @@ class SistemaParticulas:
         self.sparks = []
         self.factor_calidad = 1.0
 
+    def emitir_dirigida(self, x, y, vx, vy, color, vida, tamano, gravedad=700.0):
+        self.particulas.append(Particula(x, y, vx, vy, vida, color, tamano, gravedad))
+
     def hit_spark(self, x, y, direccion=1, mejorado=False):
-        """Registra un destello de impacto de combate."""
+        """Estrella gótica de 4 puntas afiladas + chispas direccionales en cono de 45 grados."""
         self.sparks.append(HitSpark(x, y, direccion, mejorado))
+        col_principal = (195, 85, 250) if mejorado else (218, 178, 86)
+        # Partícula central de destello estelar
+        self.emitir(x, y, 4, (FX_IMPACTO_BLANCO, col_principal), 40, 0.14, 4.5, 0)
+        # Esquirlas direccionales en arco de 45 grados
+        ang_base = 0.0 if direccion >= 0 else math.pi
+        cantidad = max(2, int(10 * getattr(self, "factor_calidad", 1.0)))
+        for _ in range(cantidad):
+            ang = ang_base + random.uniform(-0.39, 0.39)
+            vel = random.uniform(110.0, 260.0)
+            self.emitir_dirigida(
+                x, y,
+                vx=math.cos(ang) * vel,
+                vy=math.sin(ang) * vel - 35.0,
+                color=random.choice((col_principal, (228, 224, 210), (92, 220, 200))),
+                vida=random.uniform(0.18, 0.32),
+                tamano=random.uniform(2.0, 3.5),
+                gravedad=380.0,
+            )
+
+    def disolucion_enemigo(self, x, y, ancho=24, alto=24):
+        """Disolución etérea al morir un enemigo: cenizas ascendentes con gravedad negativa."""
+        cantidad = max(4, int(16 * getattr(self, "factor_calidad", 1.0)))
+        colores = ((92, 220, 200), (181, 185, 194), (68, 62, 82), (228, 224, 210))
+        for _ in range(cantidad):
+            px = x + random.uniform(-ancho * 0.45, ancho * 0.45)
+            py = y + random.uniform(-alto * 0.45, alto * 0.45)
+            self.emitir(
+                px, py, 1, colores,
+                velocidad=35,
+                vida=random.uniform(0.45, 0.85),
+                tamano=random.uniform(1.8, 3.2),
+                gravedad=-95,  # Gravedad negativa: las cenizas ascienden hacia la bóveda
+            )
 
     # --- Función emitir genérica --- #
     def emitir(self, x, y, cantidad, colores, velocidad=180.0, vida=0.45, tamano=4.0, gravedad=700.0):

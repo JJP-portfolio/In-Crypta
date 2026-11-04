@@ -16,34 +16,47 @@
 import asyncio
 import os
 import sys
+import warnings
 from pathlib import Path
 
-# Import directo a nivel módulo. El escáner de Pygbag (PEP 723) sólo analiza
-# los imports del archivo de entrada; no entra en juego.py ni en hud.py.
-# Sin esta línea, Pygbag no descarga el wheel de pygame-ce para WebAssembly.
-import pygame
+# Suprimir avisos de librerías externas obsoletas
+warnings.filterwarnings("ignore", category=UserWarning)
 
-# Asegurar que el directorio de trabajo y sys.path apunten siempre a la raíz del juego
 RAIZ = Path(__file__).resolve().parent
 os.chdir(RAIZ)
 if str(RAIZ) not in sys.path:
     sys.path.insert(0, str(RAIZ))
+
+# Si existe el entorno virtual del proyecto con pygame-ce y numpy, preferirlo automáticamente
+venv_python = RAIZ / ".venv" / "bin" / "python"
+if venv_python.exists() and sys.executable != str(venv_python) and not os.environ.get("_IN_CRYPTA_VENV_ACTIVE"):
+    os.environ["_IN_CRYPTA_VENV_ACTIVE"] = "1"
+    os.execv(str(venv_python), [str(venv_python)] + sys.argv)
+
+import pygame
 
 from juego import Juego
 
 
 async def main():
     nivel_inicio = None
-    if len(sys.argv) >= 3 and sys.argv[1] in ("--nivel", "-n"):
+    iniciar_tut = False
+    if len(sys.argv) >= 2 and sys.argv[1] in ("--tutorial", "-t"):
+        iniciar_tut = True
+    elif len(sys.argv) >= 3 and sys.argv[1] in ("--nivel", "-n"):
         try:
             val = int(sys.argv[2])
-            if 1 <= val <= 3:
+            if val == 0:
+                iniciar_tut = True
+            elif 1 <= val <= 3:
                 nivel_inicio = val - 1
         except ValueError:
             pass
 
     juego = Juego()
-    if nivel_inicio is not None:
+    if iniciar_tut:
+        juego.iniciar_tutorial()
+    elif nivel_inicio is not None:
         juego.seleccionar_nivel(nivel_inicio)
     await juego.run_async()
 
