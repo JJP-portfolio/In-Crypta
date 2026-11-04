@@ -688,7 +688,7 @@ class HudRenderer:
         # 3. MEDALLONES SUPERIORES DERECHOS (Diales circulares con iconos de Dash y Arma + Urna de Almas)
         self._dibujar_medallones_derechos(surface, layout.zona_der, modelo, alfa_global)
 
-        # 4. BARRA MONUMENTAL DE CATEDRAL DEL JEFE EN EL BORDE INFERIOR (y = ALTO - 54)
+        # 4. BARRA DE SALUD DEL JEFE / MINI-JEFE EN LA ZONA SUPERIOR CENTRAL (Cero obstrucción del suelo)
         if modelo.jefe_vivo:
             self._dibujar_barra_jefe_catedral(surface, modelo)
 
@@ -766,26 +766,28 @@ class HudRenderer:
         cx = rect.centerx
         nom = getattr(modelo, "nombre_nivel", "") or getattr(modelo, "nivel_nombre", "")
         titulo = nom.upper() if nom else "EL UMBRAL"
-        img_txt = self._texto(titulo, 13, (228, 224, 210), sombra=True)
+        jefe_activo = getattr(modelo, "jefe_vivo", False)
+        tam_fuente = 11 if jefe_activo else 13
+        img_txt = self._texto(titulo, tam_fuente, (228, 224, 210), sombra=True)
 
-        w_cartela = max(236, img_txt.get_width() + 52)
-        h_cartela = 34
+        w_cartela = max(220 if jefe_activo else 236, img_txt.get_width() + 44)
+        h_cartela = 24 if jefe_activo else 34
         x_cartela = cx - w_cartela // 2
-        y_cartela = rect.y + 4
+        y_cartela = rect.y + (0 if jefe_activo else 4)
 
         clave_c = ("cartela_centro", w_cartela, h_cartela, alfa)
         panel_c = self._paneles_cache.get(clave_c)
         if panel_c is None:
             panel_c = pygame.Surface((w_cartela, h_cartela), pygame.SRCALPHA)
             pts_c = [
-                (12, 0), (w_cartela - 12, 0), (w_cartela - 1, h_cartela // 2),
-                (w_cartela - 12, h_cartela - 1), (12, h_cartela - 1), (1, h_cartela // 2)
+                (10, 0), (w_cartela - 10, 0), (w_cartela - 1, h_cartela // 2),
+                (w_cartela - 10, h_cartela - 1), (10, h_cartela - 1), (1, h_cartela // 2)
             ]
             pygame.draw.polygon(panel_c, (10, 8, 16, int(alfa * 0.86)), pts_c)
             pygame.draw.polygon(panel_c, (218, 178, 86, int(alfa * 0.85)), pts_c, 1)
             # Filigranas laterales internas
-            pygame.draw.circle(panel_c, (218, 178, 86, alfa), (10, h_cartela // 2), 2)
-            pygame.draw.circle(panel_c, (218, 178, 86, alfa), (w_cartela - 10, h_cartela // 2), 2)
+            pygame.draw.circle(panel_c, (218, 178, 86, alfa), (9, h_cartela // 2), 2)
+            pygame.draw.circle(panel_c, (218, 178, 86, alfa), (w_cartela - 9, h_cartela // 2), 2)
             self._paneles_cache[clave_c] = panel_c
 
         surface.blit(panel_c, (x_cartela, y_cartela))
@@ -889,18 +891,25 @@ class HudRenderer:
         surface.blit(img_t, (cx - img_t.get_width() // 2, cy + radio + 2))
 
     def _dibujar_barra_jefe_catedral(self, surface: pygame.Surface, modelo: HudModel) -> None:
-        """Barra gótica monumental en el borde inferior (y = ALTO - 54), con aviso de Fase II."""
-        sw, sh = surface.get_width(), surface.get_height()
-        bw, bh = 620, 22
+        """Barra gótica de jefe integrada en la zona superior central (y = 58..76), dejando 100% libre el suelo."""
+        sw = surface.get_width()
+        bw, bh = 460, 16
         bx = (sw - bw) // 2
-        by = sh - 54
+        by = 60
         tiempo = getattr(self, "tiempo", 0.0)
         temblor_x = int(math.sin(tiempo * 45.0) * 2) if getattr(modelo, "jefe_fase", 1) >= 2 else 0
         bx += temblor_x
 
+        # Nombre litúrgico del Jefe arriba de la barra (dentro de zona_centro, y = 42)
+        nombre_jefe = getattr(modelo, "jefe_nombre", "EL CUSTODIO DEL OSARIO").upper()
+        if getattr(modelo, "jefe_fase", 1) >= 2:
+            nombre_jefe += " · FASE II"
+        img_j = self._texto(nombre_jefe, 12, (218, 178, 86), sombra=True)
+        surface.blit(img_j, (sw // 2 - img_j.get_width() // 2, by - 18))
+
         # Marco de obsidiana y filigrana de oro/hueso
-        pygame.draw.rect(surface, (8, 6, 12), (bx - 4, by - 4, bw + 8, bh + 8), border_radius=4)
-        pygame.draw.rect(surface, (218, 178, 86), (bx - 4, by - 4, bw + 8, bh + 8), 2, border_radius=4)
+        pygame.draw.rect(surface, (8, 6, 12), (bx - 3, by - 3, bw + 6, bh + 6), border_radius=4)
+        pygame.draw.rect(surface, (218, 178, 86), (bx - 3, by - 3, bw + 6, bh + 6), 2, border_radius=4)
 
         vida_max = max(1, modelo.jefe_vida_max)
         proporcion = max(0.0, min(1.0, modelo.jefe_vida / float(vida_max)))
@@ -917,18 +926,16 @@ class HudRenderer:
             pygame.draw.line(surface, (6, 5, 10), (sx, by), (sx, by + bh), 2)
             pygame.draw.line(surface, (228, 224, 210), (sx + 1, by + 2), (sx + 1, by + bh - 2), 1)
 
-        # Nombre litúrgico del Jefe
-        nombre_jefe = getattr(modelo, "jefe_nombre", "EL CUSTODIO DEL OSARIO").upper()
-        if getattr(modelo, "jefe_fase", 1) >= 2:
-            nombre_jefe += " · FASE II"
-        img_j = self._texto(nombre_jefe, 14, (218, 178, 86), sombra=True)
-        surface.blit(img_j, (sw // 2 - img_j.get_width() // 2, by - 24))
-
-        # Aviso de Fase II del Jefe si está activo (BUG-05 rescatado)
+        # Aviso de Fase II del Jefe debajo de la barra superior (sin tocar jamás el suelo)
         if getattr(modelo, "aviso_jefe", 0.0) > 0:
             aviso_txt = "¡FASE II! LA PALA REBOTA — SOLO EL PISOTÓN DESDE ARRIBA LO DAÑA"
-            img_av = self._texto(aviso_txt, 13, (255, 110, 120), sombra=True)
-            surface.blit(img_av, (sw // 2 - img_av.get_width() // 2, by - 44))
+            img_av = self._texto(aviso_txt, 12, (255, 110, 120), sombra=True)
+            av_w = img_av.get_width() + 16
+            av_x = sw // 2 - av_w // 2
+            av_y = by + bh + 6
+            pygame.draw.rect(surface, (10, 8, 14), (av_x, av_y, av_w, img_av.get_height() + 4), border_radius=4)
+            pygame.draw.rect(surface, (210, 45, 65), (av_x, av_y, av_w, img_av.get_height() + 4), 1, border_radius=4)
+            surface.blit(img_av, (sw // 2 - img_av.get_width() // 2, av_y + 2))
 
     # --- Canal de mensajes con Lápida de Obsidiana y Keycaps Físicos ---
     def _dibujar_mensajes(self, pantalla, modelo, mensajes, reducir_movimiento, dt):
@@ -1069,16 +1076,38 @@ class HudOrquestador:
         self.modelo.escudo_farol = nuevo_manto
         self.modelo.filo_anima = getattr(j, "filo_anima", False) if j else False
 
+        jefe_cerca = False
+        if jefe is not None and getattr(jefe, "vivo", False):
+            if hasattr(jefe, "rect") and j is not None and hasattr(j, "rect"):
+                mismo_piso = (j.rect.centery // (18 * 32)) == (jefe.rect.centery // (18 * 32))
+                dist_x = abs(j.rect.centerx - jefe.rect.centerx)
+                jefe_cerca = mismo_piso and (
+                    dist_x < 36 * 32
+                    or getattr(juego, "aviso_jefe", 0.0) > 0
+                    or getattr(jefe, "vida", JEFE_VIDA) < JEFE_VIDA
+                )
+            else:
+                jefe_cerca = True
+
         minijefe_activo = None
-        if n and hasattr(n, "minijefes") and not (jefe and getattr(jefe, "vivo", False)):
+        if n and hasattr(n, "minijefes") and not jefe_cerca:
             for mj in n.minijefes:
                 if mj.vivo and mj.estado != "muerto":
-                    dist = abs(j.rect.centerx - mj.rect.centerx) if j else 9999
-                    if dist < 450 or mj.estado in ("ataque", "telegrafo", "recuperacion", "cansado"):
+                    if j is not None and hasattr(j, "rect") and hasattr(mj, "rect"):
+                        mismo_piso_mj = (j.rect.centery // (18 * 32)) == (mj.rect.centery // (18 * 32))
+                        dist = abs(j.rect.centerx - mj.rect.centerx)
+                        if mismo_piso_mj and (
+                            dist < 520
+                            or mj.estado in ("ataque", "telegrafo", "recuperacion", "cansado")
+                            or getattr(mj, "vida", 3) < 3
+                        ):
+                            minijefe_activo = mj
+                            break
+                    else:
                         minijefe_activo = mj
                         break
 
-        if jefe is not None and getattr(jefe, "vivo", False):
+        if jefe_cerca:
             self.modelo.jefe_vivo = True
             self.modelo.jefe_vida = jefe.vida
             self.modelo.jefe_vida_max = JEFE_VIDA

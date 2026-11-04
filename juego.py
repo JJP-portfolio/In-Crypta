@@ -1689,6 +1689,10 @@ class Juego:
                 # Telegrafía: brillo carmesí (dibujar) + sonido de aviso.
                 self.audio.reproducir("jefe_aviso")
 
+            if getattr(mj, "choque_recien", False) and abs(mj.rect.centerx - self.jugador.rect.centerx) < 480:
+                self.camara.sacudir(4.5, 0.12)
+                self.particulas.chispas_rebote(mj.rect.centerx + mj.direccion * 16, mj.rect.bottom - 4, -mj.direccion)
+
             if not self.jugador.rect.colliderect(mj.rect):
                 continue
 
@@ -1698,11 +1702,13 @@ class Juego:
                     self._rebote_pisoton(mj.rect, fuerza_sacudida=7.0)
                     self._comprobar_muerte_minijefe(mj)
                 else:
-                    # Fuera de su ventana de cansancio: rebota sin dañarlo.
+                    # Fuera de su ventana de cansancio: rebota sin dañarlo y recarga Dash aéreo.
                     self.jugador.rect.bottom = mj.rect.top
                     self.jugador.y = float(self.jugador.rect.y)
-                    self.jugador.vy = -REBOTE_ENEMIGO * 0.75
+                    self.jugador.vy = -REBOTE_ENEMIGO * 0.85
                     self.jugador.en_suelo = False
+                    self.jugador.dash_usos_aire = DASH_USOS_AIRE
+                    self.jugador.dash_cooldown = 0.0
                     self._rebote_minijefe_guardia(mj)
             elif self.jugador.invulnerable <= 0:
                 self.perder_vida(causa="Ataque del Carcelero del Osario")

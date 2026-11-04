@@ -2212,6 +2212,7 @@ class MiniJefe:
         self.almas_otorgadas = False
         self.vx = 0.0
         self.aviso_recien = False
+        self.choque_recien = False
 
     def reiniciar(self):
         self.rect = pygame.Rect(self.inicial_rect)
@@ -2228,6 +2229,7 @@ class MiniJefe:
         self.almas_otorgadas = False
         self.vx = 0.0
         self.aviso_recien = False
+        self.choque_recien = False
 
     def _aplicar_dano(self):
         # Patrón justo: solo recibe daño en su ventana de cansancio (1.3 s).
@@ -2257,6 +2259,7 @@ class MiniJefe:
 
     def actualizar(self, dt, jugador):
         self.aviso_recien = False
+        self.choque_recien = False
         if not self.vivo:
             return
 
@@ -2287,8 +2290,9 @@ class MiniJefe:
             self.direccion = dir_jugador
             if self.temporizador <= 0:
                 self.estado = "ataque"
-                self.temporizador = 0.40
-                self.vx = self.direccion * 220.0
+                self.temporizador = 0.42
+                vel_embestida = 220.0 + max(0, MINIJEFE_VIDA - self.vida) * 45.0
+                self.vx = self.direccion * vel_embestida
 
         elif self.estado == "ataque":
             self.vulnerable = False
@@ -2298,6 +2302,7 @@ class MiniJefe:
                 self.temporizador = MINIJEFE_VULNERABLE
                 self.vulnerable = True
                 self.vx = 0.0
+                self.choque_recien = True
 
         elif self.estado == "cansado":
             self.vulnerable = True

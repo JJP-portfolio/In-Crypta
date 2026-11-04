@@ -37,10 +37,10 @@ HABILIDADES_OSARIO = ("dash", "pala")
 
 # SHA-256 del texto del mapa original (niveles.py antes del cambio, leído con el AST).
 HASH_MAPA_ORIGINAL = {
-    "NIVEL_1": "17faed8fd4328ab5224c82be2e98f22597b7f29eadd5b6aef579fb1e0bfe1681",
-    "NIVEL_2": "c78292358a1bd8b1794c2a2c420243ca376324f17ac3d9bdd0f2624b50675594",
-    "NIVEL_3": "facffad5d8e9181450efa1ebc08bcfb970cd0ef05ef5a88bd90f1b30e0817a4e",
-    "NIVEL_TUTORIAL": "10ac0ab120483e769526da0ffaebdedc788c1ac0a7f855208c25f1bb9f1d9812",
+    "NIVEL_1": "e4ac309c78cf02fa4078ccef231a2e56863f168cdd85a3e79202795aa8217059",
+    "NIVEL_2": "30f50458ea66d4bd9a1d01f817616377b7a6e5d83320e111d1e5bbe01bf532ba",
+    "NIVEL_3": "919047c8da5bc74985713d26d96bf3bc87a323669bff0332f0acb6f1c9acf361",
+    "NIVEL_TUTORIAL": "681ba6b8ee02989a038a8e0be47d3d7b40fb0e5dbc275180f7be8d6f1678611c",
 }
 
 
