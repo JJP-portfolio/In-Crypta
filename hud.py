@@ -586,14 +586,6 @@ class HudRenderer:
                                  surf.get_rect(), 1, border_radius=12)
                 pygame.draw.rect(surf, (58, 46, 36, 180), (3, 3, ancho - 6, alto - 6), 1, border_radius=9)
                 pygame.draw.line(surf, self.tema.linea_oro, (12, 1), (ancho - 12, 1), 1)
-                w_lim = ancho - 1
-                h_lim = alto - 1
-                for vx, vy, vdx, vdy in ((0, 0, 1, 1), (w_lim, 0, -1, 1),
-                                         (0, h_lim, 1, -1), (w_lim, h_lim, -1, -1)):
-                    pygame.draw.line(surf, HUD_ORO, (vx + 4 * vdx, vy),
-                                     (vx + 18 * vdx, vy), 2)
-                    pygame.draw.line(surf, HUD_ORO, (vx, vy + 4 * vdy),
-                                     (vx, vy + 16 * vdy), 2)
                 try:
                     surf = surf.convert_alpha()
                 except Exception:

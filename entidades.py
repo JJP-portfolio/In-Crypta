@@ -1497,7 +1497,19 @@ class EnemigoMelee:
         if self.aviso_tiempo > 0:
             self.aviso_tiempo = max(0.0, self.aviso_tiempo - dt)
 
-        # Mantener en el rango
+        distancia_x = abs(self.rect.centerx - jugador.rect.centerx)
+        distancia_y = abs(self.rect.centery - jugador.rect.centery)
+
+        # Si está en aviso de ataque o rango melee, encarar de inmediato al jugador
+        if (distancia_x <= 70 and distancia_y <= 20) or self.aviso_tiempo > 0:
+            if distancia_x > 2:
+                self.direccion = 1 if jugador.rect.centerx > self.rect.centerx else -1
+            if self.aviso_tiempo <= 0:
+                self.aviso_tiempo = 0.25
+            # Pausar patrulla durante la preparación del ataque
+            return
+
+        # Mantener en el rango de patrulla
         self.x += self.direccion * VELOCIDAD_ENEMIGO * dt
         self.rect.x = round(self.x)
 
@@ -1509,15 +1521,6 @@ class EnemigoMelee:
             self.rect.right = self.maximo_x
             self.x = float(self.rect.x)
             self.direccion = -1
-
-        # Verificar si el jugador está en rango melee y prevenir el paso
-        distancia_x = abs(self.rect.centerx - jugador.rect.centerx)
-        distancia_y = abs(self.rect.centery - jugador.rect.centery)
-
-        # Rango melee: 70px horizontal, 20px vertical (por debajo del torso del enemigo)
-        if distancia_x <= 70 and distancia_y <= 20:
-            if self.aviso_tiempo <= 0:
-                self.aviso_tiempo = 0.25
 
     # --- Función dibujar --- #
     def dibujar(self, surface, camara, tiempo):
@@ -2022,6 +2025,7 @@ class Custodio:
                 self.aviso_recien = True
 
         elif self.estado == "telegrafia":
+            self.direccion = 1 if jugador.rect.centerx > self.rect.centerx else -1
             self.temporizador -= dt
             if self.temporizador <= 0:
                 self.estado = "golpe"
@@ -2179,13 +2183,14 @@ class Custodio:
         pygame.draw.circle(surface, (115, 78, 28), (centro_x, rect.y + 34), 7)
         pygame.draw.circle(surface, FAROL_CÁLIDO, (centro_x, rect.y + 34), 3)
 
-        # Maza de Osario colosal (mango de fémur reforzado con bandas de hierro y corona espinosa)
-        maza_mango_ini = (centro_x + 20, rect.y + 22)
-        maza_mango_fin = (centro_x + 30, base_y - 4)
+        # Maza de Osario colosal orientada según la dirección del Custodio
+        signo = 1 if self.direccion >= 0 else -1
+        maza_mango_ini = (centro_x + signo * 20, rect.y + 22)
+        maza_mango_fin = (centro_x + signo * 30, base_y - 4)
         pygame.draw.line(surface, MARRON_OSCURO, maza_mango_ini, maza_mango_fin, 5)
         pygame.draw.line(surface, HUESO_MARFIL, maza_mango_ini, maza_mango_fin, 2)
         # Cabeza de maza con calavera de osario
-        maza_cx = centro_x + 30
+        maza_cx = centro_x + signo * 30
         maza_cy = base_y - 8
         pygame.draw.circle(surface, (85, 78, 88), (maza_cx, maza_cy), 8)
         pygame.draw.circle(surface, HUESO_MARFIL, (maza_cx, maza_cy), 6)
@@ -2323,6 +2328,7 @@ class MiniJefe:
                 self.estado = "telegrafo"
                 self.temporizador = MINIJEFE_TELEGRAFO
                 self.vx = 0.0
+                self.direccion = dir_jugador
                 self.aviso_recien = True
 
         elif self.estado == "telegrafo":
@@ -2332,6 +2338,7 @@ class MiniJefe:
             if self.temporizador <= 0:
                 self.estado = "ataque"
                 self.temporizador = 0.42
+                self.direccion = dir_jugador
                 vel_embestida = 220.0 + max(0, MINIJEFE_VIDA - self.vida) * 45.0
                 self.vx = self.direccion * vel_embestida
 

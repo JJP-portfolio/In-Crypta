@@ -2194,12 +2194,9 @@ class Juego:
         panel = pygame.Surface((ancho, alto), pygame.SRCALPHA)
         pygame.draw.rect(panel, color_fondo, (0, 0, ancho, alto), border_radius=12)
         pygame.draw.rect(panel, borde_linea, (0, 0, ancho, alto), 1, border_radius=12)
-        pygame.draw.rect(panel, borde_oro, (0, 0, ancho, alto), 2, border_radius=12)
+        pygame.draw.rect(panel, (198, 162, 82, 180), (2, 2, ancho - 4, alto - 4), 1, border_radius=10)
         pygame.draw.line(panel, (*borde_oro, 140), (16, 1), (ancho - 16, 1), 1)
         pygame.draw.line(panel, (*borde_oro, 140), (16, alto - 1), (ancho - 16, alto - 1), 1)
-        for vx, vy, vdx, vdy in ((0, 0, 1, 1), (ancho, 0, -1, 1), (0, alto, 1, -1), (ancho, alto, -1, -1)):
-            pygame.draw.line(panel, borde_oro, (vx + 6 * vdx, vy), (vx + 22 * vdx, vy), 2)
-            pygame.draw.line(panel, borde_oro, (vx, vy + 6 * vdy), (vx, vy + 22 * vdy), 2)
         destino.blit(panel, (x, y))
 
     # --- Función dibujar_fondo --- #
@@ -2900,29 +2897,6 @@ class Juego:
                 )
             self.pantalla.blit(self._superficie_destello_manto, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
 
-        # UI Meta en Lente: Filigrana de vitral celeste en las 4 esquinas cuando el Manto del Farol está activo
-        if calidad_modo != 2 and self.jugador and getattr(self.jugador, "escudo_farol", False):
-            pulso_meta = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() / 1000.0 * 3.5)
-            alfa_meta = int(55 + 35 * pulso_meta)
-            color_meta = (110, 215, 255, alfa_meta)
-            f_size = 54
-            if getattr(self, "_superficie_manto_esquinas", None) is None or self._superficie_manto_esquinas.get_size() != (pw, ph):
-                self._superficie_manto_esquinas = pygame.Surface((pw, ph), pygame.SRCALPHA)
-            self._superficie_manto_esquinas.fill((0, 0, 0, 0))
-            for (cx, cy, dx, dy) in ((0, 0, 1, 1), (pw, 0, -1, 1), (0, ph, 1, -1), (pw, ph, -1, -1)):
-                arc_rect = pygame.Rect(
-                    cx - (0 if dx > 0 else f_size * 2),
-                    cy - (0 if dy > 0 else f_size * 2),
-                    f_size * 2, f_size * 2
-                )
-                pygame.draw.arc(self._superficie_manto_esquinas, color_meta, arc_rect, 0.0, 6.28, 2)
-                pygame.draw.line(self._superficie_manto_esquinas, color_meta, (cx, cy + dy * 12), (cx + dx * 36, cy + dy * 12), 1)
-                pygame.draw.line(self._superficie_manto_esquinas, color_meta, (cx + dx * 12, cy), (cx + dx * 12, cy + dy * 36), 1)
-                pygame.draw.polygon(self._superficie_manto_esquinas, color_meta, [
-                    (cx + dx * 12, cy + dy * 12), (cx + dx * 18, cy + dy * 12), (cx + dx * 12, cy + dy * 18)
-                ])
-            self.pantalla.blit(self._superficie_manto_esquinas, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
-
         # 3. UI Espacial en resolución nativa — carteles nítidos con sombra litúrgica
         self.dibujar_ui_espacial(self.pantalla, self.camara)
 
@@ -3168,13 +3142,22 @@ class Juego:
                     puntos_clave.append((pr.rect.centerx, pr.rect.top, tecla_atk, "Consagrar la Guadaña", True))
 
         # 4. Faroles de Checkpoint (F): solo mostrar tablilla flotante cuando el farol aún NO fue encendido
+        # Salvo en el último farol del Piso 0 del Nivel 3 antes del pozo, donde dice "Haz el salto de fe" solo al posarse
+        es_tut = getattr(self, "es_tutorial", False)
+        n_idx = getattr(self, "nivel_indice", 0)
         for cp in getattr(self.nivel, "checkpoints", []):
-            if not getattr(cp, "activo", False):
+            es_farol_salto_fe = (
+                n_idx == 2
+                and cp.rect.centery < 18 * TILE
+                and 290 <= (cp.rect.centerx // TILE) <= 312
+            )
+            if es_farol_salto_fe:
+                if self.jugador.rect.colliderect(cp.rect.inflate(32, 24)):
+                    puntos_clave.append((cp.rect.centerx, cp.rect.top, "EL ABISMO", "Haz el salto de fe", False))
+            elif not getattr(cp, "activo", False):
                 puntos_clave.append((cp.rect.centerx, cp.rect.top, "FAROL DE REPOSO", "Consagrar almas y guardar", False))
 
         # 5. Campanas de Resonancia (I): textos contextuales según nivel y solo en campanas pedagógicas (sin invadir Nivel 3)
-        es_tut = getattr(self, "es_tutorial", False)
-        n_idx = getattr(self, "nivel_indice", 0)
         if es_tut or n_idx < 2:
             inc_cercanos = [
                 inc for inc in getattr(self.nivel, "incensarios", [])
