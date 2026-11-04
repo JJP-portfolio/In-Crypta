@@ -556,10 +556,7 @@ class Juego:
         self.nivel = Nivel(
             NIVEL_TUTORIAL,
             "El Ritual del Sepulturero",
-            (
-                "FLECHAS / WASD: MOVERSE · ESPACIO / ARRIBA: SALTO VARIABLE (TAP CORTO / MANTENER) · "
-                "RECOGÉ ALMAS (o) · FAROL DE REPOSO (F) CON 5 ALMAS: MANTO PROTECTOR · PORTÓN (G)"
-            ),
+            "EL UMBRAL DEL SEPULTURERO · Preludio del Descenso",
             "camposanto",
         )
         self.reiniciar_particulas_bioma("camposanto")
@@ -574,7 +571,7 @@ class Juego:
         self.camara.actualizar(self.jugador, self.nivel, 1.0)
         self.estado = "jugando"
         self.tiempo_nivel = 0.0
-        self.mostrar_ayuda = 6.0
+        self.mostrar_ayuda = 3.5
         self.texto_ayuda = self.nivel.pista
         self.flash = 0.0
         self.jefe = None
@@ -1952,18 +1949,43 @@ class Juego:
     # --- Función actualizar_tutorial_contextual --- #
     def actualizar_tutorial_contextual(self):
         col = self.jugador.rect.x // TILE
-        if col < 24:
-            zona = 1
-            msg = "[ESPACIO] Salto Variable: toque corto (bajo) o mantener (alto)"
-        elif col < 54:
-            zona = 2
-            msg = "[CAMPANA] Cruzá las losas (~~) y caé sobre la Campana (I) para rebotar en el aire"
-        elif col < 82:
-            zona = 3
-            msg = "[FAROL] Con 5 almas el Farol (F) te da el Manto Protector: probalo ante el Morador"
+        piso = self.jugador.rect.centery // (18 * TILE)
+
+        if piso == 0:
+            # Recorrido de Piso Superior hacia la derecha (cols 0 a 170)
+            if col < 30:
+                zona = 1
+                msg = "[ESPACIO] Salto Variable: toque corto para saltos bajos, mantener para saltos altos"
+            elif col < 65:
+                zona = 2
+                msg = "[LOSAS] Las piedras frágiles (~~) colapsan tras pisarlas"
+            elif col < 95:
+                zona = 3
+                msg = "[CAMPANA] Caé sobre la Campana (I) para propulsarte en el aire"
+            elif col < 145:
+                zona = 4
+                msg = "[FAROL] Consagrá almas en el Farol (F) para invocar el Manto Protector"
+            else:
+                zona = 5
+                msg = "[DESCENSO] Arrojate al pozo ancestral: descendé hacia las catacumbas"
         else:
-            zona = 4
-            msg = "[UMBRAL] Impulsate en la Campana hacia las almas altas y cruzá el Portón (G)"
+            # Recorrido de Piso Inferior / Catacumba hacia la izquierda (cols 195 a 10)
+            if col >= 150:
+                zona = 6
+                msg = "[CATACUMBAS] Aterrizaje seguro. Avanzá hacia el oeste por la cripta profunda"
+            elif col >= 75:
+                zona = 7
+                msg = "[PELIGRO] Si posees el Manto dorado, absorberá el impacto del Morador"
+            elif col >= 35:
+                zona = 8
+                msg = "[RESONANCIA] Encadená rebotes en las campanas para superar el muro"
+            else:
+                zona = 9
+                msg = "[PORTÓN] Cruzá el Portón (G) para ingresar a El Camposanto"
+
+        # No interrumpir la cita inicial de Poe si el jugador aún no ha comenzado a moverse
+        if zona == 1 and col < 6:
+            return
 
         if getattr(self, "tutorial_zona_actual", None) != zona:
             self.tutorial_zona_actual = zona
@@ -3253,14 +3275,16 @@ class Juego:
         for inc in getattr(self.nivel, "incensarios", []):
             puntos_clave.append((inc.rect.centerx, inc.rect.top, "CAMPANA", "Rebotar en el aire"))
 
-        # 6. Puntos pedagógicos del Preludio / Tutorial:
+        # 6. Meta / Portón Litúrgico (G)
+        if getattr(self.nivel, "meta", None):
+            puntos_clave.append((self.nivel.meta.centerx, self.nivel.meta.top, "PORTÓN", "Umbral hacia El Camposanto"))
+
+        # 7. Puntos pedagógicos específicos del Preludio / Tutorial:
         if getattr(self, "es_tutorial", False):
-            puntos_clave.append((18 * TILE, 8 * TILE, tecla_jmp, "Salto Variable (tap/mantener)"))
-            puntos_clave.append((41 * TILE, 6 * TILE, "CAMPANA", "Caé sobre ella para rebotar"))
-            puntos_clave.append((69 * TILE, 7 * TILE, "FAROL", "Pacto del Manto Protector"))
-            for e in getattr(self.nivel, "enemigos", []):
-                puntos_clave.append((e.rect.centerx, e.rect.top, "MORADOR", "El Manto absorbe el golpe"))
-            puntos_clave.append((96 * TILE, 7 * TILE, "PORTÓN", "Umbral hacia El Camposanto"))
+            puntos_clave.append((12 * TILE, 8 * TILE, tecla_jmp, "Salto Variable (tap/mantener)"))
+            if getattr(self.jugador, "escudo_farol", False):
+                for e in getattr(self.nivel, "enemigos", []):
+                    puntos_clave.append((e.rect.centerx, e.rect.top, "MORADOR", "El Manto absorbe el golpe"))
 
         fuente_kc = self.fuentes.get(10) or self.obtener_fuente(10)
         fuente_lbl = self.fuentes.get(12) or self.obtener_fuente(12)

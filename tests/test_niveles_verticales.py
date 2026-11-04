@@ -40,7 +40,7 @@ HASH_MAPA_ORIGINAL = {
     "NIVEL_1": "1cce7d024c90f6d3c5f75e69a37823f65746d88833d656d8eb94ee169132dd28",
     "NIVEL_2": "63632f767544492c63675bb970d00c9c6fae6b4b833a6356b34b246fa9682110",
     "NIVEL_3": "6a328ef2c5c1bd8fb770433e0b5bdba2bfcac4c658d693bdb0c7f216e7e933d3",
-    "NIVEL_TUTORIAL": "bcd7773a33b083861da203eb615eff3d059668097f764cc9c4f69ba7193736c2",
+    "NIVEL_TUTORIAL": "201733229a3f32cdc797c9f963409b4e8ea6d1c76ddb528dfe9c2ceac359d4b9",
 }
 
 
@@ -164,7 +164,7 @@ def probar_mismo_piso_identico_en_niveles_de_18_filas():
     espacio = {"TILE": TILE}
     exec(compile(ast.Module(body=[fn], type_ignores=[]), "juego_mismo_piso", "exec"), espacio)
     mismo_piso = espacio["_mismo_piso"]
-    for nombre in ("NIVEL_1", "NIVEL_2", "NIVEL_3", "NIVEL_TUTORIAL"):
+    for nombre in ("NIVEL_1", "NIVEL_2", "NIVEL_3"):
         n = Nivel(getattr(niveles, nombre), nombre)
         entidades = (list(n.almas) + n.enemigos + n.enemigos_melee)
         for ref_y in (n.spawn[1], 0, n.alto - 1):
