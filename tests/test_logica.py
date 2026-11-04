@@ -764,15 +764,15 @@ def probar_salto_ventana_nivel_2():
     juego.cargar_nivel(1)  # Nivel 2 (índice 1)
     nivel = juego.nivel
 
-    # Verificar existencia de la pared vertical con ventana (cols 240-241)
+    # Verificar existencia de la pared vertical con ventana (cols 290-291)
     filas = NIVEL_2.strip("\n").splitlines()
-    assert filas[2][240] == "#" and filas[2][241] == "#"  # Pared arriba
-    assert filas[6][240] != "#" and filas[6][241] != "#"  # Ventana abierta en fila 6
-    assert filas[7][240] != "#" and filas[7][241] != "#"  # Ventana abierta en fila 7
-    assert filas[9][240] == "#" and filas[9][241] == "#"  # Pared abajo
+    assert filas[2][290] == "#" and filas[2][291] == "#"  # Pared arriba
+    assert filas[6][290] != "#" and filas[6][291] != "#"  # Ventana abierta en fila 6
+    assert filas[7][290] != "#" and filas[7][291] != "#"  # Ventana abierta en fila 7
+    assert filas[9][290] == "#" and filas[9][291] == "#"  # Pared abajo
 
-    # Posicionar al jugador en la plataforma de lanzamiento (col 233, fila 8)
-    juego.jugador.x = 233 * TILE
+    # Posicionar al jugador en la plataforma de lanzamiento (col 283, fila 8)
+    juego.jugador.x = 283 * TILE
     juego.jugador.y = 8 * TILE - JUGADOR_ALTO
     juego.jugador.rect.topleft = (round(juego.jugador.x), round(juego.jugador.y))
     juego.jugador.en_suelo = True
@@ -788,12 +788,12 @@ def probar_salto_ventana_nivel_2():
 
     for _ in range(240):
         # Dashear en el aire al aproximarse a la ventana
-        if juego.jugador.rect.x > 235 * TILE and juego.jugador.dash_usos_aire > 0:
+        if juego.jugador.rect.x > 285 * TILE and juego.jugador.dash_usos_aire > 0:
             juego.jugador.pedir_dash()
 
         juego.jugador.actualizar(1 / 60, teclas, nivel.solidos)
 
-        if juego.jugador.rect.x > 242 * TILE:
+        if juego.jugador.rect.x > 292 * TILE:
             cruzo_ventana = True
 
         if juego.jugador.rect.colliderect(nivel.meta):
