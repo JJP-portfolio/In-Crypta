@@ -516,14 +516,6 @@ class Audio:
         if sonido is not None:
             sonido.play()
 
-    # --- Función latido_corazon --- #
-    def latido_corazon(self):
-        """Reproduce el pulso a 55 Hz del corazón delator."""
-        if not self.activo:
-            return
-        if self.sonido_latido:
-            self.sonido_latido.play()
-
     # --- Función iniciar_dron / detener_dron --- #
     def iniciar_dron(self):
         """Inicia el dron fúnebre ambiental en bucle de fondo."""

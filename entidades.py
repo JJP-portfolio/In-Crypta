@@ -138,7 +138,8 @@ _CACHE_HALOS = {}
 
 def obtener_aura_custodio(w, h, color, alfa):
     """Caché de aura translúcida con bordes difuminados del Custodio."""
-    clave = (int(w), int(h), tuple(color[:3]), int(alfa))
+    alfa_q = max(0, min(255, (int(alfa) // 8) * 8))
+    clave = (int(w), int(h), tuple(color[:3]), alfa_q)
     surf = _CACHE_AURAS.get(clave)
     if surf is None:
         w_i, h_i = int(w), int(h)
@@ -151,10 +152,13 @@ def obtener_aura_custodio(w, h, color, alfa):
             cur_h = max(4, int(h_i * t))
             x_off = (w_i - cur_w) // 2
             y_off = (h_i - cur_h) // 2
-            a = int(alfa * (1.0 - (t - 1.0 / num_anillos) ** 1.5))
+            a = int(alfa_q * (1.0 - (t - 1.0 / num_anillos) ** 1.5))
             if a > 0:
                 pygame.draw.ellipse(surf, (*color[:3], a), (x_off, y_off, cur_w, cur_h))
-        surf = surf.convert_alpha()
+        try:
+            surf = surf.convert_alpha()
+        except (pygame.error, AttributeError):
+            pass
         _CACHE_AURAS[clave] = surf
     return surf
 
@@ -1197,9 +1201,9 @@ class Jugador:
                 pygame.draw.circle(surface, col_ch, (ch_x, ch_y), 2)
 
 
-# --- Clase Enemigo --- #
-class Enemigo:
-    """Morador de la cripta que patrulla de izquierda a derecha."""
+# --- Clase Base EntidadPatrullera --- #
+class EntidadPatrullera:
+    """Clase base para criaturas que patrullan horizontalmente con rebote contra límites."""
 
     def __init__(self, rect, minimo_x, maximo_x):
         self.rect = pygame.Rect(rect)
@@ -1212,7 +1216,6 @@ class Enemigo:
         self.maximo_x = int(maximo_x)
         self.tiempo_flash = 0.0
 
-    # --- Función reiniciar --- #
     def reiniciar(self):
         self.rect = pygame.Rect(self.inicial_rect)
         self.x = float(self.rect.x)
@@ -1221,15 +1224,14 @@ class Enemigo:
         self.vivo = True
         self.tiempo_flash = 0.0
 
-    # --- Función actualizar --- #
-    def actualizar(self, dt):
-        if not self.vivo:
-            return
-
+    def actualizar_flash(self, dt):
+        """Reduce el temporizador de damage flash si está activo."""
         if getattr(self, "tiempo_flash", 0.0) > 0:
             self.tiempo_flash = max(0.0, self.tiempo_flash - dt)
 
-        self.x += self.direccion * VELOCIDAD_ENEMIGO * dt
+    def avanzar_patrulla(self, dt, velocidad):
+        """Cinemática de patrulla horizontal con rebote contra límites y clamping."""
+        self.x += self.direccion * velocidad * dt
         self.rect.x = round(self.x)
 
         if self.rect.left <= self.minimo_x:
@@ -1240,6 +1242,17 @@ class Enemigo:
             self.rect.right = self.maximo_x
             self.x = float(self.rect.x)
             self.direccion = -1
+
+
+# --- Clase Enemigo --- #
+class Enemigo(EntidadPatrullera):
+    """Morador de la cripta que patrulla de izquierda a derecha."""
+
+    def actualizar(self, dt):
+        if not self.vivo:
+            return
+        self.actualizar_flash(dt)
+        self.avanzar_patrulla(dt, VELOCIDAD_ENEMIGO)
 
     # --- Función dibujar --- #
     def dibujar(self, surface, camara, tiempo):
@@ -1459,40 +1472,26 @@ class Enemigo:
 
 
 # --- Clase EnemigoMelee --- #
-class EnemigoMelee:
+class EnemigoMelee(EntidadPatrullera):
     """Enemigo que ataca en rango melee (70px). Al jugador le toma y domina."""
 
     def __init__(self, rect, minimo_x, maximo_x):
-        self.rect = pygame.Rect(rect)
-        self.inicial_rect = pygame.Rect(rect)
-        self.x = float(self.rect.x)
-        self.y = float(self.rect.y)
-        self.direccion = 1
-        self.vivo = True
-        self.minimo_x = int(minimo_x)
-        self.maximo_x = int(maximo_x)
+        super().__init__(rect, minimo_x, maximo_x)
         self.aviso_tiempo = 0.0
         self.atacando = False
-        self.tiempo_flash = 0.0
 
     # --- Función reiniciar --- #
     def reiniciar(self):
-        self.rect = pygame.Rect(self.inicial_rect)
-        self.x = float(self.rect.x)
-        self.y = float(self.rect.y)
-        self.direccion = 1
-        self.vivo = True
+        super().reiniciar()
         self.aviso_tiempo = 0.0
         self.atacando = False
-        self.tiempo_flash = 0.0
 
     # --- Función actualizar --- #
     def actualizar(self, dt, jugador):
         if not self.vivo:
             return
 
-        if getattr(self, "tiempo_flash", 0.0) > 0:
-            self.tiempo_flash = max(0.0, self.tiempo_flash - dt)
+        self.actualizar_flash(dt)
 
         if self.aviso_tiempo > 0:
             self.aviso_tiempo = max(0.0, self.aviso_tiempo - dt)
@@ -1510,17 +1509,7 @@ class EnemigoMelee:
             return
 
         # Mantener en el rango de patrulla
-        self.x += self.direccion * VELOCIDAD_ENEMIGO * dt
-        self.rect.x = round(self.x)
-
-        if self.rect.left <= self.minimo_x:
-            self.rect.left = self.minimo_x
-            self.x = float(self.rect.x)
-            self.direccion = 1
-        elif self.rect.right >= self.maximo_x:
-            self.rect.right = self.maximo_x
-            self.x = float(self.rect.x)
-            self.direccion = -1
+        self.avanzar_patrulla(dt, VELOCIDAD_ENEMIGO)
 
     # --- Función dibujar --- #
     def dibujar(self, surface, camara, tiempo):
@@ -1974,11 +1963,6 @@ class Custodio:
             return False  # Pisotón rebota en Fase 2 sin power-up X
         return self._aplicar_dano()
 
-    # --- Función recibir_golpe (compatibilidad tests y golpe cuerpo a cuerpo) --- #
-    def recibir_golpe(self, rango_mejorado=False):
-        """Alias de recibir_golpe_pala."""
-        return self.recibir_golpe_pala(rango_mejorado=rango_mejorado)
-
     # --- Función actualizar --- #
     def actualizar(self, dt, jugador):
         self.recien_golpeado = False
@@ -2275,9 +2259,6 @@ class MiniJefe:
 
     def recibir_pisaton(self):
         return self._aplicar_dano_vertical()
-
-    def recibir_golpe(self):
-        return self.recibir_golpe_pala()
 
     def actualizar(self, dt, jugador):
         self.aviso_recien = False
@@ -2577,46 +2558,23 @@ class Cuervo:
 
 
 # --- Clase Polilla (Moth) --- #
-class Polilla:
+class Polilla(EntidadPatrullera):
     """Polilla que vuela en zigzag lento. Daño por contacto."""
 
     def __init__(self, rect, minimo_x, maximo_x):
-        self.rect = pygame.Rect(rect)
-        self.inicial_rect = pygame.Rect(rect)
-        self.x = float(self.rect.x)
-        self.y = float(self.rect.y)
-        self.direccion = 1
-        self.minimo_x = int(minimo_x)
-        self.maximo_x = int(maximo_x)
-        self.vivo = True
+        super().__init__(rect, minimo_x, maximo_x)
         self.tiempo = 0.0
-        self.tiempo_flash = 0.0
 
     def reiniciar(self):
-        self.rect = pygame.Rect(self.inicial_rect)
-        self.x = float(self.rect.x)
-        self.y = float(self.rect.y)
-        self.direccion = 1
+        super().reiniciar()
         self.tiempo = 0.0
-        self.vivo = True
-        self.tiempo_flash = 0.0
 
     def actualizar(self, dt):
         if not self.vivo:
             return
-        if getattr(self, "tiempo_flash", 0.0) > 0:
-            self.tiempo_flash = max(0.0, self.tiempo_flash - dt)
+        self.actualizar_flash(dt)
         self.tiempo += dt
-        self.x += self.direccion * (VELOCIDAD_ENEMIGO * 0.6) * dt
-        self.rect.x = round(self.x)
-        if self.rect.left <= self.minimo_x:
-            self.rect.left = self.minimo_x
-            self.x = float(self.rect.x)
-            self.direccion = 1
-        elif self.rect.right >= self.maximo_x:
-            self.rect.right = self.maximo_x
-            self.x = float(self.rect.x)
-            self.direccion = -1
+        self.avanzar_patrulla(dt, VELOCIDAD_ENEMIGO * 0.6)
         # Movimiento vertical suave (zigzag).
         self.rect.y = round(self.inicial_rect.y + math.sin(self.tiempo * 3) * 8)
 
@@ -2657,43 +2615,14 @@ class Polilla:
 
 
 # --- Clase Araña (Spider) --- #
-class Araña:
+class Araña(EntidadPatrullera):
     """Araña que se mueve por el techo o suelo. Daño por contacto."""
-
-    def __init__(self, rect, minimo_x, maximo_x):
-        self.rect = pygame.Rect(rect)
-        self.inicial_rect = pygame.Rect(rect)
-        self.x = float(self.rect.x)
-        self.y = float(self.rect.y)
-        self.direccion = 1
-        self.minimo_x = int(minimo_x)
-        self.maximo_x = int(maximo_x)
-        self.vivo = True
-        self.tiempo_flash = 0.0
-
-    def reiniciar(self):
-        self.rect = pygame.Rect(self.inicial_rect)
-        self.x = float(self.rect.x)
-        self.y = float(self.rect.y)
-        self.direccion = 1
-        self.vivo = True
-        self.tiempo_flash = 0.0
 
     def actualizar(self, dt):
         if not self.vivo:
             return
-        if getattr(self, "tiempo_flash", 0.0) > 0:
-            self.tiempo_flash = max(0.0, self.tiempo_flash - dt)
-        self.x += self.direccion * (VELOCIDAD_ENEMIGO * 0.8) * dt
-        self.rect.x = round(self.x)
-        if self.rect.left <= self.minimo_x:
-            self.rect.left = self.minimo_x
-            self.x = float(self.rect.x)
-            self.direccion = 1
-        elif self.rect.right >= self.maximo_x:
-            self.rect.right = self.maximo_x
-            self.x = float(self.rect.x)
-            self.direccion = -1
+        self.actualizar_flash(dt)
+        self.avanzar_patrulla(dt, VELOCIDAD_ENEMIGO * 0.8)
 
     def dibujar(self, surface, camara, tiempo):
         if not self.vivo:
@@ -2783,19 +2712,36 @@ class Alma:
         )
 
 
-# --- Clase PalaRecogible --- #
-class PalaRecogible:
-    """Pala que desbloquea el ataque y el pisotón."""
+# --- Clase Base PowerUpBase --- #
+class PowerUpBase:
+    """Clase base para reliquias y power-ups de altares con halo y flotación."""
 
     def __init__(self, rect):
         self.rect = pygame.Rect(rect)
         self.inicial_rect = pygame.Rect(rect)
         self.recogida = False
 
-    # --- Función reiniciar --- #
     def reiniciar(self):
         self.rect = pygame.Rect(self.inicial_rect)
         self.recogida = False
+
+    def obtener_transformacion_visual(self, camara, tiempo):
+        """Calcula el rectángulo con flotación vertical y el pulso sinusoidal."""
+        rect = camara.aplicar_rect(self.rect)
+        flotacion = int(math.sin(tiempo * 4 + rect.x * 0.02) * 3)
+        rect.y += flotacion
+        pulso = 0.5 + 0.5 * math.sin(tiempo * 5 + rect.x * 0.03)
+        return rect, pulso
+
+    def dibujar_aura_base(self, surface, rect, pulso, color_rgb, radio_circulo=14):
+        """Dibuja el resplandor aditivo exterior y el halo litúrgico."""
+        brillo = obtener_aura_pickup(color_rgb, int(pulso * 7))
+        surface.blit(brillo, (rect.centerx - 32, rect.centery - 32))
+
+
+# --- Clase PalaRecogible --- #
+class PalaRecogible(PowerUpBase):
+    """Pala que desbloquea el ataque y el pisotón."""
 
     # --- Función actualizar --- #
     def actualizar(self, jugador):
@@ -2810,16 +2756,8 @@ class PalaRecogible:
         if self.recogida:
             return
 
-        rect = camara.aplicar_rect(self.rect)
-        flotacion = int(math.sin(tiempo * 4 + rect.x * 0.02) * 3)
-        rect.y += flotacion
-
-        pulso = 0.5 + 0.5 * math.sin(tiempo * 5 + rect.x * 0.03)
-        brillo = obtener_aura_pickup((255, 191, 82), int(pulso * 7))
-        surface.blit(
-            brillo,
-            (rect.centerx - 32, rect.centery - 32),
-        )
+        rect, pulso = self.obtener_transformacion_visual(camara, tiempo)
+        self.dibujar_aura_base(surface, rect, pulso, (255, 191, 82), 17)
         pygame.draw.circle(
             surface,
             (238, 188, 86),
@@ -2861,7 +2799,7 @@ class PalaRecogible:
 
 
 # --- Clase RangoPowerUp --- #
-class RangoPowerUp:
+class RangoPowerUp(PowerUpBase):
     """Power-up que mejora el alcance del ataque de pala (Guadaña Consagrada, 'X').
 
     Mientras `sellado` sea True (el Carcelero del Osario sigue vivo) el altar
@@ -2869,14 +2807,8 @@ class RangoPowerUp:
     """
 
     def __init__(self, rect):
-        self.rect = pygame.Rect(rect)
-        self.inicial_rect = pygame.Rect(rect)
-        self.recogida = False
+        super().__init__(rect)
         self.sellado = False
-
-    def reiniciar(self):
-        self.rect = pygame.Rect(self.inicial_rect)
-        self.recogida = False
 
     def actualizar(self, jugador):
         if self.sellado:
@@ -2903,15 +2835,8 @@ class RangoPowerUp:
             pygame.draw.line(surface, (130, 125, 140), (cx + 12, cy - 12), (cx - 12, cy + 12), 2)
             return
 
-        flotacion = int(math.sin(tiempo * 4 + rect.x * 0.02) * 3)
-        rect.y += flotacion
-
-        pulso = 0.5 + 0.5 * math.sin(tiempo * 5 + rect.x * 0.03)
-        brillo = obtener_aura_pickup((200, 100, 255), int(pulso * 7))
-        surface.blit(
-            brillo,
-            (rect.centerx - 32, rect.centery - 32),
-        )
+        rect, pulso = self.obtener_transformacion_visual(camara, tiempo)
+        self.dibujar_aura_base(surface, rect, pulso, (200, 100, 255), 14)
         pygame.draw.circle(
             surface,
             (230, 150, 255),
@@ -2927,17 +2852,8 @@ class RangoPowerUp:
 
 
 # --- Clase DashPowerUp --- #
-class DashPowerUp:
+class DashPowerUp(PowerUpBase):
     """Power-up que desbloquea el dash espectral (Amuleto de Sombras)."""
-
-    def __init__(self, rect):
-        self.rect = pygame.Rect(rect)
-        self.inicial_rect = pygame.Rect(rect)
-        self.recogida = False
-
-    def reiniciar(self):
-        self.rect = pygame.Rect(self.inicial_rect)
-        self.recogida = False
 
     def actualizar(self, jugador):
         if not self.recogida and self.rect.colliderect(jugador.rect):
@@ -2950,16 +2866,8 @@ class DashPowerUp:
         if self.recogida:
             return
 
-        rect = camara.aplicar_rect(self.rect)
-        flotacion = int(math.sin(tiempo * 4 + rect.x * 0.02) * 3)
-        rect.y += flotacion
-
-        pulso = 0.5 + 0.5 * math.sin(tiempo * 5 + rect.x * 0.03)
-        brillo = obtener_aura_pickup((70, 210, 255), int(pulso * 7))
-        surface.blit(
-            brillo,
-            (rect.centerx - 32, rect.centery - 32),
-        )
+        rect, pulso = self.obtener_transformacion_visual(camara, tiempo)
+        self.dibujar_aura_base(surface, rect, pulso, (70, 210, 255), 14)
         pygame.draw.circle(
             surface,
             (140, 230, 255),

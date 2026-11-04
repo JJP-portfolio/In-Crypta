@@ -265,23 +265,41 @@ class Nivel:
                     )))
         return almas
 
+    # --- Función _crear_entidades_patrulleras --- #
+    def _crear_entidades_patrulleras(self, simbolo, clase_entidad, ancho=ENEMIGO_ANCHO, alto=ENEMIGO_ALTO):
+        """Instancia entidades patrulleras estándar escaneando la grilla y calculando límites de bordes."""
+        entidades = []
+        for fila, texto in enumerate(self.filas):
+            for columna, c in enumerate(texto):
+                if c == simbolo:
+                    rect = pygame.Rect(
+                        columna * TILE + (TILE - ancho) // 2,
+                        fila * TILE + (TILE - alto),
+                        ancho,
+                        alto,
+                    )
+                    minimo_x, maximo_x = self._limites_patrulla(columna, fila)
+                    entidades.append(clase_entidad(rect, minimo_x, maximo_x))
+        return entidades
+
+    # --- Función _crear_altares_genericos --- #
+    def _crear_altares_genericos(self, simbolo, clase_entidad, offset_x=6, offset_y=2, ancho=20, alto=30):
+        """Instancia altares y objetos recogibles de 20x30 en la grilla."""
+        items = []
+        for fila, texto in enumerate(self.filas):
+            for columna, c in enumerate(texto):
+                if c == simbolo:
+                    items.append(clase_entidad(pygame.Rect(
+                        columna * TILE + offset_x,
+                        fila * TILE + offset_y,
+                        ancho,
+                        alto,
+                    )))
+        return items
+
     # --- Función _crear_enemigos --- #
     def _crear_enemigos(self):
-        enemigos = []
-        for fila, texto in enumerate(self.filas):
-            for columna, simbolo in enumerate(texto):
-                if simbolo != "E":
-                    continue
-
-                rect = pygame.Rect(
-                    columna * TILE + (TILE - ENEMIGO_ANCHO) // 2,
-                    fila * TILE + (TILE - ENEMIGO_ALTO),
-                    ENEMIGO_ANCHO,
-                    ENEMIGO_ALTO,
-                )
-                minimo_x, maximo_x = self._limites_patrulla(columna, fila)
-                enemigos.append(Enemigo(rect, minimo_x, maximo_x))
-        return enemigos
+        return self._crear_entidades_patrulleras("E", Enemigo)
 
     # --- Función _crear_decoraciones --- #
     def _crear_decoraciones(self):
@@ -303,63 +321,19 @@ class Nivel:
 
     # --- Función _crear_palas --- #
     def _crear_palas(self):
-        palas = []
-        for fila, texto in enumerate(self.filas):
-            for columna, simbolo in enumerate(texto):
-                if simbolo != "W":
-                    continue
-                palas.append(PalaRecogible(pygame.Rect(
-                    columna * TILE + 6,
-                    fila * TILE + 2,
-                    20,
-                    30,
-                )))
-        return palas
+        return self._crear_altares_genericos("W", PalaRecogible)
 
     # --- Función _crear_power_ups_dash --- #
     def _crear_power_ups_dash(self):
-        power_ups = []
-        for fila, texto in enumerate(self.filas):
-            for columna, simbolo in enumerate(texto):
-                if simbolo != "D":
-                    continue
-                power_ups.append(DashPowerUp(pygame.Rect(
-                    columna * TILE + 6,
-                    fila * TILE + 2,
-                    20,
-                    30,
-                )))
-        return power_ups
+        return self._crear_altares_genericos("D", DashPowerUp)
 
     # --- Función _crear_power_ups_rango --- #
     def _crear_power_ups_rango(self):
-        power_ups = []
-        for fila, texto in enumerate(self.filas):
-            for columna, simbolo in enumerate(texto):
-                if simbolo != "X":
-                    continue
-                power_ups.append(RangoPowerUp(pygame.Rect(
-                    columna * TILE + 6,
-                    fila * TILE + 2,
-                    20,
-                    30,
-                )))
-        return power_ups
+        return self._crear_altares_genericos("X", RangoPowerUp)
 
     # --- Función _crear_checkpoints --- #
     def _crear_checkpoints(self):
-        checkpoints = []
-        for fila, texto in enumerate(self.filas):
-            for columna, simbolo in enumerate(texto):
-                if simbolo != "F":
-                    continue
-                checkpoints.append(FarolCheckpoint(pygame.Rect(
-                    columna * TILE + 6,
-                    fila * TILE + 2,
-                    20,
-                    30,
-                )))
-        return checkpoints
+        return self._crear_altares_genericos("F", FarolCheckpoint)
 
     # --- Función _crear_losas_quebradizas --- #
     def _crear_losas_quebradizas(self):
@@ -528,21 +502,7 @@ class Nivel:
 
     # --- Función _crear_enemigos_melee --- #
     def _crear_enemigos_melee(self):
-        enemigos_melee = []
-        for fila, texto in enumerate(self.filas):
-            for columna, simbolo in enumerate(texto):
-                if simbolo != "L":  # L = EnemigoMelee
-                    continue
-
-                rect = pygame.Rect(
-                    columna * TILE + (TILE - ENEMIGO_ANCHO) // 2,
-                    fila * TILE + (TILE - ENEMIGO_ALTO),
-                    ENEMIGO_ANCHO,
-                    ENEMIGO_ALTO,
-                )
-                minimo_x, maximo_x = self._limites_patrulla(columna, fila)
-                enemigos_melee.append(EnemigoMelee(rect, minimo_x, maximo_x))
-        return enemigos_melee
+        return self._crear_entidades_patrulleras("L", EnemigoMelee)
 
     # --- Función _crear_totems --- #
     def _crear_totems(self):

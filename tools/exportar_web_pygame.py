@@ -41,7 +41,6 @@ ARCHIVOS_CORE = (
     "niveles.py",
     "niveles_redisenados.py",
     "particulas.py",
-    "assets_loader.py",
     "requirements.txt",
 )
 

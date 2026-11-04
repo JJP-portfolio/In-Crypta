@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import math
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -303,12 +304,6 @@ class HudModel:
     def evento_dash_listo(self):
         return self.dash_cooldown_prev > 0 and self.dash_cooldown <= 0
 
-    def evento_arma_listo(self):
-        return self.ataque_cooldown_prev > 0 and self.ataque_cooldown <= 0
-
-    def evento_jefe_dañado(self):
-        return self.jefe_vida < self.jefe_vida_prev
-
     def evento_jefe_cambio_fase(self):
         return self.jefe_fase > self.jefe_fase_prev
 
@@ -317,20 +312,12 @@ class HudModel:
         return self.tiene_dash and self.dash_cooldown <= 0 and (self.en_suelo or self.dash_usos_aire > 0)
 
     @property
-    def dash_cooldown_norm(self) -> float:
-        return min(1.0, max(0.0, self.dash_cooldown / 0.6)) if self.dash_cooldown > 0 else 0.0
-
-    @property
     def rango_mejorado(self) -> bool:
         return getattr(self, "rango_ataque_mejorado", False)
 
     @property
     def nombre_nivel(self) -> str:
         return getattr(self, "nivel_nombre", "CAMPOSANTO")
-
-    @property
-    def vidas_maximas(self) -> int:
-        return getattr(self, "vidas_max", VIDAS_MAXIMAS)
 
 
 # ---------------------------------------------------------------------------
@@ -512,7 +499,7 @@ class HudRenderer:
         self.tema = tema
         self.texto_cache = texto_cache
         self._fuentes = {}
-        self._paneles_cache = {}
+        self._paneles_cache: OrderedDict = OrderedDict()
         self._iconos_cache = {}
         self._panel_der_surface = None
         self._surf_riel_buffer = None
@@ -524,6 +511,19 @@ class HudRenderer:
         self.tween_arma = Tween(0.25, 0.25, "out_back")
         self.tween_jefe = Tween(0.22, 0.22, "out_cubic")
 
+    def _guardar_panel_cache(self, clave, surf):
+        """Guarda en caché acotada con desalojo LRU (máximo 32 superficies)."""
+        self._paneles_cache[clave] = surf
+        if len(self._paneles_cache) > 32:
+            self._paneles_cache.popitem(last=False)
+
+    def _obtener_panel_cache(self, clave):
+        """Recupera de caché y mueve al frente (más recientemente usado)."""
+        if clave in self._paneles_cache:
+            self._paneles_cache.move_to_end(clave)
+            return self._paneles_cache[clave]
+        return None
+
     def _fuente(self, tamano):
         if tamano not in self._fuentes:
             try:
@@ -532,9 +532,6 @@ class HudRenderer:
                 self._fuentes[tamano] = pygame.font.Font(None, tamano)
         return self._fuentes[tamano]
 
-    def _obtener_fuente(self, tamano: int):
-        return self._fuente(tamano)
-
     def _texto(self, texto, tamano, color, sombra=False):
         return self.texto_cache.render(texto, tamano, color, sombra)
 
@@ -542,8 +539,9 @@ class HudRenderer:
     def _panel(self, ancho, alto, alpha=None):
         import config
         estilo = config.resolver_estilo(getattr(config, "ESTILO_HUD", "AUTO"))
-        clave = (ancho, alto, alpha, estilo)
-        surf = self._paneles_cache.get(clave)
+        alfa_q = None if alpha is None else max(0, min(255, (int(alpha) // 8) * 8))
+        clave = (ancho, alto, alfa_q, estilo)
+        surf = self._obtener_panel_cache(clave)
         if surf is None:
             if estilo == "NES":
                 # Modelo A1: 100% opaco, esquinas escalonadas de 4px, cero costo de alpha para Vaio
@@ -556,11 +554,11 @@ class HudRenderer:
                     pygame.draw.rect(surf, (216, 180, 104), (cx + 1, cy + 1, 2, 2))
                 try:
                     surf = surf.convert()
-                except Exception:
+                except (pygame.error, AttributeError):
                     pass
             elif estilo == "SNES":
                 # Modelo A2: Marco biselado 3D con remaches en esquinas
-                a = alpha if alpha is not None else 225
+                a = alfa_q if alfa_q is not None else 225
                 surf = pygame.Surface((ancho, alto), pygame.SRCALPHA)
                 pygame.draw.rect(surf, (16, 14, 26, a), (0, 0, ancho, alto), border_radius=6)
                 pygame.draw.line(surf, (238, 202, 118), (4, 1), (ancho - 5, 1), 2)
@@ -573,11 +571,11 @@ class HudRenderer:
                     pygame.draw.circle(surf, (238, 202, 118), (rx, ry), 2)
                 try:
                     surf = surf.convert_alpha()
-                except Exception:
+                except (pygame.error, AttributeError):
                     pass
             else:
                 # Modelo A3: Marco gótico detallado con filigrana
-                a = alpha if alpha is not None else self.tema.panel_bg[3]
+                a = alfa_q if alfa_q is not None else self.tema.panel_bg[3]
                 surf = pygame.Surface((ancho, alto), pygame.SRCALPHA)
                 pygame.draw.rect(surf, (*self.tema.panel_bg[:3], a),
                                  surf.get_rect(), border_radius=12)
@@ -588,9 +586,9 @@ class HudRenderer:
                 pygame.draw.line(surf, self.tema.linea_oro, (12, 1), (ancho - 12, 1), 1)
                 try:
                     surf = surf.convert_alpha()
-                except Exception:
+                except (pygame.error, AttributeError):
                     pass
-            self._paneles_cache[clave] = surf
+            self._guardar_panel_cache(clave, surf)
         return surf
 
     # --- Iconos dibujados con pygame.draw (sin assets) ---
@@ -689,11 +687,12 @@ class HudRenderer:
 
     def _dibujar_relicario_izquierdo(self, surface: pygame.Surface, rect: pygame.Rect, modelo: HudModel, alfa: int) -> None:
         """Medallón heráldico compacto con Cálices de Rubí arriba, Rosario de 10 cuentas debajo y bisel de 1px legible."""
-        vidas_max = max(getattr(modelo, "vidas_maximas", getattr(modelo, "vidas_max", 5)), 5)
+        vidas_max = max(getattr(modelo, "vidas_max", 5), 5)
         w_vis = max(230, 74 + vidas_max * 28)
         h_vis = rect.height - 6
-        clave_izq = ("relicario_izq_v3", w_vis, h_vis, alfa)
-        panel = self._paneles_cache.get(clave_izq)
+        alfa_q = max(0, min(255, (int(alfa) // 8) * 8))
+        clave_izq = ("relicario_izq_v3", w_vis, h_vis, alfa_q)
+        panel = self._obtener_panel_cache(clave_izq)
         if panel is None:
             panel = pygame.Surface((w_vis, h_vis), pygame.SRCALPHA)
             pts_ext = [
@@ -704,11 +703,11 @@ class HudRenderer:
                 (2, 2), (w_vis - 19, 2), (w_vis - 3, h_vis // 2),
                 (w_vis - 23, h_vis - 3), (2, h_vis - 3)
             ]
-            pygame.draw.polygon(panel, (10, 8, 16, int(alfa * 0.94)), pts_ext)
-            pygame.draw.polygon(panel, (4, 3, 8, alfa), pts_ext, 1)
-            pygame.draw.polygon(panel, (198, 162, 82, int(alfa * 0.92)), pts_int, 1)
-            pygame.draw.line(panel, (92, 74, 48, int(alfa * 0.65)), (46, h_vis // 2 + 2), (w_vis - 26, h_vis // 2 + 2), 1)
-            self._paneles_cache[clave_izq] = panel
+            pygame.draw.polygon(panel, (10, 8, 16, int(alfa_q * 0.94)), pts_ext)
+            pygame.draw.polygon(panel, (4, 3, 8, alfa_q), pts_ext, 1)
+            pygame.draw.polygon(panel, (198, 162, 82, int(alfa_q * 0.92)), pts_int, 1)
+            pygame.draw.line(panel, (92, 74, 48, int(alfa_q * 0.65)), (46, h_vis // 2 + 2), (w_vis - 26, h_vis // 2 + 2), 1)
+            self._guardar_panel_cache(clave_izq, panel)
         surface.blit(panel, (rect.x, rect.y + 3))
 
         # Emblema izquierdo de Manto / Filo de Ánima / Corazón
@@ -770,8 +769,9 @@ class HudRenderer:
         x_cartela = cx - w_cartela // 2
         y_cartela = rect.y + 6
 
-        clave_c = ("cartela_centro_v3", w_cartela, h_cartela, alfa)
-        panel_c = self._paneles_cache.get(clave_c)
+        alfa_q = max(0, min(255, (int(alfa) // 8) * 8))
+        clave_c = ("cartela_centro_v3", w_cartela, h_cartela, alfa_q)
+        panel_c = self._obtener_panel_cache(clave_c)
         if panel_c is None:
             panel_c = pygame.Surface((w_cartela, h_cartela), pygame.SRCALPHA)
             pts_ext = [
@@ -782,12 +782,12 @@ class HudRenderer:
                 (13, 2), (w_cartela - 13, 2), (w_cartela - 3, h_cartela // 2),
                 (w_cartela - 13, h_cartela - 3), (13, h_cartela - 3), (3, h_cartela // 2)
             ]
-            pygame.draw.polygon(panel_c, (10, 8, 16, int(alfa * 0.92)), pts_ext)
-            pygame.draw.polygon(panel_c, (4, 3, 8, alfa), pts_ext, 1)
-            pygame.draw.polygon(panel_c, (198, 162, 82, int(alfa * 0.90)), pts_int, 1)
-            pygame.draw.circle(panel_c, (218, 178, 86, alfa), (11, h_cartela // 2), 2)
-            pygame.draw.circle(panel_c, (218, 178, 86, alfa), (w_cartela - 11, h_cartela // 2), 2)
-            self._paneles_cache[clave_c] = panel_c
+            pygame.draw.polygon(panel_c, (10, 8, 16, int(alfa_q * 0.92)), pts_ext)
+            pygame.draw.polygon(panel_c, (4, 3, 8, alfa_q), pts_ext, 1)
+            pygame.draw.polygon(panel_c, (198, 162, 82, int(alfa_q * 0.90)), pts_int, 1)
+            pygame.draw.circle(panel_c, (218, 178, 86, alfa_q), (11, h_cartela // 2), 2)
+            pygame.draw.circle(panel_c, (218, 178, 86, alfa_q), (w_cartela - 11, h_cartela // 2), 2)
+            self._guardar_panel_cache(clave_c, panel_c)
 
         surface.blit(panel_c, (x_cartela, y_cartela))
         surface.blit(img_txt, (cx - img_txt.get_width() // 2, y_cartela + (h_cartela - img_txt.get_height()) // 2))
@@ -823,15 +823,16 @@ class HudRenderer:
 
         # Urna de Almas y Reloj a la derecha (con bisel limpio de 1px y tipografías ampliadas)
         urna_rect = pygame.Rect(rect.x + 128, rect.y + 4, rect.width - 130, rect.height - 8)
-        clave_u = ("urna_der_v3", urna_rect.width, urna_rect.height, alfa)
-        panel_u = self._paneles_cache.get(clave_u)
+        alfa_q = max(0, min(255, (int(alfa) // 8) * 8))
+        clave_u = ("urna_der_v3", urna_rect.width, urna_rect.height, alfa_q)
+        panel_u = self._obtener_panel_cache(clave_u)
         if panel_u is None:
             panel_u = pygame.Surface((urna_rect.width, urna_rect.height), pygame.SRCALPHA)
-            pygame.draw.rect(panel_u, (10, 8, 16, int(alfa * 0.94)), (0, 0, urna_rect.width, urna_rect.height), border_radius=8)
-            pygame.draw.rect(panel_u, (4, 3, 8, alfa), (0, 0, urna_rect.width, urna_rect.height), 1, border_radius=8)
-            pygame.draw.rect(panel_u, (198, 162, 82, int(alfa * 0.92)), (2, 2, urna_rect.width - 4, urna_rect.height - 4), 1, border_radius=7)
-            pygame.draw.line(panel_u, (92, 74, 48, int(alfa * 0.65)), (12, urna_rect.height // 2 + 2), (urna_rect.width - 12, urna_rect.height // 2 + 2), 1)
-            self._paneles_cache[clave_u] = panel_u
+            pygame.draw.rect(panel_u, (10, 8, 16, int(alfa_q * 0.94)), (0, 0, urna_rect.width, urna_rect.height), border_radius=8)
+            pygame.draw.rect(panel_u, (4, 3, 8, alfa_q), (0, 0, urna_rect.width, urna_rect.height), 1, border_radius=8)
+            pygame.draw.rect(panel_u, (198, 162, 82, int(alfa_q * 0.92)), (2, 2, urna_rect.width - 4, urna_rect.height - 4), 1, border_radius=7)
+            pygame.draw.line(panel_u, (92, 74, 48, int(alfa_q * 0.65)), (12, urna_rect.height // 2 + 2), (urna_rect.width - 12, urna_rect.height // 2 + 2), 1)
+            self._guardar_panel_cache(clave_u, panel_u)
         surface.blit(panel_u, urna_rect.topleft)
 
         # Fila superior de la urna: Orbe de ánima + contador almas de total (+volátiles) en 15px

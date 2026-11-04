@@ -97,7 +97,7 @@ from config import (
     HUD_ESQUINAS_ALTO,
     MAX_DT,
 )
-from efectos import EfectoAnimacion, ease_out_back, ease_out_cubic, ease_in_out_cubic
+from efectos import ease_out_back, ease_out_cubic, ease_in_out_cubic
 from entidades import (
     Araña,
     Cuervo,
@@ -401,7 +401,6 @@ class Juego:
         self.timer_corazon = 0.0
 
         self.particulas = SistemaParticulas()
-        self.efecto_hud = EfectoAnimacion()
         self.hud = HudOrquestador()
         self.audio = Audio()
 
@@ -1324,6 +1323,9 @@ class Juego:
                 )
                 entidad.vivo = False
                 self.particulas.disolucion_enemigo(entidad.rect.centerx, entidad.rect.centery)
+                if isinstance(entidad, Cuervo):
+                    for _ in range(4):
+                        self.particulas.pluma_cuervo(entidad.rect.centerx, entidad.rect.centery)
                 self.jugador.ataque_golpeado = True
                 self.jugador.dash_usos_aire = DASH_USOS_AIRE
                 self.jugador.dash_cooldown = 0.0
@@ -1761,7 +1763,6 @@ class Juego:
                 self.audio.reproducir("vida_extra")
                 self.flash = 0.12
                 self.flash_color = AMARILLO
-                self.efecto_hud.iniciar("escala", 1.25, 0.2)
                 self.hud.mostrar_mensaje("¡VIDA EXTRA · 10 ALMAS CONSAGRADAS!", 2, 3.0)
 
     # --- Función actualizar_almas --- #

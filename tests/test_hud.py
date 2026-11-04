@@ -540,6 +540,19 @@ class TestPrioridad3UIUX(unittest.TestCase):
         m.filo_anima = True
         renderer.dibujar(pantalla, m, mensajes, False, 0.016)
 
+    def test_paneles_cache_limite_lru(self):
+        """Verifica que _paneles_cache desaloja con política LRU y nunca excede 32 elementos."""
+        layout = HudLayout.construir()
+        tema = HudTheme()
+        cache = TextoCache(lambda t: pygame.font.Font(None, t))
+        renderer = HudRenderer(layout, tema, cache)
+
+        # Generar 60 paneles distintos simulando transiciones continuas de fade alfa
+        for a in range(60):
+            renderer._panel(100 + a, 50, alpha=a * 4)
+
+        self.assertLessEqual(len(renderer._paneles_cache), 32)
+
 
 if __name__ == "__main__":
     unittest.main()
