@@ -1851,18 +1851,67 @@ class Juego:
     # --- Función actualizar_tutorial_contextual --- #
     def actualizar_tutorial_contextual(self):
         col = self.jugador.rect.x // TILE
-        if col < 26:
-            zona = 1
-            msg = "MOVIMIENTO Y SALTO · WASD / FLECHAS: Mover · ESPACIO: Salto variable (tap corto / mantener)"
-        elif col < 32:
-            zona = 2
-            msg = "FOSO DE SALTO · Medí tu impulso. Si caés, usá los escalones de la trinchera para subir"
-        elif col < 58:
-            zona = 3
-            msg = "FAROL DE REPOSO (F) · Con 5 o más almas consagradas recibís el Manto Protector"
+        piso = self.jugador.rect.centery // (18 * TILE)
+
+        if piso == 0:
+            # Recorrido de Piso Superior hacia la derecha (cols 0 a 170)
+            if col < 25:
+                zona = 1
+                msg = "[ESPACIO] Salto Variable: toque corto para escalones, mantener para muros altos"
+            elif col < 58:
+                zona = 2
+                msg = "[LOSAS] Las piedras frágiles (~~) colapsan tras pisarlas: cruzá sin dudar"
+            elif col < 80:
+                zona = 3
+                msg = "[CAMPANA] Caé sobre la Campana (I) para propulsarte a la cornisa alta"
+            elif col < 105:
+                zona = 4
+                msg = "[MÓVIL] Plataforma horizontal (M): sincronizá el salto sobre el abismo"
+            elif col < 125:
+                zona = 5
+                msg = "[ASCENSOR] Plataforma vertical (V): abordala para ascender a la terraza"
+            elif col < 155:
+                zona = 6
+                msg = "[FAROL] Consagrá almas en el Farol (F) y sorteá al Morador con pisotón"
+            else:
+                zona = 7
+                msg = "[POZO] El Gran Abismo: descendé por las losas hacia la catacumba profunda"
         else:
-            zona = 4
-            msg = "PORTÓN DEL UMBRAL (G) · Cruzá hacia El Camposanto"
+            # Recorrido de Piso Inferior / Catacumba hacia la izquierda (cols 195 a 10)
+            if col >= 158:
+                zona = 8
+                msg = "[CATACUMBAS] Aterrizaje seguro. Avanzá hacia el oeste por las galerías"
+            elif col >= 142:
+                zona = 9
+                msg = "[GUARDIA] El Guardia (L) confinado telegrafía su estocada: observalo desde la pasarela"
+            elif col >= 126:
+                zona = 10
+                msg = "[POLILLA] La Polilla (m) en la arcada superior: cruzá por el pasaje inferior"
+            elif col >= 112:
+                zona = 11
+                msg = "[CUERVO] El Cuervo (C) sobrevuela en círculo en la cúpula: medí su cadencia"
+            elif col >= 100:
+                zona = 12
+                msg = "[ARAÑA] La Araña (A) confinada vigila su cornisa: avanzá con paso firme"
+            elif col >= 88:
+                zona = 13
+                msg = "[CAMPANA I] Caé sobre la Campana para rebotar sobre el foso seco"
+            elif col >= 72:
+                zona = 14
+                msg = "[DOBLE REBOTE] Encadená rebotes entre dos campanas en el aire"
+            elif col >= 57:
+                zona = 15
+                msg = "[ASCENSOR & CAMPANA] Elevate en la plataforma (V) y saltá hacia la campana"
+            elif col >= 36:
+                zona = 16
+                msg = "[ASCENSIÓN FINAL] Encadená 4 campanas en subida para sobrevolar la muralla"
+            else:
+                zona = 17
+                msg = "[PORTÓN] Cruzá el Portón (G) para ingresar a El Camposanto"
+
+        # No interrumpir la cita inicial de Poe si el jugador aún no ha comenzado a moverse
+        if zona == 1 and col < 6:
+            return
 
         if getattr(self, "tutorial_zona_actual", None) != zona:
             self.tutorial_zona_actual = zona

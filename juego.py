@@ -1976,26 +1976,35 @@ class Juego:
                 msg = "[POZO] El Gran Abismo: descendé por las losas hacia la catacumba profunda"
         else:
             # Recorrido de Piso Inferior / Catacumba hacia la izquierda (cols 195 a 10)
-            if col >= 155:
+            if col >= 158:
                 zona = 8
-                msg = "[CATACUMBAS] Aterrizaje en las profundidades. Avanzá hacia el oeste"
-            elif col >= 138:
+                msg = "[CATACUMBAS] Aterrizaje seguro. Avanzá hacia el oeste por las galerías"
+            elif col >= 142:
                 zona = 9
-                msg = "[GUARDIA] El Guardia (L) telegrafía su estocada con halo: esperá y saltalo"
-            elif col >= 118:
+                msg = "[GUARDIA] El Guardia (L) confinado telegrafía su estocada: observalo desde la pasarela"
+            elif col >= 126:
                 zona = 10
-                msg = "[VOLADORES] La Polilla (m) ondea en zigzag: cruzá por debajo a su paso"
-            elif col >= 98:
+                msg = "[POLILLA] La Polilla (m) en la arcada superior: cruzá por el pasaje inferior"
+            elif col >= 112:
                 zona = 11
-                msg = "[CUERVO] El Cuervo (C) sobrevuela en círculo: medí su trayectoria aérea"
-            elif col >= 70:
+                msg = "[CUERVO] El Cuervo (C) sobrevuela en círculo en la cúpula: medí su cadencia"
+            elif col >= 100:
                 zona = 12
-                msg = "[TRAVESÍA] Plataforma móvil (M) sobre foso y Araña (A) en la cripta"
-            elif col >= 35:
+                msg = "[ARAÑA] La Araña (A) confinada vigila su cornisa: avanzá con paso firme"
+            elif col >= 88:
                 zona = 13
-                msg = "[RESONANCIA] Cadena de campanas (I): encadená rebotes sobre la gran muralla"
-            else:
+                msg = "[CAMPANA I] Caé sobre la Campana para rebotar sobre el foso seco"
+            elif col >= 72:
                 zona = 14
+                msg = "[DOBLE REBOTE] Encadená rebotes entre dos campanas en el aire"
+            elif col >= 57:
+                zona = 15
+                msg = "[ASCENSOR & CAMPANA] Elevate en la plataforma (V) y saltá hacia la campana"
+            elif col >= 36:
+                zona = 16
+                msg = "[ASCENSIÓN FINAL] Encadená 4 campanas en subida para sobrevolar la muralla"
+            else:
+                zona = 17
                 msg = "[PORTÓN] Cruzá el Portón (G) para ingresar a El Camposanto"
 
         # No interrumpir la cita inicial de Poe si el jugador aún no ha comenzado a moverse

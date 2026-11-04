@@ -40,16 +40,23 @@ from juego import Juego
 
 async def main():
     nivel_inicio = None
-    if len(sys.argv) >= 3 and sys.argv[1] in ("--nivel", "-n"):
+    iniciar_tut = False
+    if len(sys.argv) >= 2 and sys.argv[1] in ("--tutorial", "-t"):
+        iniciar_tut = True
+    elif len(sys.argv) >= 3 and sys.argv[1] in ("--nivel", "-n"):
         try:
             val = int(sys.argv[2])
-            if 1 <= val <= 3:
+            if val == 0:
+                iniciar_tut = True
+            elif 1 <= val <= 3:
                 nivel_inicio = val - 1
         except ValueError:
             pass
 
     juego = Juego()
-    if nivel_inicio is not None:
+    if iniciar_tut:
+        juego.iniciar_tutorial()
+    elif nivel_inicio is not None:
         juego.seleccionar_nivel(nivel_inicio)
     await juego.run_async()
 
