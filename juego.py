@@ -2271,6 +2271,13 @@ class Juego:
         w = destino.get_width()
         h = destino.get_height()
         tema = self.nivel.tema if self.nivel else "camposanto"
+
+        # Conmutación dinámica de bioma subterráneo en niveles verticales (ej: catacumbas del preludio)
+        if self.nivel and getattr(self.nivel, "num_filas", 18) > 18:
+            cam = getattr(self, "camara", None)
+            if cam and cam.y >= 288:
+                tema = "cripta" if self.nivel.tema != "osario" else "osario"
+
         clave = (tema, w, h)
         if clave not in self.fondos:
             self.fondos[clave] = self.crear_fondo(tema, w, h)
