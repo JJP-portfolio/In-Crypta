@@ -1953,34 +1953,49 @@ class Juego:
 
         if piso == 0:
             # Recorrido de Piso Superior hacia la derecha (cols 0 a 170)
-            if col < 30:
+            if col < 25:
                 zona = 1
-                msg = "[ESPACIO] Salto Variable: toque corto para saltos bajos, mantener para saltos altos"
-            elif col < 65:
+                msg = "[ESPACIO] Salto Variable: toque corto para escalones, mantener para muros altos"
+            elif col < 58:
                 zona = 2
-                msg = "[LOSAS] Las piedras frágiles (~~) colapsan tras pisarlas"
-            elif col < 95:
+                msg = "[LOSAS] Las piedras frágiles (~~) colapsan tras pisarlas: cruzá sin dudar"
+            elif col < 80:
                 zona = 3
-                msg = "[CAMPANA] Caé sobre la Campana (I) para propulsarte en el aire"
-            elif col < 145:
+                msg = "[CAMPANA] Caé sobre la Campana (I) para propulsarte a la cornisa alta"
+            elif col < 105:
                 zona = 4
-                msg = "[FAROL] Consagrá almas en el Farol (F) para invocar el Manto Protector"
-            else:
+                msg = "[MÓVIL] Plataforma horizontal (M): sincronizá el salto sobre el abismo"
+            elif col < 125:
                 zona = 5
-                msg = "[DESCENSO] Arrojate al pozo ancestral: descendé hacia las catacumbas"
+                msg = "[ASCENSOR] Plataforma vertical (V): abordala para ascender a la terraza"
+            elif col < 155:
+                zona = 6
+                msg = "[FAROL] Consagrá almas en el Farol (F) y sorteá al Morador con pisotón"
+            else:
+                zona = 7
+                msg = "[POZO] El Gran Abismo: descendé por las losas hacia la catacumba profunda"
         else:
             # Recorrido de Piso Inferior / Catacumba hacia la izquierda (cols 195 a 10)
-            if col >= 150:
-                zona = 6
-                msg = "[CATACUMBAS] Aterrizaje seguro. Avanzá hacia el oeste por la cripta profunda"
-            elif col >= 75:
-                zona = 7
-                msg = "[PELIGRO] Si posees el Manto dorado, absorberá el impacto del Morador"
-            elif col >= 35:
+            if col >= 155:
                 zona = 8
-                msg = "[RESONANCIA] Encadená rebotes en las campanas para superar el muro"
-            else:
+                msg = "[CATACUMBAS] Aterrizaje en las profundidades. Avanzá hacia el oeste"
+            elif col >= 138:
                 zona = 9
+                msg = "[GUARDIA] El Guardia (L) telegrafía su estocada con halo: esperá y saltalo"
+            elif col >= 118:
+                zona = 10
+                msg = "[VOLADORES] La Polilla (m) ondea en zigzag: cruzá por debajo a su paso"
+            elif col >= 98:
+                zona = 11
+                msg = "[CUERVO] El Cuervo (C) sobrevuela en círculo: medí su trayectoria aérea"
+            elif col >= 70:
+                zona = 12
+                msg = "[TRAVESÍA] Plataforma móvil (M) sobre foso y Araña (A) en la cripta"
+            elif col >= 35:
+                zona = 13
+                msg = "[RESONANCIA] Cadena de campanas (I): encadená rebotes sobre la gran muralla"
+            else:
+                zona = 14
                 msg = "[PORTÓN] Cruzá el Portón (G) para ingresar a El Camposanto"
 
         # No interrumpir la cita inicial de Poe si el jugador aún no ha comenzado a moverse
