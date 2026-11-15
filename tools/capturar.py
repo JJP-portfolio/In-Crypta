@@ -1,10 +1,4 @@
-# ============================================================
-# tools/capturar.py — Capturas headless del título y los tres niveles
-# ============================================================
-# Uso:
-#   PYTHONPATH=. SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
-#     .venv/bin/python tools/capturar.py
-# ============================================================
+#---- Captura de pantallas ----#
 
 import os
 import sys

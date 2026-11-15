@@ -1,85 +1,90 @@
 # IN CRYPTA
 
+### TRABAJO PRÁCTICO INTEGRADOR
+## ESTUDIANTE:
+# Jonathan Javier Pietracci
+## CARRERA:
+# Licenciatura en Desarrollo de Videojuegos y Simulaciones
+## DNI:
+# 36.798.847
+## INSTITUCIÓN:
+# Universidad Nacional de Hurlingham (UNAHUR)
+
+---
+
 > *«Los límites entre la Vida y la Muerte son borrosos e indefinidos.»* — Edgar Allan Poe
 
-**IN CRYPTA** es un videojuego de plataformas gótico y de acción 2D desarrollado en **Python / Pygame-CE**, inspirado en la estética fúnebre decimonónica, *Shovel Knight* y los clásicos de *Castlevania*.
+**IN CRYPTA** es un videojuego de plataformas y acción 2D desarrollado en **Python** con **Pygame-CE**, inspirado en la estética gótica y mecánicas clásicas de plataformas (*Castlevania*, *Shovel Knight*).
 
-Encarnás al **Sepulturero de la Cripta**, armado únicamente con su farol litúrgico y una pala oxidada. Deberás descender por los tres círculos del osario, consagrar las ánimas errantes, sortear fosos de espinas y losas quebradizas, y quebrar la coraza espectral de los custodios para escapar de la oscuridad.
+Encarnamos al Sepulturero, armado con su farol y una pala, recorriendo los distintos sectores del cementerio, cripta y osario, recolectando almas, esquivando trampas de pinchos y losas que se quiebran, y enfrentando enemigos hasta vencer al custodio final.
 
 ---
 
 ## 🎮 Controles
 
-El juego cuenta con soporte para teclado con dos configuraciones disponibles en el menú de pausa:
+El juego permite configurar los controles en el menú de pausa (`Esc` o `P`):
 
-| Acción | Preset Estándar (Recomendado) | Preset Retro (Consola) |
+| Acción | Controles (Teclado) | Alternativa |
 |---|---|---|
-| **Moverse** | `A` / `D` o `Flechas` | `Flechas` o `A` / `D` |
-| **Salto Variable** | `Espacio` o `W` | `Z` o `Espacio` |
-| **Dash de Sombras** | `Shift` o `X` | `X` o `Shift` |
-| **Ataque de Pala** | `J` o `Z` o `Click Izquierdo` | `C` o `J` o `Click Izquierdo` |
+| **Moverse** | `A` / `D` o `Flechas` | `Flechas` |
+| **Salto** | `Espacio` o `W` | `Z` |
+| **Dash** | `Shift` o `X` | `X` |
+| **Ataque de Pala** | `J` o `Z` o `Click Izquierdo` | `C` |
 | **Pisotón Aéreo (Stomp)** | `Abajo + Ataque` en el aire | `Abajo + Ataque` en el aire |
-| **Pausa / Menú** | `Escape` o `P` | `Escape` o `P` |
+| **Consagrar Farol** | `F` frente al farol | `F` |
+| **Pausa / Menú** | `Escape` o `P` | `Escape` |
 
-* **Salto Variable:** Tap corto para saltos rasantes de precisión; mantener presionado para saltos altos de elevación completa.
-* **Pisotón Aéreo:** Saltar y golpear hacia abajo sobre enemigos, incensarios o losas para rebotar y recargar instantáneamente el Dash en el aire.
-* **El Pacto del Farol:** Al consagrar ánimas en los Faroles de Reposo (`F`), purificás tu avance y desbloqueás el *Manto Protector* (escudo que absorbe un impacto letal).
+* **Salto variable:** Un toque corto realiza un salto rasante y mantener presionado da mayor elevación.
+* **Pisotón de pala:** Golpear hacia abajo en el aire contra enemigos o campanas permite rebotar y recarga el dash inmediatamente.
+* **Faroles de descanso:** Al pulsar `F` en un farol se guardan las almas y se activa un punto de control. Con suficientes almas consagradas se desbloquea el manto protector, que absorbe un golpe sin perder vida.
 
 ---
 
 ## 🚀 Cómo Jugar
 
-> 🌐 **Jugar Online (Navegador Web):** Podés jugar directamente en tu navegador sin instalar nada en:  
-> 👉 **[https://jjp-portfolio.github.io/In-Crypta/](https://jjp-portfolio.github.io/In-Crypta/)**
-
-> 📖 **Guía Completa para Jugadores:** Consultá la [**Guía de Instalación y Juego (Windows y Linux)**](GUIA_JUEGO.md) para instrucciones paso a paso, configuración de shaders y resolución de dudas frecuentes.
-
 ### En Windows
-Simplemente hacé doble click en **`jugar_windows.bat`** (o `jugar_pygame.bat`), o ejecutalo desde la consola:
-```cmd
-jugar_windows.bat
-```
-El script autodetectará tu instalación de Python, verificará `pygame-ce` y lanzará el juego inmediatamente.
+Hacé doble click en **`jugar_windows.bat`** (o `jugar_pygame.bat`).
+El script se encarga de verificar Python, armar el entorno virtual `.venv`, instalar `pygame-ce` e iniciar el juego.
 
 ### En Linux
-Ejecutá el script lanzador con permisos de ejecución:
+Ejecutá el script:
 ```bash
 ./jugar_pygame.sh
 ```
-
-### Ejecución Manual (Cualquier Sistema)
-Requiere **Python 3.10 o superior**:
+O directamente desde la consola:
 ```bash
-# 1. Crear y activar entorno virtual (opcional pero recomendado)
-python -m venv .venv
-source .venv/bin/activate   # En Linux / macOS
-# .venv\Scripts\activate    # En Windows
-
-# 2. Instalar dependencias
-pip install -r requirements.txt
-
-# 3. Iniciar el juego
+source .venv/bin/activate
 python main.py
 ```
 
+### Requisitos
+* Python 3.10 o superior
+* `pygame-ce>=2.5.0` (indicado en `requirements.txt`)
+
 ---
 
-## ⚔️ Características Técnicas y Diseño
+## 📁 Estructura del Proyecto
 
-* **Física y Game Feel:** Coyote time (80 ms), jump buffer (120 ms), amortiguación cinemática post-dash y rebotes elásticos.
-* **Iluminación Procedural y Claroscuro:** Penumbra gótica con caída cuadrática, halos translúcidos volumétricos y luz diegética a contraluz sobre el sepulturero.
-* **HUD Gótico Integral:** Riel de interfaz con corazones de rubí, contador de almas volátiles y consagradas, dial rúnico de cooldown de dash, pips de vida extra y canal de mensajes con animación suave.
-* **Campaña Completa:**
-  1. *El Preludio:* El Ritual del Sepulturero (aprendizaje de movimiento y salto).
-  2. *Nivel 1:* El Camposanto Bajo la Tormenta (fosos, altar de sombras y cuervos).
-  3. *Nivel 2:* La Cripta de los Péndulos (altar de la pala, pisotón y plataformas móviles).
-  4. *Nivel 3:* El Osario de los Herejes (encuentro con el Carcelero, Guadaña Consagrada y el Custodio).
-  5. *Salas de Prueba:* Entornos de testeo técnico para aislar cada mecánica.
+* `main.py` - Punto de entrada del juego.
+* `juego.py` - Bucle principal, estados y lógica general.
+* `nivel.py` - Carga y renderizado de niveles, plataformas y sólidos.
+* `niveles.py` - Matrices de los mapas en texto ASCII.
+* `niveles_redisenados.py` - Mapas con variantes y tramos ajustados.
+* `entidades.py` - Jugador, enemigos, jefes, almas y objetos interactivos.
+* `camara.py` - Cámara con seguimiento suave y límites de pantalla.
+* `particulas.py` - Sistema de partículas y efectos visuales.
+* `efectos.py` - Iluminación procedural, sombras y penumbra.
+* `hud.py` - Interfaz de usuario, vidas, almas y estado de habilidades.
+* `audio.py` - Efectos de sonido y música.
+* `config.py` - Constantes, colores y parámetros de física.
+* `tests/` - Pruebas automáticas de lógica, niveles y mecánicas.
+* `tools/` - Scripts de validación de niveles y captura de pantallas.
 
 ---
 
 ## 📜 Créditos
 
-* **Desarrollo:** Equipo 6 — Taller de Diseño Conceptual / Introducción a los Videojuegos
-* **Institución:** Universidad Nacional de Hurlingham (UNAHUR)
-* **Licencia:** MIT License
+* **Autor:** Jonathan Javier Pietracci
+* **Carrera:** Licenciatura en Desarrollo de Videojuegos y Simulaciones
+* **Materia:** Taller de Diseño Conceptual / Programación
+* **Universidad:** Universidad Nacional de Hurlingham (UNAHUR)

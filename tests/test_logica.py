@@ -1,12 +1,5 @@
-# ============================================================
-# tests/test_logica.py — Pruebas sin ventana real
-# ============================================================
-# Ejecutar con:
-#   PYTHONPATH=. SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
-#     .venv/bin/python tests/test_logica.py
-#
-# No usa pytest: son asserts simples para que se entienda qué se prueba.
-# ============================================================
+#---- Pruebas de logica ----#
+# Pruebas sin ventana real para verificar mecanicas del juego.
 
 import os
 import sys
@@ -66,7 +59,7 @@ from nivel import Nivel
 from niveles import NIVEL_1, NIVEL_2, NIVEL_3, NIVELES, SALAS_PRUEBA
 
 
-# --- Prueba: todos los niveles tienen datos coherentes --- #
+#---- Prueba: datos de niveles ----#
 def probar_niveles():
     assert len(NIVELES) == 3
 
@@ -97,7 +90,7 @@ def probar_niveles():
     print("niveles: OK")
 
 
-# --- Prueba: el parser une bloques y encuentra objetos --- #
+#---- Prueba: parser y objetos ----#
 def probar_parser():
     mapa = """
 ....
@@ -115,7 +108,7 @@ def probar_parser():
     print("parser: OK")
 
 
-# --- Prueba: gravedad y aterrizaje --- #
+#---- Prueba: gravedad y aterrizaje ----#
 def probar_gravedad():
     nivel = Nivel(NIVEL_1, "prueba")
     jugador = Jugador(*nivel.spawn)
@@ -134,7 +127,7 @@ def probar_gravedad():
     print("gravedad: OK")
 
 
-# --- Prueba: salto y altura --- #
+#---- Prueba: salto y altura ----#
 def probar_salto():
     nivel = Nivel(NIVEL_1, "prueba")
     jugador = Jugador(*nivel.spawn)
@@ -153,7 +146,7 @@ def probar_salto():
     print("salto: OK")
 
 
-# --- Prueba: dash en suelo, cooldown y dash aéreo único --- #
+#---- Prueba: dash en suelo y aire ----#
 def probar_dash():
     nivel = Nivel(NIVEL_1, "prueba")
     jugador = Jugador(*nivel.spawn)
@@ -195,7 +188,7 @@ def probar_dash():
     print("dash: OK")
 
 
-# --- Prueba: un pozo de 7 tiles se cruza con salto + dash --- #
+#---- Prueba: cruce de pozo ----#
 def probar_pozo_de_dash():
     arriba = "." * 30
     fila = "#" * 10 + "." * 7 + "#" * 13
@@ -229,7 +222,7 @@ def probar_pozo_de_dash():
     print("pozo de dash: OK")
 
 
-# --- Prueba: el primer salto de La Cripta se cruza con salto + dash --- #
+#---- Prueba: salto de la cripta ----#
 def probar_primer_salto_cripta():
     nivel = Nivel(NIVEL_2, "La Cripta")
     suelo_y = nivel.alto - 2 * TILE
@@ -276,7 +269,7 @@ def probar_primer_salto_cripta():
     print("primer salto de La Cripta: OK")
 
 
-# --- Prueba: alma --- #
+#---- Prueba: almas ----#
 def probar_alma():
     jugador = Jugador(100, 482)
     alma = Alma(pygame.Rect(104, 486, 16, 16))
@@ -287,7 +280,7 @@ def probar_alma():
     print("alma: OK")
 
 
-# --- Prueba: diez almas dan una vida extra, con tope --- #
+#---- Prueba: vida extra por almas ----#
 def probar_vida_extra():
     juego = Juego()
     juego.cargar_nivel(0, vidas=3)
@@ -308,7 +301,7 @@ def probar_vida_extra():
     print("almas y vida extra: OK")
 
 
-# --- Prueba: al morir se reinician almas y contador --- #
+#---- Prueba: reinicio al morir ----#
 def probar_reset_almas_al_morir():
     juego = Juego()
     juego.cargar_nivel(0, vidas=3)
@@ -324,7 +317,7 @@ def probar_reset_almas_al_morir():
     print("reset de almas al morir: OK")
 
 
-# --- Prueba: patrulla del enemigo --- #
+#---- Prueba: patrulla de enemigo ----#
 def probar_enemigo():
     enemigo = Enemigo(pygame.Rect(100, 480, 26, 26), 64, 256)
     x_inicial = enemigo.x
@@ -336,7 +329,7 @@ def probar_enemigo():
     print("enemigo: OK")
 
 
-# --- Prueba: enemigo melee (comportamiento, dibujo, ataque y pisotón) --- #
+#---- Prueba: enemigo melee ----#
 def probar_enemigo_melee():
     juego = Juego()
     juego.seleccionar_nivel(2)
@@ -372,7 +365,7 @@ def probar_enemigo_melee():
     print("enemigo melee: OK")
 
 
-# --- Prueba: cámara --- #
+#---- Prueba: camara ----#
 def probar_camara():
     nivel = Nivel(NIVEL_1, "prueba")
     camara = Camara()
@@ -397,7 +390,7 @@ def probar_camara():
     print("camara: OK")
 
 
-# --- Prueba: meta, cambio de nivel y victoria --- #
+#---- Prueba: meta y victoria ----#
 def probar_estados_y_meta():
     juego = Juego()
     juego.iniciar_partida()
@@ -424,7 +417,7 @@ def probar_estados_y_meta():
     print("estados y meta: OK")
 
 
-# --- Prueba: pala, dash aéreo y daño por contacto --- #
+#---- Prueba: pala y contacto ----#
 def probar_stomp_y_contacto():
     # 1. Pisotón SIN pala (tiene_pala = False): daña al jugador en lugar de matar al enemigo
     juego = Juego()
@@ -477,7 +470,7 @@ def probar_stomp_y_contacto():
     print("pala y contacto: OK")
 
 
-# --- Prueba: pickup de pala y límites del mapa --- #
+#---- Prueba: pala y limites ----#
 def probar_pala_y_limites():
     juego = Juego()
     juego.cargar_nivel(1)  # Nivel 2 consagra la pala (W)
@@ -503,7 +496,7 @@ def probar_pala_y_limites():
     print("pala y límites: OK")
 
 
-# --- Prueba: las plataformas móviles son sólidas y se mueven --- #
+#---- Prueba: plataformas moviles ----#
 def probar_plataformas():
     juego = Juego()
     juego.cargar_nivel(0)
@@ -516,7 +509,7 @@ def probar_plataformas():
     print("plataformas: OK")
 
 
-# --- Prueba: perder una vida y llegar a derrota --- #
+#---- Prueba: perdida de vidas y derrota ----#
 def probar_perder_vida():
     juego = Juego()
     juego.iniciar_partida()
@@ -539,7 +532,7 @@ def probar_perder_vida():
     print("vidas: OK")
 
 
-# --- Prueba: reiniciar un nivel devuelve almas y enemigos --- #
+#---- Prueba: reinicio de nivel ----#
 def probar_reiniciar_nivel():
     nivel = Nivel(NIVEL_1, "prueba")
     nivel.almas[0].recogida = True
@@ -553,7 +546,7 @@ def probar_reiniciar_nivel():
     print("reiniciar nivel: OK")
 
 
-# --- Prueba: pantalla de título --- #
+#---- Prueba: pantalla de titulo ----#
 def probar_titulo():
     juego = Juego()
     assert juego.estado == "titulo"
@@ -564,7 +557,7 @@ def probar_titulo():
     print("titulo: OK")
 
 
-# --- Prueba: pinchos --- #
+#---- Prueba: pinchos ----#
 def probar_pinchos():
     juego = Juego()
     juego.cargar_nivel(1, vidas=3)
@@ -579,7 +572,7 @@ def probar_pinchos():
     print("pinchos: OK")
 
 
-# --- Prueba: juego completo en modo headless --- #
+#---- Prueba: juego headless ----#
 def probar_juego_headless():
     juego = Juego()
     juego.iniciar_partida()
@@ -593,7 +586,7 @@ def probar_juego_headless():
     print("juego headless: OK")
 
 
-# --- Prueba: ataque de pala y recarga del dash --- #
+#---- Prueba: ataque de pala y dash ----#
 def probar_ataque_pala():
     juego = Juego()
     juego.cargar_nivel(1)
@@ -624,7 +617,7 @@ def probar_ataque_pala():
     print("ataque de pala: OK")
 
 
-# --- Prueba: jefe final, ondas y portón sellado --- #
+#---- Prueba: jefe final ----#
 def probar_jefe_final():
     juego = Juego()
     juego.cargar_nivel(2)
@@ -702,7 +695,7 @@ def probar_jefe_final():
     print("jefe final: OK")
 
 
-# --- Prueba: validación matemática de niveles y limpieza de gemas --- #
+#---- Prueba: validacion de niveles ----#
 def probar_mapa_final():
     from niveles import NIVEL_TUTORIAL
 
@@ -758,7 +751,7 @@ def probar_mapa_final():
     print("mapa final: OK")
 
 
-# --- Prueba: salto y dash por la ventana de la pared vertical en Nivel 2 --- #
+#---- Prueba: salto por ventana en nivel 2 ----#
 def probar_salto_ventana_nivel_2():
     juego = Juego()
     juego.cargar_nivel(1)  # Nivel 2 (índice 1)
@@ -805,7 +798,7 @@ def probar_salto_ventana_nivel_2():
     print("salto ventana nivel 2: OK")
 
 
-# --- Prueba: salas de prueba y selector --- #
+#---- Prueba: salas de prueba ----#
 def probar_salas_prueba():
     from niveles_redisenados import SALAS_PRUEBA_RED
 
@@ -894,7 +887,7 @@ def probar_salas_prueba():
     print("salas de prueba: OK")
 
 
-# --- Prueba: menú principal gótico y selector de niveles --- #
+#---- Prueba: menu principal ----#
 def probar_menu_principal_y_navegacion():
     juego = Juego()
     assert juego.estado == "titulo"
@@ -927,7 +920,7 @@ def probar_menu_principal_y_navegacion():
     print("menú principal y selector de niveles: OK")
 
 
-# --- Prueba: tutorial completo --- #
+#---- Prueba: tutorial ----#
 def probar_tutorial():
     juego = Juego()
 
@@ -972,7 +965,7 @@ def probar_tutorial():
     print("tutorial: OK")
 
 
-# --- Prueba: menú de pausa interactivo y campaña continua (Prioridad 3) --- #
+#---- Prueba: menu de pausa ----#
 def probar_menu_pausa_y_campana():
     juego = Juego()
     juego.cargar_nivel(0)
@@ -1005,7 +998,7 @@ def probar_menu_pausa_y_campana():
     print("pausa y campaña continua: OK")
 
 
-# --- Prueba: las almas se reinician al cambiar de nivel, las vidas no --- #
+#---- Prueba: cambio de nivel vidas y almas ----#
 def probar_transicion_almas_vidas():
     juego = Juego()
     juego.iniciar_partida()
@@ -1021,7 +1014,7 @@ def probar_transicion_almas_vidas():
     print("transición de almas y vidas: OK")
 
 
-# --- Prueba: feedback de derrota, causas de muerte y reintento con ENTER --- #
+#---- Prueba: derrota y reintento ----#
 def probar_feedback_derrota_y_reintento():
     juego = Juego()
     juego.iniciar_partida()
@@ -1050,7 +1043,7 @@ def probar_feedback_derrota_y_reintento():
     print("feedback derrota y reintento: OK")
 
 
-# --- Prueba: accesibilidad reducción de movimiento (F1) --- #
+#---- Prueba: reduccion de movimiento ----#
 def probar_accesibilidad():
     juego = Juego()
     juego.iniciar_partida()
@@ -1079,7 +1072,7 @@ def probar_accesibilidad():
     print("accesibilidad reducir movimiento: OK")
 
 
-# --- Prueba: combo musical de recolección de almas --- #
+#---- Prueba: combo de almas ----#
 def probar_combo_almas():
     juego = Juego()
     juego.iniciar_partida()
@@ -1101,7 +1094,7 @@ def probar_combo_almas():
     print("combo almas: OK")
 
 
-# --- Prueba: dash power-up y checkpoints diegéticos --- #
+#---- Prueba: powerup de dash y checkpoints ----#
 def probar_power_up_dash_y_checkpoint():
     juego = Juego()
     # Nivel 1 tiene DashPowerUp
@@ -1145,7 +1138,7 @@ def probar_power_up_dash_y_checkpoint():
     print("power-up dash y checkpoints: OK")
 
 
-# --- Prueba: Mini-Boss (El Carcelero del Osario) --- #
+#---- Prueba: minijefe ----#
 def _cansar(mj):
     """Pone al Carcelero en su ventana de cansancio (vulnerable 1.3 s)."""
     mj.estado = "cansado"
@@ -1263,7 +1256,7 @@ def probar_minijefe():
     print("mini-boss carcelero: OK")
 
 
-# --- Prueba: el altar 'X' está sellado hasta derrotar al Carcelero --- #
+#---- Prueba: altar sellado ----#
 def probar_altar_guadaña_sellado():
     juego = Juego()
     juego.cargar_nivel(2)  # Nivel 3: El Osario
@@ -1289,7 +1282,7 @@ def probar_altar_guadaña_sellado():
     print("altar de la guadaña sellado: OK")
 
 
-# --- Prueba: progresión de habilidades por nivel (D en N1, W en N2, X en N3) --- #
+#---- Prueba: progresion de habilidades ----#
 def probar_progresion_habilidades():
     juego = Juego()
     juego.iniciar_tutorial()
@@ -1332,7 +1325,7 @@ def probar_progresion_habilidades():
     print("progresión de habilidades y moveset: OK")
 
 
-# --- Prueba: pisotón encadenado sobre enemigos voladores (trampolines) --- #
+#---- Prueba: pisoton encadenado ----#
 def probar_pisoton_encadenado_voladores():
     juego = Juego()
     juego.cargar_nivel(2)
@@ -1360,7 +1353,7 @@ def probar_pisoton_encadenado_voladores():
     print("pisotón encadenado sobre voladores: OK")
 
 
-# --- Prueba: Farol (F) consagra almas, cura y otorga Manto --- #
+#---- Prueba: farol de consagracion ----#
 def probar_farol_consagracion():
     juego = Juego()
     juego.cargar_nivel(0, vidas=VIDAS_INICIALES)
@@ -1403,7 +1396,7 @@ def probar_farol_consagracion():
     print("farol: consagración, curación y manto: OK")
 
 
-# --- Prueba: Prioridad 3 (UI/UX, 4 Tipos de Interfaz y Flujo de Menús) --- #
+#---- Prueba: interfaz y flujo de menus ----#
 def probar_prioridad_3_ui_ux():
     juego = Juego()
 
@@ -1462,10 +1455,10 @@ def probar_prioridad_3_ui_ux():
     juego.dibujar()
     assert juego.superficie_mundo is not None
 
-    print("prioridad 3 UI/UX y 4 tipos de interfaz: OK")
+    print("interfaz y flujo de menus: OK")
 
 
-# --- Prueba: Game Feel Celeste (Apex Hang-Time, Post-Dash Float, Dash-Jump y Corner Correction) --- #
+#---- Prueba: fisica de salto y dash ----#
 def probar_fisica_salto_dash_game_feel():
     juego = Juego()
     jugador = Jugador(100, 300)
@@ -1522,7 +1515,7 @@ def probar_fisica_salto_dash_game_feel():
     print("física salto+dash game feel: OK")
 
 
-# --- Prueba: Menú de Configuración y Presets de Teclado --- #
+#---- Prueba: menu configuracion y controles ----#
 def probar_menu_configuracion_y_presets_teclado():
     juego = Juego()
     juego.abrir_configuracion()
@@ -1568,7 +1561,7 @@ def probar_menu_configuracion_y_presets_teclado():
     print("menú configuración y presets teclado: OK")
 
 
-# --- Ejecución --- #
+#---- Pruebas de fisica fina ----#
 def probar_apex_no_se_activa_con_z():
     jugador = Jugador(100, 300)
     jugador.en_suelo = False
@@ -1647,7 +1640,7 @@ def probar_jump_buffer():
     print("jump buffer: OK")
 
 
-# --- Prueba: Losa Quebradiza (~) --- #
+#---- Prueba: losa quebradiza ----#
 def probar_losa_quebradiza():
     # 1. Comportamiento unitario de LosaQuebradiza
     losa = LosaQuebradiza(pygame.Rect(100, 200, 32, 32))
@@ -1726,7 +1719,7 @@ def probar_losa_quebradiza():
     print("losa quebradiza: OK")
 
 
-# --- Prueba: Incensario / Campana de Rebote (I) --- #
+#---- Prueba: incensario de rebote ----#
 def probar_incensario_rebote():
     # 1. Comportamiento unitario de IncensarioRebote
     incensario = IncensarioRebote(pygame.Rect(200, 200, 24, 28))
@@ -1793,13 +1786,13 @@ def probar_incensario_rebote():
     print("incensario rebote: OK")
 
 
-# --- Prueba: Farol (F) y los 3 Tiers de Consagración --- #
+#---- Prueba: farol y consagraciones ----#
 def probar_farol_3_tiers():
     juego = Juego()
     juego.cargar_nivel(0, vidas=VIDAS_INICIALES)
     cp = juego.nivel.checkpoints[0]
 
-    # --- Tier 1 (1 a 4 almas): Consagración Básica ---
+    #---- Nivel 1 (1 a 4 almas): Consagracion basica ----#
     juego.jugador.vidas = 2  # Dañado (< 3)
     juego.jugador.almas = 3
     juego.jugador.rect.center = cp.rect.center
@@ -1812,7 +1805,7 @@ def probar_farol_3_tiers():
     assert not getattr(juego.jugador, "filo_anima", False)
     assert juego.almas_consagradas == 3
 
-    # --- Tier 2 (5 a 7 almas): Bendición del Manto ---
+    #---- Nivel 2 (5 a 7 almas): Bendicion del manto ----#
     juego.cargar_nivel(0, vidas=2)
     cp = juego.nivel.checkpoints[0]
     juego.almas_consagradas = 0
@@ -1832,7 +1825,7 @@ def probar_farol_3_tiers():
     assert juego.jugador.vidas == vidas_antes
     assert not juego.jugador.escudo_farol
 
-    # --- Tier 3 (8+ almas): Fuego Fatuo Consagrado (Filo de Ánima) ---
+    #---- Nivel 3 (8+ almas): Filo de anima ----#
     juego.cargar_nivel(0, vidas=2)
     cp = juego.nivel.checkpoints[0]
     juego.almas_consagradas = 0
@@ -1872,7 +1865,7 @@ def probar_farol_3_tiers():
     print("farol 3 tiers: OK")
 
 
-# --- Prueba: Prioridad 4 UI/UX Completa (Interfaces, Menús, Calidad, HUD, Rango Litúrgico y Relicario) --- #
+#---- Prueba: opciones de calidad y hud ----#
 def probar_prioridad_4_ui_ux_completa():
     juego = Juego()
 
@@ -1981,7 +1974,7 @@ def probar_prioridad_4_ui_ux_completa():
     assert juego.config_hud_idx == 0
     assert juego.hud.modo_hud == 0
 
-    print("prioridad 4 UI/UX completa: OK")
+    print("opciones de calidad y hud: OK")
 
 
 if __name__ == "__main__":

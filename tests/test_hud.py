@@ -1,9 +1,4 @@
-# ============================================================
-# tests/test_hud.py — Tests de HUD de IN CRYPTA (headless)
-# ============================================================
-# Verifica layout, contadores, mensajes, animaciones y caché
-# sin tocar gameplay. Correr con SDL_VIDEODRIVER=dummy.
-# ============================================================
+#---- Tests del HUD ----#
 
 import os
 import sys
@@ -369,11 +364,11 @@ class TestOrquestador(unittest.TestCase):
         self.assertEqual(o.modelo.jefe_nombre, "EL CARCELERO DEL OSARIO")
 
 
-class TestPrioridad3UIUX(unittest.TestCase):
-    """Verificaciones unitarias de los 4 Tipos de Interfaz y 5 Principios UX."""
+class TestUIUX(unittest.TestCase):
+    """Verificaciones unitarias de interfaz y elementos del HUD."""
 
     def test_ui_no_diegetica_riel_superior_fijo(self):
-        """UI No Diegética: riel 1232x72 y panel derecho de ancho fijo (360 px) sin layout shifts."""
+        """Riel 1232x72 y panel derecho de ancho fijo (360 px) sin layout shifts."""
         layout = HudLayout.construir()
         self.assertEqual(layout.riel.size, (1232, 72))
         self.assertEqual(layout.zona_der.width, 360)
@@ -390,7 +385,7 @@ class TestPrioridad3UIUX(unittest.TestCase):
         self.assertEqual(fmt_arma(m), "[GUADAÑA] LISTO")
 
     def test_ui_diegetica_faroles(self):
-        """UI Diegética: Farol del jugador (llama turquesa/ámbar) y Checkpoints activos/inactivos."""
+        """Farol del jugador (llama turquesa/ámbar) y Checkpoints activos/inactivos."""
         from entidades import Jugador, FarolCheckpoint
 
         j = Jugador(100, 100)
@@ -408,7 +403,7 @@ class TestPrioridad3UIUX(unittest.TestCase):
         self.assertTrue(cp.activo)
 
     def test_ui_espacial_coordenadas_y_distancia(self):
-        """UI Espacial: cálculo de distancia a 140 px y proyección mediante camara.aplicar_rect."""
+        """Calculo de distancia a 140 px y proyección mediante camara.aplicar_rect."""
         from camara import Camara
 
         cam = Camara()
@@ -421,7 +416,7 @@ class TestPrioridad3UIUX(unittest.TestCase):
         self.assertEqual(rect_pantalla.y, 250)
 
     def test_layout_cero_solapamientos(self):
-        """UI No Diegética: garantiza cero colisiones ni solapamientos en el riel superior."""
+        """Garantiza cero colisiones ni solapamientos en el riel superior."""
         layout = HudLayout.construir()
         self.assertEqual(layout.solapamientos(), [])
         self.assertTrue(layout.riel.width <= ANCHO)

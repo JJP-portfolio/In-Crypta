@@ -1,55 +1,26 @@
-# ============================================================
-# niveles.py — Los niveles de IN CRYPTA (Rediseño Sierra UNAHUR)
-# ============================================================
-# Campaña Magistral de 25 a 30 minutos de gameplay inolvidable.
-# Estructura: Kishōtenketsu, 5 Etapas de Progresión y Sierra de Dificultad.
-#
-# Símbolos:
-#   .  vacío
-#   #  bloque sólido (piedra, tierra, techo)
-#   P  posición inicial del sepulturero (1 por nivel)
-#   G  meta (portón de salida, 1 por nivel)
-#   o  alma / coleccionable
-#   E  morador que patrulla
-#   L  guardia melee (EnemigoMelee con estocada telegrafiada)
-#   t  lápida     c  vela     b  huesos
-#   r  raíz       s  estatua  ^  pinchos
-#   D  amuleto de sombras (Dash)
-#   W  pala recogible (arma básica y pogo)
-#   X  guadaña consagrada (rango extendido a 76 px, sellada tras mini-boss)
-#   F  farol de reposo (checkpoint diegético y pacto consagratorio)
-#   K  carcelero del osario (mini-boss)
-#   B  jefe final (Custodio del Osario en 2 fases)
-#   M  plataforma móvil horizontal
-#   V  plataforma móvil vertical
-#   ~  losa quebradiza de osario (colapsa tras 0.4s de pisarla)
-#   I  incensario / campana de resonancia (rebote aéreo y recarga de dash)
-#
-# ============================================================
-# CURVA DE DIFICULTAD Y PEDAGOGÍA LÚDICA (Sierra de Dificultad)
-# ============================================================
-# Parámetros Físicos Inmutables (medidos en motor a TILE = 32 px):
-#   - Salto puro desde el suelo: 204 px = 6.38 tiles. Salto cómodo: 3-4 tiles.
-#     Altura máxima: 123 px = 3.84 tiles.
-#   - Salto + Dash desde el suelo: 355-367 px = 11.1-11.5 tiles.
-#     Foso que OBLIGA al Dash: 6 a 8 tiles (salto puro se queda corto).
-#   - Encadenamiento Salto + Dash + Pisotón + Dash: 10 a 14 tiles
-#     usando enemigos (E, C, m) o incensarios (I) como trampolines aéreos.
-#
-# Pacing y Longitudes Crecientes (25 a 30 minutos humano promedio):
-#   Preludio: 195 cols x 36 filas (Descenso en 2 pisos de 18 filas, cero muertes)
-#   Nivel 1:  260 cols x 18 filas (6 a 8 min — Dash, Losas, Cuervos, Campana)
-#   Nivel 2:  310 cols x 18 filas (8 a 10 min — Pala, Pogo, Guardias, Ventana Monolítica)
-#   Nivel 3:  360 cols x 18/36 filas (10 a 14 min — Examen Integral, Carcelero, Guadaña, Custodio)
-# ============================================================
+#---- Definicion de niveles y mapas ----#
+# Simbolos del mapa:
+#   .  vacio
+#   #  bloque solido (muro, suelo, techo)
+#   P  posicion inicial del jugador
+#   G  meta o porton de salida
+#   o  alma coleccionable
+#   E  morador enemigo que patrulla
+#   L  guardia con espada
+#   t  lapida     c  vela     b  huesos
+#   r  raiz       s  estatua  ^  pinchos
+#   D  power-up de dash
+#   W  pala para atacar y rebotar
+#   X  guadaña con mayor alcance
+#   F  farol checkpoint
+#   K  carcelero (minijefe)
+#   B  custodio (jefe final)
+#   M  plataforma movil horizontal
+#   V  plataforma movil vertical
+#   ~  losa que se rompe al pisarla
+#   I  campana para rebotar
 
-# ============================================================
-# PRELUDIO / TUTORIAL - "El Umbral del Sepulturero" (195 cols x 36 filas)
-# ============================================================
-# Piso 0 (filas 0-17, cols 0-168)  — Despertar, Salto Variable, Losas, Campana y Farol Checkpoint.
-# Pozo   (filas 15-22, cols 160-168) — Descenso vertical litúrgico hacia la catacumba profunda.
-# Piso 1 (filas 18-35, cols 194-10) — Altar del Sepulturero, Moradores y Cadena de Campanas hacia el Portón (G).
-# ============================================================
+#---- Nivel Tutorial: El Ritual del Sepulturero ----#
 NIVEL_TUTORIAL = """
 ###################################################################################################################################################################################################
 ##...j.###..j..###........j..###......j....###......j....###....j......###......j......###......j......###......j......j.###....j....###....j....###..j..###...............########################
@@ -88,14 +59,8 @@ NIVEL_TUTORIAL = """
 ###################################################################################################################################################################################################
 ###################################################################################################################################################################################################
 """
-# ============================================================
-# NIVEL 1 - "El Camposanto Bajo la Tormenta" (310 cols x 18 filas — 6 a 8 min)
-# ============================================================
-# Acto I (cols 0-55) — La Ronda Nocturna (Sin Dash, Sin Arma): salto 3-4t, evasión de Morador E.
-# Acto II (cols 56-105) — El Altar de las Sombras (D): pozo de 7t con trinchera segura y Farol 1 (F).
-# Acto III (cols 106-160) — El Puente Quebradizo y los Cuervos: losas ~, móviles M, cuervo C, Farol 2 (F).
-# Acto IV (cols 161-209) — Clímax: Salto -> Losa ~ -> Dash -> Campana (I) -> Dash -> Portón (G).
-# ============================================================
+
+#---- Nivel 1: El Camposanto ----#
 NIVEL_1 = """
 ####################################################################################################################################################################################################################################################################
 #.........j..###...................j.###.....j.....###.j...........j.###.j............j..###......................j..###..........j....###..................j..###..............j..###..............j..###........................................j..###...........#
@@ -117,14 +82,7 @@ NIVEL_1 = """
 ####################################################################################################################################################################################################################################################################
 """
 
-# ============================================================
-# NIVEL 2 - "La Cripta de los Péndulos" (310 cols x 18 filas — 8 a 10 min)
-# ============================================================
-# Acto I (cols 0-40) — El Salto de Fe (pozo exacto 7t en suelo_y) -> Altar de la Pala (W).
-# Acto II (cols 41-95) — Escuela de Exorcismo: combate frontal morador E, foso pogo con trinchera, Farol 1 (F).
-# Acto III (cols 96-175) — Las Galerías Verticales: guardias L, ascensores VV, pogo en abismo, Farol 2 (F).
-# Acto IV (cols 176-259) — Pared Vertical y Santuario: atalaya (col 233), salto + dash por ventana (cols 240-241) -> Portón (G).
-# ============================================================
+#---- Nivel 2: La Cripta ----#
 NIVEL_2 = """
 ######################################################################################################################################################################################################################################################################################################################
 #.......j..###........j......###....j..........###j.............j###..........j....###......j........###..j............###............j..###........j......###....j..........###j...########################################....j...........j...........j...........j.............................##.................#
@@ -146,15 +104,7 @@ NIVEL_2 = """
 ################^^^^^^^##########################################################^#########################^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^#########^#################################^^^^^^^^^^^^^^^^^^^^^^^^^^^^#############################################^#######^####################################
 """
 
-# ============================================================
-# NIVEL 3 - "El Gran Osario de la Muerte Roja" (360 cols x 18 filas — 10 a 14 min)
-# ============================================================
-# Acto I (cols 0-75) — El Desfiladero de Cráneos: móviles M y V, losas ~, arañas A, polillas m, cuervos C -> Farol 1 (F).
-# Acto II (cols 76-140) — La Celda del Carcelero (K, Mini-Boss) -> Guadaña Consagrada (X) desprecintada -> Farol 2 (F).
-# Acto III (cols 141-220) — El Cosechador de Ánimas: guardias L, abismo colosal 14t con doble pogo C + I -> Farol 3 (F).
-# Acto IV (cols 221-265) — La Antesala del Trono: ascenso quebradizo, consagración para Manto -> Farol 4 (F).
-# Acto V (cols 266-329) — Clímax del Custodio (B en 2 Fases) -> Portón Final de Redención (G).
-# ============================================================
+#---- Nivel 3: El Osario ----#
 NIVEL_3 = """
 ########################################################################################################################################################################################################################################################################################################################################################################
 #.....j..###........j....###..................j..........###......j........####################.......j.......j............j.......j.......j...j....j......................................###...............j.........................###...........j.................................................................................................................#
@@ -175,10 +125,7 @@ NIVEL_3 = """
 ################^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^###############^^^^^^^^^^^###^^^^^^^^^^^^^^^^^###########################################################^^^^^^############################################^^^^^^^^^^^^^^........##########.###############^^^^^####################################################################################
 ########################################################################################################################################################################################################################################################################################################################################################################"""
 
-# Variante vertical del Osario (36 filas, dos pisos), derivada de NIVEL_3.
-# Piso superior igual salvo: sin B ni G, y losa abierta en cols 313-314.
-# Piso inferior nuevo: corredor con jefe B y meta G al oeste. La lista de
-# cambios está en REPORTE_SISTEMA_NIVELES_v3.md, sección 3.
+#---- Variante vertical del Osario ----#
 NIVEL_3_VERTICAL = """
 ########################################################################################################################################################################################################################################################################################################################################################################
 #.....j..###........j....###..................j..........###......j........####################.......j.......j............j.......j.......j...j....j......................................###...............j.........................###...........j........................j..###......j......###......j....###....j........j...###.....j.....###.....j...###.......#
@@ -217,7 +164,7 @@ NIVEL_3_VERTICAL = """
 #.############^^^^^^^.##...b.c.t.F.s.u.b.g.c.t..................B.....................t.c.g.b.....g.u.s.c.F.t.b.s.u.t...E...c.b.g..A....t.c^....###############....##.u.t.c.F.s.g#######^^^^^^^^^^^^####################........^^^^^^^^^^^^^##.g.t.c.F.s.u.t..E..c.b...#############.......^^^^^^##..g.t.c.F.s.u.b.............u.c.o.t.b.o.g.s.o.u.c.t.g..............#
 ########################################################################################################################################################################################################################################################################################################################################################################"""
 
-# Lista separada: NIVELES NO cambia hasta validar la variante en juego.
+#---- Variantes y niveles del juego ----#
 NIVELES_VERTICALES = [
     {
         "nombre": "El Osario (vertical)",
@@ -248,6 +195,7 @@ NIVELES = [
     },
 ]
 
+#---- Salas de prueba ----#
 SALA_PRUEBA_1 = NIVEL_1
 
 SALA_PRUEBA_2 = """

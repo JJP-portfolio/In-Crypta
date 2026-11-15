@@ -106,21 +106,21 @@ python main.py
 
 ---
 
-## 🎨 Opciones de Video y Shaders Góticos
+## 🎨 Opciones de Video y Gráficos
 
-**IN CRYPTA** incluye un pipeline de post-procesamiento visual personalizable para equilibrar fidelidad retro, atmósfera gótica y rendimiento:
+El juego incluye opciones visuales para ajustar los efectos y el rendimiento según tu equipo:
 
 Accede a **Configuración** desde el Menú Principal o pausando el juego (`Esc`):
 * **Efectos / Shaders:**
-  * **Gótico (Bloom + CRT) [Recomendado]:** Añade resplandor místico (bloom) a partículas, almas y luces de farol, junto con una micro-trama de scanlines ópticas retro que amalgama los textos de alta resolución con el pixel art.
-  * **Suave (Solo Bloom):** Mantiene el halo luminoso y el suavizado sin las líneas CRT.
-  * **Puro (Pixel Art Clásico):** Renderizado directo 1:1 sin filtros ni post-procesado.
+  * **Gótico (Bloom + CRT) [Recomendado]:** Efecto de resplandor (bloom) en luces y partículas, con líneas de barrido estilo CRT retro.
+  * **Suave (Solo Bloom):** Mantiene el resplandor de luces y partículas sin líneas CRT.
+  * **Puro (Pixel Art Clásico):** Renderizado directo en pixel art sin filtros.
 * **Calidad Gráfica:**
-  * **Alta:** 100% de partículas ambientales, halos volumétricos y penumbra completa.
-  * **Media:** 50% de partículas y penumbra optimizada.
-  * **Baja:** 60 FPS garantizados para computadoras de muy bajos recursos (sin penumbra pesada).
+  * **Alta:** Partículas ambientales completas e iluminación completa.
+  * **Media:** Partículas intermedias e iluminación optimizada.
+  * **Baja:** Pensado para computadoras de muy bajos recursos (elimina penumbra pesada para asegurar 60 FPS).
 * **Reducción de Movimiento:**
-  * Desactiva el temblor de cámara (screenshake) y suaviza los flashes de daño si eres sensible a efectos visuales intensos.
+  * Desactiva el temblor de cámara (screenshake) y suaviza los flashes si preferís una experiencia visual más estable.
 
 ---
 

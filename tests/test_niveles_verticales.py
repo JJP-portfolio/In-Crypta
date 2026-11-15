@@ -1,15 +1,4 @@
-# ============================================================
-# tests/test_niveles_verticales.py — Osario vertical (2 pisos).
-# ============================================================
-# Ejecutar (sin pygame, solo datos y validador):
-#   python tests/test_niveles_verticales.py
-#
-# Las pruebas marcadas [pygame] usan el parser y la cámara reales.
-# Se saltan si pygame no está instalado.
-#
-# Este archivo NO sustituye tests/test_logica.py: ese sigue siendo el
-# gate principal de comportamiento. Aquí se cubre lo nuevo.
-# ============================================================
+#---- Tests de niveles verticales ----#
 
 import hashlib
 import os
@@ -20,22 +9,22 @@ RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 sys.path.insert(0, str(RAIZ / "tools"))
 
-import niveles  # noqa: E402  (puro: no importa pygame)
-import validar_niveles as V  # noqa: E402
-import config  # noqa: E402
+import niveles
+import validar_niveles as V
+import config
 
 HAS_PYGAME = True
 try:
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
     os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
-    import pygame  # noqa: F401
+    import pygame
 except ImportError:
     HAS_PYGAME = False
 
 TILE = config.TILE
 HABILIDADES_OSARIO = ("dash", "pala")
 
-# SHA-256 del texto del mapa original (niveles.py antes del cambio, leído con el AST).
+# SHA-256 del texto del mapa original (niveles.py antes del cambio, leido con el AST).
 HASH_MAPA_ORIGINAL = {
     "NIVEL_1": "e4ac309c78cf02fa4078ccef231a2e56863f168cdd85a3e79202795aa8217059",
     "NIVEL_2": "ba1a296408a0d62c57409e5faea6cd462881ead75c0c9f08a369c55afa9dccdb",
@@ -44,7 +33,7 @@ HASH_MAPA_ORIGINAL = {
 }
 
 
-# --- Datos y validador (sin pygame) ---------------------------------------
+#---- Datos y validador ----#
 
 def probar_niveles_originales_sin_cambios():
     for nombre, esperado in HASH_MAPA_ORIGINAL.items():
@@ -97,7 +86,7 @@ def probar_interruptor_activado():
     assert config.OSARIO_VERTICAL is True, "la variante debe estar activada en v1.0.3"
 
 
-# --- Con parser y cámara reales (requieren pygame) -------------------------
+#---- Con parser y camara ----#
 
 def probar_parser_osario_vertical():
     from nivel import Nivel
@@ -185,7 +174,7 @@ def probar_mismo_piso_separa_franjas():
     assert not mismo_piso(r_superior, 34 * TILE + 2), "un faro del piso inferior no debe reiniciar entidades superiores"
 
 
-# --- Ejecución directa ------------------------------------------------------
+#---- Ejecucion directa ----#
 
 _SIN_PYGAME = [
     probar_niveles_originales_sin_cambios,

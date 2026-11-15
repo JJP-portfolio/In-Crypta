@@ -1,9 +1,4 @@
-# ============================================================
-# nivel.py — Lectura del mapa ASCII y construcción del nivel
-# ============================================================
-# Esta clase convierte texto en objetos que pygame entiende:
-# rectángulos sólidos, almas, moradores, decoraciones y peligros.
-# ============================================================
+#---- Importamos librerias y clases ----#
 
 import math
 
@@ -74,7 +69,7 @@ _HALO_META = None
 _HALO_BRASERO_ESPECTRAL = None
 
 
-def _obtener_halo_brasero() -> pygame.Surface:
+def _obtener_halo_brasero():
     """Halo espectral cian/turquesa cacheado para braseros 'b' (CPU BLEND_RGB_ADD)."""
     global _HALO_BRASERO_ESPECTRAL
     if _HALO_BRASERO_ESPECTRAL is None:
@@ -95,7 +90,7 @@ def _obtener_halo_brasero() -> pygame.Surface:
     return _HALO_BRASERO_ESPECTRAL
 
 
-def _obtener_halo_vela() -> pygame.Surface:
+def _obtener_halo_vela():
     """Halo translúcido cálido con desvanecimiento suave para iluminación litúrgica de velas."""
     global _HALO_VELA
     if _HALO_VELA is None:
@@ -109,7 +104,7 @@ def _obtener_halo_vela() -> pygame.Surface:
     return _HALO_VELA
 
 
-def _obtener_halo_meta() -> pygame.Surface:
+def _obtener_halo_meta():
     """Halo translúcido suave para el portal/portón de meta."""
     global _HALO_META
     if _HALO_META is None:
@@ -123,7 +118,7 @@ def _obtener_halo_meta() -> pygame.Surface:
     return _HALO_META
 
 
-# --- Clase PlataformaMovil --- #
+#---- Clase PlataformaMovil ----#
 class PlataformaMovil:
     """Plataforma cinemática que oscila alrededor de su posición inicial."""
 
@@ -138,14 +133,12 @@ class PlataformaMovil:
         self.dx = 0
         self.dy = 0
 
-    # --- Función reiniciar --- #
     def reiniciar(self):
         self.rect = pygame.Rect(self.inicial_rect)
         self.tiempo = 0.0
         self.dx = 0
         self.dy = 0
 
-    # --- Función actualizar --- #
     def actualizar(self, dt):
         anterior = self.rect.copy()
         self.tiempo += dt
@@ -158,7 +151,7 @@ class PlataformaMovil:
         self.dy = self.rect.y - anterior.y
 
 
-# --- Clase Nivel --- #
+#---- Clase Nivel ----#
 class Nivel:
     """Representación jugable de un mapa ASCII."""
 
@@ -206,7 +199,6 @@ class Nivel:
         if self.meta is None:
             raise ValueError("Falta la G de meta en el nivel")
 
-    # --- Función _buscar_spawn --- #
     def _buscar_spawn(self):
         for fila, texto in enumerate(self.filas):
             for columna, simbolo in enumerate(texto):
@@ -215,7 +207,6 @@ class Nivel:
                     return (columna * TILE + 4, fila * TILE + 2)
         return None
 
-    # --- Función _buscar_meta --- #
     def _buscar_meta(self):
         for fila, texto in enumerate(self.filas):
             for columna, simbolo in enumerate(texto):
@@ -228,7 +219,6 @@ class Nivel:
                     )
         return None
 
-    # --- Función _crear_solidos --- #
     def _crear_solidos(self):
         """Une bloques consecutivos de una fila en un solo rectángulo."""
         solidos = []
@@ -251,7 +241,6 @@ class Nivel:
                 ))
         return solidos
 
-    # --- Función _crear_almas --- #
     def _crear_almas(self):
         almas = []
         for fila, texto in enumerate(self.filas):
@@ -265,7 +254,6 @@ class Nivel:
                     )))
         return almas
 
-    # --- Función _crear_entidades_patrulleras --- #
     def _crear_entidades_patrulleras(self, simbolo, clase_entidad, ancho=ENEMIGO_ANCHO, alto=ENEMIGO_ALTO):
         """Instancia entidades patrulleras estándar escaneando la grilla y calculando límites de bordes."""
         entidades = []
@@ -282,7 +270,6 @@ class Nivel:
                     entidades.append(clase_entidad(rect, minimo_x, maximo_x))
         return entidades
 
-    # --- Función _crear_altares_genericos --- #
     def _crear_altares_genericos(self, simbolo, clase_entidad, offset_x=6, offset_y=2, ancho=20, alto=30):
         """Instancia altares y objetos recogibles de 20x30 en la grilla."""
         items = []
@@ -297,11 +284,9 @@ class Nivel:
                     )))
         return items
 
-    # --- Función _crear_enemigos --- #
     def _crear_enemigos(self):
         return self._crear_entidades_patrulleras("E", Enemigo)
 
-    # --- Función _crear_decoraciones --- #
     def _crear_decoraciones(self):
         decoraciones = []
         for fila, texto in enumerate(self.filas):
@@ -319,23 +304,18 @@ class Nivel:
                 })
         return decoraciones
 
-    # --- Función _crear_palas --- #
     def _crear_palas(self):
         return self._crear_altares_genericos("W", PalaRecogible)
 
-    # --- Función _crear_power_ups_dash --- #
     def _crear_power_ups_dash(self):
         return self._crear_altares_genericos("D", DashPowerUp)
 
-    # --- Función _crear_power_ups_rango --- #
     def _crear_power_ups_rango(self):
         return self._crear_altares_genericos("X", RangoPowerUp)
 
-    # --- Función _crear_checkpoints --- #
     def _crear_checkpoints(self):
         return self._crear_altares_genericos("F", FarolCheckpoint)
 
-    # --- Función _crear_losas_quebradizas --- #
     def _crear_losas_quebradizas(self):
         losas = []
         for fila, texto in enumerate(self.filas):
@@ -349,7 +329,6 @@ class Nivel:
                     )))
         return losas
 
-    # --- Función _crear_incensarios --- #
     def _crear_incensarios(self):
         incensarios = []
         for fila, texto in enumerate(self.filas):
@@ -363,7 +342,6 @@ class Nivel:
                     )))
         return incensarios
 
-    # --- Función _crear_cuervos --- #
     def _crear_cuervos(self):
         cuervos = []
         for fila, texto in enumerate(self.filas):
@@ -385,7 +363,6 @@ class Nivel:
                 ))
         return cuervos
 
-    # --- Función _crear_polillas --- #
     def _crear_polillas(self):
         polillas = []
         for fila, texto in enumerate(self.filas):
@@ -411,7 +388,6 @@ class Nivel:
                 polillas.append(Polilla(rect, minimo_x, maximo_x))
         return polillas
 
-    # --- Función _crear_aranias --- #
     def _crear_aranias(self):
         aranias = []
         for fila, texto in enumerate(self.filas):
@@ -432,7 +408,6 @@ class Nivel:
                 aranias.append(Araña(rect, minimo_x, maximo_x))
         return aranias
 
-    # --- Función _crear_jefes --- #
     def _crear_jefes(self):
         jefes = []
         for fila, texto in enumerate(self.filas):
@@ -450,7 +425,6 @@ class Nivel:
                 jefes.append(Custodio(rect, minimo_x, maximo_x))
         return jefes
 
-    # --- Función _crear_minijefes --- #
     def _crear_minijefes(self):
         minijefes = []
         for fila, texto in enumerate(self.filas):
@@ -500,11 +474,9 @@ class Nivel:
                 ))
         return plataformas
 
-    # --- Función _crear_enemigos_melee --- #
     def _crear_enemigos_melee(self):
         return self._crear_entidades_patrulleras("L", EnemigoMelee)
 
-    # --- Función _crear_totems --- #
     def _crear_totems(self):
         totems = []
         for fila, texto in enumerate(self.filas):
@@ -517,7 +489,6 @@ class Nivel:
                 totems.append(TotemProyectil(x, y))
         return totems
 
-    # --- Función _crear_peligros --- #
     def _crear_peligros(self):
         peligros = []
         for fila, texto in enumerate(self.filas):
@@ -532,7 +503,6 @@ class Nivel:
                 ))
         return peligros
 
-    # --- Función _limites_patrulla --- #
     def _limites_patrulla(self, columna, fila):
         """El enemigo patrulla solo sobre la plataforma que tiene debajo.
 
@@ -575,7 +545,6 @@ class Nivel:
             (min(derecha, libre_derecha) + 1) * TILE,
         )
 
-    # --- Función actualizar --- #
     def actualizar(self, dt):
         for plataforma in self.plataformas:
             plataforma.actualizar(dt)
@@ -584,7 +553,6 @@ class Nivel:
         for incensario in getattr(self, "incensarios", []):
             incensario.actualizar(dt)
 
-    # --- Función solidos_actuales --- #
     def solidos_actuales(self):
         return (
             self.solidos
@@ -592,7 +560,6 @@ class Nivel:
             + [losa.rect for losa in getattr(self, "losas_quebradizas", []) if losa.activa]
         )
 
-    # --- Función reiniciar --- #
     def reiniciar(self):
         """Devuelve el nivel a su estado inicial."""
         for alma in self.almas:
@@ -628,7 +595,6 @@ class Nivel:
         for incensario in getattr(self, "incensarios", []):
             incensario.reiniciar()
 
-    # --- Función dibujar --- #
     def dibujar(self, surface, camara):
         self.dibujar_solidos(surface, camara)
         self.dibujar_plataformas(surface, camara)
@@ -665,7 +631,6 @@ class Nivel:
 
         self.dibujar_meta(surface, camara)
 
-    # --- Función dibujar_plataformas --- #
     def dibujar_plataformas(self, surface, camara):
         tema = getattr(self, "tema", "camposanto")
         tiempo = pygame.time.get_ticks() / 1000.0
@@ -771,7 +736,6 @@ class Nivel:
                 dy_g = int(math.sin(giro) * 3)
                 pygame.draw.line(surface, (198, 162, 92), (eng_x - dx_g, eng_y - dy_g), (eng_x + dx_g, eng_y + dy_g), 1)
 
-    # --- Función dibujar_solidos --- #
     def dibujar_solidos(self, surface, camara):
         tema = getattr(self, "tema", "camposanto")
         import config
@@ -989,7 +953,7 @@ class Nivel:
 
                     pygame.draw.rect(surface, color_cuerpo, t_rect)
 
-                    # Borde superior expuesto al aire (Walkable Edge Cue)
+                    # Borde superior del bloque para pisar
                     if not tiene_arriba:
                         pygame.draw.line(surface, MARFIL_XILOGRAFICO, (tx, rect.y), (tx + TILE, rect.y), 3)
                         for cx in (tx + 8, tx + 24):
@@ -1023,7 +987,6 @@ class Nivel:
                     if tiene_der:
                         pygame.draw.line(surface, color_marco, (tx + TILE - 1, rect.y + 2), (tx + TILE - 1, rect.bottom - 2), 1)
 
-    # --- Función dibujar_decoraciones --- #
     def dibujar_decoraciones(self, surface, camara):
         tiempo = pygame.time.get_ticks() / 1000.0
         for decoracion in self.decoraciones:
@@ -1210,7 +1173,6 @@ class Nivel:
             halo = _obtener_halo_brasero()
             surface.blit(halo, (cx - 48, py_copa - 52), special_flags=pygame.BLEND_RGB_ADD)
 
-    # --- Función dibujar_peligros --- #
     def dibujar_peligros(self, surface, camara):
         tiempo = pygame.time.get_ticks() / 1000.0
         for peligro in self.peligros:
@@ -1311,7 +1273,6 @@ class Nivel:
                     2,
                 )
 
-    # --- Función dibujar_meta --- #
     def dibujar_meta(self, surface, camara):
         rect = camara.aplicar_rect(self.meta)
         x = rect.centerx

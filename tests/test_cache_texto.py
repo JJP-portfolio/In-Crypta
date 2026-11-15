@@ -1,13 +1,4 @@
-# ============================================================
-# test_cache_texto.py — caché LRU de render de texto (juego.py)
-# ============================================================
-# No importa juego.py (requiere pygame). Extrae la función
-# renderizar_texto_cacheado y TEXTO_CACHE_MAX directamente del
-# AST y las prueba con una fuente falsa que cuenta renders.
-#
-# Uso:  python tests/test_cache_texto.py   (o pytest tests/test_cache_texto.py)
-# ============================================================
-
+#---- Tests de cache de texto ----#
 import ast
 from collections import OrderedDict
 from pathlib import Path
@@ -33,8 +24,7 @@ renderizar, MAXIMO_DEFECTO = _cargar_funcion()
 
 
 class FuenteFalsa:
-    """Imita pygame.font.Font.render y cuenta cuántas veces se rasteriza."""
-
+    # Imita la fuente de pygame para contar llamados a render
     def __init__(self):
         self.renders = 0
 
@@ -48,7 +38,7 @@ def test_misma_clave_renderiza_una_sola_vez():
     a = renderizar(cache, fuente, 24, "VIGILIA", (200, 180, 120))
     b = renderizar(cache, fuente, 24, "VIGILIA", (200, 180, 120))
     assert fuente.renders == 1
-    assert a is b, "el acierto debe devolver la misma superficie"
+    assert a is b
 
 
 def test_color_distinto_es_otra_entrada():
@@ -86,23 +76,21 @@ def test_uso_reciente_protege_de_la_expulsion():
     cache, fuente = OrderedDict(), FuenteFalsa()
     renderizar(cache, fuente, 24, "vieja", (0, 0, 0), maximo=2)
     renderizar(cache, fuente, 24, "nueva", (0, 0, 0), maximo=2)
-    renderizar(cache, fuente, 24, "vieja", (0, 0, 0), maximo=2)  # la toca de nuevo
-    renderizar(cache, fuente, 24, "otra", (0, 0, 0), maximo=2)   # debe expulsar "nueva"
+    renderizar(cache, fuente, 24, "vieja", (0, 0, 0), maximo=2)
+    renderizar(cache, fuente, 24, "otra", (0, 0, 0), maximo=2)
     assert (24, "vieja", (0, 0, 0)) in cache
     assert (24, "nueva", (0, 0, 0)) not in cache
 
 
 def test_cuadros_repetidos_de_titulo_casi_no_renderizan():
-    """Simula 600 cuadros de la pantalla de título con prompt pulsante."""
     cache, fuente = OrderedDict(), FuenteFalsa()
     textos = [("IN CRYPTA", 76, (229, 193, 88)), ("El sepulturero", 22, (180, 170, 150))]
     for cuadro in range(600):
         for texto, tamano, color in textos:
             renderizar(cache, fuente, tamano, texto, color)
-        # prompt pulsante: 86 niveles de alfa, como en dibujar_titulo
         alfa = 170 + int(((cuadro % 60) / 60) * 85)
         renderizar(cache, fuente, 20, "PRESIONÁ ENTER", (int(64 * alfa / 255), int(224 * alfa / 255), 200))
-    assert fuente.renders <= 2 + 86, f"renders inesperados: {fuente.renders}"
+    assert fuente.renders <= 2 + 86
     assert len(cache) <= MAXIMO_DEFECTO
 
 

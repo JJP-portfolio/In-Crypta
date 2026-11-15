@@ -1,9 +1,4 @@
-# ============================================================
-# entidades.py — El sepulturero, los moradores y las almas
-# ============================================================
-# Cada clase guarda su estado y sabe actualizarse/dibujarse.
-# La física está separada en métodos pequeños para poder probarla.
-# ============================================================
+#---- Importamos librerias y configuracion ----#
 
 import math
 
@@ -112,7 +107,7 @@ def _escalar_rect_visual_enemigo(rect_camara: pygame.Rect, ancho_vis: int, alto_
     )
 
 
-# --- Función auxiliar: recortar un valor entre mínimo y máximo --- #
+#---- Funciones auxiliares ----#
 def limitar(valor, minimo, maximo):
     return max(minimo, min(valor, maximo))
 
@@ -128,7 +123,7 @@ def _tecla_activa(teclas, key):
         return False
 
 
-# --- Caché de iluminación radial y siluetas para 60 FPS estables --- #
+#---- Cache de superficies de iluminacion ----#
 _CACHE_LUCES = {}
 _CACHE_GHOSTS = {}
 _CACHE_ARCOS = {}
@@ -355,7 +350,7 @@ def obtener_onda_campana(progreso_onda):
     return surf
 
 
-# --- Clase Jugador --- #
+#---- Clase Jugador ----#
 class Jugador:
     """El sepulturero: salta, hace dash y clava la pala desde el aire."""
 
@@ -407,20 +402,20 @@ class Jugador:
         self.escudo_farol = False
         self.filo_anima = False
 
-    # --- Función pedir_salto --- #
+    #---- Funciones auxiliares ----#
     def pedir_salto(self):
         """Se llama en KEYDOWN: deja preparado el salto."""
         self.buffer_salto = JUMP_BUFFER
         self.manteniendo_salto = True
 
-    # --- Función soltar_salto --- #
+    #---- Funciones auxiliares ----#
     def soltar_salto(self):
         """Se llama en KEYUP: corta el salto si todavía sube."""
         self.manteniendo_salto = False
         if self.vy < 0:
             self.vy *= CORTE_SALTO
 
-    # --- Función pedir_dash --- #
+    #---- Funciones auxiliares ----#
     def pedir_dash(self):
         """Inicia un dash si hay carga, la habilidad está desbloqueada y, en el aire, queda un uso."""
         if not self.tiene_dash:
@@ -443,7 +438,7 @@ class Jugador:
         self.dash_recien = True
         return True
 
-    # --- Función dash_listo --- #
+    #---- Funciones auxiliares ----#
     def dash_listo(self):
         return (
             self.tiene_dash
@@ -452,7 +447,7 @@ class Jugador:
             and (self.en_suelo or self.dash_usos_aire > 0)
         )
 
-    # --- Función pedir_ataque --- #
+    #---- Funciones auxiliares ----#
     def pedir_ataque(self):
         """Inicia un golpe de pala si el arma está desbloqueada."""
         if (
@@ -467,7 +462,7 @@ class Jugador:
         self.ataque_golpeado = False
         return True
 
-    # --- Función rect_ataque --- #
+    #---- Funciones auxiliares ----#
     def rect_ataque(self):
         es_guadaña = self.rango_ataque_mejorado
         alcance = ATAQUE_ALCANCE_MEJORADO if es_guadaña else ATAQUE_ALCANCE
@@ -485,7 +480,7 @@ class Jugador:
             alto,
         )
 
-    # --- Función pose_actual --- #
+    #---- Funciones auxiliares ----#
     def pose_actual(self):
         if self.ataque_tiempo > 0:
             if self.ataque_tiempo > ATAQUE_DURACION * 0.62:
@@ -497,7 +492,7 @@ class Jugador:
             return "caida"
         return None
 
-    # --- Función actualizar --- #
+    #---- Funciones auxiliares ----#
     def actualizar(self, dt, teclas, solidos):
         self.salto_recien = False
         self.dash_recien = False
@@ -591,7 +586,7 @@ class Jugador:
         else:
             self.tiempo_animacion = 0.0
 
-    # --- Función actualizar_dash --- #
+    #---- Funciones auxiliares ----#
     def actualizar_dash(self, dt, solidos):
         self.dash_tiempo = max(0.0, self.dash_tiempo - dt)
         self.vx = self.dash_direccion * DASH_VELOCIDAD
@@ -605,11 +600,11 @@ class Jugador:
             self.dash_usos_aire = DASH_USOS_AIRE
 
         if self.dash_tiempo == 0:
-            # Conservación de momentum y float post-dash estilo Celeste
+            # Conservación de momentum y float post-dash para mejor control
             self.vx = self.dash_direccion * VELOCIDAD
             self.post_dash_tiempo = POST_DASH_DURACION
 
-    # --- Función actualizar_temporizadores --- #
+    #---- Funciones auxiliares ----#
     def actualizar_temporizadores(self, dt):
         if self.buffer_salto > 0:
             self.buffer_salto = max(0.0, self.buffer_salto - dt)
@@ -618,7 +613,7 @@ class Jugador:
         else:
             self.coyote = max(0.0, self.coyote - dt)
 
-    # --- Función actualizar_horizontal --- #
+    #---- Funciones auxiliares ----#
     def actualizar_horizontal(self, teclas):
         teclas_i = getattr(self, "teclas_izq", (pygame.K_a, pygame.K_LEFT))
         teclas_d = getattr(self, "teclas_der", (pygame.K_d, pygame.K_RIGHT))
@@ -640,7 +635,7 @@ class Jugador:
             else:
                 self.vx = 0.0
 
-    # --- Función mover_x --- #
+    #---- Funciones auxiliares ----#
     def mover_x(self, dx, solidos):
         self.x += dx
         self.rect.x = round(self.x)
@@ -651,7 +646,7 @@ class Jugador:
                 colision = True
                 break
 
-        # Tolerancia de esquinas en dash (corner nudge estilo Celeste):
+        # Tolerancia de esquinas en dash (corner nudge para mejor control):
         # Si durante un dash rozamos una esquina por hasta 6 px, deslizar suavemente hacia el hueco
         if colision and self.dash_tiempo > 0:
             tolerancia = 6
@@ -683,13 +678,13 @@ class Jugador:
                 self.vx = 0.0
                 break
 
-    # --- Función mover_y --- #
+    #---- Funciones auxiliares ----#
     def mover_y(self, dy, solidos):
         self.y += dy
         self.rect.y = round(self.y)
 
         colision = any(self.rect.colliderect(s) for s in solidos)
-        # Jump Corner Correction (Tolerancia de esquinas en techo estilo Celeste):
+        # Jump Corner Correction (Tolerancia de esquinas en techo para mejor control):
         # Si sube y roza la esquina de un bloque superior por <= 5 px, deslizarlo suavemente hacia el hueco
         if colision and dy < 0:
             tolerancia = CORNER_NUDGE_TECHO
@@ -729,7 +724,7 @@ class Jugador:
                     self.vy = 0.0
                     break
 
-    # --- Función respawn --- #
+    #---- Funciones auxiliares ----#
     def respawn(self, x, y):
         self.rect.topleft = (int(x), int(y))
         self.x = float(self.rect.x)
@@ -759,7 +754,7 @@ class Jugador:
         self.escudo_farol = False
         self.filo_anima = False
 
-    # --- Función dibujar --- #
+    #---- Funciones auxiliares ----#
     def dibujar(self, surface, camara, tiempo, pose=None, con_pala=True):
         if self.invulnerable > 0 and int(tiempo * 16) % 2 == 0:
             return
@@ -1123,7 +1118,7 @@ class Jugador:
         ])
         pygame.draw.rect(surface, CARMESÍ_SANGRE, (centro_x - 7, cabeza_y + 5, 14, 3), border_radius=1)
 
-        # 7. Farol litúrgico diegético (farol y llama nítidos sin velo que opaque la figura)
+        # 7. Farol que ilumina al jugador
         farol_x = centro_x + self.direccion * 11
         farol_y = rect.y + 19
 
@@ -1131,7 +1126,7 @@ class Jugador:
         pygame.draw.circle(surface, (115, 82, 34), (farol_x, farol_y), 6)
         pygame.draw.circle(surface, (165, 120, 50), (farol_x, farol_y), 6, 1)
 
-        # Llama diegética: cruz estelar y chispas turquesas si dash_listo(), brasa ámbar y humo si en cooldown
+        # Llama del farol: cruz estelar y chispas turquesas si dash_listo(), brasa ámbar y humo si en cooldown
         dash_disponible = self.tiene_dash and self.dash_listo()
         if dash_disponible:
             color_llama = (92, 220, 200)  # TURQUESA_ESPIRITU
@@ -1164,7 +1159,7 @@ class Jugador:
             1,
         )
 
-        # Manto del Farol (UI Diegética/Espacial: aura celeste protectora doble con runas celestes orbitantes)
+        # Manto del Farol: aura celeste protectora doble con runas celestes orbitantes
         if getattr(self, "escudo_farol", False):
             pulso = 0.5 + 0.5 * math.sin(tiempo * 6.0)
             aura = pygame.Surface((rect.width + 24, rect.height + 24), pygame.SRCALPHA)
@@ -1201,7 +1196,7 @@ class Jugador:
                 pygame.draw.circle(surface, col_ch, (ch_x, ch_y), 2)
 
 
-# --- Clase Base EntidadPatrullera --- #
+#---- Clase EntidadPatrullera ----#
 class EntidadPatrullera:
     """Clase base para criaturas que patrullan horizontalmente con rebote contra límites."""
 
@@ -1244,7 +1239,7 @@ class EntidadPatrullera:
             self.direccion = -1
 
 
-# --- Clase Enemigo --- #
+#---- Clase Enemigo ----#
 class Enemigo(EntidadPatrullera):
     """Morador de la cripta que patrulla de izquierda a derecha."""
 
@@ -1254,7 +1249,7 @@ class Enemigo(EntidadPatrullera):
         self.actualizar_flash(dt)
         self.avanzar_patrulla(dt, VELOCIDAD_ENEMIGO)
 
-    # --- Función dibujar --- #
+    #---- Funciones auxiliares ----#
     def dibujar(self, surface, camara, tiempo):
         if not self.vivo:
             return
@@ -1284,7 +1279,7 @@ class Enemigo(EntidadPatrullera):
         ojo_offset = self.direccion * 2
 
         if estilo == "NES":
-            # Modelo C1 (NES 8-bit): Silueta exterior de alto contraste +2px en ENEMIGO_RIM_LUZ
+            # Estilo retro: silueta de alto contraste
             pygame.draw.ellipse(
                 surface,
                 ENEMIGO_RIM_LUZ,
@@ -1312,7 +1307,7 @@ class Enemigo(EntidadPatrullera):
                 pygame.draw.line(surface, HUESO_MARFIL, (lado, base_y - 2), (lado, base_y + 4), 2)
 
         elif estilo == "SNES":
-            # Modelo C2 (SNES 16-bit): Mortaja fría + Rim Light cenital de 2px
+            # Estilo intermedio: con brillo en los bordes
             pygame.draw.ellipse(
                 surface,
                 (20, 26, 40),
@@ -1386,7 +1381,7 @@ class Enemigo(EntidadPatrullera):
                         1,
                     )
         else:
-            # Modelo C3 (PROC): Procedural Gótico con Rim Light turquesa y núcleo wisp
+            # Estilo procedural detallado
             pygame.draw.ellipse(
                 surface,
                 (20, 26, 40),
@@ -1471,7 +1466,7 @@ class Enemigo(EntidadPatrullera):
                     )
 
 
-# --- Clase EnemigoMelee --- #
+#---- Clase EnemigoMelee ----#
 class EnemigoMelee(EntidadPatrullera):
     """Enemigo que ataca en rango melee (70px). Al jugador le toma y domina."""
 
@@ -1480,13 +1475,13 @@ class EnemigoMelee(EntidadPatrullera):
         self.aviso_tiempo = 0.0
         self.atacando = False
 
-    # --- Función reiniciar --- #
+    #---- Funciones auxiliares ----#
     def reiniciar(self):
         super().reiniciar()
         self.aviso_tiempo = 0.0
         self.atacando = False
 
-    # --- Función actualizar --- #
+    #---- Funciones auxiliares ----#
     def actualizar(self, dt, jugador):
         if not self.vivo:
             return
@@ -1511,7 +1506,7 @@ class EnemigoMelee(EntidadPatrullera):
         # Mantener en el rango de patrulla
         self.avanzar_patrulla(dt, VELOCIDAD_ENEMIGO)
 
-    # --- Función dibujar --- #
+    #---- Funciones auxiliares ----#
     def dibujar(self, surface, camara, tiempo):
         if not self.vivo:
             return
@@ -1553,7 +1548,7 @@ class EnemigoMelee(EntidadPatrullera):
         espada_base_y = rect.y + 14 + salto
 
         if estilo == "NES":
-            # Modelo C1 (NES): Silueta exterior de alto contraste +2px en ENEMIGO_RIM_LUZ
+            # Estilo retro: silueta de alto contraste
             pygame.draw.ellipse(surface, ENEMIGO_RIM_LUZ, (rect.x - 2, rect.y + 4 + salto, rect.width + 4, rect.height - 4))
             pygame.draw.circle(surface, ENEMIGO_RIM_LUZ, (centro_x, rect.y + 9 + salto), 10)
 
@@ -1581,7 +1576,7 @@ class EnemigoMelee(EntidadPatrullera):
                 pygame.draw.line(surface, HUESO_MARFIL, (lado, base_y - 2), (lado, base_y + 4), 2)
 
         elif estilo == "SNES":
-            # Modelo C2 (SNES): Cuerpo púrpura mortaja + Rim Light cenital + acero claro
+            # Estilo intermedio con bordes iluminados
             pygame.draw.ellipse(surface, (26, 16, 32), (rect.x - 2, rect.y + 8 + salto, rect.width + 4, rect.height - 6))
             pygame.draw.ellipse(surface, ENEMIGO_PURPURA, (rect.x, rect.y + 6 + salto, rect.width, rect.height - 6))
             pygame.draw.arc(surface, ENEMIGO_RIM_LUZ, (rect.x - 1, rect.y + 4 + salto, rect.width + 2, 14), 0, math.pi, 2)
@@ -1632,7 +1627,7 @@ class EnemigoMelee(EntidadPatrullera):
                 for dedo_dx in (-2, 0, 2):
                     pygame.draw.line(surface, HUESO_MARFIL, (bx + dedo_dx, base_y - 3), (bx + dedo_dx + sgn, base_y + 6), 1)
         else:
-            # Modelo C3 (PROC): Procedural con Rim Light turquesa, espada y wisp
+            # Estilo procedural detallado
             pygame.draw.ellipse(surface, (26, 16, 32), (rect.x - 2, rect.y + 8 + salto, rect.width + 4, rect.height - 6))
             pygame.draw.ellipse(surface, ENEMIGO_PURPURA, (rect.x, rect.y + 6 + salto, rect.width, rect.height - 6))
             pygame.draw.arc(surface, TURQUESA_ÁNIMA, (rect.x - 2, rect.y + 3 + salto, rect.width + 4, 16), 0, math.pi, 2)
@@ -1695,7 +1690,7 @@ class EnemigoMelee(EntidadPatrullera):
                     pygame.draw.line(surface, HUESO_MARFIL, (bx + dedo_dx, base_y - 3), (bx + dedo_dx + sgn, base_y + 6), 1)
 
 
-# --- Clase TotemProyectil --- #
+#---- Clase TotemProyectil ----#
 class TotemProyectil:
     """Totem que lanza proyectiles a intervalos regulares."""
 
@@ -1708,7 +1703,7 @@ class TotemProyectil:
         self.ultimo_proyectil = 0.0
         self.conproyectil = False
 
-    # --- Función reiniciar --- #
+    #---- Funciones auxiliares ----#
     def reiniciar(self):
         self.rect = pygame.Rect(self.x - 16, self.y - 32, 32, 32)
         self.vivo = True
@@ -1716,7 +1711,7 @@ class TotemProyectil:
         self.ultimo_proyectil = 0.0
         self.conproyectil = False
 
-    # --- Función actualizar --- #
+    #---- Funciones auxiliares ----#
     def actualizar(self, dt, jugador):
         if not self.vivo:
             return
@@ -1737,7 +1732,7 @@ class TotemProyectil:
                 jugador.dash_usos_aire = DASH_USOS_AIRE
                 jugador.dash_cooldown = 0.0
 
-    # --- Función dibujar --- #
+    #---- Funciones auxiliares ----#
     def dibujar(self, surface, camara, tiempo):
         if not self.vivo:
             return
@@ -1790,7 +1785,7 @@ class TotemProyectil:
             )
 
 
-# --- Clase OndaCustodio --- #
+#---- Clase OndaCustodio ----#
 class OndaCustodio:
     """Onda de huesos que corre por el piso y obliga a saltar o dashar."""
 
@@ -1803,7 +1798,7 @@ class OndaCustodio:
         self.vida = 3.4
         self.viva = True
 
-    # --- Función actualizar --- #
+    #---- Funciones auxiliares ----#
     def actualizar(self, dt):
         self.vida -= dt
         if self.vida <= 0:
@@ -1812,7 +1807,7 @@ class OndaCustodio:
         self.x += self.direccion * self.velocidad * dt
         self.rect.x = round(self.x)
 
-    # --- Función dibujar --- #
+    #---- Funciones auxiliares ----#
     def dibujar(self, surface, camara, tiempo):
         if not self.viva:
             return
@@ -1864,7 +1859,7 @@ class OndaCustodio:
             )
 
 
-# --- Clase Custodio --- #
+#---- Clase Custodio ----#
 class Custodio:
     """Jefe final: 2 fases.
     Fase 1 (vida 6->3): pala y pisotón lo dañan en su ventana vulnerable, 2 ondas por golpe.
@@ -1895,7 +1890,7 @@ class Custodio:
         self.tiempo_muerte = 0.0
         self.tiempo_flash = 0.0
 
-    # --- Función reiniciar --- #
+    #---- Funciones auxiliares ----#
     def reiniciar(self):
         self.rect = pygame.Rect(self.inicial_rect)
         self.x = float(self.rect.x)
@@ -1915,7 +1910,7 @@ class Custodio:
         self.tiempo_muerte = 0.0
         self.tiempo_flash = 0.0
 
-    # --- Aplicar daño interno --- #
+    #---- Aplicar daño interno ----#
     def _aplicar_dano(self):
         """Descuenta 1 vida, maneja transición a Fase 2 y muerte."""
         self.vida -= 1
@@ -1943,7 +1938,7 @@ class Custodio:
             self.temporizador = vuln_time
         return True
 
-    # --- Función recibir_golpe_pala --- #
+    #---- Funciones auxiliares ----#
     def recibir_golpe_pala(self, rango_mejorado=False):
         """Pala: funciona en Fase 1. En Fase 2 requiere la Guadaña Consagrada (rango_mejorado).
         En ambas fases solo daña dentro de la ventana de vulnerabilidad."""
@@ -1953,7 +1948,7 @@ class Custodio:
             return False  # Pala rebota en Fase 2 sin power-up X
         return self._aplicar_dano()
 
-    # --- Función recibir_pisaton --- #
+    #---- Funciones auxiliares ----#
     def recibir_pisaton(self, rango_mejorado=False):
         """Pisotón: funciona en Fase 1. En Fase 2 requiere la Guadaña Consagrada (rango_mejorado).
         En ambas fases solo daña dentro de la ventana de vulnerabilidad."""
@@ -1963,7 +1958,7 @@ class Custodio:
             return False  # Pisotón rebota en Fase 2 sin power-up X
         return self._aplicar_dano()
 
-    # --- Función actualizar --- #
+    #---- Funciones auxiliares ----#
     def actualizar(self, dt, jugador):
         self.recien_golpeado = False
         self.ondas_recien = False
@@ -2067,7 +2062,7 @@ class Custodio:
                 if choco_muro:
                     self.ondas_recien = True
 
-    # --- Función dibujar --- #
+    #---- Funciones auxiliares ----#
     def dibujar(self, surface, camara, tiempo):
         if not self.vivo:
             return
@@ -2190,7 +2185,7 @@ class Custodio:
             surface.blit(flash_overlay, rect.topleft, special_flags=pygame.BLEND_RGB_ADD)
 
 
-# --- Clase MiniJefe (El Carcelero del Osario) --- #
+#---- Clase MiniJefe ----#
 class MiniJefe:
     """Mini-Boss del Nivel 3: El Carcelero del Osario (36x48 px, 3 vidas).
     Custodia el pedestal del Power-Up 'X' (Guadaña Consagrada).
@@ -2433,7 +2428,7 @@ class MiniJefe:
             surface.blit(flash_overlay, rect.topleft, special_flags=pygame.BLEND_RGB_ADD)
 
 
-# --- Clase Cuervo --- #
+#---- Clase Cuervo ----#
 class Cuervo:
     """Cuervo poeano que vuela en patrón circular con aleteo articulado y plumas negras."""
 
@@ -2557,7 +2552,7 @@ class Cuervo:
         pygame.draw.circle(surface, BLANCO, (ojo_x, ojo_y), 0.5)
 
 
-# --- Clase Polilla (Moth) --- #
+#---- Clase Polilla ----#
 class Polilla(EntidadPatrullera):
     """Polilla que vuela en zigzag lento. Daño por contacto."""
 
@@ -2614,7 +2609,7 @@ class Polilla(EntidadPatrullera):
         pygame.draw.circle(surface, ENEMIGO_OJO_FUEGO, (centro_x + 2, rect.y + 8), 1.5)
 
 
-# --- Clase Araña (Spider) --- #
+#---- Clase Araña ----#
 class Araña(EntidadPatrullera):
     """Araña que se mueve por el techo o suelo. Daño por contacto."""
 
@@ -2662,7 +2657,7 @@ class Araña(EntidadPatrullera):
         pygame.draw.circle(surface, ROJO, (centro_x + 2, rect.y + 7), 1)
 
 
-# --- Clase Alma --- #
+#---- Clase Alma ----#
 class Alma:
     """Alma flotante que se puede recoger una sola vez."""
 
@@ -2671,12 +2666,12 @@ class Alma:
         self.inicial_rect = pygame.Rect(rect)
         self.recogida = False
 
-    # --- Función reiniciar --- #
+    #---- Funciones auxiliares ----#
     def reiniciar(self):
         self.rect = pygame.Rect(self.inicial_rect)
         self.recogida = False
 
-    # --- Función actualizar --- #
+    #---- Funciones auxiliares ----#
     def actualizar(self, jugador):
         if not self.recogida and self.rect.colliderect(jugador.rect):
             self.recogida = True
@@ -2684,7 +2679,7 @@ class Alma:
             return True
         return False
 
-    # --- Función dibujar --- #
+    #---- Funciones auxiliares ----#
     def dibujar(self, surface, camara, tiempo):
         if self.recogida:
             return
@@ -2693,7 +2688,7 @@ class Alma:
         flotacion = int(math.sin(tiempo * 5 + rect.x * 0.03) * 3)
         centro = (rect.centerx, rect.centery + flotacion)
 
-        # Resplandor espectral translúcido suave cacheado (BUG-07)
+        # Resplandor espectral translúcido suave cacheado
         pulso = 0.5 + 0.5 * math.sin(tiempo * 6 + rect.x * 0.04)
         halo_alma = obtener_halo_alma(int(pulso * 7))
         surface.blit(halo_alma, (centro[0] - 22, centro[1] - 22))
@@ -2712,7 +2707,7 @@ class Alma:
         )
 
 
-# --- Clase Base PowerUpBase --- #
+#---- Clase PowerUpBase ----#
 class PowerUpBase:
     """Clase base para reliquias y power-ups de altares con halo y flotación."""
 
@@ -2739,11 +2734,11 @@ class PowerUpBase:
         surface.blit(brillo, (rect.centerx - 32, rect.centery - 32))
 
 
-# --- Clase PalaRecogible --- #
+#---- Clase PalaRecogible ----#
 class PalaRecogible(PowerUpBase):
     """Pala que desbloquea el ataque y el pisotón."""
 
-    # --- Función actualizar --- #
+    #---- Funciones auxiliares ----#
     def actualizar(self, jugador):
         if not self.recogida and self.rect.colliderect(jugador.rect):
             self.recogida = True
@@ -2751,7 +2746,7 @@ class PalaRecogible(PowerUpBase):
             return True
         return False
 
-    # --- Función dibujar --- #
+    #---- Funciones auxiliares ----#
     def dibujar(self, surface, camara, tiempo):
         if self.recogida:
             return
@@ -2798,7 +2793,7 @@ class PalaRecogible(PowerUpBase):
         )
 
 
-# --- Clase RangoPowerUp --- #
+#---- Clase RangoPowerUp ----#
 class RangoPowerUp(PowerUpBase):
     """Power-up que mejora el alcance del ataque de pala (Guadaña Consagrada, 'X').
 
@@ -2851,7 +2846,7 @@ class RangoPowerUp(PowerUpBase):
         pygame.draw.line(surface, (200, 100, 255), (cx - 6, cy - 6), (cx - 2, cy - 10), 2)
 
 
-# --- Clase DashPowerUp --- #
+#---- Clase DashPowerUp ----#
 class DashPowerUp(PowerUpBase):
     """Power-up que desbloquea el dash espectral (Amuleto de Sombras)."""
 
@@ -2886,9 +2881,9 @@ class DashPowerUp(PowerUpBase):
         pygame.draw.circle(surface, (50, 180, 240), (cx, cy), 2)
 
 
-# --- Clase FarolCheckpoint --- #
+#---- Clase FarolCheckpoint ----#
 class FarolCheckpoint:
-    """Farol de reposo litúrgico que funciona como punto de control diegético."""
+    # Farol que sirve como punto de control
 
     def __init__(self, rect):
         self.rect = pygame.Rect(rect)
@@ -2943,7 +2938,7 @@ class FarolCheckpoint:
             pygame.draw.rect(surface, (120, 110, 100), (cx - 1, flame_y, 2, 4))
 
 
-# --- Clase LosaQuebradiza --- #
+#---- Clase LosaQuebradiza ----#
 class LosaQuebradiza:
     """Losa de osario quebradiza que colapsa tras 0.40s de contacto y reaparece tras 2.5s."""
 
@@ -3012,7 +3007,7 @@ class LosaQuebradiza:
                 self.recien_reconstruida = True
 
     def dibujar(self, surface, camara, tiempo=0.0):
-        # Si no está activa, dibujamos una silueta espectral translúcida cacheada (BUG-07)
+        # Si no está activa, dibujamos una silueta espectral translúcida cacheada
         if not self.activa:
             rect = camara.aplicar_rect(self.rect)
             step = int((0.5 + 0.5 * math.sin(tiempo * 6.0)) * 7)
@@ -3064,7 +3059,7 @@ class LosaQuebradiza:
                 pygame.draw.line(surface, c_grieta_sec, (rx + w // 2 + 2, ry + 9), (rx + w // 2, ry + h - 4), 1)
 
 
-# --- Clase IncensarioRebote --- #
+#---- Clase IncensarioRebote ----#
 class IncensarioRebote:
     """Campana / Incensario de resonancia suspendido en el aire que permite rebotar y recargar Dash."""
 
@@ -3110,7 +3105,7 @@ class IncensarioRebote:
         centro_campana_y = cy
         repicando = self.tiempo_repique > 0
 
-        # Halo turquesa pulsante del incensario cacheado (BUG-07)
+        # Halo turquesa pulsante del incensario cacheado
         pulso = 0.5 + 0.5 * math.sin(tiempo * 5.0 + cx * 0.1)
         step = int(pulso * 7)
         halo = obtener_halo_campana(repicando, step)

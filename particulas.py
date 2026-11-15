@@ -1,32 +1,26 @@
-# ============================================================
-# particulas.py — Almas, polvo, estelas, plumas y chispas de la pala
-# ============================================================
-# Feedback visual poeano y diegético sin asignaciones dinámicas pesadas.
-# ============================================================
-
+#---- Importamos librerias y configuracion ----#
 import math
 import random
-
 import pygame
 
 from config import (
     AMARILLO,
     BLANCO,
-    CARMESÍ_SANGRE,
-    FAROL_CÁLIDO,
+    CARMESI_SANGRE,
+    FAROL_CALIDO,
     GRIS,
     HUESO,
     HUESO_MARFIL,
     NARANJA,
     NEGRO_NOCHE,
     ORO,
-    ORO_LITÚRGICO,
+    ORO_LITURGICO,
     PIEDRA_FRIA,
     ROJO,
     SALITRE_CRIPTA,
     SANGRE,
     TURQUESA,
-    TURQUESA_ÁNIMA,
+    TURQUESA_ANIMA,
     VIOLETA,
     VIOLETA_POE,
 )
@@ -34,9 +28,8 @@ from config import (
 FX_IMPACTO_BLANCO = (250, 248, 240)
 
 
-# --- Clase Particula estándar --- #
+#---- Chispas de impacto ----#
 class HitSpark:
-    """Destello de impacto de combate (Modelos D1 NES, D2 SNES, D3 PROC)."""
     def __init__(self, x, y, direccion=1, mejorado=False):
         self.x = float(x)
         self.y = float(y)
@@ -60,13 +53,13 @@ class HitSpark:
         color_puntas = (215, 80, 255) if self.mejorado else (216, 180, 104)
 
         if estilo == "NES":
-            # Modelo D1 (NES): Cruz ortogonal 8-bit de 2px
+            # Cruz sencilla tipo retro
             radio = int(6 * progreso) + 2
             pygame.draw.line(surface, color_puntas, (cx - radio, cy), (cx + radio, cy), 2)
             pygame.draw.line(surface, color_puntas, (cx, cy - radio), (cx, cy + radio), 2)
             pygame.draw.rect(surface, color_centro, (cx - 1, cy - 1, 3, 3))
         elif estilo == "SNES":
-            # Modelo D2 (SNES): Destello biseccionado con halo
+            # Destello en diagonal con cruz
             radio = int(8 * progreso) + 3
             pygame.draw.line(surface, color_puntas, (cx - radio, cy), (cx + radio, cy), 2)
             pygame.draw.line(surface, color_puntas, (cx, cy - radio), (cx, cy + radio), 2)
@@ -74,7 +67,7 @@ class HitSpark:
             pygame.draw.line(surface, color_centro, (cx - radio // 2, cy + radio // 2), (cx + radio // 2, cy - radio // 2), 1)
             pygame.draw.circle(surface, color_centro, (cx, cy), 2)
         else:
-            # Modelo D3 (PROC): Estrella gótica de 4 puntas afiladas con núcleo blanco
+            # Estrella de cuatro puntas
             radio = int(10 * progreso) + 4
             puntos = [
                 (cx, cy - radio),
@@ -99,6 +92,7 @@ class HitSpark:
             ])
 
 
+#---- Particula individual ----#
 class Particula:
     def __init__(self, x, y, vx, vy, vida, color, tamano, gravedad=700.0):
         self.x = float(x)
@@ -111,14 +105,12 @@ class Particula:
         self.tamano = float(tamano)
         self.gravedad = gravedad
 
-    # --- Función actualizar --- #
     def actualizar(self, dt):
         self.vida -= dt
         self.vy += self.gravedad * dt
         self.x += self.vx * dt
         self.y += self.vy * dt
 
-    # --- Función dibujar --- #
     def dibujar(self, surface, camara):
         if self.vida <= 0:
             return
@@ -130,7 +122,7 @@ class Particula:
         pygame.draw.circle(surface, self.color, (x, y), tamano)
 
 
-# --- Clase ParticulaPluma (Plumas del Cuervo) --- #
+#---- Plumas de los cuervos ----#
 class ParticulaPluma:
     def __init__(self, x, y):
         self.x = float(x)
@@ -158,12 +150,11 @@ class ParticulaPluma:
         dy = math.sin(self.angulo) * self.longitud
         p0 = (int(cx - dx), int(cy - dy))
         p1 = (int(cx + dx), int(cy + dy))
-        # Color carbón azabache poeano
         pygame.draw.line(surface, (15, 13, 19), p0, p1, 2)
         pygame.draw.line(surface, (36, 30, 42), (int(cx - dx * 0.4), int(cy - dy * 0.4)), (int(cx + dx * 0.4), int(cy + dy * 0.4)), 1)
 
 
-# --- Clase SistemaParticulas --- #
+#---- Administrador general de particulas ----#
 class SistemaParticulas:
     def __init__(self):
         self.particulas = []
@@ -175,12 +166,11 @@ class SistemaParticulas:
         self.particulas.append(Particula(x, y, vx, vy, vida, color, tamano, gravedad))
 
     def hit_spark(self, x, y, direccion=1, mejorado=False):
-        """Estrella gótica de 4 puntas afiladas + chispas direccionales en cono de 45 grados."""
+        # Efecto de golpe con chispas direccionales
         self.sparks.append(HitSpark(x, y, direccion, mejorado))
         col_principal = (195, 85, 250) if mejorado else (218, 178, 86)
-        # Partícula central de destello estelar
         self.emitir(x, y, 4, (FX_IMPACTO_BLANCO, col_principal), 40, 0.14, 4.5, 0)
-        # Esquirlas direccionales en arco de 45 grados
+
         ang_base = 0.0 if direccion >= 0 else math.pi
         cantidad = max(2, int(10 * getattr(self, "factor_calidad", 1.0)))
         for _ in range(cantidad):
@@ -197,7 +187,7 @@ class SistemaParticulas:
             )
 
     def disolucion_enemigo(self, x, y, ancho=24, alto=24):
-        """Disolución etérea al morir un enemigo: cenizas ascendentes con gravedad negativa."""
+        # Cenizas que suben cuando muere un enemigo
         cantidad = max(4, int(16 * getattr(self, "factor_calidad", 1.0)))
         colores = ((92, 220, 200), (181, 185, 194), (68, 62, 82), (228, 224, 210))
         for _ in range(cantidad):
@@ -208,10 +198,9 @@ class SistemaParticulas:
                 velocidad=35,
                 vida=random.uniform(0.45, 0.85),
                 tamano=random.uniform(1.8, 3.2),
-                gravedad=-95,  # Gravedad negativa: las cenizas ascienden hacia la bóveda
+                gravedad=-95,
             )
 
-    # --- Función emitir genérica --- #
     def emitir(self, x, y, cantidad, colores, velocidad=180.0, vida=0.45, tamano=4.0, gravedad=700.0):
         cant = max(1, int(round(cantidad * getattr(self, "factor_calidad", 1.0))))
         for _ in range(cant):
@@ -228,17 +217,16 @@ class SistemaParticulas:
                 gravedad,
             ))
 
-    # --- Función salto --- #
     def salto(self, x, y):
+        # Polvo que levanta al saltar
         self.emitir(x, y, 6, (HUESO_MARFIL, (150, 140, 120), (60, 55, 65)), 90, 0.32, 3, 260)
 
-    # --- Función alma --- #
     def alma(self, x, y):
-        self.emitir(x, y, 14, (VIOLETA, TURQUESA_ÁNIMA, BLANCO, (180, 240, 235)), 160, 0.65, 4, 90)
+        # Brillo al recoger un alma
+        self.emitir(x, y, 14, (VIOLETA, TURQUESA_ANIMA, BLANCO, (180, 240, 235)), 160, 0.65, 4, 90)
 
-    # --- Función dash (humo negro + chispa turquesa espectral) --- #
     def dash(self, x, y, direccion):
-        # Humo negro denso
+        # Estela y humo al usar dash
         for _ in range(4):
             self.particulas.append(Particula(
                 x + random.uniform(-6, 6),
@@ -250,7 +238,6 @@ class SistemaParticulas:
                 random.uniform(4, 7),
                 -20,
             ))
-        # Destellos espectrales turquesa
         for _ in range(3):
             self.particulas.append(Particula(
                 x + random.uniform(-8, 8),
@@ -258,13 +245,13 @@ class SistemaParticulas:
                 -direccion * random.uniform(90, 240),
                 random.uniform(-40, 40),
                 random.uniform(0.18, 0.35),
-                random.choice((TURQUESA_ÁNIMA, (160, 230, 220), BLANCO)),
+                random.choice((TURQUESA_ANIMA, (160, 230, 220), BLANCO)),
                 random.uniform(2, 4),
                 0,
             ))
 
-    # --- Función ataque de pala / guadaña --- #
     def ataque(self, x, y, direccion, mejorado=False):
+        # Chispas al atacar con pala o guadana
         if mejorado:
             colores = ((215, 80, 255), (245, 170, 255), (170, 50, 240), BLANCO)
             for _ in range(16):
@@ -279,8 +266,7 @@ class SistemaParticulas:
                     40,
                 ))
         else:
-            # Chispas de pala de hierro con filo dorado
-            colores = (ORO_LITÚRGICO, (240, 215, 130), (220, 220, 230), BLANCO)
+            colores = (ORO_LITURGICO, (240, 215, 130), (220, 220, 230), BLANCO)
             for _ in range(8):
                 self.particulas.append(Particula(
                     x + random.uniform(-5, 5),
@@ -293,13 +279,12 @@ class SistemaParticulas:
                     80,
                 ))
 
-    # --- Función pala (impacto) --- #
     def pala(self, x, y):
-        self.emitir(x, y, 16, (HUESO_MARFIL, CARMESÍ_SANGRE, SANGRE, ORO_LITÚRGICO, BLANCO), 230, 0.55, 5, 580)
+        # Golpe seco de la pala
+        self.emitir(x, y, 16, (HUESO_MARFIL, CARMESI_SANGRE, SANGRE, ORO_LITURGICO, BLANCO), 230, 0.55, 5, 580)
 
-    # --- Función stomp (pisotón aéreo: onda expansiva + esquirlas óseas) --- #
     def stomp(self, x, y):
-        # Esquirlas de hueso afiladas
+        # Impacto del pisoton en el aire
         for _ in range(9):
             ang = random.uniform(0.2, math.pi - 0.2)
             fuerza = random.uniform(140, 300)
@@ -313,7 +298,6 @@ class SistemaParticulas:
                 random.uniform(2.5, 4.5),
                 gravedad=550.0,
             ))
-        # Polvo expansivo radial
         for _ in range(10):
             ang = random.uniform(0, math.pi)
             fuerza = random.uniform(90, 220)
@@ -328,8 +312,8 @@ class SistemaParticulas:
                 gravedad=200.0,
             ))
 
-    # --- Función chispas_rebote (inmunidad a pala del Custodio) --- #
     def chispas_rebote(self, x, y, direccion=-1):
+        # Rebote de pala contra armadura
         for _ in range(14):
             ang = random.uniform(-0.8, 0.8)
             fuerza = random.uniform(180, 380)
@@ -339,27 +323,28 @@ class SistemaParticulas:
                 direccion * math.cos(ang) * fuerza,
                 math.sin(ang) * fuerza,
                 random.uniform(0.18, 0.38),
-                random.choice((ORO_LITÚRGICO, AMARILLO, (255, 235, 160), BLANCO)),
+                random.choice((ORO_LITURGICO, AMARILLO, (255, 235, 160), BLANCO)),
                 random.uniform(2, 4.5),
                 gravedad=350.0,
             ))
 
-    # --- Función pluma_cuervo --- #
     def pluma_cuervo(self, x, y):
         if len(self.plumas) < 30:
             self.plumas.append(ParticulaPluma(x, y))
 
-    # --- Función daño --- #
     def daño(self, x, y):
-        self.emitir(x, y, 16, (ROJO, CARMESÍ_SANGRE, (215, 65, 55), BLANCO), 250, 0.6, 5, 680)
+        # Salpicadura al recibir danio
+        self.emitir(x, y, 16, (ROJO, CARMESI_SANGRE, (215, 65, 55), BLANCO), 250, 0.6, 5, 680)
 
-    # --- Función meta --- #
+    # Alias sin acento
+    dano = daño
+
     def meta(self, x, y):
-        self.emitir(x, y, 32, (ORO_LITÚRGICO, BLANCO, TURQUESA_ÁNIMA, VIOLETA_POE), 260, 1.0, 5, 280)
+        # Destello al cruzar el porton
+        self.emitir(x, y, 32, (ORO_LITURGICO, BLANCO, TURQUESA_ANIMA, VIOLETA_POE), 260, 1.0, 5, 280)
 
-    # --- Función losa_romper --- #
     def losa_romper(self, x, y, w=32):
-        """Estallido de 8 a 10 esquirlas de hueso y piedra al fracturarse una losa."""
+        # Fragmentos al romperse una losa
         for _ in range(8):
             self.particulas.append(Particula(
                 x + random.uniform(-w // 2, w // 2),
@@ -372,9 +357,8 @@ class SistemaParticulas:
                 gravedad=550.0,
             ))
 
-    # --- Función campana_repique --- #
     def campana_repique(self, x, y):
-        """Onda expansiva turquesa y dorada con partículas radiantes al percutir la campana."""
+        # Onda al golpear una campana
         for _ in range(16):
             ang = random.uniform(0, math.tau)
             vel = random.uniform(80, 220)
@@ -384,18 +368,17 @@ class SistemaParticulas:
                 math.cos(ang) * vel,
                 math.sin(ang) * vel,
                 random.uniform(0.35, 0.60),
-                random.choice((TURQUESA_ÁNIMA, (180, 255, 245), ORO_LITÚRGICO, BLANCO)),
+                random.choice((TURQUESA_ANIMA, (180, 255, 245), ORO_LITURGICO, BLANCO)),
                 random.uniform(2.5, 5.0),
                 gravedad=80.0,
             ))
 
-    # --- Función consagracion_farol --- #
     def consagracion_farol(self, x, y, tier=1):
-        """Columna ascendente de partículas celestes y doradas al consagrar un farol."""
+        # Rayo de luz hacia arriba al activar farol
         cantidad = 14 + tier * 8
-        colores = (TURQUESA_ÁNIMA, BLANCO, (160, 240, 235)) if tier == 1 else (
-            ((120, 220, 255), ORO_LITÚRGICO, BLANCO, (255, 235, 160)) if tier == 2 else
-            (ORO_LITÚRGICO, (255, 215, 80), TURQUESA_ÁNIMA, BLANCO, (240, 180, 255))
+        colores = (TURQUESA_ANIMA, BLANCO, (160, 240, 235)) if tier == 1 else (
+            ((120, 220, 255), ORO_LITURGICO, BLANCO, (255, 235, 160)) if tier == 2 else
+            (ORO_LITURGICO, (255, 215, 80), TURQUESA_ANIMA, BLANCO, (240, 180, 255))
         )
         for _ in range(cantidad):
             self.particulas.append(Particula(
@@ -409,7 +392,6 @@ class SistemaParticulas:
                 gravedad=-30.0,
             ))
 
-    # --- Función actualizar --- #
     def actualizar(self, dt):
         for particula in self.particulas:
             particula.actualizar(dt)
@@ -423,7 +405,6 @@ class SistemaParticulas:
             spark.actualizar(dt)
         self.sparks = [s for s in self.sparks if s.vida > 0]
 
-    # --- Función dibujar --- #
     def dibujar(self, surface, camara):
         for pluma in self.plumas:
             pluma.dibujar(surface, camara)

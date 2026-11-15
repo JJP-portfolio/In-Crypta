@@ -1,15 +1,4 @@
-# ============================================================
-# hud.py — HUD de IN CRYPTA (renovación integral)
-# ============================================================
-# Solo dibujo del HUD. No toca gameplay, lógica de almas, vidas,
-# dash, ataque ni jefe. Lee un snapshot (HudModel) y lo renderiza.
-#
-# Diseño: riel superior único full-width con 3 zonas fijas,
-# grilla 2×2 a la derecha, canal de mensajes único debajo del riel.
-# ============================================================
-
-from __future__ import annotations
-
+#---- Importamos librerias y configuracion ----#
 import math
 from collections import OrderedDict
 from dataclasses import dataclass, field
@@ -44,9 +33,7 @@ try:
 except ImportError:
     NIVELES = []
 
-# ---------------------------------------------------------------------------
-# Constantes del riel (no existen todavía en config.py; se declaran acá)
-# ---------------------------------------------------------------------------
+#---- Componentes del HUD ----#
 HUD_MARGEN_X = 24
 HUD_MARGEN_Y = 16
 HUD_ALTO = 72
@@ -71,9 +58,7 @@ _RUTA_FUENTE = _RAIZ_HUD / "assets/NotoSerifDisplay-Bold.ttf"
 DEBUG_HUD = False
 
 
-# ---------------------------------------------------------------------------
-# Tween — animación basada en dt (no time.time)
-# ---------------------------------------------------------------------------
+#---- Componentes del HUD ----#
 @dataclass
 class Tween:
     duracion: float
@@ -108,9 +93,7 @@ class Tween:
         self.transcurrido = 0.0
 
 
-# ---------------------------------------------------------------------------
-# TextoCache — caché de superficies renderizadas por (texto, tamaño, color, sombra)
-# ---------------------------------------------------------------------------
+#---- Componentes del HUD ----#
 class TextoCache:
     def __init__(self, cargar_fuente):
         self.cargar_fuente = cargar_fuente
@@ -136,9 +119,7 @@ class TextoCache:
         return imagen
 
 
-# ---------------------------------------------------------------------------
-# HudTheme — paleta, tamaños y espaciado
-# ---------------------------------------------------------------------------
+#---- Componentes del HUD ----#
 @dataclass
 class HudTheme:
     panel_bg: tuple = (9, 8, 13, 190)
@@ -172,9 +153,7 @@ class HudTheme:
     corazon_pitch: int = 28
 
 
-# ---------------------------------------------------------------------------
-# HudLayout — rectángulos fijos de zonas, mensajes y barra de jefe
-# ---------------------------------------------------------------------------
+#---- Componentes del HUD ----#
 @dataclass(frozen=True)
 class HudLayout:
     riel: pygame.Rect
@@ -237,9 +216,7 @@ class HudLayout:
         return resultado
 
 
-# ---------------------------------------------------------------------------
-# HudModel — snapshot de solo lectura con *_prev para detectar eventos
-# ---------------------------------------------------------------------------
+#---- Componentes del HUD ----#
 @dataclass
 class HudModel:
     # Jugador
@@ -291,7 +268,7 @@ class HudModel:
         self.jefe_vida_prev = self.jefe_vida
         self.jefe_fase_prev = self.jefe_fase
 
-    # --- Detección de eventos (solo lectura, no muta lógica) ---
+    #---- Detección de eventos ----#
     def evento_alma_recogida(self):
         return self.almas > self.almas_prev
 
@@ -320,9 +297,7 @@ class HudModel:
         return getattr(self, "nivel_nombre", "CAMPOSANTO")
 
 
-# ---------------------------------------------------------------------------
-# MensajeHUD — un solo canal, prioridad, máquina de estados
-# ---------------------------------------------------------------------------
+#---- MensajeHUD ----#
 class MensajeHUD:
     OCULTO = "oculto"
     ENTRANDO = "entrando"
@@ -404,9 +379,7 @@ class MensajeHUD:
         return 0
 
 
-# ---------------------------------------------------------------------------
-# Helpers de formato (exactos, §6.3 del plan)
-# ---------------------------------------------------------------------------
+#---- Helpers de formato ----#
 def fmt_cooldown(restante: float) -> str:
     if restante <= 0:
         return "LISTO"
@@ -490,9 +463,7 @@ def _partir_palabra(palabra, fuente, ancho_max):
     return partes
 
 
-# ---------------------------------------------------------------------------
-# HudRenderer — dibuja el modelo; no conoce Juego
-# ---------------------------------------------------------------------------
+#---- Renderizado del HUD ----#
 class HudRenderer:
     def __init__(self, layout: HudLayout, tema: HudTheme, texto_cache: TextoCache):
         self.layout = layout
@@ -535,7 +506,7 @@ class HudRenderer:
     def _texto(self, texto, tamano, color, sombra=False):
         return self.texto_cache.render(texto, tamano, color, sombra)
 
-    # --- Paneles cacheados ---
+    #---- Paneles cacheados ----#
     def _panel(self, ancho, alto, alpha=None):
         import config
         estilo = config.resolver_estilo(getattr(config, "ESTILO_HUD", "AUTO"))
@@ -544,7 +515,7 @@ class HudRenderer:
         surf = self._obtener_panel_cache(clave)
         if surf is None:
             if estilo == "NES":
-                # Modelo A1: 100% opaco, esquinas escalonadas de 4px, cero costo de alpha para Vaio
+                # Estilo basico opaco
                 surf = pygame.Surface((ancho, alto))
                 surf.fill((9, 8, 13))
                 pygame.draw.rect(surf, (104, 82, 52), (0, 0, ancho, alto), 1)
@@ -557,7 +528,7 @@ class HudRenderer:
                 except (pygame.error, AttributeError):
                     pass
             elif estilo == "SNES":
-                # Modelo A2: Marco biselado 3D con remaches en esquinas
+                # Estilo biselado
                 a = alfa_q if alfa_q is not None else 225
                 surf = pygame.Surface((ancho, alto), pygame.SRCALPHA)
                 pygame.draw.rect(surf, (16, 14, 26, a), (0, 0, ancho, alto), border_radius=6)
@@ -574,7 +545,7 @@ class HudRenderer:
                 except (pygame.error, AttributeError):
                     pass
             else:
-                # Modelo A3: Marco gótico detallado con filigrana
+                # Estilo detallado
                 a = alfa_q if alfa_q is not None else self.tema.panel_bg[3]
                 surf = pygame.Surface((ancho, alto), pygame.SRCALPHA)
                 pygame.draw.rect(surf, (*self.tema.panel_bg[:3], a),
@@ -591,7 +562,7 @@ class HudRenderer:
             self._guardar_panel_cache(clave, surf)
         return surf
 
-    # --- Iconos dibujados con pygame.draw (sin assets) ---
+    #---- Iconos dibujados ----#
     def _icono_ala_dash(self, pantalla, x, y, color):
         # Dial rúnico exterior
         pygame.draw.circle(pantalla, (24, 18, 28), (x + 8, y + 8), 8)
@@ -639,7 +610,7 @@ class HudRenderer:
         pygame.draw.line(pantalla, color, (x + 5, y + 12), (x + 11, y + 12), 2)
         pygame.draw.line(pantalla, color, (x + 5, y + 14), (x + 11, y + 14), 2)
 
-    # --- Dibujo principal ---
+    #---- Dibujo principal ----#
     def dibujar(
         self,
         surface: pygame.Surface,
@@ -951,7 +922,7 @@ class HudRenderer:
             pygame.draw.rect(surface, (210, 45, 65), (av_x, av_y, av_w, img_av.get_height() + 4), 1, border_radius=4)
             surface.blit(img_av, (sw // 2 - img_av.get_width() // 2, av_y + 2))
 
-    # --- Canal de mensajes con Lápida de Obsidiana y Keycaps Físicos ---
+    #---- Canal de mensajes ----#
     def _dibujar_mensajes(self, pantalla, modelo, mensajes, reducir_movimiento, dt):
         if modelo.estado != "jugando":
             return
@@ -1030,9 +1001,7 @@ class HudRenderer:
         pantalla.blit(caja, (m.x, m.y + mensajes.offset_y()))
 
 
-# ---------------------------------------------------------------------------
-# HudOrquestador — une modelo, renderer y mensajes; usado por Juego
-# ---------------------------------------------------------------------------
+#---- Orquestador del HUD ----#
 class HudOrquestador:
     def __init__(self):
         self.layout = HudLayout.construir()

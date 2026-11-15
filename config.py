@@ -1,20 +1,13 @@
-# ============================================================
-# config.py — Constantes de IN CRYPTA
-# ============================================================
-# Regla de Clean Code: los números que se ajustan durante el
-# balanceo viven acá, no repartidos por la lógica.
-# ============================================================
-
+#---- Importamos ----#
 import sys
 
-# --- Entorno web ---
-# CPython compilado con Emscripten (Pygbag) reporta sys.platform == "emscripten".
+#---- Variables del entorno ----#
 ES_WEB = sys.platform == "emscripten"
-# Perfil de render al arrancar en el navegador (el jugador puede cambiarlo en Configuración).
-PERFIL_WEB_SHADER = 2   # 2: Puro (sin bloom ni scanlines CRT: lo más costoso por frame)
-PERFIL_WEB_CALIDAD = 2  # 2: Baja en Web por defecto (60 FPS garantizados en navegador y Vaio)
+PERFIL_WEB_SHADER = 2
+PERFIL_WEB_CALIDAD = 2
+CALIDAD_GLOBAL_ACTIVA = 0
 
-# --- Identidad ---
+#---- Datos del proyecto ----#
 TITULO = "IN CRYPTA"
 SUBTITULO = "El sepulturero de la cripta"
 EQUIPO = "Equipo 6"
@@ -26,22 +19,22 @@ INTEGRANTES = (
 )
 REFERENCIAS = ("Blasphemous", "Castlevania", "Ender Lilies")
 
-# --- Ventana, Zoom y Viewport ---
+#---- Dimensiones y pantalla ----#
 ANCHO = 1280
 ALTO = 720
 CAMARA_ZOOM = 1.25
-VIRTUAL_ANCHO = 1024  # 1280 / 1.25
-VIRTUAL_ALTO = 576    # 720 / 1.25
+VIRTUAL_ANCHO = 1024
+VIRTUAL_ALTO = 576
 FPS = 60
 MAX_DT = 1 / 30
 
-# --- Escala del mundo ---
+#---- Escala y valores base ----#
 TILE = 32
 VIDAS_INICIALES = 3
 VIDAS_MAXIMAS = 5
 ALMAS_POR_VIDA = 10
 
-# --- Física del jugador ---
+#---- Fisica y movimiento del jugador ----#
 GRAVEDAD = 1500.0
 SALTO = -620.0
 VELOCIDAD = 250.0
@@ -52,7 +45,7 @@ CORTE_SALTO = 0.45
 INVULNERABILIDAD = 1.2
 REBOTE_ENEMIGO = 360.0
 
-# --- Dash: la segunda mecánica ---
+#---- Mecanica de dash ----#
 DASH_VELOCIDAD = 560.0
 DASH_DURACION = 0.20
 DASH_COOLDOWN = 0.60
@@ -60,7 +53,7 @@ DASH_USOS_AIRE = 1
 DASH_DASHTURQUESA = (92, 190, 174)
 HUD_DASHTURQUESA = DASH_DASHTURQUESA
 
-# --- Game Feel Celeste: Apex, Post-Dash y Corner Correction ---
+#---- Ajustes de control y sensacion de salto ----#
 APEX_GRAVEDAD_FACTOR = 0.55
 APEX_VY_UMBRAL = 70.0
 POST_DASH_DURACION = 0.06
@@ -68,18 +61,18 @@ POST_DASH_GRAVEDAD_FACTOR = 0.50
 DASH_JUMP_IMPULSO_X = 1.18
 CORNER_NUDGE_TECHO = 5
 
-# --- Jugador ---
+#---- Dimensiones del jugador ----#
 JUGADOR_ANCHO = 24
 JUGADOR_ALTO = 30
 
-# --- Ataque con pala ---
+#---- Ataque con pala ----#
 ATAQUE_DURACION = 0.20
 ATAQUE_COOLDOWN = 0.35
 ATAQUE_ALCANCE = 34
 ATAQUE_ALTO = 26
 ATAQUE_ALCANCE_MEJORADO = 76
 
-# --- Jefe final ---
+#---- Jefe final: El Custodio ----#
 JEFE_VIDA = 6
 JEFE_ANCHO = 48
 JEFE_ALTO = 64
@@ -88,7 +81,7 @@ JEFE_ONDA_VELOCIDAD = 300.0
 JEFE_CARGA_VELOCIDAD = 240.0
 JEFE_VULN_FASE2 = 0.85
 
-# --- Mini-Jefe: El Carcelero del Osario ---
+#---- Minijefe: El Carcelero ----#
 MINIJEFE_VIDA = 3
 MINIJEFE_ANCHO = 36
 MINIJEFE_ALTO = 48
@@ -96,13 +89,14 @@ MINIJEFE_VELOCIDAD = 70.0
 MINIJEFE_TELEGRAFO = 0.55
 MINIJEFE_TIMER_EMBESTIDA = 0.40
 MINIJEFE_VULNERABLE = 1.3
-# --- El Pacto del Farol ---
+
+#---- Farol y mejoras de almas ----#
 ALMAS_MANTO_FAROL = 5
 ALMAS_FILO_ANIMA = 8
 FILO_ANIMA_ALCANCE = 12
 FILO_ANIMA_DASH_FACTOR = 0.80
 
-# --- Mecánicas Ambientales Reactivas ---
+#---- Elementos del escenario ----#
 LOSA_TIEMPO_QUIEBRE = 0.40
 LOSA_TIEMPO_RECONSTRUCCION = 2.5
 INCENSARIO_COOLDOWN = 0.5
@@ -110,39 +104,38 @@ INCENSARIO_ANCHO = 24
 INCENSARIO_ALTO = 28
 TOLERANCIA_PISOTON = 18
 
-# --- Enemigos ---
+#---- Enemigos basicos ----#
 ENEMIGO_ANCHO = 26
 ENEMIGO_ALTO = 26
 VELOCIDAD_ENEMIGO = 55.0
 
-# --- Cámara ---
+#---- Camara y sacudida ----#
 CAMARA_SUAVIZADO = 7.0
 SACUDIDA_FUERZA = 7.0
 SACUDIDA_DURACION = 0.18
 
-# --- Paleta poeana de claroscuro ---
+#---- Paleta de colores ----#
 NEGRO_NOCHE = (9, 8, 13)
 HUESO_MARFIL = (215, 207, 184)
-CARMESÍ_SANGRE = (112, 22, 34)
-CARMESI_SANGRE = CARMESÍ_SANGRE
-TURQUESA_ÁNIMA = (92, 190, 174)
-TURQUESA_ANIMA = TURQUESA_ÁNIMA
-ORO_LITÚRGICO = (198, 156, 62)
-ORO_LITURGICO = ORO_LITÚRGICO
+CARMESI_SANGRE = (112, 22, 34)
+CARMESÍ_SANGRE = CARMESI_SANGRE
+TURQUESA_ANIMA = (92, 190, 174)
+TURQUESA_ÁNIMA = TURQUESA_ANIMA
+ORO_LITURGICO = (198, 156, 62)
+ORO_LITÚRGICO = ORO_LITURGICO
 VIOLETA_POE = (75, 40, 75)
 SALITRE_CRIPTA = (181, 185, 194)
-FAROL_CÁLIDO = (240, 196, 90)
-FAROL_CALIDO = FAROL_CÁLIDO
+FAROL_CALIDO = (240, 196, 90)
+FAROL_CÁLIDO = FAROL_CALIDO
 
-# --- Paleta gótica armonizada (R, G, B) ---
 NEGRO = NEGRO_NOCHE
 BLANCO = (225, 220, 205)
 GRIS = (105, 108, 118)
-AMARILLO = FAROL_CÁLIDO
-ORO = ORO_LITÚRGICO
+AMARILLO = FAROL_CALIDO
+ORO = ORO_LITURGICO
 NARANJA = (190, 104, 48)
 ROJO = (142, 32, 44)
-SANGRE = CARMESÍ_SANGRE
+SANGRE = CARMESI_SANGRE
 VERDE = (86, 118, 82)
 VERDE_OSCURO = (42, 66, 52)
 MUSGO = (72, 94, 62)
@@ -160,10 +153,29 @@ PIEDRA = (72, 74, 84)
 PIEDRA_OSCURA = (43, 45, 54)
 PIEDRA_FRIA = (58, 61, 72)
 VIOLETA = (128, 70, 140)
-TURQUESA = TURQUESA_ÁNIMA
+TURQUESA = TURQUESA_ANIMA
 NIEBLA = (104, 122, 130)
 
-# --- Citas literarias de Edgar Allan Poe ---
+# Fondos y capas
+BG_NOCHE_PROFUNDA = (9, 10, 18)
+BG_PIEDRA_NIEBLA = (20, 24, 38)
+BG_SILUETA_FRIA = (28, 34, 50)
+
+# Bloques y muros
+TILE_CUERPO_SOMBRA = (38, 36, 46)
+TILE_MAMPOSTERIA = (58, 56, 70)
+TILE_BISEL_LUZ = (172, 182, 202)
+TILE_SOMBRA_CORTE = (10, 8, 14)
+
+# Colores de enemigos y efectos
+ENEMIGO_MORTAJA = (36, 48, 72)
+ENEMIGO_PURPURA = (52, 28, 64)
+ENEMIGO_RIM_LUZ = (225, 228, 240)
+ENEMIGO_OJO_FUEGO = (255, 52, 68)
+MELEE_ACERO_CLARO = (165, 178, 198)
+FX_IMPACTO_BLANCO = (250, 248, 240)
+
+#---- Citas de Edgar Allan Poe ----#
 CITAS_POE = {
     0: "«Los límites entre la Vida y la Muerte son borrosos e indefinidos.» — E. A. Poe",
     1: "«En lo más profundo de la fosa... una sombra más negra que la noche.» — E. A. Poe",
@@ -171,7 +183,7 @@ CITAS_POE = {
     "tutorial": "«Bajo la losa sellada, la campana espera en silencio.» — E. A. Poe",
 }
 
-# --- HUD (paleta de referencia: SOTN / Blasphemous / Ender Lilies) ---
+#---- Colores y configuracion del HUD ----#
 HUD_PANEL = (18, 14, 24, 196)
 HUD_PANEL_ALTO = (28, 22, 34, 214)
 HUD_BORDE = (104, 82, 52)
@@ -186,51 +198,28 @@ HUD_NEGRO = (9, 8, 13)
 HUD_NEGRO_X = (18, 16, 24, 196)
 HUD_GRIS_CLARO = (105, 108, 118)
 
-# --- HUD Mejoras ---
 HUD_ANGOSTO_ALTO = 36
 HUD_MAX_ANCHO = 1280
 HUD_ESQUINAS_X = [14, 478, 14, 0]
 HUD_ESQUINAS_Y = [12, 12, 82, 12]
-HUD_ESQUINAS_ANCHO = [292, 324, 292, HUD_MAX_ANCHO-14]
-HUD_ESQUINAS_ALTO = [36, 36, 36, HUD_MAX_ANCHO-14]
+HUD_ESQUINAS_ANCHO = [292, 324, 292, HUD_MAX_ANCHO - 14]
+HUD_ESQUINAS_ALTO = [36, 36, 36, HUD_MAX_ANCHO - 14]
 
-# --- Selector de Modelos Visuales (Argon Overhaul) ---
-# Valores válidos: "NES" (8-bit puro, ideal Vaio), "SNES" (16-bit biselado),
-#                  "PROC" (Procedural Gótico detallado), "AUTO" (según Calidad)
-ESTILO_HUD = "AUTO"       # Modelos A1 ("NES"), A2 ("SNES"), A3 ("PROC")
-ESTILO_MUNDO = "AUTO"     # Modelos B1 ("NES"), B2 ("SNES"), B3 ("PROC")
-ESTILO_ENEMIGOS = "AUTO"  # Modelos C1 ("NES"), C2 ("SNES"), C3 ("PROC")
-ESTILO_EFECTOS = "AUTO"   # Modelos D1 ("NES"), D2 ("SNES"), D3 ("PROC")
-CALIDAD_GLOBAL_ACTIVA = PERFIL_WEB_CALIDAD if ES_WEB else 0
+# Opciones de renderizado
+ESTILO_HUD = "AUTO"
+ESTILO_MUNDO = "AUTO"
+ESTILO_ENEMIGOS = "AUTO"
+ESTILO_EFECTOS = "AUTO"
 
-# --- Paleta de Alto Contraste y Separación de Planos (Luminancia calibrada) ---
-BG_NOCHE_PROFUNDA = (9, 10, 18)       # Y = 10.6 (Plano 3: Fondo profundo)
-BG_PIEDRA_NIEBLA = (20, 24, 38)       # Y = 24.4 (Plano 3: Siluetas lejanas)
-BG_SILUETA_FRIA = (28, 34, 50)        # Y = 34.0 (Plano 3: Medio fondo)
-
-TILE_CUERPO_SOMBRA = (38, 36, 46)     # Y = 37.7 (Plano 2: Relleno de muro)
-TILE_MAMPOSTERIA = (58, 56, 70)       # Y = 58.2 (Plano 2: Ladrillo medio)
-TILE_BISEL_LUZ = (172, 182, 202)      # Y = 181.3 (Plano 2: Walkable Edge Cue)
-TILE_SOMBRA_CORTE = (10, 8, 14)       # Y = 9.3 (Plano 2: Corte bajo bisel)
-
-ENEMIGO_MORTAJA = (36, 48, 72)        # Y = 47.2 (Plano 1: Cuerpo frío despegado)
-ENEMIGO_PURPURA = (52, 28, 64)        # Y = 39.8 (Plano 1: Variante melee)
-ENEMIGO_RIM_LUZ = (225, 228, 240)     # Y = 228.5 (Plano 1: Recorte silueta)
-ENEMIGO_OJO_FUEGO = (255, 52, 68)     # Punto focal cálido saturado
-MELEE_ACERO_CLARO = (165, 178, 198)   # Y = 176.4 (Acero guardia)
-FX_IMPACTO_BLANCO = (250, 248, 240)   # Y = 248.0 (Damage Flash 2 frames)
+# Variante de nivel
+OSARIO_VERTICAL = True
 
 
-def resolver_estilo(preferencia: str, calidad_idx: int = None) -> str:
-    """Devuelve 'NES', 'SNES' o 'PROC' según la preferencia o el nivel de calidad."""
+#---- Funciones auxiliares ----#
+def resolver_estilo(preferencia, calidad_idx=None):
+    # Resuelve el estilo segun calidad o preferencia fija
     if calidad_idx is None:
         calidad_idx = CALIDAD_GLOBAL_ACTIVA
     if preferencia in ("NES", "SNES", "PROC"):
         return preferencia
     return {0: "PROC", 1: "SNES", 2: "NES"}.get(calidad_idx, "PROC")
-
-
-# Variante vertical del Osario (2 pisos, 36 filas). False = progresión original.
-# Ver REPORTE_SISTEMA_NIVELES_v3.md, sección 3.
-OSARIO_VERTICAL = True
-

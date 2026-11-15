@@ -1,29 +1,5 @@
-# ============================================================
-# tools/validar_niveles.py — Validador de niveles SIN pygame.
-# ============================================================
-# Comprueba los invariantes de niveles sobre la cadena ASCII, sin
-# instanciar el motor. Solo depende de config.py y niveles.py, que son
-# puros (no importan pygame), así que corre en cualquier entorno.
-#
-#   python tools/validar_niveles.py            # valida todos los niveles
-#   python tools/validar_niveles.py --estricto # V4 fallido cuenta como error
-#
-# Invariantes (ver REPORTE_SISTEMA_NIVELES_v2.md, sección 6):
-#   I1  Exactamente un P y un G.
-#   I2  Entidades con apoyo (E L A K B F W D X) tienen suelo justo debajo.
-#   I3  Faroles consecutivos: como máximo 80 columnas y 36 filas.
-#   I5  Columna 0, última columna y fila superior sólidas. Fila inferior
-#       sólida salvo aberturas (foso mortal).
-#   V1  Niveles principales: número de filas múltiplo de 18.
-#   V2  Cada abertura en la losa de un piso tiene aterrizaje válido.
-#   V3  Ninguna abertura antes del spawn P en el piso superior.
-#   V4  Alcanzabilidad conservadora P -> K -> ... -> B -> G.
-#
-# NOTA: V4 es un modelo CONSERVADOR. Si encuentra ruta, la ruta es
-# físicamente posible con las constantes de config.py. Si no la
-# encuentra, NO prueba que sea imposible: significa que el modelo no
-# la pudo demostrar. Por eso V4 fallido es aviso salvo con --estricto.
-# ============================================================
+#---- Validador de niveles ----#
+# Validador de invariantes y alcanzabilidad de niveles.
 
 import math
 import os
@@ -34,9 +10,9 @@ _RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _RAIZ not in sys.path:
     sys.path.insert(0, _RAIZ)
 
-from config import DASH_DURACION, DASH_VELOCIDAD, GRAVEDAD, SALTO, TILE, VELOCIDAD  # noqa: E402
+from config import DASH_DURACION, DASH_VELOCIDAD, GRAVEDAD, SALTO, TILE, VELOCIDAD
 
-# --- Símbolos del mapa ---------------------------------------------------
+#---- Simbolos del mapa ----#
 SOLIDO = set("#~MV")            # bloquea el cuerpo y sirve de apoyo
 TRAMPOLIN = "I"                 # campana de resonancia: permite rebotar y recargar dash sin bloquear el paso
 PELIGRO = "^"                   # daño al pisar o caer en él
@@ -44,7 +20,7 @@ APOYADAS = set("EKBLAFWDX")     # entidades que deben tener suelo debajo (I2)
 FAROL = "F"
 ALTO_PISO = 18                  # filas por piso lógico (V1)
 
-# --- Física conservadora, derivada de config.py -------------------------
+#---- Fisica de comprobacion ----#
 # Altura máxima del salto puro: v²/(2g). Con SALTO=-620 y GRAVEDAD=1500 da ~128 px.
 ALTURA_SALTO_FISICA = (SALTO * SALTO) / (2 * GRAVEDAD) / TILE           # tiles
 # Alcance horizontal del salto puro: v_x * t_vuelo. t_vuelo = 2|SALTO|/g.
@@ -82,7 +58,7 @@ def _posiciones(filas, simbolo):
             for c, ch in enumerate(fila) if ch == simbolo]
 
 
-# --- Invariantes de forma ----------------------------------------------
+#---- Invariantes de forma ----#
 def _validar_forma(filas, res, principal):
     nf, nc = len(filas), len(filas[0])
 
@@ -114,7 +90,7 @@ def _validar_forma(filas, res, principal):
         res.info.append(f"V1: nivel no principal ({nf} filas), se omite la regla de múltiplos")
 
 
-# --- I2 apoyo de entidades ---------------------------------------------
+#---- I2 apoyo de entidades ----#
 def _validar_apoyo(filas, res):
     nf = len(filas)
     for r in range(nf):
@@ -125,7 +101,7 @@ def _validar_apoyo(filas, res):
                 res.errores.append(f"I2: '{ch}' en (col {c}, fila {r}) sin suelo debajo")
 
 
-# --- I3 faroles ----------------------------------------------------------
+#---- I3 faroles ----#
 def _validar_faroles(filas, res):
     faroles = sorted(_posiciones(filas, FAROL))
     if not faroles:
@@ -138,7 +114,7 @@ def _validar_faroles(filas, res):
             res.errores.append(f"I3: {abs(r2-r1)} filas entre faroles, máximo 36")
 
 
-# --- V2 / V3 aberturas en la losa de cada piso -------------------------
+#---- V2 / V3 aberturas en la losa de cada piso ----#
 def _aberturas_de_losas(filas):
     """Devuelve lista de (fila_losa, columna) para cada hueco en una losa.
     Las losas son las filas con índice 18k+17 (fondo de cada piso). La
@@ -200,7 +176,7 @@ def _validar_huecos(filas, res, principal):
     res.info.append(f"V2: {len(huecos)} aberturas en losas revisadas")
 
 
-# --- V4 alcanzabilidad conservadora ------------------------------------
+#---- V4 alcanzabilidad conservadora ----#
 def _es_solido(filas, c, r):
     if c < 0 or c >= len(filas[0]) or r < 0 or r >= len(filas):
         return True
@@ -407,7 +383,7 @@ def _validar_alcance(filas, res, habilidades, estricto):
                 mensaje + " NO demostrado con el modelo conservador")
 
 
-# --- Entrada pública -----------------------------------------------------
+#---- Entrada publica ----#
 def validar(mapa, nombre="nivel", habilidades=("dash",), principal=True, estricto=False):
     res = Resultado(nombre)
     filas = _normalizar(mapa)

@@ -1,11 +1,4 @@
-# ============================================================
-# juego.py — Bucle principal, estados y presentación
-# ============================================================
-# Estados: titulo / jugando / pausa / nivel_completado / derrota / victoria.
-# La lógica de IN CRYPTA vive acá; las entidades y los niveles están
-# separados para poder probarlos sin abrir una ventana.
-# ============================================================
-
+#---- Importamos librerias y modulos ----#
 import asyncio
 from collections import OrderedDict
 import math
@@ -114,7 +107,7 @@ from particulas import SistemaParticulas
 
 _CACHE_LUCES_JUEGO = {}
 
-# --- Presets de Configuración de Teclado y Controles ---
+#---- Presets de configuracion de controles ----#
 PRESET_MODERNO = {
     "id": "moderno",
     "nombre": "Preset 1: WASD Moderno (WASD + Espacio + Shift + J/Click)",
@@ -366,7 +359,7 @@ class ParticulaBioma:
             pygame.draw.circle(surface, self.color, (px, py), max(1, int(self.tamano)))
 
 
-# --- Clase Juego --- #
+#---- Clase Juego ----#
 # Franja de piso: bloques de 18 filas. Los niveles de 18 filas tienen una sola
 # franja, así que este filtro no cambia su comportamiento.
 def _mismo_piso(rect, y_referencia):
@@ -444,7 +437,7 @@ class Juego:
         # Configuración del santuario: Presets de teclado, shaders, calidad y modo de HUD
         self.preset_teclado_idx = 0
         self.config_opcion = 0
-        # En navegador (Pygbag/WASM) arranca con el perfil ligero; en PC, con el completo.
+        # Configuracion inicial de efectos y calidad grafica
         self.config_shader_idx = PERFIL_WEB_SHADER if ES_WEB else 0   # 0: Gótico (Bloom + CRT), 1: Suave, 2: Puro
         self.config_calidad_idx = PERFIL_WEB_CALIDAD if ES_WEB else 0  # 0: Alta, 1: Media, 2: Baja
         self.particulas.factor_calidad = {0: 1.0, 1: 0.5, 2: 0.25}[self.config_calidad_idx]
@@ -485,7 +478,6 @@ class Juego:
         else:
             self.particulas_bioma = [ParticulaBioma(VIRTUAL_ANCHO, VIRTUAL_ALTO, tema) for _ in range(25)]
 
-    # --- Función cargar_nivel --- #
     def _inicializar_estado_nivel(self, vidas_iniciales, tiene_pala, tiene_dash):
         """Inicializa jugador, cámara, audio y contadores al entrar a un nivel o preludio."""
         self.reiniciar_particulas_bioma(self.nivel.tema)
@@ -540,7 +532,6 @@ class Juego:
         if cita:
             self.hud.mostrar_mensaje(cita, 2, 5.5)
 
-    # --- Función iniciar_tutorial --- #
     def iniciar_tutorial(self):
         """Carga el nivel tutorial. No cuenta para la partida principal."""
         self.es_tutorial = True
@@ -566,7 +557,6 @@ class Juego:
                 "El Umbral del Sepulturero · Avanza hacia las catacumbas", 1, 5.0
             )
 
-    # --- Función abrir_menu --- #
     def abrir_menu(self):
         self.estado = "menu"
         self.menu_opcion = 0
@@ -574,21 +564,19 @@ class Juego:
         self.audio.reproducir("ui")
         self.audio.reproducir_musica("titulo", bucle=True, fade_ms=600)
 
-    # --- Función abrir_seleccion_nivel --- #
     def abrir_seleccion_nivel(self):
         self.estado = "seleccion_nivel"
         self.nivel_seleccionado = self.nivel_indice
         self.audio.detener_dron()
         self.audio.reproducir("ui")
 
-    # --- Función abrir_creditos --- #
     def abrir_creditos(self):
         self.estado = "creditos"
         self.audio.detener_dron()
         self.audio.reproducir("ui")
         self.audio.reproducir_musica("creditos", bucle=True, fade_ms=600)
 
-    # --- Métodos del Módulo de Configuración del Santuario --- #
+    #---- Metodos de configuracion ----#
     def abrir_configuracion(self, origen="menu"):
         self.estado = "configuracion"
         self.origen_configuracion = origen
@@ -635,8 +623,8 @@ class Juego:
         shader = OPCIONES_SHADER[self.config_shader_idx]
         self.hud.mostrar_mensaje(f"EFECTOS / SHADER: {shader.upper()}", 1, 3.0)
 
-    # --- Calidad Gráfica con Impacto Real --- #
-    # Opciones: Alta (0: 100% partículas + halos + penumbra), Media (1: 50% partículas + penumbra), Baja (2: 60 FPS sin penumbra)
+    #---- Calidad grafica ----#
+    # Opciones: Alta (0: 100% particulas), Media (1: 50% particulas), Baja (2: optimizada para bajos recursos)
     def alternar_calidad_grafica(self, delta=1):
         self.config_calidad_idx = (self.config_calidad_idx + delta) % len(OPCIONES_CALIDAD)
         import config
@@ -651,8 +639,8 @@ class Juego:
         calidad = OPCIONES_CALIDAD[self.config_calidad_idx]
         self.hud.mostrar_mensaje(f"CALIDAD GRÁFICA: {calidad.upper()}", 1, 3.0)
 
-    # --- Modo de HUD / Interfaz con Impacto Real --- #
-    # Opciones: Completo (0: riel superior 100%), Compacto (1: riel con opacidad alpha 140), Inmersivo (2: UI diegética pura, riel ante jefes o eventos)
+    #---- Modo de HUD e interfaz ----#
+    # Opciones: Completo (0: riel superior 100%), Compacto (1: riel con opacidad reducida), Inmersivo (2: interfaz minima, solo en eventos)
     def alternar_modo_hud(self, delta=1):
         self.config_hud_idx = (self.config_hud_idx + delta) % len(OPCIONES_HUD)
         self.audio.reproducir("ui")
@@ -661,7 +649,7 @@ class Juego:
         self.hud.mostrar_mensaje(f"MODO DE HUD: {modo.upper()}", 1, 3.0)
 
     def alternar_accesibilidad(self):
-        """Alterna el modo de reducción de movimiento (Principio 3 UX - Comodidad)."""
+        """Alterna el modo de reducción de movimiento."""
         self.reducir_movimiento = not self.reducir_movimiento
         self.camara.permitir_sacudida = not self.reducir_movimiento
         self.hud.reducir_movimiento = self.reducir_movimiento
@@ -669,7 +657,6 @@ class Juego:
         self.hud.mostrar_mensaje(f"ACCESIBILIDAD: REDUCIR MOVIMIENTO {estado_str}", 3, 2.5)
         self.audio.reproducir("ui")
 
-    # --- Función ejecutar_seleccion_nivel --- #
     def ejecutar_seleccion_nivel(self, indice):
         if indice == 0:
             self.iniciar_tutorial()
@@ -682,7 +669,6 @@ class Juego:
         elif indice == 4:
             self.abrir_selector_pruebas()
 
-    # --- Función seleccionar_nivel --- #
     def seleccionar_nivel(self, indice):
         if indice in (-1, "preludio", "tutorial"):
             self.iniciar_tutorial()
@@ -695,19 +681,16 @@ class Juego:
         self.cargar_nivel(indice, vidas=VIDAS_INICIALES)
         self.estado = "jugando"
 
-    # --- Función cargar_sala_prueba --- #
     def cargar_sala_prueba(self, indice):
         self.cargar_nivel(SALAS_PRUEBA[indice]["nivel"], vidas=VIDAS_INICIALES, sala=indice)
         self.estado = "jugando"
 
-    # --- Función abrir_selector_pruebas --- #
     def abrir_selector_pruebas(self):
         self.estado = "test_selector"
         self.test_opcion = 0
         self.audio.detener_dron()
         self.audio.reproducir("ui")
 
-    # --- Función iniciar_campaña --- #
     def iniciar_campaña(self):
         """Inicia la campaña narrativa completa comenzando en el Preludio."""
         self.almas_totales = 0
@@ -716,7 +699,6 @@ class Juego:
         self.en_campaña = True
         self.iniciar_tutorial()
 
-    # --- Función iniciar_partida --- #
     def iniciar_partida(self):
         self.almas_totales = 0
         self.tiempo_total = 0.0
@@ -724,14 +706,12 @@ class Juego:
         self.cargar_nivel(0, vidas=VIDAS_INICIALES)
         self.estado = "jugando"
 
-    # --- Función reiniciar_juego --- #
     def reiniciar_juego(self):
         self.almas_totales = 0
         self.tiempo_total = 0.0
         self.jugador = None
         self.cargar_nivel(0, vidas=VIDAS_INICIALES)
 
-    # --- Función siguiente_nivel --- #
     def siguiente_nivel(self):
         self.almas_totales += self.jugador.almas
         if self.nivel_indice + 1 >= len(NIVELES):
@@ -740,7 +720,6 @@ class Juego:
             return
         self.cargar_nivel(self.nivel_indice + 1, vidas=self.jugador.vidas)
 
-    # --- Función procesar_eventos --- #
     def procesar_eventos(self):
         for evento in pygame.event.get():
             if evento.type == pygame.QUIT:
@@ -1005,7 +984,6 @@ class Juego:
                 if evento.button == 1 and self.estado == "jugando":
                     self.intentar_ataque()
 
-    # --- Función intentar_ataque --- #
     def intentar_ataque(self):
         """Ataque frontal con pala (J / Z / C / click). Requiere tiene_pala."""
         if not self.jugador.pedir_ataque():
@@ -1019,7 +997,6 @@ class Juego:
         )
         return True
 
-    # --- Función actualizar --- #
     def actualizar(self, dt):
         if hasattr(self, "hud") and self.hud is not None:
             self.hud.actualizar(dt)
@@ -1133,7 +1110,6 @@ class Juego:
             else:
                 self.estado = "nivel_completado"
 
-    # --- Función actualizar_plataformas --- #
     def actualizar_plataformas(self, dt):
         soporte = None
         if self.jugador.en_suelo:
@@ -1155,7 +1131,6 @@ class Juego:
             self.jugador.rect.x = round(self.jugador.x)
             self.jugador.rect.y = round(self.jugador.y)
 
-    # --- Función actualizar_losas --- #
     def actualizar_losas(self, dt):
         for losa in getattr(self.nivel, "losas_quebradizas", []):
             if (
@@ -1195,7 +1170,6 @@ class Juego:
                     2,
                 )
 
-    # --- Función actualizar_incensarios --- #
     def actualizar_incensarios(self, dt):
         for incensario in getattr(self.nivel, "incensarios", []):
             if not incensario.puede_rebotar():
@@ -1219,7 +1193,6 @@ class Juego:
                 self.camara.sacudir(5.0, 0.12, dir_x=0.0, dir_y=1.0)
                 self.hitstop = 0.08
 
-    # --- Función limitar_jugador --- #
     def limitar_jugador(self):
         minimo = 0
         maximo = self.nivel.ancho - self.jugador.rect.width
@@ -1232,7 +1205,6 @@ class Juego:
             self.jugador.x = float(maximo)
             self.jugador.vx = 0.0
 
-    # --- Función procesar_feedback_jugador --- #
     def procesar_feedback_jugador(self):
         if self.jugador.salto_recien:
             self.audio.reproducir("salto")
@@ -1264,7 +1236,6 @@ class Juego:
                 self.jugador.dash_direccion,
             )
 
-    # --- Función actualizar_ataque --- #
     def actualizar_ataque(self):
         if self.jugador.ataque_tiempo <= 0 or self.jugador.ataque_golpeado:
             return
@@ -1377,7 +1348,6 @@ class Juego:
                 self.jefe.tiempo_flash = 0.06
             self.dañar_jefe_pala()
 
-    # --- Función actualizar_jefe --- #
     def actualizar_jefe(self, dt):
         if self.jefe is None:
             return False
@@ -1472,7 +1442,6 @@ class Juego:
 
         return False
 
-    # --- Función dañar_jefe --- #
     def dañar_jefe(self):
         """Golpe al jefe (usado por compatibilidad y tests)."""
         return self.dañar_jefe_pala()
@@ -1492,7 +1461,6 @@ class Juego:
             -self.jugador.direccion,
         )
 
-    # --- Función dañar_jefe_pala --- #
     def dañar_jefe_pala(self):
         """Golpe de pala: daña en Fase 1; rebota en Fase 2 sin Guadaña Consagrada (X)."""
         if self.jefe is None or not self.jefe.vivo:
@@ -1512,7 +1480,6 @@ class Juego:
         self.jugador.retroceso_tiempo = 0.16
         return res
 
-    # --- Función dañar_jefe_pisaton --- #
     def dañar_jefe_pisaton(self):
         """Pisotón: daña en Fase 1; en Fase 2 exige la Guadaña Consagrada (X)."""
         if self.jefe is None or not self.jefe.vivo:
@@ -1566,7 +1533,6 @@ class Juego:
         self.camara.sacudir(9.0, 0.20, dir_x=dir_empuje, dir_y=0.5)
         return res
 
-    # --- Función _aplicar_golpe_jefe (efectos comunes) --- #
     def _aplicar_golpe_jefe(self):
         self.jugador.dash_usos_aire = DASH_USOS_AIRE
         self.jugador.dash_cooldown = 0.0
@@ -1607,7 +1573,6 @@ class Juego:
 
         return True
 
-    # --- Función actualizar_peligros --- #
     def actualizar_peligros(self):
         if self.jugador.invulnerable > 0:
             return False
@@ -1617,7 +1582,6 @@ class Juego:
                 return True
         return False
 
-    # --- Función actualizar_enemigos --- #
     def actualizar_enemigos(self, dt):
         # Regla de diseño: el pisotón (stomp) solo mata si el jugador tiene la pala.
         # Cada pisotón rebota y recarga el dash aéreo → "trampolines dinámicos"
@@ -1653,7 +1617,6 @@ class Juego:
             if self._resolver_contacto(araña, "Picadura de Araña espectral"):
                 return
 
-    # --- Función _viene_desde_arriba --- #
     def _viene_desde_arriba(self, rect):
         """Pisotón válido: cayendo y con los pies a ≤ 18 px de la cabeza del enemigo."""
         return (
@@ -1661,7 +1624,6 @@ class Juego:
             and self.jugador.rect.bottom <= rect.top + TOLERANCIA_PISOTON
         )
 
-    # --- Función _rebote_pisoton --- #
     def _rebote_pisoton(self, rect, fuerza_sacudida=6.0):
         """Rebote + recarga instantánea del dash aéreo tras un pisotón exitoso."""
         self.jugador.rect.bottom = min(self.jugador.rect.bottom, rect.top)
@@ -1675,7 +1637,6 @@ class Juego:
         self.camara.sacudir(fuerza_sacudida, 0.14, dir_x=0.0, dir_y=1.0)
         self.hitstop = 0.08
 
-    # --- Función _resolver_contacto --- #
     def _resolver_contacto(self, enemigo, causa):
         """Resuelve el contacto jugador-enemigo. Devuelve True si el jugador perdió una vida."""
         if not enemigo.vivo or not self.jugador.rect.colliderect(enemigo.rect):
@@ -1690,7 +1651,6 @@ class Juego:
         self.perder_vida(causa=causa)
         return True
 
-    # --- Función actualizar_minijefes --- #
     def actualizar_minijefes(self, dt):
         for mj in getattr(self.nivel, "minijefes", []):
             mj.actualizar(dt, self.jugador)
@@ -1729,14 +1689,12 @@ class Juego:
                 self.perder_vida(causa="Ataque del Carcelero del Osario")
                 return
 
-    # --- Función _rebote_minijefe_guardia --- #
     def _rebote_minijefe_guardia(self, mj):
         """Feedback discernible: golpe fuera de la ventana vulnerable del Carcelero."""
         self.audio.reproducir("rebote_pala")
         self.particulas.chispas_rebote(mj.rect.centerx, mj.rect.centery, -self.jugador.direccion)
         self.camara.sacudir(3.0, 0.08)
 
-    # --- Función _comprobar_muerte_minijefe --- #
     def _comprobar_muerte_minijefe(self, mj):
         if mj.vivo or mj.almas_otorgadas:
             return
@@ -1752,7 +1710,6 @@ class Juego:
         )
         self.audio.reproducir_musica(self.nivel.tema, bucle=True, fade_ms=800)
 
-    # --- Función _sumar_almas_para_vida --- #
     def _sumar_almas_para_vida(self, cantidad):
         """Loop positivo 'Rosario de Vida': cada ALMAS_POR_VIDA almas → +1 vida (tope VIDAS_MAXIMAS)."""
         self.jugador.almas_para_vida += cantidad
@@ -1765,7 +1722,6 @@ class Juego:
                 self.flash_color = AMARILLO
                 self.hud.mostrar_mensaje("¡VIDA EXTRA · 10 ALMAS CONSAGRADAS!", 2, 3.0)
 
-    # --- Función actualizar_almas --- #
     def actualizar_almas(self):
         for alma in self.nivel.almas:
             if alma.actualizar(self.jugador):
@@ -1790,7 +1746,6 @@ class Juego:
                     )
                 self._sumar_almas_para_vida(1)
 
-    # --- Función actualizar_palas --- #
     def actualizar_palas(self):
         for pala in self.nivel.palas:
             if pala.actualizar(self.jugador):
@@ -1800,7 +1755,6 @@ class Juego:
                 self.mostrar_ayuda = 4.0
                 self.hud.mostrar_mensaje("¡HIERRO SAGRADO RECLAMADO! · J / Z: Castigar el abismo · Caída: pisotón purificador", 2, 4.0)
 
-    # --- Función actualizar_power_ups_dash --- #
     def actualizar_power_ups_dash(self):
         for power_up in self.nivel.power_ups_dash:
             if power_up.actualizar(self.jugador):
@@ -1822,7 +1776,6 @@ class Juego:
                 self.mostrar_ayuda = 4.0
                 self.hud.mostrar_mensaje("¡AMULETO DEL VELO! · SHIFT / X: Desgarrar el velo de la cripta en pleno vuelo", 2, 4.0)
 
-    # --- Función actualizar_checkpoints --- #
     def actualizar_checkpoints(self):
         for checkpoint in self.nivel.checkpoints:
             if checkpoint.actualizar(self.jugador):
@@ -1877,7 +1830,6 @@ class Juego:
                 self.almas_vida_consagradas = self.jugador.almas_para_vida
                 self.hud.mostrar_mensaje(" · ".join(msg_partes), 2, 4.5)
 
-    # --- Función actualizar_tutorial_contextual --- #
     def actualizar_tutorial_contextual(self):
         col = self.jugador.rect.x // TILE
         piso = self.jugador.rect.centery // (18 * TILE)
@@ -1946,7 +1898,6 @@ class Juego:
             self.tutorial_zona_actual = zona
             self.hud.mostrar_mensaje(msg, 2, 5.5, forzar=True)
 
-    # --- Función actualizar_power_ups_rango --- #
     def actualizar_power_ups_rango(self):
         carcelero_vivo = any(mj.vivo for mj in getattr(self.nivel, "minijefes", []))
         for power_up in self.nivel.power_ups_rango:
@@ -1982,7 +1933,6 @@ class Juego:
                     4.0,
                 )
 
-    # --- Función perder_vida --- #
     def perder_vida(self, ignorar_invulnerabilidad=False, causa="Peligros de la cripta"):
         if self.jugador.invulnerable > 0 and not ignorar_invulnerabilidad:
             return
@@ -2072,7 +2022,6 @@ class Juego:
             inc.reiniciar()
         self.camara.actualizar(self.jugador, self.nivel, 1.0)
 
-    # --- Función reintentar_nivel --- #
     def reintentar_nivel(self):
         """Reinicia desde el último Farol activado o desde el inicio del nivel con vidas iniciales."""
         if self.punto_reintento is not None:
@@ -2115,7 +2064,6 @@ class Juego:
         else:
             self.cargar_nivel(self.nivel_indice, vidas=VIDAS_INICIALES)
 
-    # --- Función crear_fondo --- #
     def crear_fondo(self, tema, w=ANCHO, h=ALTO):
         fondo = pygame.Surface((w, h))
         if tema == "cripta":
@@ -2149,7 +2097,6 @@ class Juego:
             pygame.draw.circle(fondo, (108, 34, 28), (cx, 120), 28)
         return fondo
 
-    # --- Función crear_vineta --- #
     def crear_vineta(self, fuerza):
         vineta = pygame.Surface((ANCHO, ALTO), pygame.SRCALPHA)
         # Viñeta gótica periférica suave: oscurece los bordes y esquinas exteriores,
@@ -2169,7 +2116,6 @@ class Juego:
         pygame.transform.smoothscale(small, (ANCHO, ALTO), vineta)
         return vineta
 
-    # --- Función crear_vineta_carmesi --- #
     def crear_vineta_carmesi(self):
         vineta = pygame.Surface((ANCHO, ALTO), pygame.SRCALPHA)
         small_w, small_h = 160, 90
@@ -2187,9 +2133,8 @@ class Juego:
         pygame.transform.smoothscale(small, (ANCHO, ALTO), vineta)
         return vineta
 
-    # --- Función dibujar_marco_heraldico --- #
     def dibujar_marco_heraldico(self, destino, x, y, ancho, alto, color_fondo=(14, 11, 20, 235), color_borde=None):
-        """Marco heráldico gótico consistente con esquinas doradas (Principio 4 de UX)."""
+        """Marco heráldico gótico consistente con esquinas doradas."""
         borde_oro = HUD_ORO
         borde_linea = color_borde if color_borde is not None else (*HUD_BORDE, 200)
         panel = pygame.Surface((ancho, alto), pygame.SRCALPHA)
@@ -2200,7 +2145,6 @@ class Juego:
         pygame.draw.line(panel, (*borde_oro, 140), (16, alto - 1), (ancho - 16, alto - 1), 1)
         destino.blit(panel, (x, y))
 
-    # --- Función dibujar_fondo --- #
     def dibujar_fondo(self, destino=None):
         if destino is None:
             destino = self.pantalla
@@ -2228,7 +2172,6 @@ class Juego:
 
         self.dibujar_niebla(destino, tema)
 
-    # --- Función dibujar_fondo_camposanto --- #
     def dibujar_fondo_camposanto(self, destino=None):
         if destino is None:
             destino = self.pantalla
@@ -2508,7 +2451,6 @@ class Juego:
             pygame.draw.line(niebla, (*color, alfa), (0, i), (w, i))
         destino.blit(niebla, (0, h - alto_niebla), special_flags=pygame.BLEND_RGBA_ADD)
 
-    # --- Función dibujar_titulo (Minimalista y Atmosférica, Cero Slop) --- #
     def dibujar_titulo(self):
         self.dibujar_fondo(self.pantalla)
         self.dibujar_arbol_muerto(self.pantalla, 140, ALTO - 54, 1.45)
@@ -2535,7 +2477,6 @@ class Juego:
         self.dibujar_texto("PRESIONÁ [ENTER] PARA ENTRAR", 0, py + 225, 20, col_prompt, centrado=True, sombra=True)
         self.dibujar_texto("[ESC] Salir", 0, py + ph - 28, 13, HUD_MUTED, centrado=True)
 
-    # --- Función dibujar_menu_principal (Limpio, Directo y Gótico) --- #
     def dibujar_menu_principal(self):
         self.dibujar_fondo(self.pantalla)
         if getattr(self, "config_calidad_idx", 0) != 2:
@@ -2578,7 +2519,6 @@ class Juego:
 
         self.dibujar_texto("[W/S o Flechas] Navegar | [ENTER] Seleccionar | [ESC] Salir", 0, py + ph - 26, 13, HUD_MUTED, centrado=True)
 
-    # --- Función dibujar_seleccion_nivel (Capítulos Limpios sin Slop Técnico) --- #
     def dibujar_seleccion_nivel(self):
         self.dibujar_fondo(self.pantalla)
         if getattr(self, "config_calidad_idx", 0) != 2:
@@ -2620,7 +2560,6 @@ class Juego:
 
         self.dibujar_texto("[W/S o Flechas] Elegir | [ENTER] Jugar | [ESC] Volver", 0, py + ph - 26, 13, HUD_MUTED, centrado=True)
 
-    # --- Función dibujar_selector_pruebas --- #
     def dibujar_selector_pruebas(self):
         self.dibujar_fondo(self.pantalla)
         if getattr(self, "config_calidad_idx", 0) != 2:
@@ -2659,7 +2598,6 @@ class Juego:
 
         self.dibujar_texto("[W/S o Flechas] Elegir | [1-6 o ENTER] Probar | [ESC] Volver", 0, py + ph - 24, 12, HUD_MUTED, centrado=True)
 
-    # --- Función dibujar_creditos (Sin Slop de Apuntes de Cátedra) --- #
     def dibujar_creditos(self):
         self.dibujar_fondo(self.pantalla)
         if getattr(self, "config_calidad_idx", 0) != 2:
@@ -2680,7 +2618,6 @@ class Juego:
         self.dibujar_texto("Inspirado en la obra de Edgar Allan Poe", 0, py + 280, 14, CREMA, centrado=True)
         self.dibujar_texto("[ENTER o ESC] Volver al Menú", 0, py + ph - 30, 14, TURQUESA, centrado=True)
 
-    # --- Función dibujar_configuracion (Solo Opciones Esenciales y Claras) --- #
     def dibujar_configuracion(self):
         self.dibujar_fondo(self.pantalla)
         if getattr(self, "config_calidad_idx", 0) != 2:
@@ -2727,7 +2664,6 @@ class Juego:
         self.dibujar_texto(preset_activo["resumen"], 0, py + ph - 54, 13, CREMA, centrado=True)
         self.dibujar_texto("[W/S] Elegir | [A/D o ENTER] Cambiar | [F4] Estilo Visual | [ESC] Volver", 0, py + ph - 24, 12, HUD_MUTED, centrado=True)
 
-    # --- Función dibujar --- #
     def dibujar(self):
         if self.estado == "titulo":
             self.dibujar_titulo()
@@ -2931,7 +2867,7 @@ class Juego:
         elif self.estado == "victoria":
             self.dibujar_victoria()
 
-    # --- Visualizador de Debug F3 --- #
+    #---- Visualizador de depuracion F3 ----#
     def dibujar_debug_colisiones(self, destino, camara):
         """Visualizador F3 de Hitbox / Hurtbox / Peligros para inspección en vivo."""
         # 1. Peligros: violeta (200, 80, 255)
@@ -2976,7 +2912,6 @@ class Juego:
             pygame.draw.line(destino, col_atk, r_atk.topleft, r_atk.bottomright, 1)
             pygame.draw.line(destino, col_atk, r_atk.topright, r_atk.bottomleft, 1)
 
-    # --- Función dibujar_relicario_fin_nivel --- #
     def dibujar_relicario_fin_nivel(self):
         """Relicario de fin de nivel: resumen litúrgico de almas consagradas, vidas, tiempo y cita poeana."""
         overlay = pygame.Surface((ANCHO, ALTO), pygame.SRCALPHA)
@@ -3041,7 +2976,6 @@ class Juego:
         self.dibujar_texto("[ENTER] Descender al siguiente nivel · [ESC] Menú Principal",
                            0, py + ph - 30, 13, HUD_ORO, centrado=True, sombra=True)
 
-    # --- Función dibujar_overlay --- #
     def dibujar_overlay(self, titulo, subtitulo):
         overlay = pygame.Surface((ANCHO, ALTO), pygame.SRCALPHA)
         overlay.fill(SOMBRA)
@@ -3058,7 +2992,6 @@ class Juego:
             interlineado=30,
         )
 
-    # --- Función dibujar_menu_pausa (Minimalista, Cero Slop) --- #
     def dibujar_menu_pausa(self):
         """Menú de Pausa litúrgico e interactivo navegable con opciones claras y directas."""
         overlay = pygame.Surface((ANCHO, ALTO), pygame.SRCALPHA)
@@ -3102,7 +3035,6 @@ class Juego:
 
         self.dibujar_texto("[W/S o Flechas] Elegir | [ENTER] Confirmar | [ESC o P] Continuar", 0, py + alto_panel - 22, 12, HUD_MUTED, centrado=True)
 
-    # --- Función dibujar_ui_espacial (Hilo de Luz Conector y Keycaps) --- #
     def dibujar_ui_espacial(self, destino=None, camara=None):
         """UI Espacial: tablillas de obsidiana y bronce (<= 165px) con hilo dorado en SRCALPHA y diferenciación tecla vs mundo."""
         if not self.jugador or not self.nivel:
@@ -3282,7 +3214,6 @@ class Juego:
         else:
             return "C · EL OSARIO TE PUSO A PRUEBA", HUESO
 
-    # --- Función dibujar_victoria --- #
     def dibujar_victoria(self):
         """Pantalla de victoria estilizada con panel gótico y estadísticas litúrgicas completas."""
         import math as _math
@@ -3350,11 +3281,10 @@ class Juego:
         self.dibujar_texto("«Y el alma, redimida del osario, halló su eterno reposo.»", 0, py + ph - 54, 13, CREMA, centrado=True)
         pygame.draw.line(self.pantalla, (*HUD_ORO, 120), (px + 30, py + ph - 38), (px + pw - 30, py + ph - 38), 1)
 
-        # Pie constante (Principio 2 UX)
+        # Pie constante
         self.dibujar_texto("[ENTER] Confirmar · [ESC] Volver al Menú",
                            0, py + ph - 24, 13, HUD_MUTED, centrado=True)
 
-    # --- Función dibujar_derrota --- #
     def dibujar_derrota(self):
         """Pantalla de derrota estilizada con panel gótico, causas y estadísticas."""
         # Oscurecer fondo con velo fúnebre carmesí
@@ -3404,7 +3334,6 @@ class Juego:
         self.dibujar_texto("[ENTER] Reintentar · [ESC] Volver al Menú",
                            0, py + 396, 16, HUD_ORO, centrado=True, sombra=True)
 
-    # --- Función obtener_fuente --- #
     def obtener_fuente(self, tamano):
         if tamano not in self.fuentes:
             try:
@@ -3413,7 +3342,6 @@ class Juego:
                 self.fuentes[tamano] = pygame.font.Font(None, tamano)
         return self.fuentes[tamano]
 
-    # --- Función dibujar_texto --- #
     def dibujar_texto(self, texto, x, y, tamano=24, color=BLANCO, centrado=False, sombra=False, derecha=False):
         fuente = self.obtener_fuente(tamano)
 
@@ -3440,7 +3368,6 @@ class Juego:
             rect.topleft = (x, y)
         self.pantalla.blit(imagen, rect)
 
-    # --- Función dibujar_parrafo --- #
     def dibujar_parrafo(self, texto, x, y, tamano, color, ancho=70, centrado=False, interlineado=24):
         lineas = textwrap.wrap(texto, width=ancho)
         for i, linea in enumerate(lineas):
@@ -3453,7 +3380,6 @@ class Juego:
                 centrado=centrado,
             )
 
-    # --- Función run --- #
     def run(self):
         while self.corriendo:
             dt = min(self.reloj.tick(FPS) / 1000, MAX_DT)
@@ -3472,7 +3398,7 @@ class Juego:
         sys.exit()
 
     async def run_async(self):
-        """Bucle asíncrono para WebAssembly (Pygbag / Pyodide en navegador)."""
+        """Bucle asincrono de ejecucion"""
         while self.corriendo:
             dt = min(self.reloj.tick(FPS) / 1000, MAX_DT)
             self.procesar_eventos()
@@ -3491,6 +3417,6 @@ class Juego:
         sys.exit()
 
 
-# --- Arranque directo --- #
+#---- Arranque directo ----#
 if __name__ == "__main__":
     Juego().run()

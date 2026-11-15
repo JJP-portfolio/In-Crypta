@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
-# ============================================================================
-# jugar_pygame.sh — Lanzador nativo Linux para IN CRYPTA (Desktop / Pygame-CE)
-# Compatible con ejecución por doble clic y desde terminal.
-# ============================================================================
+#---- Lanzador para Linux (Pygame-CE) ----#
 set -u
 
 # Resolver directorio real del script (soporta symlinks)
@@ -29,7 +26,7 @@ export PYTHONPATH="$SCRIPT_DIR${PYTHONPATH:+:$PYTHONPATH}"
 LOG_FILE="$SCRIPT_DIR/in_crypta_launcher.log"
 
 echo "========================================================"
-echo "  IN CRYPTA 1.0.0 - Versión Desktop (Linux)"
+echo "  IN CRYPTA 1.0.3 - Versión Desktop (Linux)"
 echo "========================================================"
 echo "  Directorio : $SCRIPT_DIR"
 
