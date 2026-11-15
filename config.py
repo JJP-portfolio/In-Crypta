@@ -1,23 +1,20 @@
-#---- Importamos ----#
-import sys
-
-#---- Variables del entorno ----#
-ES_WEB = sys.platform == "emscripten"
-PERFIL_WEB_SHADER = 2
-PERFIL_WEB_CALIDAD = 2
+#---- Configuracion global ----#
 CALIDAD_GLOBAL_ACTIVA = 0
 
 #---- Datos del proyecto ----#
 TITULO = "IN CRYPTA"
 SUBTITULO = "El sepulturero de la cripta"
 EQUIPO = "Equipo 6"
-VERSION = "1.0.3"
 INTEGRANTES = (
     "Ovelar Alejandro Ezequiel",
     "Joaquín Cardiel Gomez",
     "Jonathan Javier Pietracci",
 )
-REFERENCIAS = ("Blasphemous", "Castlevania", "Ender Lilies")
+ROLES_EQUIPO = {
+    "Jonathan Javier Pietracci": "Programación, arquitectura, audio y documentación",
+    "Ovelar Alejandro Ezequiel": "Diseño de niveles, dirección artística y testing",
+    "Joaquín Cardiel Gomez": "Diseño de niveles, ambientación visual y testing",
+}
 
 #---- Dimensiones y pantalla ----#
 ANCHO = 1280
@@ -50,8 +47,6 @@ DASH_VELOCIDAD = 560.0
 DASH_DURACION = 0.20
 DASH_COOLDOWN = 0.60
 DASH_USOS_AIRE = 1
-DASH_DASHTURQUESA = (92, 190, 174)
-HUD_DASHTURQUESA = DASH_DASHTURQUESA
 
 #---- Ajustes de control y sensacion de salto ----#
 APEX_GRAVEDAD_FACTOR = 0.55
@@ -87,7 +82,6 @@ MINIJEFE_ANCHO = 36
 MINIJEFE_ALTO = 48
 MINIJEFE_VELOCIDAD = 70.0
 MINIJEFE_TELEGRAFO = 0.55
-MINIJEFE_TIMER_EMBESTIDA = 0.40
 MINIJEFE_VULNERABLE = 1.3
 
 #---- Farol y mejoras de almas ----#
@@ -136,36 +130,20 @@ ORO = ORO_LITURGICO
 NARANJA = (190, 104, 48)
 ROJO = (142, 32, 44)
 SANGRE = CARMESI_SANGRE
-VERDE = (86, 118, 82)
-VERDE_OSCURO = (42, 66, 52)
 MUSGO = (72, 94, 62)
 MARRON = (86, 63, 48)
 MARRON_OSCURO = (52, 38, 31)
-AZUL = (52, 66, 92)
 AZUL_OSCURO = (27, 34, 51)
-CELESTE = (150, 180, 190)
 CREMA = (214, 199, 168)
-GRIS_OSCURO = (43, 45, 54)
 HUESO = HUESO_MARFIL
+MARFIL_XILOGRAFICO = (228, 224, 210)
+TINTA_ABISMO = (6, 5, 10)
 SOMBRA = (9, 8, 13, 205)
-PASTO = (66, 88, 60)
 PIEDRA = (72, 74, 84)
 PIEDRA_OSCURA = (43, 45, 54)
 PIEDRA_FRIA = (58, 61, 72)
 VIOLETA = (128, 70, 140)
 TURQUESA = TURQUESA_ANIMA
-NIEBLA = (104, 122, 130)
-
-# Fondos y capas
-BG_NOCHE_PROFUNDA = (9, 10, 18)
-BG_PIEDRA_NIEBLA = (20, 24, 38)
-BG_SILUETA_FRIA = (28, 34, 50)
-
-# Bloques y muros
-TILE_CUERPO_SOMBRA = (38, 36, 46)
-TILE_MAMPOSTERIA = (58, 56, 70)
-TILE_BISEL_LUZ = (172, 182, 202)
-TILE_SOMBRA_CORTE = (10, 8, 14)
 
 # Colores de enemigos y efectos
 ENEMIGO_MORTAJA = (36, 48, 72)
@@ -184,26 +162,12 @@ CITAS_POE = {
 }
 
 #---- Colores y configuracion del HUD ----#
-HUD_PANEL = (18, 14, 24, 196)
-HUD_PANEL_ALTO = (28, 22, 34, 214)
 HUD_BORDE = (104, 82, 52)
 HUD_ORO = (216, 180, 104)
 HUD_TEXTO = (232, 222, 203)
 HUD_MUTED = (150, 139, 129)
 HUD_ROJO = (188, 53, 62)
 HUD_VERDE = (112, 194, 154)
-HUD_ALMA = (178, 146, 236)
-HUD_DASHTURQUESA = DASH_DASHTURQUESA
-HUD_NEGRO = (9, 8, 13)
-HUD_NEGRO_X = (18, 16, 24, 196)
-HUD_GRIS_CLARO = (105, 108, 118)
-
-HUD_ANGOSTO_ALTO = 36
-HUD_MAX_ANCHO = 1280
-HUD_ESQUINAS_X = [14, 478, 14, 0]
-HUD_ESQUINAS_Y = [12, 12, 82, 12]
-HUD_ESQUINAS_ANCHO = [292, 324, 292, HUD_MAX_ANCHO - 14]
-HUD_ESQUINAS_ALTO = [36, 36, 36, HUD_MAX_ANCHO - 14]
 
 # Opciones de renderizado
 ESTILO_HUD = "AUTO"

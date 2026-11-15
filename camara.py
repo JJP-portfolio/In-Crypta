@@ -4,8 +4,6 @@ import random
 import pygame
 
 from config import (
-    ALTO,
-    ANCHO,
     CAMARA_SUAVIZADO,
     SACUDIDA_DURACION,
     SACUDIDA_FUERZA,
@@ -16,6 +14,7 @@ from config import (
 
 #---- Clase Camara ----#
 class Camara:
+    """Administra el desplazamiento suave, limites del nivel y sacudida de pantalla."""
     def __init__(self):
         # Posicion actual en el mundo
         self.x = 0.0

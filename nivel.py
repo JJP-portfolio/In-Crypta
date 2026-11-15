@@ -1,23 +1,21 @@
 #---- Importamos librerias y clases ----#
 
+from collections import defaultdict
 import math
 
 import pygame
 
+import config
 from config import (
     AMARILLO,
-    BLANCO,
     CARMESÍ_SANGRE,
     ENEMIGO_ALTO,
     ENEMIGO_ANCHO,
-    FAROL_CÁLIDO,
-    HUESO,
-    HUESO_MARFIL,
     INCENSARIO_ALTO,
     INCENSARIO_ANCHO,
     JEFE_ALTO,
     JEFE_ANCHO,
-    MARRON,
+    MARFIL_XILOGRAFICO,
     MARRON_OSCURO,
     MINIJEFE_ALTO,
     MINIJEFE_ANCHO,
@@ -27,22 +25,14 @@ from config import (
     NARANJA,
     ORO,
     ORO_LITÚRGICO,
-    PASTO,
     PIEDRA,
-    PIEDRA_FRIA,
     PIEDRA_OSCURA,
-    ROJO,
     SALITRE_CRIPTA,
     SANGRE,
     TILE,
+    TINTA_ABISMO,
     TURQUESA_ÁNIMA,
-    VERDE_OSCURO,
-    VIOLETA_POE,
 )
-
-# Paleta Grabado Xilográfico Gótico & Vitral
-MARFIL_XILOGRAFICO = (228, 224, 210)
-TINTA_ABISMO = (6, 5, 10)
 from entidades import (
     Alma,
     Araña,
@@ -58,7 +48,6 @@ from entidades import (
     PalaRecogible,
     Polilla,
     RangoPowerUp,
-    TotemProyectil,
 )
 
 
@@ -68,53 +57,83 @@ _HALO_VELA = None
 _HALO_META = None
 _HALO_BRASERO_ESPECTRAL = None
 
+_PALETAS_SOLIDOS = {
+    "cripta": {
+        "bisel_top": (180, 198, 222),
+        "piso": (44, 48, 58),
+        "piso_profundo": (26, 28, 36),
+        "borde": (18, 20, 26),
+        "arriba": (55, 78, 68),
+        "brizna": (82, 118, 102),
+        "cuerpo": (52, 56, 68),
+        "marco": (24, 26, 34),
+        "ladrillo": (58, 56, 70),
+    },
+    "osario": {
+        "bisel_top": (218, 208, 186),
+        "piso": (62, 45, 43),
+        "piso_profundo": (38, 26, 26),
+        "borde": (26, 18, 20),
+        "arriba": (96, 58, 52),
+        "brizna": (136, 86, 78),
+        "cuerpo": (74, 52, 50),
+        "marco": (36, 22, 24),
+        "ladrillo": (68, 54, 52),
+    },
+    "camposanto": {
+        "bisel_top": (165, 185, 160),
+        "piso": (68, 52, 42),
+        "piso_profundo": (44, 32, 26),
+        "borde": (28, 20, 16),
+        "arriba": (48, 76, 44),
+        "brizna": (76, 114, 68),
+        "cuerpo": (64, 62, 70),
+        "marco": (26, 24, 30),
+        "ladrillo": (62, 58, 50),
+    },
+}
+
+
+def _construir_halo_radial(diametro, radio_max, color_rgb, alpha_max):
+    """Genera una superficie circular con caida cuadratica de opacidad."""
+    halo = pygame.Surface((diametro, diametro), pygame.SRCALPHA)
+    centro = diametro // 2
+    for r in range(radio_max, 1, -2):
+        norm = r / float(radio_max)
+        alfa = int(alpha_max * (1.0 - norm * norm))
+        pygame.draw.circle(halo, (*color_rgb, alfa), (centro, centro), r)
+    return halo.convert_alpha()
+
 
 def _obtener_halo_brasero():
-    """Halo espectral cian/turquesa cacheado para braseros 'b' (CPU BLEND_RGB_ADD)."""
+    """Halo espectral turquesa cacheado para braseros 'b' (CPU BLEND_RGB_ADD)."""
     global _HALO_BRASERO_ESPECTRAL
     if _HALO_BRASERO_ESPECTRAL is None:
         diam = 96
         _HALO_BRASERO_ESPECTRAL = pygame.Surface((diam, diam), pygame.SRCALPHA)
-        _HALO_BRASERO_ESPECTRAL.fill((0, 0, 0, 0))
         cx, cy = diam // 2, diam // 2
         for r in range(cx, 2, -2):
             norm = r / float(cx)
             factor = (1.0 - norm * norm) ** 2.0
-            rgb = (
-                int(75 * factor * 0.28),
-                int(220 * factor * 0.28),
-                int(205 * factor * 0.28),
-            )
+            rgb = (int(75 * factor * 0.28), int(220 * factor * 0.28), int(205 * factor * 0.28))
             pygame.draw.circle(_HALO_BRASERO_ESPECTRAL, rgb, (cx, cy), r)
         _HALO_BRASERO_ESPECTRAL = _HALO_BRASERO_ESPECTRAL.convert_alpha()
     return _HALO_BRASERO_ESPECTRAL
 
 
 def _obtener_halo_vela():
-    """Halo translúcido cálido con desvanecimiento suave para iluminación litúrgica de velas."""
+    """Halo translucido calido cacheado para velas decorativas."""
     global _HALO_VELA
     if _HALO_VELA is None:
-        _HALO_VELA = pygame.Surface((40, 40), pygame.SRCALPHA)
-        _HALO_VELA.fill((0, 0, 0, 0))
-        for r in range(18, 1, -2):
-            norm = r / 18.0
-            alfa = int(32 * (1.0 - norm * norm))
-            pygame.draw.circle(_HALO_VELA, (255, 185, 65, alfa), (20, 20), r)
-        _HALO_VELA = _HALO_VELA.convert_alpha()
+        _HALO_VELA = _construir_halo_radial(40, 18, (255, 185, 65), 32)
     return _HALO_VELA
 
 
 def _obtener_halo_meta():
-    """Halo translúcido suave para el portal/portón de meta."""
+    """Halo translucido suave para el portal/porton de meta."""
     global _HALO_META
     if _HALO_META is None:
-        _HALO_META = pygame.Surface((64, 64), pygame.SRCALPHA)
-        _HALO_META.fill((0, 0, 0, 0))
-        for r in range(30, 2, -2):
-            norm = r / 30.0
-            alfa = int(35 * (1.0 - norm * norm))
-            pygame.draw.circle(_HALO_META, (255, 205, 95, alfa), (32, 32), r)
-        _HALO_META = _HALO_META.convert_alpha()
+        _HALO_META = _construir_halo_radial(64, 30, (255, 205, 95), 35)
     return _HALO_META
 
 
@@ -170,6 +189,7 @@ class Nivel:
 
         self.ancho = self.columnas * TILE
         self.alto = self.num_filas * TILE
+        self._posiciones = self._indexar_simbolos()
 
         self.spawn = self._buscar_spawn()
         self.meta = self._buscar_meta()
@@ -177,7 +197,6 @@ class Nivel:
         self.almas = self._crear_almas()
         self.enemigos = self._crear_enemigos()
         self.enemigos_melee = self._crear_enemigos_melee()
-        self.totems = self._crear_totems()
         self.decoraciones = self._crear_decoraciones()
         self.peligros = self._crear_peligros()
         self.palas = self._crear_palas()
@@ -199,24 +218,24 @@ class Nivel:
         if self.meta is None:
             raise ValueError("Falta la G de meta en el nivel")
 
-    def _buscar_spawn(self):
+    def _indexar_simbolos(self):
+        """Indexa en una sola pasada las coordenadas (columna, fila) de cada simbolo."""
+        indice = defaultdict(list)
         for fila, texto in enumerate(self.filas):
             for columna, simbolo in enumerate(texto):
-                if simbolo == "P":
-                    # El jugador mide 30 px; +2 lo deja apoyado en el tile.
-                    return (columna * TILE + 4, fila * TILE + 2)
+                if simbolo != ".":
+                    indice[simbolo].append((columna, fila))
+        return indice
+
+    def _buscar_spawn(self):
+        for columna, fila in self._posiciones.get("P", ()):
+            # El jugador mide 30 px; +2 lo deja apoyado en el tile.
+            return (columna * TILE + 4, fila * TILE + 2)
         return None
 
     def _buscar_meta(self):
-        for fila, texto in enumerate(self.filas):
-            for columna, simbolo in enumerate(texto):
-                if simbolo == "G":
-                    return pygame.Rect(
-                        columna * TILE + 6,
-                        fila * TILE + 2,
-                        20,
-                        30,
-                    )
+        for columna, fila in self._posiciones.get("G", ()):
+            return pygame.Rect(columna * TILE + 6, fila * TILE + 2, 20, 30)
         return None
 
     def _crear_solidos(self):
@@ -242,47 +261,36 @@ class Nivel:
         return solidos
 
     def _crear_almas(self):
-        almas = []
-        for fila, texto in enumerate(self.filas):
-            for columna, simbolo in enumerate(texto):
-                if simbolo == "o":
-                    almas.append(Alma(pygame.Rect(
-                        columna * TILE + 8,
-                        fila * TILE + 8,
-                        16,
-                        16,
-                    )))
-        return almas
+        return [
+            Alma(pygame.Rect(col * TILE + 8, fila * TILE + 8, 16, 16))
+            for col, fila in self._posiciones.get("o", ())
+        ]
 
     def _crear_entidades_patrulleras(self, simbolo, clase_entidad, ancho=ENEMIGO_ANCHO, alto=ENEMIGO_ALTO):
-        """Instancia entidades patrulleras estándar escaneando la grilla y calculando límites de bordes."""
+        """Instancia entidades patrulleras estándar y calcula sus limites de plataforma."""
         entidades = []
-        for fila, texto in enumerate(self.filas):
-            for columna, c in enumerate(texto):
-                if c == simbolo:
-                    rect = pygame.Rect(
-                        columna * TILE + (TILE - ancho) // 2,
-                        fila * TILE + (TILE - alto),
-                        ancho,
-                        alto,
-                    )
-                    minimo_x, maximo_x = self._limites_patrulla(columna, fila)
-                    entidades.append(clase_entidad(rect, minimo_x, maximo_x))
+        for columna, fila in self._posiciones.get(simbolo, ()):
+            rect = pygame.Rect(
+                columna * TILE + (TILE - ancho) // 2,
+                fila * TILE + (TILE - alto),
+                ancho,
+                alto,
+            )
+            minimo_x, maximo_x = self._limites_patrulla(columna, fila)
+            entidades.append(clase_entidad(rect, minimo_x, maximo_x))
         return entidades
 
     def _crear_altares_genericos(self, simbolo, clase_entidad, offset_x=6, offset_y=2, ancho=20, alto=30):
         """Instancia altares y objetos recogibles de 20x30 en la grilla."""
-        items = []
-        for fila, texto in enumerate(self.filas):
-            for columna, c in enumerate(texto):
-                if c == simbolo:
-                    items.append(clase_entidad(pygame.Rect(
-                        columna * TILE + offset_x,
-                        fila * TILE + offset_y,
-                        ancho,
-                        alto,
-                    )))
-        return items
+        return [
+            clase_entidad(pygame.Rect(
+                columna * TILE + offset_x,
+                fila * TILE + offset_y,
+                ancho,
+                alto,
+            ))
+            for columna, fila in self._posiciones.get(simbolo, ())
+        ]
 
     def _crear_enemigos(self):
         return self._crear_entidades_patrulleras("E", Enemigo)
@@ -291,17 +299,11 @@ class Nivel:
         decoraciones = []
         for fila, texto in enumerate(self.filas):
             for columna, simbolo in enumerate(texto):
-                if simbolo not in DECORACIONES:
-                    continue
-                decoraciones.append({
-                    "tipo": simbolo,
-                    "rect": pygame.Rect(
-                        columna * TILE,
-                        fila * TILE,
-                        TILE,
-                        TILE,
-                    ),
-                })
+                if simbolo in DECORACIONES:
+                    decoraciones.append({
+                        "tipo": simbolo,
+                        "rect": pygame.Rect(columna * TILE, fila * TILE, TILE, TILE),
+                    })
         return decoraciones
 
     def _crear_palas(self):
@@ -317,134 +319,106 @@ class Nivel:
         return self._crear_altares_genericos("F", FarolCheckpoint)
 
     def _crear_losas_quebradizas(self):
-        losas = []
-        for fila, texto in enumerate(self.filas):
-            for columna, simbolo in enumerate(texto):
-                if simbolo == "~":
-                    losas.append(LosaQuebradiza(pygame.Rect(
-                        columna * TILE,
-                        fila * TILE,
-                        TILE,
-                        TILE,
-                    )))
-        return losas
+        return [
+            LosaQuebradiza(pygame.Rect(col * TILE, fila * TILE, TILE, TILE))
+            for col, fila in self._posiciones.get("~", ())
+        ]
 
     def _crear_incensarios(self):
-        incensarios = []
-        for fila, texto in enumerate(self.filas):
-            for columna, simbolo in enumerate(texto):
-                if simbolo == "I":
-                    incensarios.append(IncensarioRebote(pygame.Rect(
-                        columna * TILE + (TILE - INCENSARIO_ANCHO) // 2,
-                        fila * TILE + (TILE - INCENSARIO_ALTO) // 2,
-                        INCENSARIO_ANCHO,
-                        INCENSARIO_ALTO,
-                    )))
-        return incensarios
+        return [
+            IncensarioRebote(pygame.Rect(
+                col * TILE + (TILE - INCENSARIO_ANCHO) // 2,
+                fila * TILE + (TILE - INCENSARIO_ALTO) // 2,
+                INCENSARIO_ANCHO,
+                INCENSARIO_ALTO,
+            ))
+            for col, fila in self._posiciones.get("I", ())
+        ]
 
     def _crear_cuervos(self):
         cuervos = []
-        for fila, texto in enumerate(self.filas):
-            for columna, simbolo in enumerate(texto):
-                if simbolo != "C":
-                    continue
-                rect = pygame.Rect(
-                    columna * TILE + 4,
-                    fila * TILE + 4,
-                    24,
-                    24,
-                )
-                cuervos.append(Cuervo(
-                    rect,
-                    centro_x=columna * TILE + TILE // 2,
-                    centro_y=fila * TILE + TILE // 2,
-                    radio=3 * TILE,
-                    velocidad=1.5,
-                ))
+        for columna, fila in self._posiciones.get("C", ()):
+            rect = pygame.Rect(columna * TILE + 4, fila * TILE + 4, 24, 24)
+            cuervos.append(Cuervo(
+                rect,
+                centro_x=columna * TILE + TILE // 2,
+                centro_y=fila * TILE + TILE // 2,
+                radio=3 * TILE,
+                velocidad=1.5,
+            ))
         return cuervos
 
     def _crear_polillas(self):
         polillas = []
-        for fila, texto in enumerate(self.filas):
-            for columna, simbolo in enumerate(texto):
-                if simbolo != "m":
-                    continue
-                rect = pygame.Rect(
-                    columna * TILE + (TILE - ENEMIGO_ANCHO) // 2,
-                    fila * TILE + (TILE - ENEMIGO_ALTO),
-                    ENEMIGO_ANCHO,
-                    ENEMIGO_ALTO,
-                )
-                minimo_x, maximo_x = self._limites_patrulla(columna, fila)
-                if maximo_x - minimo_x <= 3 * TILE:
-                    izq = columna
-                    while izq > max(1, columna - 4) and texto[izq - 1] not in ("#", "^"):
-                        izq -= 1
-                    der = columna
-                    while der < min(self.columnas - 2, columna + 4) and texto[der + 1] not in ("#", "^"):
-                        der += 1
-                    minimo_x = izq * TILE
-                    maximo_x = (der + 1) * TILE
-                polillas.append(Polilla(rect, minimo_x, maximo_x))
+        for columna, fila in self._posiciones.get("m", ()):
+            texto = self.filas[fila]
+            rect = pygame.Rect(
+                columna * TILE + (TILE - ENEMIGO_ANCHO) // 2,
+                fila * TILE + (TILE - ENEMIGO_ALTO),
+                ENEMIGO_ANCHO,
+                ENEMIGO_ALTO,
+            )
+            minimo_x, maximo_x = self._limites_patrulla(columna, fila)
+            if maximo_x - minimo_x <= 3 * TILE:
+                izq = columna
+                while izq > max(1, columna - 4) and texto[izq - 1] not in ("#", "^"):
+                    izq -= 1
+                der = columna
+                while der < min(self.columnas - 2, columna + 4) and texto[der + 1] not in ("#", "^"):
+                    der += 1
+                minimo_x = izq * TILE
+                maximo_x = (der + 1) * TILE
+            polillas.append(Polilla(rect, minimo_x, maximo_x))
         return polillas
 
     def _crear_aranias(self):
         aranias = []
-        for fila, texto in enumerate(self.filas):
-            for columna, simbolo in enumerate(texto):
-                if simbolo != "A":
-                    continue
-                rect = pygame.Rect(
-                    columna * TILE + (TILE - ENEMIGO_ANCHO) // 2,
-                    fila * TILE + (TILE - ENEMIGO_ALTO),
-                    ENEMIGO_ANCHO,
-                    ENEMIGO_ALTO,
-                )
-                lim_izq, lim_der = self._limites_patrulla(columna, fila)
-                minimo_x = max(lim_izq + 8, (columna - 6) * TILE)
-                maximo_x = min(lim_der - 8, (columna + 7) * TILE)
-                if maximo_x - minimo_x < 2 * TILE:
-                    minimo_x, maximo_x = lim_izq, lim_der
-                aranias.append(Araña(rect, minimo_x, maximo_x))
+        for columna, fila in self._posiciones.get("A", ()):
+            rect = pygame.Rect(
+                columna * TILE + (TILE - ENEMIGO_ANCHO) // 2,
+                fila * TILE + (TILE - ENEMIGO_ALTO),
+                ENEMIGO_ANCHO,
+                ENEMIGO_ALTO,
+            )
+            lim_izq, lim_der = self._limites_patrulla(columna, fila)
+            minimo_x = max(lim_izq + 8, (columna - 6) * TILE)
+            maximo_x = min(lim_der - 8, (columna + 7) * TILE)
+            if maximo_x - minimo_x < 2 * TILE:
+                minimo_x, maximo_x = lim_izq, lim_der
+            aranias.append(Araña(rect, minimo_x, maximo_x))
         return aranias
 
     def _crear_jefes(self):
         jefes = []
-        for fila, texto in enumerate(self.filas):
-            for columna, simbolo in enumerate(texto):
-                if simbolo != "B":
-                    continue
-                rect = pygame.Rect(
-                    columna * TILE - (JEFE_ANCHO - TILE) // 2,
-                    (fila + 1) * TILE - JEFE_ALTO,
-                    JEFE_ANCHO,
-                    JEFE_ALTO,
-                )
-                minimo_x = max(0, (columna - 20) * TILE)
-                maximo_x = min(self.ancho - JEFE_ANCHO, (columna + 20) * TILE)
-                jefes.append(Custodio(rect, minimo_x, maximo_x))
+        for columna, fila in self._posiciones.get("B", ()):
+            rect = pygame.Rect(
+                columna * TILE - (JEFE_ANCHO - TILE) // 2,
+                (fila + 1) * TILE - JEFE_ALTO,
+                JEFE_ANCHO,
+                JEFE_ALTO,
+            )
+            minimo_x = max(0, (columna - 20) * TILE)
+            maximo_x = min(self.ancho - JEFE_ANCHO, (columna + 20) * TILE)
+            jefes.append(Custodio(rect, minimo_x, maximo_x))
         return jefes
 
     def _crear_minijefes(self):
         minijefes = []
-        for fila, texto in enumerate(self.filas):
-            for columna, simbolo in enumerate(texto):
-                if simbolo != "K":
-                    continue
-                rect = pygame.Rect(
-                    columna * TILE - (MINIJEFE_ANCHO - TILE) // 2,
-                    (fila + 1) * TILE - MINIJEFE_ALTO,
-                    MINIJEFE_ANCHO,
-                    MINIJEFE_ALTO,
-                )
-                lim_izq, lim_der = self._limites_patrulla(columna, fila)
-                if lim_der - lim_izq >= 4 * TILE:
-                    minimo_x = lim_izq + 8
-                    maximo_x = max(minimo_x + TILE, lim_der - MINIJEFE_ANCHO - 8)
-                else:
-                    minimo_x = max(0, (columna - 10) * TILE)
-                    maximo_x = min(self.ancho - MINIJEFE_ANCHO, (columna + 10) * TILE)
-                minijefes.append(MiniJefe(rect, minimo_x, maximo_x))
+        for columna, fila in self._posiciones.get("K", ()):
+            rect = pygame.Rect(
+                columna * TILE - (MINIJEFE_ANCHO - TILE) // 2,
+                (fila + 1) * TILE - MINIJEFE_ALTO,
+                MINIJEFE_ANCHO,
+                MINIJEFE_ALTO,
+            )
+            lim_izq, lim_der = self._limites_patrulla(columna, fila)
+            if lim_der - lim_izq >= 4 * TILE:
+                minimo_x = lim_izq + 8
+                maximo_x = max(minimo_x + TILE, lim_der - MINIJEFE_ANCHO - 8)
+            else:
+                minimo_x = max(0, (columna - 10) * TILE)
+                maximo_x = min(self.ancho - MINIJEFE_ANCHO, (columna + 10) * TILE)
+            minijefes.append(MiniJefe(rect, minimo_x, maximo_x))
         return minijefes
     def _crear_plataformas(self):
         plataformas = []
@@ -477,31 +451,11 @@ class Nivel:
     def _crear_enemigos_melee(self):
         return self._crear_entidades_patrulleras("L", EnemigoMelee)
 
-    def _crear_totems(self):
-        totems = []
-        for fila, texto in enumerate(self.filas):
-            for columna, simbolo in enumerate(texto):
-                if simbolo != "O":  # O = TotemProyectil
-                    continue
-
-                x = columna * TILE + TILE // 2
-                y = fila * TILE + TILE * 3
-                totems.append(TotemProyectil(x, y))
-        return totems
-
     def _crear_peligros(self):
-        peligros = []
-        for fila, texto in enumerate(self.filas):
-            for columna, simbolo in enumerate(texto):
-                if simbolo != "^":
-                    continue
-                peligros.append(pygame.Rect(
-                    columna * TILE + 4,
-                    fila * TILE + 12,
-                    TILE - 8,
-                    TILE - 12,
-                ))
-        return peligros
+        return [
+            pygame.Rect(col * TILE + 4, fila * TILE + 12, TILE - 8, TILE - 12)
+            for col, fila in self._posiciones.get("^", ())
+        ]
 
     def _limites_patrulla(self, columna, fila):
         """El enemigo patrulla solo sobre la plataforma que tiene debajo.
@@ -560,432 +514,305 @@ class Nivel:
             + [losa.rect for losa in getattr(self, "losas_quebradizas", []) if losa.activa]
         )
 
+    def _tema_efectivo(self, fila):
+        """Aplica el subtema de cripta en pisos subterraneos de nivel vertical."""
+        tema = getattr(self, "tema", "camposanto")
+        return "cripta" if (fila >= 18 and tema == "camposanto") else tema
+
+    def _tiene_solido(self, fila, col):
+        return (
+            0 <= fila < len(self.filas)
+            and 0 <= col < len(self.filas[fila])
+            and self.filas[fila][col] == "#"
+        )
+
     def reiniciar(self):
-        """Devuelve el nivel a su estado inicial."""
-        for alma in self.almas:
-            alma.reiniciar()
-        for enemigo in self.enemigos:
-            enemigo.reiniciar()
-        for enemigo_melee in self.enemigos_melee:
-            enemigo_melee.reiniciar()
-        for totem in self.totems:
-            totem.reiniciar()
-        for pala in self.palas:
-            pala.reiniciar()
-        for power_up in self.power_ups_dash:
-            power_up.reiniciar()
-        for power_up in self.power_ups_rango:
-            power_up.reiniciar()
-        for checkpoint in self.checkpoints:
-            checkpoint.reiniciar()
-        for cuervo in self.cuervos:
-            cuervo.reiniciar()
-        for polilla in self.polillas:
-            polilla.reiniciar()
-        for araña in self.aranias:
-            araña.reiniciar()
-        for plataforma in self.plataformas:
-            plataforma.reiniciar()
-        for minijefe in self.minijefes:
-            minijefe.reiniciar()
-        for jefe in self.jefes:
-            jefe.reiniciar()
-        for losa in getattr(self, "losas_quebradizas", []):
-            losa.reiniciar()
-        for incensario in getattr(self, "incensarios", []):
-            incensario.reiniciar()
+        """Devuelve todas las entidades y obstaculos del nivel a su estado inicial."""
+        grupos = (
+            self.almas,
+            self.enemigos,
+            self.enemigos_melee,
+            self.palas,
+            self.power_ups_dash,
+            self.power_ups_rango,
+            self.checkpoints,
+            self.cuervos,
+            self.polillas,
+            self.aranias,
+            self.plataformas,
+            self.minijefes,
+            self.jefes,
+            getattr(self, "losas_quebradizas", ()),
+            getattr(self, "incensarios", ()),
+        )
+        for grupo in grupos:
+            for item in grupo:
+                item.reiniciar()
 
     def dibujar(self, surface, camara):
+        """Dibuja la geometria del nivel, objetos interactivos y enemigos secundarios."""
         self.dibujar_solidos(surface, camara)
         self.dibujar_plataformas(surface, camara)
         self.dibujar_decoraciones(surface, camara)
         self.dibujar_peligros(surface, camara)
 
         tiempo = pygame.time.get_ticks() / 1000
-        for losa in getattr(self, "losas_quebradizas", []):
-            losa.dibujar(surface, camara, tiempo)
-        for incensario in getattr(self, "incensarios", []):
-            incensario.dibujar(surface, camara, tiempo)
-        for alma in self.almas:
-            alma.dibujar(surface, camara, tiempo)
-        for pala in self.palas:
-            pala.dibujar(surface, camara, tiempo)
-        for power_up in self.power_ups_dash:
-            power_up.dibujar(surface, camara, tiempo)
-        for power_up in self.power_ups_rango:
-            power_up.dibujar(surface, camara, tiempo)
-        for checkpoint in self.checkpoints:
-            checkpoint.dibujar(surface, camara, tiempo)
-        for minijefe in self.minijefes:
-            minijefe.dibujar(surface, camara, tiempo)
-        for enemigo_melee in self.enemigos_melee:
-            enemigo_melee.dibujar(surface, camara, tiempo)
-        for totem in self.totems:
-            totem.dibujar(surface, camara, tiempo)
-        for cuervo in self.cuervos:
-            cuervo.dibujar(surface, camara, tiempo)
-        for polilla in self.polillas:
-            polilla.dibujar(surface, camara, tiempo)
-        for araña in self.aranias:
-            araña.dibujar(surface, camara, tiempo)
+        grupos_dibujables = (
+            getattr(self, "losas_quebradizas", ()),
+            getattr(self, "incensarios", ()),
+            self.almas,
+            self.palas,
+            self.power_ups_dash,
+            self.power_ups_rango,
+            self.checkpoints,
+            self.minijefes,
+            self.enemigos_melee,
+            self.cuervos,
+            self.polillas,
+            self.aranias,
+        )
+        for grupo in grupos_dibujables:
+            for item in grupo:
+                item.dibujar(surface, camara, tiempo)
 
         self.dibujar_meta(surface, camara)
 
+    def _dibujar_riel_plataforma(self, surface, rect, init_rect, plataforma):
+        """Dibuja el riel o cadena guia segun el eje de oscilacion ('h' o 'v')."""
+        amp = int(getattr(plataforma, "amplitud", 0))
+        if amp <= 0:
+            return
+        eje = getattr(plataforma, "eje", "h")
+        if eje in ("h", "x"):
+            x_min = init_rect.x - amp + 6
+            x_max = init_rect.right + amp - 6
+            ry = rect.centery
+            pygame.draw.line(surface, (22, 20, 28), (x_min, ry), (x_max, ry), 4)
+            pygame.draw.line(surface, (58, 56, 70), (x_min, ry - 1), (x_max, ry - 1), 1)
+            for ex in range(x_min, x_max + 1, 12):
+                pygame.draw.circle(surface, (86, 82, 98), (ex, ry), 2, 1)
+            for ext_x in (x_min, x_max):
+                pygame.draw.circle(surface, (28, 24, 34), (ext_x, ry), 5)
+                pygame.draw.circle(surface, (132, 118, 88), (ext_x, ry), 4, 1)
+                pygame.draw.circle(surface, TURQUESA_ÁNIMA, (ext_x, ry), 1)
+            return
+
+        y_min = init_rect.centery - amp - 18
+        y_max = init_rect.centery + amp + 10
+        for ancla_x in (rect.x + 10, rect.right - 10):
+            for cy in range(y_min, y_max, 8):
+                pygame.draw.rect(surface, (18, 16, 22), (ancla_x - 3, cy, 6, 7), border_radius=2)
+                pygame.draw.rect(surface, (78, 74, 90), (ancla_x - 2, cy + 1, 4, 5), 1, border_radius=1)
+            pygame.draw.circle(surface, (30, 26, 38), (ancla_x, y_min), 5)
+            pygame.draw.circle(surface, (132, 118, 88), (ancla_x, y_min), 4, 1)
+
+    def _dibujar_cuerpo_plataforma(self, surface, rect, init_rect, plataforma, tema_efectivo, tiempo):
+        """Renderiza la tapa del sarcofago ferreo, cornisa superior y engranajes."""
+        pygame.draw.rect(surface, NEGRO_NOCHE, (rect.x + 2, rect.bottom, rect.width - 4, 4), border_radius=2)
+        if rect.width >= 40:
+            cx_b = rect.centerx
+            pulso_b = 0.5 + 0.5 * math.sin(tiempo * 5.0 + init_rect.x * 0.05)
+            pygame.draw.polygon(
+                surface,
+                (36, 32, 44),
+                [(cx_b - 10, rect.bottom - 1), (cx_b + 10, rect.bottom - 1), (cx_b + 5, rect.bottom + 5), (cx_b - 5, rect.bottom + 5)],
+            )
+            c_nucleo = (int(70 + 30 * pulso_b), int(185 + 40 * pulso_b), int(170 + 35 * pulso_b))
+            pygame.draw.circle(surface, c_nucleo, (cx_b, rect.bottom + 2), 2)
+
+        colores_losa = {
+            "osario": ((60, 46, 48), (28, 20, 22)),
+            "cripta": ((50, 54, 68), (22, 24, 34)),
+        }
+        color_losa, color_marco = colores_losa.get(tema_efectivo, ((56, 50, 62), (24, 20, 28)))
+        pygame.draw.rect(surface, color_losa, rect, border_radius=3)
+        pygame.draw.rect(surface, color_marco, rect, 2, border_radius=3)
+
+        pygame.draw.line(surface, MARFIL_XILOGRAFICO, (rect.x + 2, rect.y + 1), (rect.right - 2, rect.y + 1), 3)
+        for cx_cincel in range(rect.x + 8, rect.right - 4, 16):
+            pygame.draw.line(surface, TINTA_ABISMO, (cx_cincel, rect.y), (cx_cincel, rect.y + 3), 1)
+        pygame.draw.line(surface, TINTA_ABISMO, (rect.x + 2, rect.y + 4), (rect.right - 2, rect.y + 4), 2)
+        for ax in range(rect.x + 6, rect.right - 6, 8):
+            pygame.draw.line(surface, (18, 16, 24), (ax, rect.y + 6), (ax, rect.y + 11), 1)
+
+        if rect.width >= 48:
+            cx = rect.centerx
+            pygame.draw.line(surface, color_marco, (cx, rect.y + 4), (cx, rect.bottom - 3), 3)
+            pygame.draw.line(surface, color_marco, (cx - 10, rect.y + 9), (cx + 10, rect.y + 9), 3)
+            pygame.draw.line(surface, ORO_LITÚRGICO, (cx, rect.y + 5), (cx, rect.bottom - 4), 1)
+            pygame.draw.line(surface, ORO_LITÚRGICO, (cx - 9, rect.y + 9), (cx + 9, rect.y + 9), 1)
+        elif rect.width >= 32:
+            pygame.draw.line(surface, ORO_LITÚRGICO, (rect.x + 8, rect.y + 9), (rect.right - 8, rect.y + 9), 1)
+
+        giro = (plataforma.rect.x + plataforma.rect.y) * 0.12
+        for eng_x in (rect.x + 5, rect.right - 6):
+            eng_y = rect.centery + 1
+            pygame.draw.circle(surface, (32, 26, 36), (eng_x, eng_y), 4)
+            pygame.draw.circle(surface, (168, 134, 72), (eng_x, eng_y), 3, 1)
+            dx_g, dy_g = int(math.cos(giro) * 3), int(math.sin(giro) * 3)
+            pygame.draw.line(surface, (198, 162, 92), (eng_x - dx_g, eng_y - dy_g), (eng_x + dx_g, eng_y + dy_g), 1)
+
     def dibujar_plataformas(self, surface, camara):
-        tema = getattr(self, "tema", "camposanto")
         tiempo = pygame.time.get_ticks() / 1000.0
         for plataforma in self.plataformas:
             if not camara.is_on_screen(plataforma.rect):
                 continue
             rect = camara.aplicar_rect(plataforma.rect)
             init_rect = camara.aplicar_rect(plataforma.inicial_rect)
-            fila_plat = plataforma.rect.y // TILE
-            tema_efectivo = "cripta" if (fila_plat >= 18 and tema == "camposanto") else tema
+            tema_efectivo = self._tema_efectivo(plataforma.rect.y // TILE)
+            self._dibujar_riel_plataforma(surface, rect, init_rect, plataforma)
+            self._dibujar_cuerpo_plataforma(surface, rect, init_rect, plataforma, tema_efectivo, tiempo)
 
-            # Riel mecánico / cadena tensa según el eje real de oscilación ("h" o "v")
-            amp = int(getattr(plataforma, "amplitud", 0))
-            eje = getattr(plataforma, "eje", "h")
-            if amp > 0:
-                if eje in ("h", "x"):
-                    x_min = init_rect.x - amp + 6
-                    x_max = init_rect.right + amp - 6
-                    ry = rect.centery
-                    # Riel de hierro forjado en segundo plano con eslabones
-                    pygame.draw.line(surface, (22, 20, 28), (x_min, ry), (x_max, ry), 4)
-                    pygame.draw.line(surface, (58, 56, 70), (x_min, ry - 1), (x_max, ry - 1), 1)
-                    for ex in range(x_min, x_max + 1, 12):
-                        pygame.draw.circle(surface, (86, 82, 98), (ex, ry), 2, 1)
-                    # Rosetones de anclaje en los extremos del recorrido
-                    for ext_x in (x_min, x_max):
-                        pygame.draw.circle(surface, (28, 24, 34), (ext_x, ry), 5)
-                        pygame.draw.circle(surface, (132, 118, 88), (ext_x, ry), 4, 1)
-                        pygame.draw.circle(surface, TURQUESA_ÁNIMA, (ext_x, ry), 1)
-                else:
-                    y_min = init_rect.centery - amp - 18
-                    y_max = init_rect.centery + amp + 10
-                    for ancla_x in (rect.x + 10, rect.right - 10):
-                        for cy in range(y_min, y_max, 8):
-                            pygame.draw.rect(surface, (18, 16, 22), (ancla_x - 3, cy, 6, 7), border_radius=2)
-                            pygame.draw.rect(surface, (78, 74, 90), (ancla_x - 2, cy + 1, 4, 5), 1, border_radius=1)
-                        pygame.draw.circle(surface, (30, 26, 38), (ancla_x, y_min), 5)
-                        pygame.draw.circle(surface, (132, 118, 88), (ancla_x, y_min), 4, 1)
+    def _dibujar_solido_nes(self, surface, rect, fila, col_inicio, num_cols, paleta):
+        c_corte = (10, 8, 14)
+        for c_idx in range(num_cols):
+            tx = rect.x + c_idx * TILE
+            t_rect = pygame.Rect(tx, rect.y, TILE, TILE)
+            tiene_arriba = self._tiene_solido(fila - 1, col_inicio + c_idx)
+            c_fill = paleta["piso_profundo"] if tiene_arriba else paleta["piso"]
+            pygame.draw.rect(surface, c_fill, t_rect)
+            pygame.draw.rect(surface, c_corte, t_rect, 1)
+            if not tiene_arriba:
+                pygame.draw.rect(surface, paleta["bisel_top"], (tx, rect.y, TILE, 3))
+                pygame.draw.rect(surface, c_corte, (tx, rect.y + 3, TILE, 2))
 
-            # Sombra proyectada y brasero de ánima inferior
-            pygame.draw.rect(
-                surface,
-                NEGRO_NOCHE,
-                (rect.x + 2, rect.bottom, rect.width - 4, 4),
-                border_radius=2,
-            )
-            if rect.width >= 40:
-                cx_b = rect.centerx
-                pulso_b = 0.5 + 0.5 * math.sin(tiempo * 5.0 + init_rect.x * 0.05)
-                pygame.draw.polygon(
-                    surface,
-                    (36, 32, 44),
-                    [(cx_b - 10, rect.bottom - 1), (cx_b + 10, rect.bottom - 1), (cx_b + 5, rect.bottom + 5), (cx_b - 5, rect.bottom + 5)],
-                )
-                c_nucleo = (int(70 + 30 * pulso_b), int(185 + 40 * pulso_b), int(170 + 35 * pulso_b))
-                pygame.draw.circle(surface, c_nucleo, (cx_b, rect.bottom + 2), 2)
+    def _dibujar_solido_snes(self, surface, rect, fila, col_inicio, num_cols, paleta):
+        c_corte = (10, 8, 14)
+        desplazamiento = (TILE // 2) if fila % 2 == 1 else 0
+        c_bisel_top = paleta["bisel_top"]
+        c_bisel_sub = tuple(max(0, ch - 30) for ch in c_bisel_top)
+        for c_idx in range(num_cols):
+            tx = rect.x + c_idx * TILE
+            t_rect = pygame.Rect(tx, rect.y, TILE, TILE)
+            tiene_arriba = self._tiene_solido(fila - 1, col_inicio + c_idx)
+            pygame.draw.rect(surface, paleta["ladrillo"], t_rect)
+            pygame.draw.rect(surface, c_corte, t_rect, 1)
+            start_y = rect.y + 7 if not tiene_arriba else rect.y
+            gx = tx + desplazamiento
+            if gx < tx + TILE:
+                pygame.draw.line(surface, c_corte, (gx, start_y), (gx, rect.bottom), 1)
+                pygame.draw.line(surface, (84, 82, 98), (gx + 1, start_y), (gx + 1, rect.bottom), 1)
+            if not tiene_arriba:
+                pygame.draw.rect(surface, c_bisel_top, (tx, rect.y, TILE, 3))
+                pygame.draw.rect(surface, c_bisel_sub, (tx, rect.y + 3, TILE, 2))
+                pygame.draw.rect(surface, c_corte, (tx, rect.y + 5, TILE, 2))
 
-            # Tapa de sarcófago férreo labrada según tema efectivo
-            if tema_efectivo == "osario":
-                color_losa = (60, 46, 48)
-                color_marco = (28, 20, 22)
-            elif tema_efectivo == "cripta":
-                color_losa = (50, 54, 68)
-                color_marco = (22, 24, 34)
+    def _dibujar_formacion_techo(self, surface, rect, tx, fila, col, tiene_izq, tiene_der, paleta):
+        """Dibuja estalactitas y hombros inclinados en formaciones de techo."""
+        color_cuerpo = paleta["cuerpo"]
+        color_marco = paleta["marco"]
+        if not tiene_izq and not tiene_der:
+            c_roca_oscura = (max(0, color_cuerpo[0] - 12), max(0, color_cuerpo[1] - 12), max(0, color_cuerpo[2] - 10))
+            jit = ((col * 7 + fila * 3) % 5) - 2
+            punta_x, punta_y = tx + TILE // 2 + jit, rect.bottom - 1
+            pts_cono = [
+                (tx + 1, rect.y), (tx + TILE - 1, rect.y), (tx + TILE - 5, rect.y + 11),
+                (punta_x + 3, rect.y + 23), (punta_x, punta_y), (punta_x - 3, rect.y + 23), (tx + 5, rect.y + 11),
+            ]
+            pts_sombra = [(tx + TILE // 2, rect.y), (tx + TILE - 1, rect.y), (tx + TILE - 5, rect.y + 11), (punta_x, punta_y)]
+            pygame.draw.polygon(surface, color_cuerpo, pts_cono)
+            pygame.draw.polygon(surface, c_roca_oscura, pts_sombra)
+            pygame.draw.polygon(surface, color_marco, pts_cono, 2)
+            pygame.draw.line(surface, SALITRE_CRIPTA, (tx + 5, rect.y + 2), (punta_x - 1, punta_y - 3), 1)
+            pygame.draw.circle(surface, SALITRE_CRIPTA, (punta_x, punta_y + 2), 1)
+            return True
+
+        c_roca_oscura = (max(0, color_cuerpo[0] - 10), max(0, color_cuerpo[1] - 10), max(0, color_cuerpo[2] - 8))
+        if not tiene_izq and tiene_der:
+            pts_hombro = [(tx + 2, rect.y), (tx + TILE, rect.y), (tx + TILE, rect.bottom), (tx + TILE - 10, rect.bottom - 4), (tx + 8, rect.y + 14)]
+            pygame.draw.polygon(surface, color_cuerpo, pts_hombro)
+            pygame.draw.lines(surface, color_marco, False, [(tx + 2, rect.y), (tx + 8, rect.y + 14), (tx + TILE - 10, rect.bottom - 4), (tx + TILE, rect.bottom)], 2)
+            pygame.draw.line(surface, SALITRE_CRIPTA, (tx + 5, rect.y + 3), (tx + 12, rect.y + 16), 1)
+            return True
+        if tiene_izq and not tiene_der:
+            pts_hombro = [(tx, rect.y), (tx + TILE - 2, rect.y), (tx + TILE - 8, rect.y + 14), (tx + 10, rect.bottom - 4), (tx, rect.bottom)]
+            pygame.draw.polygon(surface, c_roca_oscura, pts_hombro)
+            pygame.draw.lines(surface, color_marco, False, [(tx + TILE - 2, rect.y), (tx + TILE - 8, rect.y + 14), (tx + 10, rect.bottom - 4), (tx, rect.bottom)], 2)
+            return True
+        return False
+
+    def _dibujar_solido_proc(self, surface, rect, fila, col_inicio, num_cols, tema_efectivo, paleta):
+        fila_rel = fila % 18
+        es_piso_nivel = fila_rel >= 15
+        for c_idx in range(num_cols):
+            col = col_inicio + c_idx
+            tx = rect.x + c_idx * TILE
+            t_rect = pygame.Rect(tx, rect.y, TILE, TILE)
+            tiene_arriba = self._tiene_solido(fila - 1, col)
+            tiene_abajo = self._tiene_solido(fila + 1, col)
+            tiene_izq = self._tiene_solido(fila, col - 1)
+            tiene_der = self._tiene_solido(fila, col + 1)
+
+            if es_piso_nivel:
+                c_fill = paleta["piso_profundo"] if tiene_arriba else paleta["piso"]
+                pygame.draw.rect(surface, c_fill, t_rect)
+                if not tiene_arriba:
+                    if tema_efectivo == "camposanto":
+                        pygame.draw.rect(surface, paleta["arriba"], (tx, rect.y, TILE, 4))
+                        for bx in range(tx + 3, tx + TILE - 2, 6):
+                            alt = 2 + ((bx * 11) % 5)
+                            pygame.draw.line(surface, paleta["brizna"], (bx, rect.y), (bx, rect.y - alt), 1)
+                    pygame.draw.line(surface, MARFIL_XILOGRAFICO, (tx, rect.y + 1), (tx + TILE, rect.y + 1), 3)
+                    for cx in (tx + 8, tx + 24):
+                        pygame.draw.line(surface, TINTA_ABISMO, (cx, rect.y), (cx, rect.y + 3), 1)
+                    pygame.draw.line(surface, TINTA_ABISMO, (tx, rect.y + 4), (tx + TILE, rect.y + 4), 2)
+                    for hx in (tx + 4, tx + 12, tx + 20, tx + 28):
+                        pygame.draw.line(surface, (20, 18, 26), (hx, rect.y + 6), (hx, rect.y + 12), 1)
+                elif (fila + col) % 2 == 0:
+                    pygame.draw.rect(surface, paleta["borde"], (tx + 3, rect.y + 4, TILE - 6, TILE - 8), 1, border_radius=2)
+                if not tiene_abajo:
+                    pygame.draw.line(surface, paleta["borde"], (tx, rect.bottom - 1), (tx + TILE, rect.bottom - 1), 1)
+                if not tiene_izq:
+                    pygame.draw.line(surface, paleta["borde"], (tx, rect.y), (tx, rect.bottom), 1)
+                if not tiene_der:
+                    pygame.draw.line(surface, paleta["borde"], (tx + TILE - 1, rect.y), (tx + TILE - 1, rect.bottom), 1)
+                continue
+
+            if tiene_arriba and not tiene_abajo and (1 <= fila_rel <= 3):
+                if self._dibujar_formacion_techo(surface, rect, tx, fila, col, tiene_izq, tiene_der, paleta):
+                    continue
+
+            color_cuerpo, color_marco = paleta["cuerpo"], paleta["marco"]
+            pygame.draw.rect(surface, color_cuerpo, t_rect)
+            if not tiene_arriba:
+                pygame.draw.line(surface, MARFIL_XILOGRAFICO, (tx, rect.y), (tx + TILE, rect.y), 3)
+                for cx in (tx + 8, tx + 24):
+                    pygame.draw.line(surface, TINTA_ABISMO, (cx, rect.y), (cx, rect.y + 3), 1)
+                pygame.draw.line(surface, TINTA_ABISMO, (tx, rect.y + 3), (tx + TILE, rect.y + 3), 3)
+                for hx in (tx + 6, tx + 14, tx + 22):
+                    pygame.draw.line(surface, (20, 18, 26), (hx, rect.y + 6), (hx, rect.y + 11), 1)
+            if not tiene_abajo:
+                pygame.draw.line(surface, color_marco, (tx, rect.bottom - 1), (tx + TILE, rect.bottom - 1), 2)
+                if tema_efectivo == "cripta" and tiene_arriba and fila_rel > 0:
+                    salt_alt = 3 + (((col * 11) + fila) % 5)
+                    pts_pico = [(tx + 11, rect.bottom - 1), (tx + 21, rect.bottom - 1), (tx + 16, rect.bottom + salt_alt)]
+                    pygame.draw.polygon(surface, color_cuerpo, pts_pico)
+                    pygame.draw.polygon(surface, color_marco, pts_pico, 1)
+            if not tiene_izq:
+                pygame.draw.line(surface, color_marco, (tx, rect.y), (tx, rect.bottom), 2)
+            if not tiene_der:
+                pygame.draw.line(surface, color_marco, (tx + TILE - 1, rect.y), (tx + TILE - 1, rect.bottom), 2)
             else:
-                color_losa = (56, 50, 62)
-                color_marco = (24, 20, 28)
-
-            pygame.draw.rect(surface, color_losa, rect, border_radius=3)
-            pygame.draw.rect(surface, color_marco, rect, 2, border_radius=3)
-
-            # Cornisa superior en Marfil Xilográfico (3px) con muescas de cincel
-            pygame.draw.line(surface, MARFIL_XILOGRAFICO, (rect.x + 2, rect.y + 1), (rect.right - 2, rect.y + 1), 3)
-            for cx_cincel in range(rect.x + 8, rect.right - 4, 16):
-                pygame.draw.line(surface, TINTA_ABISMO, (cx_cincel, rect.y), (cx_cincel, rect.y + 3), 1)
-            pygame.draw.line(surface, TINTA_ABISMO, (rect.x + 2, rect.y + 4), (rect.right - 2, rect.y + 4), 2)
-            for ax in range(rect.x + 6, rect.right - 6, 8):
-                pygame.draw.line(surface, (18, 16, 24), (ax, rect.y + 6), (ax, rect.y + 11), 1)
-
-            # Relieve central de bronce litúrgico
-            if rect.width >= 48:
-                cx = rect.centerx
-                pygame.draw.line(surface, color_marco, (cx, rect.y + 4), (cx, rect.bottom - 3), 3)
-                pygame.draw.line(surface, color_marco, (cx - 10, rect.y + 9), (cx + 10, rect.y + 9), 3)
-                pygame.draw.line(surface, ORO_LITÚRGICO, (cx, rect.y + 5), (cx, rect.bottom - 4), 1)
-                pygame.draw.line(surface, ORO_LITÚRGICO, (cx - 9, rect.y + 9), (cx + 9, rect.y + 9), 1)
-            elif rect.width >= 32:
-                pygame.draw.line(
-                    surface,
-                    ORO_LITÚRGICO,
-                    (rect.x + 8, rect.y + 9),
-                    (rect.right - 8, rect.y + 9),
-                    1,
-                )
-
-            # Engranajes laterales de bronce que giran con el desplazamiento de la plataforma
-            giro = (plataforma.rect.x + plataforma.rect.y) * 0.12
-            for eng_x in (rect.x + 5, rect.right - 6):
-                eng_y = rect.centery + 1
-                pygame.draw.circle(surface, (32, 26, 36), (eng_x, eng_y), 4)
-                pygame.draw.circle(surface, (168, 134, 72), (eng_x, eng_y), 3, 1)
-                dx_g = int(math.cos(giro) * 3)
-                dy_g = int(math.sin(giro) * 3)
-                pygame.draw.line(surface, (198, 162, 92), (eng_x - dx_g, eng_y - dy_g), (eng_x + dx_g, eng_y + dy_g), 1)
+                pygame.draw.line(surface, color_marco, (tx + TILE - 1, rect.y + 2), (tx + TILE - 1, rect.bottom - 2), 1)
 
     def dibujar_solidos(self, surface, camara):
-        tema = getattr(self, "tema", "camposanto")
-        import config
         estilo = config.resolver_estilo(getattr(config, "ESTILO_MUNDO", "AUTO"))
-        c_corte = (10, 8, 14)
-
         for solido in self.solidos:
             if not camara.is_on_screen(solido):
                 continue
-
             rect = camara.aplicar_rect(solido)
             fila = solido.y // TILE
             col_inicio = solido.x // TILE
             num_cols = solido.width // TILE
-            fila_rel = fila % 18
-            es_piso_nivel = fila_rel >= 15
-
-            # Tema contextual por piso en niveles verticales (ej: catacumbas bajo tierra)
-            tema_efectivo = "cripta" if (fila >= 18 and tema == "camposanto") else tema
-
-            if tema_efectivo == "cripta":
-                c_bisel_top = (180, 198, 222)
-                color_piso = (44, 48, 58)
-                color_piso_profundo = (26, 28, 36)
-                color_borde = (18, 20, 26)
-                color_arriba = (55, 78, 68)
-                color_brizna = (82, 118, 102)
-                color_cuerpo = (52, 56, 68)
-                color_marco = (24, 26, 34)
-            elif tema_efectivo == "osario":
-                c_bisel_top = (218, 208, 186)
-                color_piso = (62, 45, 43)
-                color_piso_profundo = (38, 26, 26)
-                color_borde = (26, 18, 20)
-                color_arriba = (96, 58, 52)
-                color_brizna = (136, 86, 78)
-                color_cuerpo = (74, 52, 50)
-                color_marco = (36, 22, 24)
-            else:
-                c_bisel_top = (165, 185, 160)
-                color_piso = (68, 52, 42)
-                color_piso_profundo = (44, 32, 26)
-                color_borde = (28, 20, 16)
-                color_arriba = (48, 76, 44)
-                color_brizna = (76, 114, 68)
-                color_cuerpo = (64, 62, 70)
-                color_marco = (26, 24, 30)
+            tema_efectivo = self._tema_efectivo(fila)
+            paleta = _PALETAS_SOLIDOS.get(tema_efectivo, _PALETAS_SOLIDOS["camposanto"])
 
             if estilo == "NES":
-                for c_idx in range(num_cols):
-                    col = col_inicio + c_idx
-                    tx = rect.x + c_idx * TILE
-                    t_rect = pygame.Rect(tx, rect.y, TILE, TILE)
-                    tiene_arriba = (
-                        fila > 0
-                        and fila - 1 < len(self.filas)
-                        and col < len(self.filas[fila - 1])
-                        and self.filas[fila - 1][col] == "#"
-                    )
-                    c_fill = color_piso_profundo if tiene_arriba else color_piso
-                    pygame.draw.rect(surface, c_fill, t_rect)
-                    pygame.draw.rect(surface, c_corte, t_rect, 1)
-                    if not tiene_arriba:
-                        pygame.draw.rect(surface, c_bisel_top, (tx, rect.y, TILE, 3))
-                        pygame.draw.rect(surface, c_corte, (tx, rect.y + 3, TILE, 2))
-                continue
-
-            if estilo == "SNES":
-                desplazamiento = (TILE // 2) if fila % 2 == 1 else 0
-                c_ladrillo = (
-                    (58, 56, 70)
-                    if tema_efectivo == "cripta"
-                    else ((68, 54, 52) if tema_efectivo == "osario" else (62, 58, 50))
-                )
-                for c_idx in range(num_cols):
-                    col = col_inicio + c_idx
-                    tx = rect.x + c_idx * TILE
-                    t_rect = pygame.Rect(tx, rect.y, TILE, TILE)
-                    tiene_arriba = (
-                        fila > 0
-                        and fila - 1 < len(self.filas)
-                        and col < len(self.filas[fila - 1])
-                        and self.filas[fila - 1][col] == "#"
-                    )
-                    pygame.draw.rect(surface, c_ladrillo, t_rect)
-                    pygame.draw.rect(surface, c_corte, t_rect, 1)
-                    start_y = rect.y + 7 if not tiene_arriba else rect.y
-                    gx = tx + desplazamiento
-                    if gx < tx + TILE:
-                        pygame.draw.line(surface, c_corte, (gx, start_y), (gx, rect.bottom), 1)
-                        pygame.draw.line(surface, (84, 82, 98), (gx + 1, start_y), (gx + 1, rect.bottom), 1)
-                    if not tiene_arriba:
-                        pygame.draw.rect(surface, c_bisel_top, (tx, rect.y, TILE, 3))
-                        c_bisel_sub = (
-                            max(0, c_bisel_top[0] - 30),
-                            max(0, c_bisel_top[1] - 30),
-                            max(0, c_bisel_top[2] - 30),
-                        )
-                        pygame.draw.rect(surface, c_bisel_sub, (tx, rect.y + 3, TILE, 2))
-                        pygame.draw.rect(surface, c_corte, (tx, rect.y + 5, TILE, 2))
-                continue
-
-            # MODELO B3: PROC (Procedural Gótico con Autotiling Ortogonal y Estalactitas Orgánicas)
-            for c_idx in range(num_cols):
-                col = col_inicio + c_idx
-                tx = rect.x + c_idx * TILE
-                t_rect = pygame.Rect(tx, rect.y, TILE, TILE)
-
-                tiene_arriba = (
-                    fila > 0
-                    and fila - 1 < len(self.filas)
-                    and col < len(self.filas[fila - 1])
-                    and self.filas[fila - 1][col] == "#"
-                )
-                tiene_abajo = (
-                    fila + 1 < len(self.filas)
-                    and col < len(self.filas[fila + 1])
-                    and self.filas[fila + 1][col] == "#"
-                )
-                tiene_izq = (
-                    col > 0
-                    and self.filas[fila][col - 1] == "#"
-                )
-                tiene_der = (
-                    col + 1 < len(self.filas[fila])
-                    and self.filas[fila][col + 1] == "#"
-                )
-
-                if es_piso_nivel:
-                    c_fill = color_piso_profundo if tiene_arriba else color_piso
-                    pygame.draw.rect(surface, c_fill, t_rect)
-                    if not tiene_arriba:
-                        if tema_efectivo == "camposanto":
-                            pygame.draw.rect(surface, color_arriba, (tx, rect.y, TILE, 4))
-                            for bx in range(tx + 3, tx + TILE - 2, 6):
-                                alt = 2 + ((bx * 11) % 5)
-                                pygame.draw.line(surface, color_brizna, (bx, rect.y), (bx, rect.y - alt), 1)
-                        pygame.draw.line(surface, MARFIL_XILOGRAFICO, (tx, rect.y + 1), (tx + TILE, rect.y + 1), 3)
-                        for cx in (tx + 8, tx + 24):
-                            pygame.draw.line(surface, TINTA_ABISMO, (cx, rect.y), (cx, rect.y + 3), 1)
-                        pygame.draw.line(surface, TINTA_ABISMO, (tx, rect.y + 4), (tx + TILE, rect.y + 4), 2)
-                        for hx in (tx + 4, tx + 12, tx + 20, tx + 28):
-                            pygame.draw.line(surface, (20, 18, 26), (hx, rect.y + 6), (hx, rect.y + 12), 1)
-                    else:
-                        # Textura de sillares subterráneos en el suelo profundo
-                        if (fila + col) % 2 == 0:
-                            pygame.draw.rect(surface, color_borde, (tx + 3, rect.y + 4, TILE - 6, TILE - 8), 1, border_radius=2)
-                    if not tiene_abajo:
-                        pygame.draw.line(surface, color_borde, (tx, rect.bottom - 1), (tx + TILE, rect.bottom - 1), 1)
-                    if not tiene_izq:
-                        pygame.draw.line(surface, color_borde, (tx, rect.y), (tx, rect.bottom), 1)
-                    if not tiene_der:
-                        pygame.draw.line(surface, color_borde, (tx + TILE - 1, rect.y), (tx + TILE - 1, rect.bottom), 1)
-                else:
-                    # Formaciones de techo cavernoso (estalactitas orgánicas en filas 1..3 de cada piso)
-                    es_formacion_techo = tiene_arriba and not tiene_abajo and (1 <= fila_rel <= 3)
-
-                    if es_formacion_techo and not tiene_izq and not tiene_der:
-                        # Punta cónica de estalactita tallada en roca
-                        c_sombra = color_marco
-                        c_roca_oscura = (max(0, color_cuerpo[0] - 12), max(0, color_cuerpo[1] - 12), max(0, color_cuerpo[2] - 10))
-                        jit = ((col * 7 + fila * 3) % 5) - 2
-                        punta_x = tx + TILE // 2 + jit
-                        punta_y = rect.bottom - 1
-                        pts_cono = [
-                            (tx + 1, rect.y),
-                            (tx + TILE - 1, rect.y),
-                            (tx + TILE - 5, rect.y + 11),
-                            (punta_x + 3, rect.y + 23),
-                            (punta_x, punta_y),
-                            (punta_x - 3, rect.y + 23),
-                            (tx + 5, rect.y + 11),
-                        ]
-                        pygame.draw.polygon(surface, color_cuerpo, pts_cono)
-                        # Faceta derecha en sombra para volumen 3D
-                        pts_sombra = [
-                            (tx + TILE // 2, rect.y),
-                            (tx + TILE - 1, rect.y),
-                            (tx + TILE - 5, rect.y + 11),
-                            (punta_x, punta_y),
-                        ]
-                        pygame.draw.polygon(surface, c_roca_oscura, pts_sombra)
-                        pygame.draw.polygon(surface, c_sombra, pts_cono, 2)
-                        # Arista mineral iluminada y gota de salitre en la punta
-                        pygame.draw.line(surface, SALITRE_CRIPTA, (tx + 5, rect.y + 2), (punta_x - 1, punta_y - 3), 1)
-                        pygame.draw.circle(surface, SALITRE_CRIPTA, (punta_x, punta_y + 2), 1)
-                        continue
-
-                    if es_formacion_techo and (not tiene_izq or not tiene_der):
-                        # Hombros inclinados de estalactita ancha (ej. '###' sobre '.#.')
-                        c_roca_oscura = (max(0, color_cuerpo[0] - 10), max(0, color_cuerpo[1] - 10), max(0, color_cuerpo[2] - 8))
-                        if not tiene_izq and tiene_der:
-                            pts_hombro = [
-                                (tx + 2, rect.y),
-                                (tx + TILE, rect.y),
-                                (tx + TILE, rect.bottom),
-                                (tx + TILE - 10, rect.bottom - 4),
-                                (tx + 8, rect.y + 14),
-                            ]
-                            pygame.draw.polygon(surface, color_cuerpo, pts_hombro)
-                            pygame.draw.lines(surface, color_marco, False, [(tx + 2, rect.y), (tx + 8, rect.y + 14), (tx + TILE - 10, rect.bottom - 4), (tx + TILE, rect.bottom)], 2)
-                            pygame.draw.line(surface, SALITRE_CRIPTA, (tx + 5, rect.y + 3), (tx + 12, rect.y + 16), 1)
-                            continue
-                        if tiene_izq and not tiene_der:
-                            pts_hombro = [
-                                (tx, rect.y),
-                                (tx + TILE - 2, rect.y),
-                                (tx + TILE - 8, rect.y + 14),
-                                (tx + 10, rect.bottom - 4),
-                                (tx, rect.bottom),
-                            ]
-                            pygame.draw.polygon(surface, c_roca_oscura, pts_hombro)
-                            pygame.draw.lines(surface, color_marco, False, [(tx + TILE - 2, rect.y), (tx + TILE - 8, rect.y + 14), (tx + 10, rect.bottom - 4), (tx, rect.bottom)], 2)
-                            continue
-
-                    pygame.draw.rect(surface, color_cuerpo, t_rect)
-
-                    # Borde superior del bloque para pisar
-                    if not tiene_arriba:
-                        pygame.draw.line(surface, MARFIL_XILOGRAFICO, (tx, rect.y), (tx + TILE, rect.y), 3)
-                        for cx in (tx + 8, tx + 24):
-                            pygame.draw.line(surface, TINTA_ABISMO, (cx, rect.y), (cx, rect.y + 3), 1)
-                        pygame.draw.line(surface, TINTA_ABISMO, (tx, rect.y + 3), (tx + TILE, rect.y + 3), 3)
-                        for hx in (tx + 6, tx + 14, tx + 22):
-                            pygame.draw.line(surface, (20, 18, 26), (hx, rect.y + 6), (hx, rect.y + 11), 1)
-
-                    # Borde inferior expuesto (techo o losa flotante)
-                    if not tiene_abajo:
-                        pygame.draw.line(surface, color_marco, (tx, rect.bottom - 1), (tx + TILE, rect.bottom - 1), 2)
-                        # Solo colgar pequeños picos de roca/salitre cuando el bloque pertenece al techo (tiene_arriba),
-                        # evitando que peldaños de 1 tile de grosor tengan estalactitas colgando.
-                        if tema_efectivo == "cripta" and tiene_arriba and fila_rel > 0:
-                            salt_alt = 3 + (((col * 11) + fila) % 5)
-                            pts_pico = [
-                                (tx + 11, rect.bottom - 1),
-                                (tx + 21, rect.bottom - 1),
-                                (tx + 16, rect.bottom + salt_alt),
-                            ]
-                            pygame.draw.polygon(surface, color_cuerpo, pts_pico)
-                            pygame.draw.polygon(surface, color_marco, pts_pico, 1)
-
-                    # Caras laterales expuestas
-                    if not tiene_izq:
-                        pygame.draw.line(surface, color_marco, (tx, rect.y), (tx, rect.bottom), 2)
-                    if not tiene_der:
-                        pygame.draw.line(surface, color_marco, (tx + TILE - 1, rect.y), (tx + TILE - 1, rect.bottom), 2)
-
-                    # Mortaja vertical sutil si hay ladrillos contiguos
-                    if tiene_der:
-                        pygame.draw.line(surface, color_marco, (tx + TILE - 1, rect.y + 2), (tx + TILE - 1, rect.bottom - 2), 1)
+                self._dibujar_solido_nes(surface, rect, fila, col_inicio, num_cols, paleta)
+            elif estilo == "SNES":
+                self._dibujar_solido_snes(surface, rect, fila, col_inicio, num_cols, paleta)
+            else:
+                self._dibujar_solido_proc(surface, rect, fila, col_inicio, num_cols, tema_efectivo, paleta)
 
     def dibujar_decoraciones(self, surface, camara):
         tiempo = pygame.time.get_ticks() / 1000.0
@@ -1040,7 +867,6 @@ class Nivel:
 
     def _dibujar_vela(self, surface, rect):
         x = rect.centerx
-        import config
         estilo = config.resolver_estilo(getattr(config, "ESTILO_MUNDO", "AUTO"))
         if estilo != "NES":
             surface.blit(_obtener_halo_vela(), (x - 20, rect.y + 12 - 20))
@@ -1087,8 +913,7 @@ class Nivel:
             # Brillo especular xilográfico
             if idx % 2 == 0:
                 pygame.draw.line(surface, MARFIL_XILOGRAFICO, (cx - 1, cy + 2), (cx - 1, cy + 5), 1)
-        # Gancho o grillete inferior si la celda de abajo está libre
-        fila_abajo = (rect.y // TILE) + 1
+        # Gancho o grillete inferior
         pygame.draw.circle(surface, (120, 118, 134), (x_base + balanceo, rect.bottom - 2), 3, 1)
 
     def _dibujar_gargola(self, surface, rect):
@@ -1145,7 +970,6 @@ class Nivel:
         """'b': Brasero espectral de pared con halo aditivo cian y restos óseos al pie."""
         cx = rect.centerx
         base_y = rect.bottom - 2
-        import config
         estilo = config.resolver_estilo(getattr(config, "ESTILO_MUNDO", "AUTO"))
 
         # 1. Osamenta cruzada al pie con recorte marfil

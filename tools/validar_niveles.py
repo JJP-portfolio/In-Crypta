@@ -11,6 +11,7 @@ if _RAIZ not in sys.path:
     sys.path.insert(0, _RAIZ)
 
 from config import DASH_DURACION, DASH_VELOCIDAD, GRAVEDAD, SALTO, TILE, VELOCIDAD
+import niveles as _n
 
 #---- Simbolos del mapa ----#
 SOLIDO = set("#~MV")            # bloquea el cuerpo y sirve de apoyo
@@ -396,7 +397,6 @@ def validar(mapa, nombre="nivel", habilidades=("dash",), principal=True, estrict
 
 
 def _cargar_niveles():
-    import niveles as _n
     catalogo = []
     catalogo.append(("TUTORIAL", _n.NIVEL_TUTORIAL, (), False))
     habilidades_por_indice = [(), ("dash",), ("dash", "pala")]

@@ -29,10 +29,10 @@ def main():
     pygame.image.save(juego_titulo.pantalla, str(ruta_titulo))
     print(f"CAPTURA_OK {ruta_titulo}")
 
-    # Menú con TUTORIAL seleccionado
+    # Menú principal con opción de Campaña destacada
     juego_menu = Juego()
     juego_menu.abrir_menu()
-    juego_menu.menu_opcion = 2  # TUTORIAL highlighted
+    juego_menu.menu_opcion = 0
     for _ in range(5):
         juego_menu.actualizar(1 / 60)
     juego_menu.dibujar()

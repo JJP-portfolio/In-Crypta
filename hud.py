@@ -7,33 +7,25 @@ from pathlib import Path
 import pygame
 
 from config import (
-    ALMAS_POR_VIDA,
     ANCHO,
     ALTO,
     ATAQUE_COOLDOWN,
     DASH_COOLDOWN,
     DASH_USOS_AIRE,
-    HUD_ALMA,
     HUD_BORDE,
-    HUD_DASHTURQUESA,
-    HUD_MUTED,
-    HUD_NEGRO,
-    HUD_ORO,
-    HUD_ROJO,
     HUD_TEXTO,
     HUD_VERDE,
     JEFE_VIDA,
-    MAX_DT,
+    MINIJEFE_VIDA,
     VIDAS_MAXIMAS,
 )
-from efectos import ease_out_back, ease_out_cubic, ease_in_out_cubic
 
 try:
     from niveles import NIVELES
 except ImportError:
     NIVELES = []
 
-#---- Componentes del HUD ----#
+#---- Constantes de diseno del HUD ----#
 HUD_MARGEN_X = 24
 HUD_MARGEN_Y = 16
 HUD_ALTO = 72
@@ -51,14 +43,31 @@ FUENTE_LABEL = 12
 FUENTE_CONTADOR = 14
 FUENTE_NOMBRE = 18
 
-# Ruta absoluta de la fuente gótica
+# Ruta absoluta de la fuente gotica
 _RAIZ_HUD = Path(__file__).resolve().parent
 _RUTA_FUENTE = _RAIZ_HUD / "assets/NotoSerifDisplay-Bold.ttf"
 
-DEBUG_HUD = False
+
+#---- Funciones de easing para transiciones ----#
+def _ease_out_back(x: float) -> float:
+    """Rebote suave hacia afuera al finalizar la transicion."""
+    c = 4
+    return float((1 + c) * x**3 - c * x**2)
 
 
-#---- Componentes del HUD ----#
+def _ease_out_cubic(x: float) -> float:
+    """Desaceleracion cubica hacia el valor objetivo."""
+    return float(1 - (1 - x) ** 3)
+
+
+def _ease_in_out_cubic(x: float) -> float:
+    """Aceleracion inicial y desaceleracion final simetrica."""
+    if x < 0.5:
+        return 4 * x**3
+    return 1 - 4 * (1 - x) ** 3
+
+
+#---- Interpolacion y cache de texto ----#
 @dataclass
 class Tween:
     duracion: float
@@ -77,12 +86,12 @@ class Tween:
     def valor(self) -> float:
         t = self.t
         if self.curva == "out_back":
-            return ease_out_back(t)
+            return _ease_out_back(t)
         if self.curva == "in_out_cubic":
-            return ease_in_out_cubic(t)
+            return _ease_in_out_cubic(t)
         if self.curva == "linear":
             return t
-        return ease_out_cubic(t)
+        return _ease_out_cubic(t)
 
     def esta_activo(self) -> bool:
         return self.transcurrido < self.duracion
@@ -93,7 +102,7 @@ class Tween:
         self.transcurrido = 0.0
 
 
-#---- Componentes del HUD ----#
+#---- Cache de textos renderizados ----#
 class TextoCache:
     def __init__(self, cargar_fuente):
         self.cargar_fuente = cargar_fuente
@@ -119,7 +128,7 @@ class TextoCache:
         return imagen
 
 
-#---- Componentes del HUD ----#
+#---- Tema visual del HUD ----#
 @dataclass
 class HudTheme:
     panel_bg: tuple = (9, 8, 13, 190)
@@ -153,7 +162,7 @@ class HudTheme:
     corazon_pitch: int = 28
 
 
-#---- Componentes del HUD ----#
+#---- Distribucion espacial ----#
 @dataclass(frozen=True)
 class HudLayout:
     riel: pygame.Rect
@@ -200,23 +209,8 @@ class HudLayout:
             canal_mensajes=canal_mensajes,
         )
 
-    def solapamientos(self):
-        """Devuelve lista de pares de rects que se solapan (para tests)."""
-        rects = [
-            ("izq", self.zona_izq),
-            ("centro", self.zona_centro),
-            ("der", self.zona_der),
-            ("mensajes", self.canal_mensajes),
-        ]
-        resultado = []
-        for i in range(len(rects)):
-            for j in range(i + 1, len(rects)):
-                if rects[i][1].colliderect(rects[j][1]):
-                    resultado.append((rects[i][0], rects[j][0]))
-        return resultado
 
-
-#---- Componentes del HUD ----#
+#---- Modelo de estado del HUD ----#
 @dataclass
 class HudModel:
     # Jugador
@@ -241,48 +235,20 @@ class HudModel:
     jefe_vida_max: int = JEFE_VIDA
     jefe_fase: int = 1
     jefe_nombre: str = "EL CUSTODIO DEL OSARIO"
-    # Nivel / tiempo
+    # Nivel y tiempo
     nivel_indice: int = 0
     nivel_total: int = 1
     nivel_nombre: str = "CAMPOSANTO"
     tiempo: float = 0.0
-    # Estado / mensajes
+    # Estado y mensajes
     estado: str = "jugando"
     pista: str = ""
     aviso_jefe: float = 0.0
-    # Snapshots previos (para detectar eventos sin tocar gameplay)
+    # Instantanea previa para activar el modo inmersivo sin acoplar el gameplay
     vidas_prev: int = field(init=False, default=0)
-    almas_prev: int = field(init=False, default=0)
-    almas_para_vida_prev: int = field(init=False, default=0)
-    dash_cooldown_prev: float = field(init=False, default=0.0)
-    ataque_cooldown_prev: float = field(init=False, default=0.0)
-    jefe_vida_prev: int = field(init=False, default=0)
-    jefe_fase_prev: int = field(init=False, default=1)
 
     def snapshot_prev(self):
         self.vidas_prev = self.vidas
-        self.almas_prev = self.almas
-        self.almas_para_vida_prev = self.almas_para_vida
-        self.dash_cooldown_prev = self.dash_cooldown
-        self.ataque_cooldown_prev = self.ataque_cooldown
-        self.jefe_vida_prev = self.jefe_vida
-        self.jefe_fase_prev = self.jefe_fase
-
-    #---- Detección de eventos ----#
-    def evento_alma_recogida(self):
-        return self.almas > self.almas_prev
-
-    def evento_perdio_vida(self):
-        return self.vidas < self.vidas_prev
-
-    def evento_vida_extra(self):
-        return self.vidas > self.vidas_prev
-
-    def evento_dash_listo(self):
-        return self.dash_cooldown_prev > 0 and self.dash_cooldown <= 0
-
-    def evento_jefe_cambio_fase(self):
-        return self.jefe_fase > self.jefe_fase_prev
 
     @property
     def dash_listo(self) -> bool:
@@ -379,43 +345,10 @@ class MensajeHUD:
         return 0
 
 
-#---- Helpers de formato ----#
-def fmt_cooldown(restante: float) -> str:
-    if restante <= 0:
-        return "LISTO"
-    decimas = math.ceil(restante * 10) / 10
-    return f"{decimas:.1f}s"
-
-
-def fmt_dash(model: HudModel) -> str:
-    if not getattr(model, "tiene_dash", False):
-        return "[DASH] --"
-    if model.dash_cooldown > 0:
-        return f"[DASH] {fmt_cooldown(model.dash_cooldown)}"
-    if not model.en_suelo and model.dash_usos_aire <= 0:
-        return "[DASH] SIN USO"
-    return "[DASH] LISTO"
-
-
-def fmt_arma(model: HudModel) -> str:
-    if not model.tiene_pala:
-        return "[PALA] --"
-    etiqueta = "GUADAÑA" if model.rango_ataque_mejorado else "PALA"
-    if model.ataque_cooldown > 0:
-        return f"[{etiqueta}] {fmt_cooldown(model.ataque_cooldown)}"
-    return f"[{etiqueta}] LISTO"
-
-
+#---- Formateo y ajuste de texto ----#
 def fmt_tiempo(segundos: float) -> str:
     total = max(0, int(segundos))
     return f"{total // 60:02d}:{total % 60:02d}"
-
-
-def fmt_tiempo_dec(segundos: float) -> str:
-    segundos = max(0.0, segundos)
-    total = int(segundos)
-    decima = int((segundos - total) * 10)
-    return f"{total // 60:02d}:{total % 60:02d}.{decima}"
 
 
 def envolver(texto, fuente, ancho_max, max_lineas=2):
@@ -463,33 +396,27 @@ def _partir_palabra(palabra, fuente, ancho_max):
     return partes
 
 
-#---- Renderizado del HUD ----#
+#---- Renderizador del HUD ----#
 class HudRenderer:
+    """Renderiza los paneles heraldicos, barra de jefe y mensajes del HUD."""
+
     def __init__(self, layout: HudLayout, tema: HudTheme, texto_cache: TextoCache):
         self.layout = layout
         self.tema = tema
         self.texto_cache = texto_cache
         self._fuentes = {}
         self._paneles_cache: OrderedDict = OrderedDict()
-        self._iconos_cache = {}
-        self._panel_der_surface = None
-        self._surf_riel_buffer = None
         self.tiempo = 0.0
         self.modo_hud = 0
-        # Tweens reactivos para feedback de eventos
-        self.tween_alma = Tween(0.25, 0.25, "out_back")
-        self.tween_dash = Tween(0.30, 0.30, "out_back")
-        self.tween_arma = Tween(0.25, 0.25, "out_back")
-        self.tween_jefe = Tween(0.22, 0.22, "out_cubic")
 
     def _guardar_panel_cache(self, clave, surf):
-        """Guarda en caché acotada con desalojo LRU (máximo 32 superficies)."""
+        """Guarda en cache acotada con desalojo LRU (maximo 32 superficies)."""
         self._paneles_cache[clave] = surf
         if len(self._paneles_cache) > 32:
             self._paneles_cache.popitem(last=False)
 
     def _obtener_panel_cache(self, clave):
-        """Recupera de caché y mueve al frente (más recientemente usado)."""
+        """Recupera de cache y mueve al frente (mas recientemente usado)."""
         if clave in self._paneles_cache:
             self._paneles_cache.move_to_end(clave)
             return self._paneles_cache[clave]
@@ -505,62 +432,6 @@ class HudRenderer:
 
     def _texto(self, texto, tamano, color, sombra=False):
         return self.texto_cache.render(texto, tamano, color, sombra)
-
-    #---- Paneles cacheados ----#
-    def _panel(self, ancho, alto, alpha=None):
-        import config
-        estilo = config.resolver_estilo(getattr(config, "ESTILO_HUD", "AUTO"))
-        alfa_q = None if alpha is None else max(0, min(255, (int(alpha) // 8) * 8))
-        clave = (ancho, alto, alfa_q, estilo)
-        surf = self._obtener_panel_cache(clave)
-        if surf is None:
-            if estilo == "NES":
-                # Estilo basico opaco
-                surf = pygame.Surface((ancho, alto))
-                surf.fill((9, 8, 13))
-                pygame.draw.rect(surf, (104, 82, 52), (0, 0, ancho, alto), 1)
-                pygame.draw.rect(surf, (216, 180, 104), (3, 3, ancho - 6, alto - 6), 1)
-                for cx, cy in ((0, 0), (ancho - 4, 0), (0, alto - 4), (ancho - 4, alto - 4)):
-                    pygame.draw.rect(surf, (9, 8, 13), (cx, cy, 4, 4))
-                    pygame.draw.rect(surf, (216, 180, 104), (cx + 1, cy + 1, 2, 2))
-                try:
-                    surf = surf.convert()
-                except (pygame.error, AttributeError):
-                    pass
-            elif estilo == "SNES":
-                # Estilo biselado
-                a = alfa_q if alfa_q is not None else 225
-                surf = pygame.Surface((ancho, alto), pygame.SRCALPHA)
-                pygame.draw.rect(surf, (16, 14, 26, a), (0, 0, ancho, alto), border_radius=6)
-                pygame.draw.line(surf, (238, 202, 118), (4, 1), (ancho - 5, 1), 2)
-                pygame.draw.line(surf, (216, 180, 104), (1, 4), (1, alto - 5), 2)
-                pygame.draw.line(surf, (72, 52, 28), (4, alto - 2), (ancho - 5, alto - 2), 2)
-                pygame.draw.line(surf, (72, 52, 28), (ancho - 2, 4), (ancho - 2, alto - 5), 2)
-                pygame.draw.rect(surf, (140, 110, 65, 240), (3, 3, ancho - 6, alto - 6), 1, border_radius=4)
-                for rx, ry in ((7, 7), (ancho - 8, 7), (7, alto - 8), (ancho - 8, alto - 8)):
-                    pygame.draw.circle(surf, (40, 30, 20), (rx, ry), 3)
-                    pygame.draw.circle(surf, (238, 202, 118), (rx, ry), 2)
-                try:
-                    surf = surf.convert_alpha()
-                except (pygame.error, AttributeError):
-                    pass
-            else:
-                # Estilo detallado
-                a = alfa_q if alfa_q is not None else self.tema.panel_bg[3]
-                surf = pygame.Surface((ancho, alto), pygame.SRCALPHA)
-                pygame.draw.rect(surf, (*self.tema.panel_bg[:3], a),
-                                 surf.get_rect(), border_radius=12)
-                pygame.draw.rect(surf, (*self.tema.panel_border,
-                                        self.tema.panel_border_alpha),
-                                 surf.get_rect(), 1, border_radius=12)
-                pygame.draw.rect(surf, (58, 46, 36, 180), (3, 3, ancho - 6, alto - 6), 1, border_radius=9)
-                pygame.draw.line(surf, self.tema.linea_oro, (12, 1), (ancho - 12, 1), 1)
-                try:
-                    surf = surf.convert_alpha()
-                except (pygame.error, AttributeError):
-                    pass
-            self._guardar_panel_cache(clave, surf)
-        return surf
 
     #---- Iconos dibujados ----#
     def _icono_ala_dash(self, pantalla, x, y, color):
@@ -1022,75 +893,78 @@ class HudOrquestador:
             self.timer_inmersivo = max(0.0, self.timer_inmersivo - dt)
 
     def armar_modelo(self, juego):
-        j = juego.jugador
-        n = juego.nivel
-        jefe = juego.jefe
+        """Sincroniza el estado del HUD a partir de la instancia activa de Juego."""
+        jugador = juego.jugador
+        nivel = juego.nivel
 
         self.modo_hud = getattr(juego, "config_hud_idx", 0)
+        self._sincronizar_jugador(jugador, nivel, juego)
+        self._sincronizar_jefe(juego, jugador, nivel)
+        self._sincronizar_nivel(juego, nivel)
+        self.modelo.snapshot_prev()
 
-        # Despertar HUD en modo inmersivo ante eventos clave (3 segundos)
-        nueva_vida = j.vidas if j else VIDAS_MAXIMAS
-        nuevas_almas = j.almas if j else 0
-        nuevo_dash = getattr(j, "tiene_dash", False) if j else False
-        nueva_pala = j.tiene_pala if j else False
-        nuevo_manto = getattr(j, "escudo_farol", False) if j else False
+    def _sincronizar_jugador(self, jugador, nivel, juego):
+        """Actualiza recursos y capacidades del jugador y despierta el modo inmersivo."""
+        nueva_vida = jugador.vidas if jugador else VIDAS_MAXIMAS
+        nuevas_almas = jugador.almas if jugador else 0
+        nuevo_dash = getattr(jugador, "tiene_dash", False) if jugador else False
+        nueva_pala = jugador.tiene_pala if jugador else False
+        nuevo_manto = getattr(jugador, "escudo_farol", False) if jugador else False
 
-        if self.modelo.vidas_prev > 0:
-            if (nueva_vida < self.modelo.vidas or
-                nuevas_almas > self.modelo.almas or
-                (nuevo_dash and not self.modelo.tiene_dash) or
-                (nueva_pala and not self.modelo.tiene_pala) or
-                (nuevo_manto and not self.modelo.escudo_farol)):
-                self.timer_inmersivo = 3.0
+        if self.modelo.vidas_prev > 0 and (
+            nueva_vida < self.modelo.vidas
+            or nuevas_almas > self.modelo.almas
+            or (nuevo_dash and not self.modelo.tiene_dash)
+            or (nueva_pala and not self.modelo.tiene_pala)
+            or (nuevo_manto and not self.modelo.escudo_farol)
+        ):
+            self.timer_inmersivo = 3.0
 
         self.modelo.vidas = nueva_vida
         self.modelo.vidas_max = VIDAS_MAXIMAS
         self.modelo.almas = nuevas_almas
-        self.modelo.almas_total = n.total_almas if n else 0
+        self.modelo.almas_total = nivel.total_almas if nivel else 0
         self.modelo.almas_volatiles = max(0, nuevas_almas - getattr(juego, "almas_consagradas", 0))
-        self.modelo.almas_para_vida = j.almas_para_vida if j else 0
-        self.modelo.dash_cooldown = j.dash_cooldown if j else 0.0
-        self.modelo.dash_usos_aire = j.dash_usos_aire if j else DASH_USOS_AIRE
+        self.modelo.almas_para_vida = jugador.almas_para_vida if jugador else 0
+        self.modelo.dash_cooldown = jugador.dash_cooldown if jugador else 0.0
+        self.modelo.dash_usos_aire = jugador.dash_usos_aire if jugador else DASH_USOS_AIRE
         self.modelo.tiene_dash = nuevo_dash
-        self.modelo.en_suelo = j.en_suelo if j else True
-        self.modelo.ataque_cooldown = j.ataque_cooldown if j else 0.0
+        self.modelo.en_suelo = jugador.en_suelo if jugador else True
+        self.modelo.ataque_cooldown = jugador.ataque_cooldown if jugador else 0.0
         self.modelo.tiene_pala = nueva_pala
-        self.modelo.rango_ataque_mejorado = getattr(j, "rango_ataque_mejorado", False) if j else False
+        self.modelo.rango_ataque_mejorado = getattr(jugador, "rango_ataque_mejorado", False) if jugador else False
         self.modelo.escudo_farol = nuevo_manto
-        self.modelo.filo_anima = getattr(j, "filo_anima", False) if j else False
+        self.modelo.filo_anima = getattr(jugador, "filo_anima", False) if jugador else False
 
-        jefe_cerca = False
-        if jefe is not None and getattr(jefe, "vivo", False):
-            if hasattr(jefe, "rect") and j is not None and hasattr(j, "rect"):
-                dist_x = abs(j.rect.centerx - jefe.rect.centerx)
-                dist_y = abs(j.rect.centery - jefe.rect.centery)
-                en_camara = getattr(juego, "camara", None) is not None and juego.camara.is_on_screen(jefe.rect)
-                jefe_cerca = (dist_y <= 220) and (
-                    en_camara
-                    or dist_x <= 420
-                    or (getattr(jefe, "vida", JEFE_VIDA) < JEFE_VIDA and dist_x <= 680)
-                )
-            else:
-                jefe_cerca = True
+    def _entidad_jefe_visible(self, entidad, jugador, juego, margen_x, margen_y, vida_max, dist_herido):
+        if not (hasattr(entidad, "rect") and jugador is not None and hasattr(jugador, "rect")):
+            return True
+        dist_x = abs(jugador.rect.centerx - entidad.rect.centerx)
+        dist_y = abs(jugador.rect.centery - entidad.rect.centery)
+        camara = getattr(juego, "camara", None)
+        en_camara = camara is not None and camara.is_on_screen(entidad.rect)
+        return (dist_y <= margen_y) and (
+            en_camara
+            or dist_x <= margen_x
+            or (getattr(entidad, "vida", vida_max) < vida_max and dist_x <= dist_herido)
+        )
 
+    def _sincronizar_jefe(self, juego, jugador, nivel):
+        """Selecciona la barra activa entre el jefe principal y los carceleros cercanos."""
+        jefe = juego.jefe
+        jefe_cerca = bool(
+            jefe is not None
+            and getattr(jefe, "vivo", False)
+            and self._entidad_jefe_visible(jefe, jugador, juego, 420, 220, JEFE_VIDA, 680)
+        )
         minijefe_activo = None
-        if n and hasattr(n, "minijefes") and not jefe_cerca:
-            for mj in n.minijefes:
-                if mj.vivo and mj.estado != "muerto":
-                    if j is not None and hasattr(j, "rect") and hasattr(mj, "rect"):
-                        dist_x = abs(j.rect.centerx - mj.rect.centerx)
-                        dist_y = abs(j.rect.centery - mj.rect.centery)
-                        en_camara_mj = getattr(juego, "camara", None) is not None and juego.camara.is_on_screen(mj.rect)
-                        if (dist_y <= 150) and (
-                            en_camara_mj
-                            or dist_x <= 380
-                            or (getattr(mj, "vida", 3) < 3 and dist_x <= 540)
-                        ):
-                            minijefe_activo = mj
-                            break
-                    else:
-                        minijefe_activo = mj
-                        break
+        if nivel and hasattr(nivel, "minijefes") and not jefe_cerca:
+            for mj in nivel.minijefes:
+                if mj.vivo and mj.estado != "muerto" and self._entidad_jefe_visible(
+                    mj, jugador, juego, 380, 150, MINIJEFE_VIDA, 540
+                ):
+                    minijefe_activo = mj
+                    break
 
         if jefe_cerca:
             self.modelo.jefe_vivo = True
@@ -1101,7 +975,7 @@ class HudOrquestador:
         elif minijefe_activo is not None:
             self.modelo.jefe_vivo = True
             self.modelo.jefe_vida = minijefe_activo.vida
-            self.modelo.jefe_vida_max = 3
+            self.modelo.jefe_vida_max = MINIJEFE_VIDA
             self.modelo.jefe_fase = 1
             self.modelo.jefe_nombre = "EL CARCELERO DEL OSARIO"
         else:
@@ -1110,6 +984,8 @@ class HudOrquestador:
             self.modelo.jefe_vida_max = JEFE_VIDA
             self.modelo.jefe_fase = 1
             self.modelo.jefe_nombre = "EL CUSTODIO DEL OSARIO"
+
+    def _sincronizar_nivel(self, juego, nivel):
         if getattr(juego, "es_tutorial", False):
             self.modelo.nivel_indice = -1
             self.modelo.nivel_total = 3
@@ -1118,12 +994,11 @@ class HudOrquestador:
             self.modelo.nivel_indice = juego.nivel_indice
             total = len(getattr(juego, "niveles", [])) or (len(NIVELES) if "NIVELES" in globals() and NIVELES else 3)
             self.modelo.nivel_total = total
-            self.modelo.nivel_nombre = n.nombre.upper() if n and hasattr(n, "nombre") else "CAMPOSANTO"
+            self.modelo.nivel_nombre = nivel.nombre.upper() if nivel and hasattr(nivel, "nombre") else "CAMPOSANTO"
         self.modelo.tiempo = juego.tiempo_total
         self.modelo.estado = juego.estado
-        self.modelo.pista = getattr(juego, "texto_ayuda", "") or (n.pista if n and hasattr(n, "pista") else "")
+        self.modelo.pista = getattr(juego, "texto_ayuda", "") or (nivel.pista if nivel and hasattr(nivel, "pista") else "")
         self.modelo.aviso_jefe = juego.aviso_jefe
-        self.modelo.snapshot_prev()
 
     def dibujar(self, pantalla, juego, dt):
         self.armar_modelo(juego)

@@ -17,11 +17,7 @@ pygame.init()
 
 from camara import Camara
 from config import (
-    ALMAS_FILO_ANIMA,
-    ALMAS_MANTO_FAROL,
-    ALTO,
     ALMAS_POR_VIDA,
-    ANCHO,
     APEX_GRAVEDAD_FACTOR,
     APEX_VY_UMBRAL,
     ATAQUE_ALCANCE,
@@ -30,33 +26,30 @@ from config import (
     DASH_COOLDOWN,
     DASH_JUMP_IMPULSO_X,
     DASH_USOS_AIRE,
-    FILO_ANIMA_ALCANCE,
-    FILO_ANIMA_DASH_FACTOR,
     GRAVEDAD,
     INCENSARIO_COOLDOWN,
+    JEFE_VIDA,
     JUGADOR_ALTO,
+    JUGADOR_ANCHO,
     JUMP_BUFFER,
-    LOSA_TIEMPO_QUIEBRE,
-    LOSA_TIEMPO_RECONSTRUCCION,
-    POST_DASH_DURACION,
-    POST_DASH_GRAVEDAD_FACTOR,
     MINIJEFE_TELEGRAFO,
     MINIJEFE_VULNERABLE,
+    POST_DASH_DURACION,
+    POST_DASH_GRAVEDAD_FACTOR,
     REBOTE_ENEMIGO,
     SALTO,
-    TOLERANCIA_PISOTON,
-    VELOCIDAD,
-    VIRTUAL_ALTO,
-    VIRTUAL_ANCHO,
-    JUGADOR_ANCHO,
     TILE,
+    VELOCIDAD,
     VIDAS_INICIALES,
     VIDAS_MAXIMAS,
+    VIRTUAL_ALTO,
+    VIRTUAL_ANCHO,
 )
-from entidades import Alma, Enemigo, FarolCheckpoint, IncensarioRebote, Jugador, LosaQuebradiza
+from entidades import Alma, Enemigo, IncensarioRebote, Jugador, LosaQuebradiza, MiniJefe
 from juego import Juego, OPCIONES_CALIDAD, OPCIONES_HUD
 from nivel import Nivel
-from niveles import NIVEL_1, NIVEL_2, NIVEL_3, NIVELES, SALAS_PRUEBA
+from niveles import NIVEL_1, NIVEL_2, NIVEL_3, NIVEL_TUTORIAL, NIVELES, SALAS_PRUEBA
+from niveles_redisenados import SALAS_PRUEBA_RED
 
 
 #---- Prueba: datos de niveles ----#
@@ -393,7 +386,7 @@ def probar_camara():
 #---- Prueba: meta y victoria ----#
 def probar_estados_y_meta():
     juego = Juego()
-    juego.iniciar_partida()
+    juego.seleccionar_nivel(0)
     for indice in range(len(NIVELES)):
         assert juego.nivel_indice == indice
         if juego.jefe is not None:
@@ -421,7 +414,7 @@ def probar_estados_y_meta():
 def probar_stomp_y_contacto():
     # 1. Pisotón SIN pala (tiene_pala = False): daña al jugador en lugar de matar al enemigo
     juego = Juego()
-    juego.iniciar_partida()
+    juego.seleccionar_nivel(0)
     enemigo = juego.nivel.enemigos[0]
     enemigo.vivo = True
     juego.jugador.rect.midbottom = (enemigo.rect.centerx, enemigo.rect.top + 1)
@@ -438,7 +431,7 @@ def probar_stomp_y_contacto():
 
     # 2. Pisotón CON pala (tiene_pala = True): mata al enemigo, rebota y recarga dash
     juego = Juego()
-    juego.iniciar_partida()
+    juego.seleccionar_nivel(0)
     enemigo = juego.nivel.enemigos[0]
     enemigo.vivo = True
     juego.jugador.rect.midbottom = (enemigo.rect.centerx, enemigo.rect.top + 1)
@@ -456,7 +449,7 @@ def probar_stomp_y_contacto():
 
     # 3. Contacto lateral: daño al jugador
     juego = Juego()
-    juego.iniciar_partida()
+    juego.seleccionar_nivel(0)
     enemigo = juego.nivel.enemigos[0]
     juego.jugador.rect.topleft = enemigo.rect.topleft
     juego.jugador.x = float(juego.jugador.rect.x)
@@ -503,16 +496,17 @@ def probar_plataformas():
     assert juego.nivel.plataformas
     plataforma = juego.nivel.plataformas[0]
     assert plataforma.rect in juego.nivel.solidos_actuales()
-    x_inicial = plataforma.rect.x
+    pos_inicial = (plataforma.rect.x, plataforma.rect.y)
     juego.nivel.actualizar(0.25)
-    # Nota: solo verificamos que la plataforma no se destruye; los cambios de posición dependen de la lógica interna de PlataformaMovil que no está implementada en el Python (simulador)
+    assert (plataforma.rect.x, plataforma.rect.y) != pos_inicial
+    assert plataforma.rect in juego.nivel.solidos_actuales()
     print("plataformas: OK")
 
 
 #---- Prueba: perdida de vidas y derrota ----#
 def probar_perder_vida():
     juego = Juego()
-    juego.iniciar_partida()
+    juego.seleccionar_nivel(0)
     juego.jugador.invulnerable = 0
     juego.jugador.rect.y = juego.nivel.alto + 200
     juego.jugador.y = float(juego.jugador.rect.y)
@@ -551,7 +545,7 @@ def probar_titulo():
     juego = Juego()
     assert juego.estado == "titulo"
     juego.dibujar()
-    juego.iniciar_partida()
+    juego.seleccionar_nivel(0)
     assert juego.estado == "jugando"
     assert juego.nivel_indice == 0
     print("titulo: OK")
@@ -575,7 +569,7 @@ def probar_pinchos():
 #---- Prueba: juego headless ----#
 def probar_juego_headless():
     juego = Juego()
-    juego.iniciar_partida()
+    juego.seleccionar_nivel(0)
     for _ in range(180):
         juego.actualizar(1 / 60)
 
@@ -641,30 +635,30 @@ def probar_jefe_final():
     # Fase 1: fuera de la ventana vulnerable, la pala no daña
     jefe.estado = "espera"
     jefe.vulnerable = False
-    juego.dañar_jefe()
+    juego.dañar_jefe_pala()
     assert jefe.vida == 6, "El Custodio solo recibe daño en su ventana de vulnerabilidad"
 
     jefe.estado = "recuperacion"
     jefe.vulnerable = True
     jefe.temporizador = 1.0
-    juego.dañar_jefe()
+    juego.dañar_jefe_pala()
     assert jefe.vida == 5
     assert jefe.fase == 1
     juego.jefe.estado = "recuperacion"
     juego.jefe.vulnerable = True
-    juego.dañar_jefe()
+    juego.dañar_jefe_pala()
     assert jefe.fase == 1  # 2do golpe: aún no cambia (necesita 3 para transición)
 
     # Tercer golpe → transición a Fase 2
     jefe.estado = "recuperacion"
     jefe.vulnerable = True
-    juego.dañar_jefe()
+    juego.dañar_jefe_pala()
     assert jefe.fase == 2  # 3 golpes acumulados → Fase 2
 
     # En Fase 2, la pala y el pisotón rebotan si no se posee la Guadaña Consagrada (X)
     jefe.estado = "recuperacion"
     jefe.vulnerable = True
-    assert not juego.dañar_jefe()
+    assert not juego.dañar_jefe_pala()
     assert not juego.dañar_jefe_pisaton()
     assert jefe.vida == 3
 
@@ -697,8 +691,6 @@ def probar_jefe_final():
 
 #---- Prueba: validacion de niveles ----#
 def probar_mapa_final():
-    from niveles import NIVEL_TUTORIAL
-
     # 1. NIVEL_TUTORIAL, NIVEL_1, NIVEL_2 y NIVEL_3 tienen exactamente un P y un G
     for mapa_str in (NIVEL_TUTORIAL, NIVEL_1, NIVEL_2, NIVEL_3):
         assert mapa_str.count("P") == 1
@@ -800,8 +792,6 @@ def probar_salto_ventana_nivel_2():
 
 #---- Prueba: salas de prueba ----#
 def probar_salas_prueba():
-    from niveles_redisenados import SALAS_PRUEBA_RED
-
     assert len(SALAS_PRUEBA) == 6  # 3 originales + 3 rediseñadas
     assert len(SALAS_PRUEBA_RED) == 3
 
@@ -1001,7 +991,7 @@ def probar_menu_pausa_y_campana():
 #---- Prueba: cambio de nivel vidas y almas ----#
 def probar_transicion_almas_vidas():
     juego = Juego()
-    juego.iniciar_partida()
+    juego.seleccionar_nivel(0)
     juego.jugador.almas = 4
     juego.jugador.almas_para_vida = 4
     juego.jugador.vidas = 5
@@ -1017,7 +1007,7 @@ def probar_transicion_almas_vidas():
 #---- Prueba: derrota y reintento ----#
 def probar_feedback_derrota_y_reintento():
     juego = Juego()
-    juego.iniciar_partida()
+    juego.seleccionar_nivel(0)
     assert juego.muertes_totales == 0
 
     # Caída al vacío causa derrota al agotar vidas
@@ -1046,7 +1036,7 @@ def probar_feedback_derrota_y_reintento():
 #---- Prueba: reduccion de movimiento ----#
 def probar_accesibilidad():
     juego = Juego()
-    juego.iniciar_partida()
+    juego.seleccionar_nivel(0)
     assert not juego.reducir_movimiento
     assert juego.camara.permitir_sacudida
 
@@ -1075,7 +1065,7 @@ def probar_accesibilidad():
 #---- Prueba: combo de almas ----#
 def probar_combo_almas():
     juego = Juego()
-    juego.iniciar_partida()
+    juego.seleccionar_nivel(0)
     assert juego.almas_combo_count == 0
     assert juego.almas_combo_timer == 0.0
 
@@ -1148,7 +1138,6 @@ def _cansar(mj):
 
 
 def probar_minijefe():
-    from entidades import MiniJefe
     mj = MiniJefe(pygame.Rect(100, 100, 36, 48), 50, 250)
     assert mj.vida == 3
     assert mj.vivo
@@ -1177,7 +1166,6 @@ def probar_minijefe():
     assert not mj.vivo
 
     # Patrón en arena: patrulla -> telegrafía 0.55 s (con aviso) -> embestida -> cansado 1.3 s
-    from entidades import Jugador
     mj = MiniJefe(pygame.Rect(100, 100, 36, 48), 50, 250)
     objetivo = Jugador(160, 100)
     mj.actualizar(1 / 60, objetivo)
@@ -1977,6 +1965,94 @@ def probar_prioridad_4_ui_ux_completa():
     print("opciones de calidad y hud: OK")
 
 
+#---- Prueba: intensificacion de bioma en Osario ----#
+def probar_intensificacion_bioma_osario():
+    juego = Juego()
+    juego.seleccionar_nivel(2)
+    assert juego.nivel.tema == "osario"
+    assert juego.jefe is not None and juego.particulas_bioma
+
+    # Alejamos al jugador de la arena del jefe para evaluar unicamente su vida.
+    juego.jugador.rect.topleft = juego.nivel.spawn
+    juego.jugador.x = float(juego.jugador.rect.x)
+    juego.jugador.y = float(juego.jugador.rect.y)
+
+    estados_intensificar = []
+    particula = juego.particulas_bioma[0]
+    actualizar_original = particula.actualizar
+
+    def registrar_actualizar(dt, intensificar=False):
+        estados_intensificar.append(intensificar)
+        return actualizar_original(dt, intensificar=intensificar)
+
+    particula.actualizar = registrar_actualizar
+
+    juego.jefe.vida = JEFE_VIDA
+    juego.actualizar(1 / 60)
+    assert estados_intensificar[-1] is False
+
+    juego.jefe.vida = JEFE_VIDA - 1
+    juego.actualizar(1 / 60)
+    assert estados_intensificar[-1] is True
+    print("intensificacion bioma osario: OK")
+
+
+# Alias para ejecucion automatica bajo pytest
+test_niveles = probar_niveles
+test_parser = probar_parser
+test_gravedad = probar_gravedad
+test_salto = probar_salto
+test_dash = probar_dash
+test_pozo_de_dash = probar_pozo_de_dash
+test_primer_salto_cripta = probar_primer_salto_cripta
+test_alma = probar_alma
+test_vida_extra = probar_vida_extra
+test_reset_almas_al_morir = probar_reset_almas_al_morir
+test_enemigo = probar_enemigo
+test_enemigo_melee = probar_enemigo_melee
+test_camara = probar_camara
+test_estados_y_meta = probar_estados_y_meta
+test_stomp_y_contacto = probar_stomp_y_contacto
+test_pala_y_limites = probar_pala_y_limites
+test_power_up_dash_y_checkpoint = probar_power_up_dash_y_checkpoint
+test_plataformas = probar_plataformas
+test_perder_vida = probar_perder_vida
+test_reiniciar_nivel = probar_reiniciar_nivel
+test_titulo = probar_titulo
+test_ataque_pala = probar_ataque_pala
+test_jefe_final = probar_jefe_final
+test_minijefe = probar_minijefe
+test_altar_guadaña_sellado = probar_altar_guadaña_sellado
+test_progresion_habilidades = probar_progresion_habilidades
+test_pisoton_encadenado_voladores = probar_pisoton_encadenado_voladores
+test_farol_consagracion = probar_farol_consagracion
+test_mapa_final = probar_mapa_final
+test_salto_ventana_nivel_2 = probar_salto_ventana_nivel_2
+test_salas_prueba = probar_salas_prueba
+test_menu_principal_y_navegacion = probar_menu_principal_y_navegacion
+test_tutorial = probar_tutorial
+test_menu_pausa_y_campana = probar_menu_pausa_y_campana
+test_transicion_almas_vidas = probar_transicion_almas_vidas
+test_feedback_derrota_y_reintento = probar_feedback_derrota_y_reintento
+test_accesibilidad = probar_accesibilidad
+test_combo_almas = probar_combo_almas
+test_pinchos = probar_pinchos
+test_prioridad_3_ui_ux = probar_prioridad_3_ui_ux
+test_fisica_salto_dash_game_feel = probar_fisica_salto_dash_game_feel
+test_menu_configuracion_y_presets_teclado = probar_menu_configuracion_y_presets_teclado
+test_apex_no_se_activa_con_z = probar_apex_no_se_activa_con_z
+test_apex_umbral_negativo = probar_apex_umbral_negativo
+test_post_dash_gravedad = probar_post_dash_gravedad
+test_coyote_time = probar_coyote_time
+test_jump_buffer = probar_jump_buffer
+test_losa_quebradiza = probar_losa_quebradiza
+test_incensario_rebote = probar_incensario_rebote
+test_farol_3_tiers = probar_farol_3_tiers
+test_prioridad_4_ui_ux_completa = probar_prioridad_4_ui_ux_completa
+test_intensificacion_bioma_osario = probar_intensificacion_bioma_osario
+test_juego_headless = probar_juego_headless
+
+
 if __name__ == "__main__":
     probar_niveles()
     probar_parser()
@@ -2029,5 +2105,6 @@ if __name__ == "__main__":
     probar_incensario_rebote()
     probar_farol_3_tiers()
     probar_prioridad_4_ui_ux_completa()
+    probar_intensificacion_bioma_osario()
     probar_juego_headless()
     print("\nTESTS_INCRYPTA_OK")

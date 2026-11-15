@@ -1,11 +1,12 @@
 #---- Importamos librerias y configuracion ----#
 
 import math
+import random
 
 import pygame
 
+import config
 from config import (
-    AMARILLO,
     APEX_GRAVEDAD_FACTOR,
     APEX_VY_UMBRAL,
     ATAQUE_ALCANCE,
@@ -17,16 +18,13 @@ from config import (
     BLANCO,
     CARMESÍ_SANGRE,
     CORNER_NUDGE_TECHO,
-    COYOTE_TIME,
     CORTE_SALTO,
-    CREMA,
+    COYOTE_TIME,
     DASH_COOLDOWN,
     DASH_DURACION,
     DASH_JUMP_IMPULSO_X,
     DASH_USOS_AIRE,
     DASH_VELOCIDAD,
-    ENEMIGO_ALTO,
-    ENEMIGO_ANCHO,
     ENEMIGO_MORTAJA,
     ENEMIGO_OJO_FUEGO,
     ENEMIGO_PURPURA,
@@ -37,66 +35,50 @@ from config import (
     FX_IMPACTO_BLANCO,
     GRAVEDAD,
     GRIS,
-    GRIS_OSCURO,
     HUESO,
     HUESO_MARFIL,
     INCENSARIO_COOLDOWN,
     INVULNERABILIDAD,
-    JEFE_ALTO,
-    JEFE_ANCHO,
     JEFE_CARGA_VELOCIDAD,
     JEFE_VELOCIDAD,
     JEFE_VIDA,
     JEFE_VULN_FASE2,
-    JUMP_BUFFER,
     JUGADOR_ALTO,
     JUGADOR_ANCHO,
+    JUMP_BUFFER,
     LOSA_TIEMPO_QUIEBRE,
     LOSA_TIEMPO_RECONSTRUCCION,
+    MARFIL_XILOGRAFICO,
     MARRON,
     MARRON_OSCURO,
     MAX_CAIDA,
     MELEE_ACERO_CLARO,
-    MINIJEFE_ALTO,
-    MINIJEFE_ANCHO,
     MINIJEFE_TELEGRAFO,
     MINIJEFE_VELOCIDAD,
     MINIJEFE_VIDA,
     MINIJEFE_VULNERABLE,
-    MUSGO,
-    NARANJA,
     NEGRO,
     NEGRO_NOCHE,
-    ORO,
     ORO_LITÚRGICO,
     PIEDRA_FRIA,
     PIEDRA_OSCURA,
     POST_DASH_DURACION,
     POST_DASH_GRAVEDAD_FACTOR,
-    REBOTE_ENEMIGO,
-    resolver_estilo,
     ROJO,
     SALITRE_CRIPTA,
     SALTO,
-    SANGRE,
     TILE,
-    TOLERANCIA_PISOTON,
     TURQUESA,
     TURQUESA_ÁNIMA,
     VELOCIDAD,
     VELOCIDAD_ENEMIGO,
-    VERDE_OSCURO,
     VIDAS_INICIALES,
-    VIOLETA,
-    VIOLETA_POE,
+    resolver_estilo,
 )
 from particulas import ParticulaPluma
 
-# Paleta Grabado Xilográfico Gótico & Vitral
-MARFIL_XILOGRAFICO = (228, 224, 210)
-TINTA_ABISMO = (6, 5, 10)
 
-
+#---- Funciones auxiliares ----#
 def _escalar_rect_visual_enemigo(rect_camara: pygame.Rect, ancho_vis: int, alto_vis: int) -> pygame.Rect:
     """Reduce la caja de renderizado un 10%-15% manteniendo los pies apoyados en rect_camara.bottom."""
     return pygame.Rect(
@@ -107,7 +89,6 @@ def _escalar_rect_visual_enemigo(rect_camara: pygame.Rect, ancho_vis: int, alto_
     )
 
 
-#---- Funciones auxiliares ----#
 def limitar(valor, minimo, maximo):
     return max(minimo, min(valor, maximo))
 
@@ -402,20 +383,17 @@ class Jugador:
         self.escudo_farol = False
         self.filo_anima = False
 
-    #---- Funciones auxiliares ----#
     def pedir_salto(self):
         """Se llama en KEYDOWN: deja preparado el salto."""
         self.buffer_salto = JUMP_BUFFER
         self.manteniendo_salto = True
 
-    #---- Funciones auxiliares ----#
     def soltar_salto(self):
         """Se llama en KEYUP: corta el salto si todavía sube."""
         self.manteniendo_salto = False
         if self.vy < 0:
             self.vy *= CORTE_SALTO
 
-    #---- Funciones auxiliares ----#
     def pedir_dash(self):
         """Inicia un dash si hay carga, la habilidad está desbloqueada y, en el aire, queda un uso."""
         if not self.tiene_dash:
@@ -438,7 +416,6 @@ class Jugador:
         self.dash_recien = True
         return True
 
-    #---- Funciones auxiliares ----#
     def dash_listo(self):
         return (
             self.tiene_dash
@@ -447,7 +424,6 @@ class Jugador:
             and (self.en_suelo or self.dash_usos_aire > 0)
         )
 
-    #---- Funciones auxiliares ----#
     def pedir_ataque(self):
         """Inicia un golpe de pala si el arma está desbloqueada."""
         if (
@@ -462,7 +438,6 @@ class Jugador:
         self.ataque_golpeado = False
         return True
 
-    #---- Funciones auxiliares ----#
     def rect_ataque(self):
         es_guadaña = self.rango_ataque_mejorado
         alcance = ATAQUE_ALCANCE_MEJORADO if es_guadaña else ATAQUE_ALCANCE
@@ -480,7 +455,6 @@ class Jugador:
             alto,
         )
 
-    #---- Funciones auxiliares ----#
     def pose_actual(self):
         if self.ataque_tiempo > 0:
             if self.ataque_tiempo > ATAQUE_DURACION * 0.62:
@@ -492,7 +466,6 @@ class Jugador:
             return "caida"
         return None
 
-    #---- Funciones auxiliares ----#
     def actualizar(self, dt, teclas, solidos):
         self.salto_recien = False
         self.dash_recien = False
@@ -586,7 +559,6 @@ class Jugador:
         else:
             self.tiempo_animacion = 0.0
 
-    #---- Funciones auxiliares ----#
     def actualizar_dash(self, dt, solidos):
         self.dash_tiempo = max(0.0, self.dash_tiempo - dt)
         self.vx = self.dash_direccion * DASH_VELOCIDAD
@@ -604,7 +576,6 @@ class Jugador:
             self.vx = self.dash_direccion * VELOCIDAD
             self.post_dash_tiempo = POST_DASH_DURACION
 
-    #---- Funciones auxiliares ----#
     def actualizar_temporizadores(self, dt):
         if self.buffer_salto > 0:
             self.buffer_salto = max(0.0, self.buffer_salto - dt)
@@ -613,7 +584,6 @@ class Jugador:
         else:
             self.coyote = max(0.0, self.coyote - dt)
 
-    #---- Funciones auxiliares ----#
     def actualizar_horizontal(self, teclas):
         teclas_i = getattr(self, "teclas_izq", (pygame.K_a, pygame.K_LEFT))
         teclas_d = getattr(self, "teclas_der", (pygame.K_d, pygame.K_RIGHT))
@@ -635,7 +605,6 @@ class Jugador:
             else:
                 self.vx = 0.0
 
-    #---- Funciones auxiliares ----#
     def mover_x(self, dx, solidos):
         self.x += dx
         self.rect.x = round(self.x)
@@ -678,7 +647,6 @@ class Jugador:
                 self.vx = 0.0
                 break
 
-    #---- Funciones auxiliares ----#
     def mover_y(self, dy, solidos):
         self.y += dy
         self.rect.y = round(self.y)
@@ -724,7 +692,6 @@ class Jugador:
                     self.vy = 0.0
                     break
 
-    #---- Funciones auxiliares ----#
     def respawn(self, x, y):
         self.rect.topleft = (int(x), int(y))
         self.x = float(self.rect.x)
@@ -754,16 +721,8 @@ class Jugador:
         self.escudo_farol = False
         self.filo_anima = False
 
-    #---- Funciones auxiliares ----#
-    def dibujar(self, surface, camara, tiempo, pose=None, con_pala=True):
-        if self.invulnerable > 0 and int(tiempo * 16) % 2 == 0:
-            return
-
-        rect = camara.aplicar_rect(self.rect)
-        centro_x = rect.centerx
-        base_y = rect.bottom
-
-        # 1. Dash de Sombras: ghosting espectral con 4 siluetas graduadas (180, 120, 70, 30)
+    def _dibujar_estela_y_luz(self, surface, rect, tiempo):
+        """Dibuja las estelas del dash, la sombra de contacto y el halo del farol."""
         if self.dash_tiempo > 0:
             es_guadana = getattr(self, "rango_ataque_mejorado", False)
             col_ghost = (195, 85, 250) if es_guadana else (92, 220, 200)
@@ -772,26 +731,18 @@ class Jugador:
                 ghost_surf = obtener_estampa_fantasma(rect.width, rect.height, alfa, col_ghost)
                 surface.blit(ghost_surf, (fx, rect.y))
 
-        # Sombra de contacto en el suelo
-        pygame.draw.ellipse(
-            surface,
-            NEGRO_NOCHE,
-            (rect.x + 1, base_y - 5, rect.width - 2, 8),
-        )
+        pygame.draw.ellipse(surface, NEGRO_NOCHE, (rect.x + 1, rect.bottom - 5, rect.width - 2, 8))
 
-        # Luz ambiental translúcida proyectada por el farol (a espaldas del personaje para silueta nítida)
-        farol_x = centro_x + self.direccion * 11
+        farol_x = rect.centerx + self.direccion * 11
         farol_y = rect.y + 19
         tiene_consagrado = getattr(self, "rango_ataque_mejorado", False)
         color_halo = (195, 80, 255) if tiene_consagrado else FAROL_CÁLIDO
         halo_farol = obtener_estampa_luz(85, color_halo, 28 if tiene_consagrado else 22)
         surface.blit(halo_farol, (farol_x - 85, farol_y - 85), special_flags=pygame.BLEND_RGB_ADD)
 
-        en_aire = pose in ("caida", "caida2") or not self.en_suelo
-        atacando = pose in ("ataque1", "ataque2", "ataque3")
+    def _calcular_pose_y_escala(self, atacando):
+        """Calcula squash & stretch y el desplazamiento de paso al caminar."""
         moviendo = self.en_suelo and abs(self.vx) > 1 and not atacando
-
-        # 2. Squash & Stretch con Memoria Temporal y ciclo de caminata
         despliegue_pierna = 0
         escala_x = 1.0
         escala_y = 1.0
@@ -805,261 +756,145 @@ class Jugador:
                 escala_y = 1.0 - 0.15 * frac
                 escala_x = 1.0 + 0.18 * frac
         elif moviendo:
-            fase_paso = int((self.tiempo_animacion * 9.5) % 4)
-            if fase_paso == 0:  # Contacto: squash leve
-                escala_y = 0.95
-                despliegue_pierna = 6
-            elif fase_paso == 1:  # Paso bajo
-                escala_y = 0.98
-                despliegue_pierna = 2
-            elif fase_paso == 2:  # Extensión: stretch
-                escala_y = 1.05
-                despliegue_pierna = -5
-            elif fase_paso == 3:  # Paso alto
-                escala_y = 1.02
-                despliegue_pierna = -1
+            pasos = ((0.95, 6), (0.98, 2), (1.05, -5), (1.02, -1))
+            escala_y, despliegue_pierna = pasos[int((self.tiempo_animacion * 9.5) % 4)]
+        return despliegue_pierna, escala_x, escala_y
 
-        # 3. Pala / Guadaña Mística: al hombro, en ataque, o pisotón aéreo (Shovel Knight style)
+    def _dibujar_arma_sepulturero(self, surface, camara, rect, pose, con_pala, atacando, postura_pisoton):
+        """Dibuja la pala o guadaña en ataque, en pisotón aéreo o reposando en la espalda."""
+        centro_x = rect.centerx
+        base_y = rect.bottom
         hombro_x = centro_x - self.direccion * 7
-        es_guadaña = getattr(self, "rango_ataque_mejorado", False)
-        postura_pisotón = con_pala and en_aire and self.vy > 60 and not atacando
+        es_guadana = getattr(self, "rango_ataque_mejorado", False)
+        color_mango = (45, 30, 48) if es_guadana else MARRON
 
         if atacando:
-            alcance = (36 if es_guadaña else 16) if pose == "ataque2" else (28 if es_guadaña else 13)
+            alcance = (36 if es_guadana else 16) if pose == "ataque2" else (28 if es_guadana else 13)
             alto_pala = {
-                "ataque1": rect.y - (6 if es_guadaña else -2),
+                "ataque1": rect.y - (6 if es_guadana else -2),
                 "ataque2": rect.y + 12,
-                "ataque3": base_y + (4 if es_guadaña else -1),
+                "ataque3": base_y + (4 if es_guadana else -1),
             }[pose]
             punta_x = centro_x + self.direccion * alcance
-
-            color_mango = (45, 30, 48) if es_guadaña else MARRON
-            pygame.draw.line(
-                surface,
-                color_mango,
-                (hombro_x, rect.y + 8),
-                (punta_x, alto_pala),
-                4 if es_guadaña else 3,
-            )
-
-            if con_pala:
-                if es_guadaña:
-                    # Hoja curvada esquelética de Guadaña Mística
-                    signo = self.direccion
-                    color_hoja = (215, 80, 255)
-                    color_filo = (255, 220, 255)
-                    puntos_hoja = [
-                        (punta_x, alto_pala - 10),
-                        (punta_x + signo * 22, alto_pala - 3),
-                        (punta_x + signo * 30, alto_pala + 16),
-                        (punta_x + signo * 20, alto_pala + 12),
-                        (punta_x + signo * 9, alto_pala + 5),
-                        (punta_x - signo * 2, alto_pala),
-                    ]
-                    pygame.draw.polygon(surface, color_hoja, puntos_hoja)
-                    pygame.draw.lines(surface, color_filo, False, puntos_hoja[:4], 2)
-                    # Arco espectral bioluminiscente alineado a rect_ataque
-                    atq_caja = camara.aplicar_rect(self.rect_ataque())
-                    onda_x = atq_caja.x
-                    onda_y = atq_caja.y - 2
-                    surface.blit(obtener_arco_guadaña(signo), (onda_x, onda_y))
-                    if getattr(self, "filo_anima", False):
-                        start_ang = 0.0 if signo > 0 else 1.57
-                        end_ang = 3.14 if signo > 0 else 4.71
-                        pygame.draw.arc(surface, TURQUESA_ÁNIMA, (onda_x - 3, onda_y - 3, atq_caja.width + 6, atq_caja.height + 12), start_ang, end_ang, 2)
-                        pygame.draw.arc(surface, ORO_LITÚRGICO, (onda_x - 1, onda_y - 1, atq_caja.width + 2, atq_caja.height + 8), start_ang, end_ang, 1)
-                else:
-                    # Hoja de pala de hierro plateada con filo
-                    pygame.draw.polygon(
-                        surface,
-                        (195, 198, 208),
-                        [
-                            (punta_x, alto_pala - 5),
-                            (punta_x + self.direccion * 8, alto_pala),
-                            (punta_x, alto_pala + 6),
-                            (punta_x - self.direccion * 2, alto_pala),
-                        ],
-                    )
-                    pygame.draw.polygon(
-                        surface,
-                        ORO_LITÚRGICO,
-                        [
-                            (punta_x + self.direccion * 4, alto_pala - 3),
-                            (punta_x + self.direccion * 8, alto_pala),
-                            (punta_x + self.direccion * 4, alto_pala + 3),
-                        ],
-                    )
-                    # Arco relampagueante perfectamente alineado a rect_ataque()
-                    signo = self.direccion
-                    arco_caja = camara.aplicar_rect(self.rect_ataque())
-                    ang_ini = -0.4 if signo > 0 else 2.6
-                    ang_fin = 2.4 if signo > 0 else 5.4
-                    pygame.draw.arc(surface, (230, 235, 245), arco_caja, ang_ini, ang_fin, 2)
-                    pygame.draw.arc(surface, ORO_LITÚRGICO, arco_caja.inflate(2, 2), ang_ini, ang_fin, 1)
-                    if getattr(self, "filo_anima", False):
-                        pygame.draw.arc(surface, TURQUESA_ÁNIMA, arco_caja.inflate(6, 6), ang_ini, ang_fin, 2)
-                        pygame.draw.arc(surface, (255, 235, 140), arco_caja.inflate(4, 4), ang_ini, ang_fin, 1)
-                        for off_i in range(3):
-                            sp_x = punta_x - self.direccion * (off_i * 6 + 4)
-                            sp_y = alto_pala + (off_i * 3 - 3)
-                            col_sp = (255, 225, 90) if off_i % 2 == 0 else TURQUESA_ÁNIMA
-                            pygame.draw.circle(surface, col_sp, (sp_x, sp_y), 2)
-                    # Chispas en el vértice del golpe
-                    pygame.draw.circle(surface, (255, 245, 190), (punta_x + signo * 2, alto_pala), 2)
-        elif postura_pisotón:
-            # Postura de pisotón aéreo (Shovel Knight style): arma apuntando hacia abajo bajo las botas
-            color_mango = (45, 30, 48) if es_guadaña else MARRON
-            pygame.draw.line(
-                surface,
-                color_mango,
-                (centro_x, rect.centery + 2),
-                (centro_x, base_y + 11),
-                4 if es_guadaña else 3,
-            )
-            punta_pogo_y = base_y + (16 if es_guadaña else 13)
-            if es_guadaña:
-                puntos_pogo = [
-                    (centro_x - 4, base_y + 5),
-                    (centro_x + 9, base_y + 9),
-                    (centro_x, punta_pogo_y),
-                    (centro_x - 3, base_y + 10),
+            pygame.draw.line(surface, color_mango, (hombro_x, rect.y + 8), (punta_x, alto_pala), 4 if es_guadana else 3)
+            if not con_pala:
+                return
+            signo = self.direccion
+            arco_caja = camara.aplicar_rect(self.rect_ataque())
+            if es_guadana:
+                puntos_hoja = [
+                    (punta_x, alto_pala - 10),
+                    (punta_x + signo * 22, alto_pala - 3),
+                    (punta_x + signo * 30, alto_pala + 16),
+                    (punta_x + signo * 20, alto_pala + 12),
+                    (punta_x + signo * 9, alto_pala + 5),
+                    (punta_x - signo * 2, alto_pala),
                 ]
-                pygame.draw.polygon(surface, (215, 80, 255), puntos_pogo)
-                pygame.draw.lines(surface, (255, 235, 255), False, puntos_pogo, 1)
+                pygame.draw.polygon(surface, (215, 80, 255), puntos_hoja)
+                pygame.draw.lines(surface, (255, 220, 255), False, puntos_hoja[:4], 2)
+                onda_x, onda_y = arco_caja.x, arco_caja.y - 2
+                surface.blit(obtener_arco_guadaña(signo), (onda_x, onda_y))
+                if getattr(self, "filo_anima", False):
+                    start_ang = 0.0 if signo > 0 else 1.57
+                    end_ang = 3.14 if signo > 0 else 4.71
+                    pygame.draw.arc(surface, TURQUESA_ÁNIMA, (onda_x - 3, onda_y - 3, arco_caja.width + 6, arco_caja.height + 12), start_ang, end_ang, 2)
+                    pygame.draw.arc(surface, ORO_LITÚRGICO, (onda_x - 1, onda_y - 1, arco_caja.width + 2, arco_caja.height + 8), start_ang, end_ang, 1)
             else:
-                puntos_pogo = [
-                    (centro_x - 5, base_y + 4),
-                    (centro_x + 5, base_y + 4),
-                    (centro_x, punta_pogo_y),
-                ]
-                pygame.draw.polygon(surface, (195, 198, 208), puntos_pogo)
-                pygame.draw.polygon(surface, ORO_LITÚRGICO, [(centro_x - 3, base_y + 5), (centro_x + 3, base_y + 5), (centro_x, punta_pogo_y - 1)])
-
-            # Destello / Glint relampagueante en la punta
-            pygame.draw.line(surface, BLANCO, (centro_x - 4, punta_pogo_y), (centro_x + 4, punta_pogo_y), 1)
-            pygame.draw.line(surface, BLANCO, (centro_x, punta_pogo_y - 4), (centro_x, punta_pogo_y + 4), 1)
-            pygame.draw.circle(surface, (255, 245, 190), (centro_x, punta_pogo_y), 2)
-        elif con_pala:
-            if es_guadaña:
-                # Guadaña mística reposando en la espalda
-                pygame.draw.line(
+                pygame.draw.polygon(
                     surface,
-                    (45, 30, 48),
-                    (hombro_x, rect.y + 4),
-                    (hombro_x - self.direccion * 8, base_y + 4),
-                    3,
-                )
-                pygame.draw.arc(
-                    surface,
-                    (215, 80, 255),
-                    (hombro_x - 6 if self.direccion > 0 else hombro_x - 14, rect.y - 10, 20, 22),
-                    0.0,
-                    3.14,
-                    3,
-                )
-            else:
-                pygame.draw.line(
-                    surface,
-                    MARRON,
-                    (hombro_x, rect.y + 7),
-                    (hombro_x - self.direccion * 4, base_y - 2),
-                    3,
+                    (195, 198, 208),
+                    [(punta_x, alto_pala - 5), (punta_x + signo * 8, alto_pala), (punta_x, alto_pala + 6), (punta_x - signo * 2, alto_pala)],
                 )
                 pygame.draw.polygon(
                     surface,
-                    GRIS,
-                    [
-                        (hombro_x - self.direccion * 7, base_y - 4),
-                        (hombro_x - self.direccion * 1, base_y - 1),
-                        (hombro_x - self.direccion * 4, base_y + 4),
-                    ],
+                    ORO_LITÚRGICO,
+                    [(punta_x + signo * 4, alto_pala - 3), (punta_x + signo * 8, alto_pala), (punta_x + signo * 4, alto_pala + 3)],
                 )
+                ang_ini = -0.4 if signo > 0 else 2.6
+                ang_fin = 2.4 if signo > 0 else 5.4
+                pygame.draw.arc(surface, (230, 235, 245), arco_caja, ang_ini, ang_fin, 2)
+                pygame.draw.arc(surface, ORO_LITÚRGICO, arco_caja.inflate(2, 2), ang_ini, ang_fin, 1)
+                if getattr(self, "filo_anima", False):
+                    pygame.draw.arc(surface, TURQUESA_ÁNIMA, arco_caja.inflate(6, 6), ang_ini, ang_fin, 2)
+                    pygame.draw.arc(surface, (255, 235, 140), arco_caja.inflate(4, 4), ang_ini, ang_fin, 1)
+                    for off_i in range(3):
+                        sp_x = punta_x - signo * (off_i * 6 + 4)
+                        sp_y = alto_pala + (off_i * 3 - 3)
+                        col_sp = (255, 225, 90) if off_i % 2 == 0 else TURQUESA_ÁNIMA
+                        pygame.draw.circle(surface, col_sp, (sp_x, sp_y), 2)
+                pygame.draw.circle(surface, (255, 245, 190), (punta_x + signo * 2, alto_pala), 2)
+            return
 
-        # 4. Piernas y botas animadas
-        if postura_pisotón:
-            # Postura firme y recogida para empalar en caída
-            for lado in (-4, 4):
-                px_b = centro_x + (2 if lado > 0 else -2)
-                pygame.draw.line(
-                    surface,
-                    MARRON_OSCURO,
-                    (centro_x + lado, base_y - 9),
-                    (px_b, base_y - 2),
-                    4,
-                )
-                pygame.draw.line(
-                    surface,
-                    NEGRO_NOCHE,
-                    (px_b - 2, base_y - 2),
-                    (px_b + 3, base_y - 2),
-                    4,
-                )
+        if postura_pisoton:
+            pygame.draw.line(surface, color_mango, (centro_x, rect.centery + 2), (centro_x, base_y + 11), 4 if es_guadana else 3)
+            punta_pogo_y = base_y + (16 if es_guadana else 13)
+            if es_guadana:
+                puntos_pogo = [(centro_x - 4, base_y + 5), (centro_x + 9, base_y + 9), (centro_x, punta_pogo_y), (centro_x - 3, base_y + 10)]
+                pygame.draw.polygon(surface, (215, 80, 255), puntos_pogo)
+                pygame.draw.lines(surface, (255, 235, 255), False, puntos_pogo, 1)
+            else:
+                pygame.draw.polygon(surface, (195, 198, 208), [(centro_x - 5, base_y + 4), (centro_x + 5, base_y + 4), (centro_x, punta_pogo_y)])
+                pygame.draw.polygon(surface, ORO_LITÚRGICO, [(centro_x - 3, base_y + 5), (centro_x + 3, base_y + 5), (centro_x, punta_pogo_y - 1)])
+            pygame.draw.line(surface, BLANCO, (centro_x - 4, punta_pogo_y), (centro_x + 4, punta_pogo_y), 1)
+            pygame.draw.line(surface, BLANCO, (centro_x, punta_pogo_y - 4), (centro_x, punta_pogo_y + 4), 1)
+            pygame.draw.circle(surface, (255, 245, 190), (centro_x, punta_pogo_y), 2)
+            return
+
+        if not con_pala:
+            return
+        if es_guadana:
+            pygame.draw.line(surface, color_mango, (hombro_x, rect.y + 4), (hombro_x - self.direccion * 8, base_y + 4), 3)
+            pygame.draw.arc(
+                surface,
+                (215, 80, 255),
+                (hombro_x - 6 if self.direccion > 0 else hombro_x - 14, rect.y - 10, 20, 22),
+                0.0,
+                3.14,
+                3,
+            )
+        else:
+            pygame.draw.line(surface, MARRON, (hombro_x, rect.y + 7), (hombro_x - self.direccion * 4, base_y - 2), 3)
+            pygame.draw.polygon(
+                surface,
+                GRIS,
+                [(hombro_x - self.direccion * 7, base_y - 4), (hombro_x - self.direccion * 1, base_y - 1), (hombro_x - self.direccion * 4, base_y + 4)],
+            )
+
+    def _dibujar_piernas_sepulturero(self, surface, rect, pose, en_aire, atacando, postura_pisoton, despliegue_pierna, escala_y):
+        """Dibuja las piernas y botas animadas según la postura."""
+        centro_x = rect.centerx
+        base_y = rect.bottom
+        if postura_pisoton:
+            cadera_y, pie_y = base_y - 9, base_y - 2
+            pares = ((centro_x - 4, centro_x - 2), (centro_x + 4, centro_x + 2))
         elif en_aire:
             separacion = 7 if pose == "caida" else 9
-            for lado, destino in ((-5, -separacion), (5, separacion)):
-                pygame.draw.line(
-                    surface,
-                    MARRON_OSCURO,
-                    (centro_x + lado, base_y - 9),
-                    (centro_x + destino, base_y - 2),
-                    4,
-                )
-                pygame.draw.line(
-                    surface,
-                    NEGRO_NOCHE,
-                    (centro_x + destino - 2, base_y - 2),
-                    (centro_x + destino + 3, base_y - 2),
-                    4,
-                )
+            cadera_y, pie_y = base_y - 9, base_y - 2
+            pares = ((centro_x - 5, centro_x - separacion), (centro_x + 5, centro_x + separacion))
         elif atacando:
-            for lado in (-5, 5):
-                pygame.draw.line(
-                    surface,
-                    MARRON_OSCURO,
-                    (centro_x + lado, base_y - 9),
-                    (centro_x + lado + (2 if lado > 0 else -2), base_y - 1),
-                    4,
-                )
-                pygame.draw.line(
-                    surface,
-                    NEGRO_NOCHE,
-                    (centro_x + lado - 2, base_y - 1),
-                    (centro_x + lado + 3, base_y - 1),
-                    4,
-                )
+            cadera_y, pie_y = base_y - 9, base_y - 1
+            pares = ((centro_x - 5, centro_x - 7), (centro_x + 5, centro_x + 7))
         else:
-            # Poses de caminata coordinadas
-            offset_p1 = despliegue_pierna
-            offset_p2 = -despliegue_pierna
-            for lado, offset in ((-5, offset_p1), (5, offset_p2)):
-                pygame.draw.line(
-                    surface,
-                    MARRON_OSCURO,
-                    (centro_x + lado, base_y - int(9 * escala_y)),
-                    (centro_x + lado + offset, base_y - 1),
-                    4,
-                )
-                pygame.draw.line(
-                    surface,
-                    NEGRO_NOCHE,
-                    (centro_x + lado + offset - 2, base_y - 1),
-                    (centro_x + lado + offset + 3, base_y - 1),
-                    4,
-                )
+            cadera_y, pie_y = base_y - int(9 * escala_y), base_y - 1
+            pares = ((centro_x - 5, centro_x - 5 + despliegue_pierna), (centro_x + 5, centro_x + 5 - despliegue_pierna))
 
-        # 5. Abrigo largo andrajoso con inercia secundaria según vx y Squash & Stretch
+        for origen_x, pie_x in pares:
+            pygame.draw.line(surface, MARRON_OSCURO, (origen_x, cadera_y), (pie_x, pie_y), 4)
+            pygame.draw.line(surface, NEGRO_NOCHE, (pie_x - 2, pie_y), (pie_x + 3, pie_y), 4)
+
+    def _dibujar_cuerpo_y_sombrero(self, surface, rect, escala_x, escala_y):
+        """Dibuja el abrigo, cabeza, sombrero gótico, ojos y bufanda del sepulturero."""
+        centro_x = rect.centerx
+        base_y = rect.bottom
         inercia_falda = -self.direccion * min(7, int(abs(self.vx) * 0.024))
         dw = int(rect.width * (escala_x - 1.0))
-        cuerpo_y = rect.y + int(10 * escala_y)
-        cuerpo_h = rect.height - int(16 * escala_y)
-        cuerpo = pygame.Rect(rect.x + 3 - dw // 2, cuerpo_y, rect.width - 6 + dw, cuerpo_h)
+        cuerpo = pygame.Rect(rect.x + 3 - dw // 2, rect.y + int(10 * escala_y), rect.width - 6 + dw, rect.height - int(16 * escala_y))
 
         pygame.draw.rect(surface, AZUL_OSCURO, cuerpo, border_radius=4)
         pygame.draw.rect(surface, MARRON, (cuerpo.x + 4, cuerpo.y + 5, cuerpo.width - 8, cuerpo.height - 5), border_radius=3)
         pygame.draw.rect(surface, NEGRO_NOCHE, cuerpo, 2, border_radius=4)
         pygame.draw.rect(surface, MARRON_OSCURO, (cuerpo.x, cuerpo.y + 7, cuerpo.width, 3))
 
-        # Faldones inferiores andrajosos con arrastre de inercia
         falda_y = base_y - 8
         puntos_falda = [
             (cuerpo.x, falda_y - 4),
@@ -1070,123 +905,79 @@ class Jugador:
         ]
         pygame.draw.polygon(surface, AZUL_OSCURO, puntos_falda)
         pygame.draw.polygon(surface, NEGRO_NOCHE, puntos_falda, 1)
-
         if self.dash_tiempo > 0:
             pygame.draw.rect(surface, TURQUESA_ÁNIMA, cuerpo, 1, border_radius=5)
 
-        # 6. Cabeza, rostro sombreado y sombrero de ala ancha caído
         cabeza_y = rect.y + int(10 * escala_y)
         pygame.draw.circle(surface, (185, 175, 160), (centro_x, cabeza_y), 8)
         pygame.draw.circle(surface, NEGRO_NOCHE, (centro_x, cabeza_y), 8, 1)
-
-        # Sombra profunda sobre el rostro bajo el ala del sombrero
         pygame.draw.polygon(
             surface,
             NEGRO_NOCHE,
-            [
-                (centro_x - 7, cabeza_y - 3),
-                (centro_x + 7, cabeza_y - 3),
-                (centro_x + 5, cabeza_y + 2),
-                (centro_x - 5, cabeza_y + 2),
-            ],
+            [(centro_x - 7, cabeza_y - 3), (centro_x + 7, cabeza_y - 3), (centro_x + 5, cabeza_y + 2), (centro_x - 5, cabeza_y + 2)],
         )
 
-        # Sombrero gótico puntiagudo de ala ancha con hebilla dorada
         ala_caida_y = cabeza_y - 6
         pygame.draw.ellipse(surface, NEGRO_NOCHE, (rect.x - 2 - dw // 2, ala_caida_y, rect.width + 4 + dw, 6))
-        # Copa cónica puntiaguda inclinada hacia atrás
-        puntos_sombrero = [
-            (rect.x + 4, ala_caida_y),
-            (rect.right - 4, ala_caida_y),
-            (centro_x - self.direccion * 4, cabeza_y - 15),
-        ]
+        puntos_sombrero = [(rect.x + 4, ala_caida_y), (rect.right - 4, ala_caida_y), (centro_x - self.direccion * 4, cabeza_y - 15)]
         pygame.draw.polygon(surface, (26, 20, 30), puntos_sombrero)
         pygame.draw.polygon(surface, NEGRO_NOCHE, puntos_sombrero, 1)
-        # Cinta y hebilla dorada en ORO_LITÚRGICO
         pygame.draw.rect(surface, CARMESÍ_SANGRE, (rect.x + 5, cabeza_y - 8, rect.width - 10, 2))
         pygame.draw.rect(surface, (218, 178, 86), (centro_x - 2, cabeza_y - 9, 4, 3), 1)
 
-        # Dos ojos luminosos azul pálido fulgurando en la penumbra
         ojo_base_x = centro_x + self.direccion * 2
         pygame.draw.circle(surface, (160, 215, 255), (ojo_base_x, cabeza_y), 1)
         pygame.draw.circle(surface, (160, 215, 255), (ojo_base_x + self.direccion * 3, cabeza_y), 1)
 
-        # Cuello alto fúnebre y bufanda
-        pygame.draw.polygon(surface, (30, 24, 36), [
-            (centro_x - 8, cabeza_y + 3), (centro_x - 4, cabeza_y + 8),
-            (centro_x + 4, cabeza_y + 8), (centro_x + 8, cabeza_y + 3)
-        ])
+        pygame.draw.polygon(
+            surface,
+            (30, 24, 36),
+            [(centro_x - 8, cabeza_y + 3), (centro_x - 4, cabeza_y + 8), (centro_x + 4, cabeza_y + 8), (centro_x + 8, cabeza_y + 3)],
+        )
         pygame.draw.rect(surface, CARMESÍ_SANGRE, (centro_x - 7, cabeza_y + 5, 14, 3), border_radius=1)
 
-        # 7. Farol que ilumina al jugador
+    def _dibujar_farol_y_auras(self, surface, rect, tiempo):
+        """Dibuja el farol colgante del sepulturero y las auras de bendiciones activas."""
+        centro_x = rect.centerx
         farol_x = centro_x + self.direccion * 11
         farol_y = rect.y + 19
 
-        # Montura de bronce del farol colgante
         pygame.draw.circle(surface, (115, 82, 34), (farol_x, farol_y), 6)
         pygame.draw.circle(surface, (165, 120, 50), (farol_x, farol_y), 6, 1)
 
-        # Llama del farol: cruz estelar y chispas turquesas si dash_listo(), brasa ámbar y humo si en cooldown
-        dash_disponible = self.tiene_dash and self.dash_listo()
-        if dash_disponible:
-            color_llama = (92, 220, 200)  # TURQUESA_ESPIRITU
-            pygame.draw.circle(surface, color_llama, (farol_x, farol_y), 4)
-            # Cruz estelar blanca de 4 puntas
-            pygame.draw.line(surface, (255, 255, 255), (farol_x - 5, farol_y), (farol_x + 5, farol_y), 1)
-            pygame.draw.line(surface, (255, 255, 255), (farol_x, farol_y - 5), (farol_x, farol_y + 5), 1)
-            # 2 chispas orbitantes
+        if self.tiene_dash and self.dash_listo():
+            pygame.draw.circle(surface, (92, 220, 200), (farol_x, farol_y), 4)
+            pygame.draw.line(surface, BLANCO, (farol_x - 5, farol_y), (farol_x + 5, farol_y), 1)
+            pygame.draw.line(surface, BLANCO, (farol_x, farol_y - 5), (farol_x, farol_y + 5), 1)
             t_orb = tiempo * 6.0
             for des_ang in (0.0, math.pi):
                 sx = farol_x + int(math.cos(t_orb + des_ang) * 6)
                 sy = farol_y + int(math.sin(t_orb + des_ang) * 6)
                 pygame.draw.circle(surface, (140, 245, 255), (sx, sy), 1)
         else:
-            color_llama = (175, 115, 45)  # Brasa ámbar tenue
-            pygame.draw.circle(surface, color_llama, (farol_x, farol_y), 3)
+            pygame.draw.circle(surface, (175, 115, 45), (farol_x, farol_y), 3)
             pygame.draw.circle(surface, (225, 165, 75), (farol_x, farol_y), 1)
-            # Voluta de humo gris ascendente
             for h_idx in range(2):
                 fase_h = (tiempo * 14.0 + h_idx * 3.0) % 7.0
                 hx = farol_x - self.direccion * int(fase_h * 0.6)
                 hy = farol_y - 4 - int(fase_h)
                 pygame.draw.circle(surface, (125, 122, 132), (hx, hy), 1)
-        # Cadena de sujeción
-        pygame.draw.line(
-            surface,
-            GRIS,
-            (centro_x + self.direccion * 7, rect.y + 15),
-            (farol_x, rect.y + 15),
-            1,
-        )
 
-        # Manto del Farol: aura celeste protectora doble con runas celestes orbitantes
+        pygame.draw.line(surface, GRIS, (centro_x + self.direccion * 7, rect.y + 15), (farol_x, rect.y + 15), 1)
+
         if getattr(self, "escudo_farol", False):
             pulso = 0.5 + 0.5 * math.sin(tiempo * 6.0)
             aura = pygame.Surface((rect.width + 24, rect.height + 24), pygame.SRCALPHA)
-            pygame.draw.ellipse(
-                aura,
-                (92, 190, 220, int(35 + pulso * 25)),
-                (0, 0, rect.width + 24, rect.height + 24),
-                1,
-            )
-            pygame.draw.ellipse(
-                aura,
-                (140, 225, 255, int(65 + pulso * 45)),
-                (4, 4, rect.width + 16, rect.height + 16),
-                2,
-            )
+            pygame.draw.ellipse(aura, (92, 190, 220, int(35 + pulso * 25)), (0, 0, rect.width + 24, rect.height + 24), 1)
+            pygame.draw.ellipse(aura, (140, 225, 255, int(65 + pulso * 45)), (4, 4, rect.width + 16, rect.height + 16), 2)
             surface.blit(aura, (rect.x - 12, rect.y - 12))
-
-            # 4 Runas celestes diamantinas orbitando suavemente
             for k in range(4):
                 ang_runa = tiempo * 2.4 + k * (math.tau / 4.0)
                 rx = centro_x + int(math.cos(ang_runa) * (rect.width // 2 + 10))
                 ry = rect.centery + int(math.sin(ang_runa) * (rect.height // 2 + 8))
-                puntos_runa = [(rx, ry - 3), (rx + 2, ry), (rx, ry + 3), (rx - 2, ry)]
-                pygame.draw.polygon(surface, (140, 230, 255), puntos_runa)
+                pygame.draw.polygon(surface, (140, 230, 255), [(rx, ry - 3), (rx + 2, ry), (rx, ry + 3), (rx - 2, ry)])
                 pygame.draw.circle(surface, BLANCO, (rx, ry), 1)
 
-        # Filo de Ánima (chispas doradas/turquesas danzantes alrededor del sepulturero)
         if getattr(self, "filo_anima", False):
             for i, offset_fase in enumerate((0.0, 2.09, 4.18)):
                 t_f = tiempo * 4.0 + offset_fase
@@ -1194,6 +985,22 @@ class Jugador:
                 ch_y = rect.centery + int(math.sin(t_f) * 14)
                 col_ch = (255, 215, 80) if i % 2 == 0 else TURQUESA_ÁNIMA
                 pygame.draw.circle(surface, col_ch, (ch_x, ch_y), 2)
+
+    def dibujar(self, surface, camara, tiempo, pose=None, con_pala=True):
+        if self.invulnerable > 0 and int(tiempo * 16) % 2 == 0:
+            return
+
+        rect = camara.aplicar_rect(self.rect)
+        en_aire = pose in ("caida", "caida2") or not self.en_suelo
+        atacando = pose in ("ataque1", "ataque2", "ataque3")
+        postura_pisoton = con_pala and en_aire and self.vy > 60 and not atacando
+
+        self._dibujar_estela_y_luz(surface, rect, tiempo)
+        despliegue_pierna, escala_x, escala_y = self._calcular_pose_y_escala(atacando)
+        self._dibujar_arma_sepulturero(surface, camara, rect, pose, con_pala, atacando, postura_pisoton)
+        self._dibujar_piernas_sepulturero(surface, rect, pose, en_aire, atacando, postura_pisoton, despliegue_pierna, escala_y)
+        self._dibujar_cuerpo_y_sombrero(surface, rect, escala_x, escala_y)
+        self._dibujar_farol_y_auras(surface, rect, tiempo)
 
 
 #---- Clase EntidadPatrullera ----#
@@ -1238,6 +1045,140 @@ class EntidadPatrullera:
             self.x = float(self.rect.x)
             self.direccion = -1
 
+    _PALETAS_ESPECTRO = {
+        "patrulla": {
+            "sombra_suelo": (7, 6, 10),
+            "nes_cuerpo": (24, 32, 54),
+            "snes_sombra": (20, 26, 40),
+            "cuerpo": ENEMIGO_MORTAJA,
+            "harapos": ((28, 36, 56), (48, 62, 90)),
+            "craneo": HUESO,
+            "craneo_borde": NEGRO,
+            "garra_snes": HUESO,
+            "fuego_base": (60, 210, 190),
+            "fuego_amp": (50, 40, 50),
+            "estela_ojo": (200, 20, 30),
+            "ojo_nes_linea": True,
+        },
+        "melee": {
+            "sombra_suelo": NEGRO_NOCHE,
+            "nes_cuerpo": (32, 20, 44),
+            "snes_sombra": (26, 16, 32),
+            "cuerpo": ENEMIGO_PURPURA,
+            "harapos": ((38, 22, 46), (68, 38, 80)),
+            "craneo": HUESO_MARFIL,
+            "craneo_borde": NEGRO_NOCHE,
+            "garra_snes": HUESO_MARFIL,
+            "fuego_base": (160, 40, 190),
+            "fuego_amp": (50, 30, 50),
+            "estela_ojo": CARMESÍ_SANGRE,
+            "ojo_nes_linea": False,
+        },
+    }
+
+    def _dibujar_flash_espectral(self, surface, rect, salto):
+        """Dibuja silueta blanca de impacto si hay flash activo y retorna si debe cortar render."""
+        if getattr(self, "tiempo_flash", 0.0) <= 0:
+            return False
+        pygame.draw.ellipse(surface, FX_IMPACTO_BLANCO, (rect.x - 2, rect.y + 4 + salto, rect.width + 4, rect.height - 2))
+        pygame.draw.circle(surface, FX_IMPACTO_BLANCO, (rect.centerx, rect.y + 9 + salto), 9)
+        return True
+
+    def _dibujar_espectro(self, surface, rect, salto, tiempo, estilo, variante, alerta=False):
+        """Renderiza el cuerpo esquelético compartido entre espectros patrulleros y melee."""
+        paleta = self._PALETAS_ESPECTRO[variante]
+        centro_x = rect.centerx
+        base_y = rect.bottom + salto
+        ojo_offset = self.direccion * 2
+        ojo_y = rect.y + 8 + salto
+
+        pygame.draw.ellipse(surface, paleta["sombra_suelo"], (rect.x + 1, rect.bottom - 4, rect.width - 2, 7))
+
+        if estilo == "NES":
+            pygame.draw.ellipse(surface, ENEMIGO_RIM_LUZ, (rect.x - 2, rect.y + 4 + salto, rect.width + 4, rect.height - 4))
+            pygame.draw.circle(surface, ENEMIGO_RIM_LUZ, (centro_x, rect.y + 9 + salto), 10)
+            pygame.draw.ellipse(surface, paleta["nes_cuerpo"], (rect.x, rect.y + 6 + salto, rect.width, rect.height - 6))
+            pygame.draw.circle(surface, HUESO_MARFIL, (centro_x, rect.y + 9 + salto), 8)
+            pygame.draw.circle(surface, (10, 8, 14), (centro_x, rect.y + 9 + salto), 8, 1)
+            pygame.draw.rect(surface, ENEMIGO_OJO_FUEGO, (centro_x - 4 + ojo_offset, ojo_y - 1, 3, 2))
+            pygame.draw.rect(surface, ENEMIGO_OJO_FUEGO, (centro_x + 2 + ojo_offset, ojo_y - 1, 3, 2))
+            if paleta["ojo_nes_linea"]:
+                pygame.draw.line(surface, (255, 220, 220), (centro_x - 5 + ojo_offset, ojo_y), (centro_x + 5 + ojo_offset, ojo_y), 1)
+            for lado in (rect.x + 3, rect.right - 4):
+                pygame.draw.line(surface, HUESO_MARFIL, (lado, base_y - 2), (lado, base_y + 4), 2)
+            return
+
+        es_proc = estilo != "SNES"
+        pygame.draw.ellipse(surface, paleta["snes_sombra"], (rect.x - 2, rect.y + 8 + salto, rect.width + 4, rect.height - 6))
+        pygame.draw.ellipse(surface, paleta["cuerpo"], (rect.x, rect.y + 6 + salto, rect.width, rect.height - 6))
+        if es_proc:
+            pygame.draw.arc(surface, TURQUESA_ÁNIMA, (rect.x - 2, rect.y + 3 + salto, rect.width + 4, 16), 0, math.pi, 2)
+        else:
+            pygame.draw.arc(surface, ENEMIGO_RIM_LUZ, (rect.x - 1, rect.y + 4 + salto, rect.width + 2, 14), 0, math.pi, 2)
+
+        harapo_osc, harapo_cla = paleta["harapos"]
+        pygame.draw.polygon(
+            surface,
+            harapo_osc,
+            [(rect.x + 1, rect.y + 14 + salto), (rect.x + 9, rect.y + 22 + salto), (rect.x + 5, rect.y + 29 + salto), (rect.x - 1, rect.y + 20 + salto)],
+        )
+        pygame.draw.polygon(
+            surface,
+            harapo_cla,
+            [(rect.x + 3, rect.y + 17 + salto), (rect.x + 10, rect.y + 23 + salto), (rect.x + 7, rect.y + 28 + salto), (rect.x + 1, rect.y + 21 + salto)],
+        )
+        pygame.draw.polygon(
+            surface,
+            harapo_osc,
+            [(rect.right - 1, rect.y + 13 + salto), (rect.right - 10, rect.y + 22 + salto), (rect.right - 4, rect.y + 28 + salto), (rect.right + 1, rect.y + 19 + salto)],
+        )
+
+        pygame.draw.circle(surface, paleta["craneo"], (centro_x, rect.y + 9 + salto), 8)
+        pygame.draw.circle(surface, paleta["craneo_borde"], (centro_x, rect.y + 9 + salto), 8, 1)
+        pygame.draw.arc(
+            surface,
+            MARFIL_XILOGRAFICO if es_proc else ENEMIGO_RIM_LUZ,
+            (centro_x - 8, rect.y + 1 + salto, 16, 16),
+            0.2,
+            math.pi - 0.2,
+            2,
+        )
+
+        if es_proc:
+            trail_dx = -self.direccion * 4
+            pygame.draw.line(surface, paleta["estela_ojo"], (centro_x - 3 + ojo_offset, ojo_y), (centro_x - 3 + ojo_offset + trail_dx, ojo_y), 2)
+            pygame.draw.line(surface, paleta["estela_ojo"], (centro_x + 3 + ojo_offset, ojo_y), (centro_x + 3 + ojo_offset + trail_dx, ojo_y), 2)
+
+        for ox in (centro_x - 3 + ojo_offset, centro_x + 3 + ojo_offset):
+            if alerta:
+                pygame.draw.circle(surface, CARMESÍ_SANGRE, (ox, ojo_y), 3)
+                pygame.draw.circle(surface, (255, 40, 50), (ox, ojo_y), 2)
+                pygame.draw.circle(surface, BLANCO, (ox, ojo_y), 1)
+            else:
+                if es_proc:
+                    pygame.draw.circle(surface, (180, 20, 30), (ox, ojo_y), 3)
+                pygame.draw.circle(surface, ENEMIGO_OJO_FUEGO, (ox, ojo_y), 2)
+                pygame.draw.circle(surface, BLANCO if es_proc else (255, 200, 200), (ox + 1, ojo_y - 1), 1)
+
+        if es_proc:
+            pulso = (math.sin(tiempo * 6.0) + 1.0) * 0.5
+            fr, fg, fb = paleta["fuego_base"]
+            ar, ag, ab = paleta["fuego_amp"]
+            col_fuego = (int(fr + ar * pulso), int(fg + ag * pulso), int(fb + ab * pulso))
+            pygame.draw.circle(surface, col_fuego, (centro_x, rect.y + 21 + salto), int(2 + 2 * pulso))
+
+        for i in range(3):
+            ry = rect.y + 17 + i * 4 + salto
+            if not es_proc:
+                pygame.draw.line(surface, (10, 8, 14), (rect.x + 8, ry + 1), (rect.right - 8, ry + 1), 1)
+            pygame.draw.line(surface, HUESO_MARFIL, (rect.x + 8, ry), (rect.right - 8, ry), 1)
+
+        col_garra = HUESO_MARFIL if es_proc else paleta["garra_snes"]
+        for lado, signo in ((4, -1), (rect.width - 5, 1)):
+            bx = rect.x + lado
+            for dedo_dx in (-2, 0, 2):
+                pygame.draw.line(surface, col_garra, (bx + dedo_dx, base_y - 3), (bx + dedo_dx + signo, base_y + 6), 1)
+
 
 #---- Clase Enemigo ----#
 class Enemigo(EntidadPatrullera):
@@ -1249,7 +1190,6 @@ class Enemigo(EntidadPatrullera):
         self.actualizar_flash(dt)
         self.avanzar_patrulla(dt, VELOCIDAD_ENEMIGO)
 
-    #---- Funciones auxiliares ----#
     def dibujar(self, surface, camara, tiempo):
         if not self.vivo:
             return
@@ -1257,231 +1197,27 @@ class Enemigo(EntidadPatrullera):
         rect_cam = camara.aplicar_rect(self.rect)
         rect = _escalar_rect_visual_enemigo(rect_cam, 23, 23)
         salto = int(math.sin(tiempo * 7 + rect.x * 0.02) * 2)
-        centro_x = rect.centerx
-        base_y = rect.bottom + salto
-
-        if getattr(self, "tiempo_flash", 0.0) > 0:
-            # Damage Flash: silueta blanca pura (costo cero)
-            pygame.draw.ellipse(surface, FX_IMPACTO_BLANCO, (rect.x - 2, rect.y + 4 + salto, rect.width + 4, rect.height - 2))
-            pygame.draw.circle(surface, FX_IMPACTO_BLANCO, (centro_x, rect.y + 9 + salto), 9)
+        if self._dibujar_flash_espectral(surface, rect, salto):
             return
 
-        import config
         estilo = resolver_estilo(getattr(config, "ESTILO_ENEMIGOS", "AUTO"))
-
-        # Sombra en el suelo
-        pygame.draw.ellipse(
-            surface,
-            (7, 6, 10),
-            (rect.x + 1, rect.bottom - 4, rect.width - 2, 7),
-        )
-
-        ojo_offset = self.direccion * 2
-
-        if estilo == "NES":
-            # Estilo retro: silueta de alto contraste
-            pygame.draw.ellipse(
-                surface,
-                ENEMIGO_RIM_LUZ,
-                (rect.x - 2, rect.y + 4 + salto, rect.width + 4, rect.height - 4),
-            )
-            pygame.draw.circle(surface, ENEMIGO_RIM_LUZ, (centro_x, rect.y + 9 + salto), 10)
-
-            # Cuerpo azul noche ortogonal
-            pygame.draw.ellipse(
-                surface,
-                (24, 32, 54),
-                (rect.x, rect.y + 6 + salto, rect.width, rect.height - 6),
-            )
-            # Cráneo marfil
-            pygame.draw.circle(surface, HUESO_MARFIL, (centro_x, rect.y + 9 + salto), 8)
-            pygame.draw.circle(surface, (10, 8, 14), (centro_x, rect.y + 9 + salto), 8, 1)
-
-            # Ojos en ENEMIGO_OJO_FUEGO con fulgor horizontal
-            pygame.draw.rect(surface, ENEMIGO_OJO_FUEGO, (centro_x - 4 + ojo_offset, rect.y + 7 + salto, 3, 2))
-            pygame.draw.rect(surface, ENEMIGO_OJO_FUEGO, (centro_x + 2 + ojo_offset, rect.y + 7 + salto, 3, 2))
-            pygame.draw.line(surface, (255, 220, 220), (centro_x - 5 + ojo_offset, rect.y + 8 + salto), (centro_x + 5 + ojo_offset, rect.y + 8 + salto), 1)
-
-            # Garras ortogonales
-            for lado in (rect.x + 3, rect.right - 4):
-                pygame.draw.line(surface, HUESO_MARFIL, (lado, base_y - 2), (lado, base_y + 4), 2)
-
-        elif estilo == "SNES":
-            # Estilo intermedio: con brillo en los bordes
-            pygame.draw.ellipse(
-                surface,
-                (20, 26, 40),
-                (rect.x - 2, rect.y + 8 + salto, rect.width + 4, rect.height - 6),
-            )
-            pygame.draw.ellipse(
-                surface,
-                ENEMIGO_MORTAJA,
-                (rect.x, rect.y + 6 + salto, rect.width, rect.height - 6),
-            )
-            # Rim Light superior de 2px
-            pygame.draw.arc(surface, ENEMIGO_RIM_LUZ, (rect.x - 1, rect.y + 4 + salto, rect.width + 2, 14), 0, math.pi, 2)
-
-            # Harapos laterales en tonos azul/mortaja
-            pygame.draw.polygon(
-                surface,
-                (28, 36, 56),
-                [
-                    (rect.x + 1, rect.y + 14 + salto),
-                    (rect.x + 9, rect.y + 22 + salto),
-                    (rect.x + 5, rect.y + 29 + salto),
-                    (rect.x - 1, rect.y + 20 + salto),
-                ],
-            )
-            pygame.draw.polygon(
-                surface,
-                (48, 62, 90),
-                [
-                    (rect.x + 3, rect.y + 17 + salto),
-                    (rect.x + 10, rect.y + 23 + salto),
-                    (rect.x + 7, rect.y + 28 + salto),
-                    (rect.x + 1, rect.y + 21 + salto),
-                ],
-            )
-            pygame.draw.polygon(
-                surface,
-                (28, 36, 56),
-                [
-                    (rect.right - 1, rect.y + 13 + salto),
-                    (rect.right - 10, rect.y + 22 + salto),
-                    (rect.right - 4, rect.y + 28 + salto),
-                    (rect.right + 1, rect.y + 19 + salto),
-                ],
-            )
-
-            # Cráneo
-            pygame.draw.circle(surface, HUESO, (centro_x, rect.y + 9 + salto), 8)
-            pygame.draw.circle(surface, NEGRO, (centro_x, rect.y + 9 + salto), 8, 1)
-            pygame.draw.arc(surface, ENEMIGO_RIM_LUZ, (centro_x - 8, rect.y + 1 + salto, 16, 16), 0.2, math.pi - 0.2, 2)
-
-            # Ojos
-            pygame.draw.circle(surface, ENEMIGO_OJO_FUEGO, (centro_x - 3 + ojo_offset, rect.y + 8 + salto), 2)
-            pygame.draw.circle(surface, ENEMIGO_OJO_FUEGO, (centro_x + 3 + ojo_offset, rect.y + 8 + salto), 2)
-            pygame.draw.circle(surface, (255, 200, 200), (centro_x - 2 + ojo_offset, rect.y + 7 + salto), 1)
-            pygame.draw.circle(surface, (255, 200, 200), (centro_x + 4 + ojo_offset, rect.y + 7 + salto), 1)
-
-            # Costillas con sombra de 1px
-            for i in range(3):
-                ry = rect.y + 17 + i * 4 + salto
-                pygame.draw.line(surface, (10, 8, 14), (rect.x + 8, ry + 1), (rect.right - 8, ry + 1), 1)
-                pygame.draw.line(surface, HUESO_MARFIL, (rect.x + 8, ry), (rect.right - 8, ry), 1)
-
-            # Garras
-            for lado, signo in ((4, -1), (rect.width - 5, 1)):
-                bx = rect.x + lado
-                for dedo_dx in (-2, 0, 2):
-                    pygame.draw.line(
-                        surface, HUESO,
-                        (bx + dedo_dx, base_y - 3),
-                        (bx + dedo_dx + signo, base_y + 6),
-                        1,
-                    )
-        else:
-            # Estilo procedural detallado
-            pygame.draw.ellipse(
-                surface,
-                (20, 26, 40),
-                (rect.x - 2, rect.y + 8 + salto, rect.width + 4, rect.height - 6),
-            )
-            pygame.draw.ellipse(
-                surface,
-                ENEMIGO_MORTAJA,
-                (rect.x, rect.y + 6 + salto, rect.width, rect.height - 6),
-            )
-            pygame.draw.arc(surface, TURQUESA_ÁNIMA, (rect.x - 2, rect.y + 3 + salto, rect.width + 4, 16), 0, math.pi, 2)
-
-            # Harapos laterales
-            pygame.draw.polygon(
-                surface,
-                (28, 36, 56),
-                [
-                    (rect.x + 1, rect.y + 14 + salto),
-                    (rect.x + 9, rect.y + 22 + salto),
-                    (rect.x + 5, rect.y + 29 + salto),
-                    (rect.x - 1, rect.y + 20 + salto),
-                ],
-            )
-            pygame.draw.polygon(
-                surface,
-                (48, 62, 90),
-                [
-                    (rect.x + 3, rect.y + 17 + salto),
-                    (rect.x + 10, rect.y + 23 + salto),
-                    (rect.x + 7, rect.y + 28 + salto),
-                    (rect.x + 1, rect.y + 21 + salto),
-                ],
-            )
-            pygame.draw.polygon(
-                surface,
-                (28, 36, 56),
-                [
-                    (rect.right - 1, rect.y + 13 + salto),
-                    (rect.right - 10, rect.y + 22 + salto),
-                    (rect.right - 4, rect.y + 28 + salto),
-                    (rect.right + 1, rect.y + 19 + salto),
-                ],
-            )
-
-            # Cráneo con recorte cenital marfil de 2px (estilo grabado xilográfico)
-            pygame.draw.circle(surface, HUESO, (centro_x, rect.y + 9 + salto), 8)
-            pygame.draw.circle(surface, NEGRO, (centro_x, rect.y + 9 + salto), 8, 1)
-            pygame.draw.arc(surface, (228, 224, 210), (centro_x - 8, rect.y + 1 + salto, 16, 16), 0.2, math.pi - 0.2, 2)
-
-            # Estela ocular roja de 4px detrás de las pupilas
-            trail_dx = -self.direccion * 4
-            pygame.draw.line(surface, (200, 20, 30), (centro_x - 3 + ojo_offset, rect.y + 8 + salto), (centro_x - 3 + ojo_offset + trail_dx, rect.y + 8 + salto), 2)
-            pygame.draw.line(surface, (200, 20, 30), (centro_x + 3 + ojo_offset, rect.y + 8 + salto), (centro_x + 3 + ojo_offset + trail_dx, rect.y + 8 + salto), 2)
-
-            # Ojos con halo carmesí y centro blanco
-            pygame.draw.circle(surface, (180, 20, 30), (centro_x - 3 + ojo_offset, rect.y + 8 + salto), 3)
-            pygame.draw.circle(surface, (180, 20, 30), (centro_x + 3 + ojo_offset, rect.y + 8 + salto), 3)
-            pygame.draw.circle(surface, ENEMIGO_OJO_FUEGO, (centro_x - 3 + ojo_offset, rect.y + 8 + salto), 2)
-            pygame.draw.circle(surface, ENEMIGO_OJO_FUEGO, (centro_x + 3 + ojo_offset, rect.y + 8 + salto), 2)
-            pygame.draw.circle(surface, (255, 255, 255), (centro_x - 2 + ojo_offset, rect.y + 7 + salto), 1)
-            pygame.draw.circle(surface, (255, 255, 255), (centro_x + 4 + ojo_offset, rect.y + 7 + salto), 1)
-
-            # Núcleo de fuego fatuo wisp entre las costillas
-            pulso = (math.sin(tiempo * 6.0) + 1.0) * 0.5
-            col_fuego = (int(60 + 50 * pulso), int(210 + 40 * pulso), int(190 + 50 * pulso))
-            pygame.draw.circle(surface, col_fuego, (centro_x, rect.y + 21 + salto), int(2 + 2 * pulso))
-
-            # Costillas óseas
-            for i in range(3):
-                ry = rect.y + 17 + i * 4 + salto
-                pygame.draw.line(surface, HUESO_MARFIL, (rect.x + 8, ry), (rect.right - 8, ry), 1)
-
-            # Garras
-            for lado, signo in ((4, -1), (rect.width - 5, 1)):
-                bx = rect.x + lado
-                for dedo_dx in (-2, 0, 2):
-                    pygame.draw.line(
-                        surface, HUESO_MARFIL,
-                        (bx + dedo_dx, base_y - 3),
-                        (bx + dedo_dx + signo, base_y + 6),
-                        1,
-                    )
+        self._dibujar_espectro(surface, rect, salto, tiempo, estilo, "patrulla")
 
 
 #---- Clase EnemigoMelee ----#
 class EnemigoMelee(EntidadPatrullera):
-    """Enemigo que ataca en rango melee (70px). Al jugador le toma y domina."""
+    """Enemigo que ataca en rango melee (70px)."""
 
     def __init__(self, rect, minimo_x, maximo_x):
         super().__init__(rect, minimo_x, maximo_x)
         self.aviso_tiempo = 0.0
         self.atacando = False
 
-    #---- Funciones auxiliares ----#
     def reiniciar(self):
         super().reiniciar()
         self.aviso_tiempo = 0.0
         self.atacando = False
 
-    #---- Funciones auxiliares ----#
     def actualizar(self, dt, jugador):
         if not self.vivo:
             return
@@ -1494,19 +1230,40 @@ class EnemigoMelee(EntidadPatrullera):
         distancia_x = abs(self.rect.centerx - jugador.rect.centerx)
         distancia_y = abs(self.rect.centery - jugador.rect.centery)
 
-        # Si está en aviso de ataque o rango melee, encarar de inmediato al jugador
+        # Si está en rango melee o en aviso de ataque, encara de inmediato al jugador.
         if (distancia_x <= 70 and distancia_y <= 20) or self.aviso_tiempo > 0:
             if distancia_x > 2:
                 self.direccion = 1 if jugador.rect.centerx > self.rect.centerx else -1
             if self.aviso_tiempo <= 0:
                 self.aviso_tiempo = 0.25
-            # Pausar patrulla durante la preparación del ataque
             return
 
-        # Mantener en el rango de patrulla
         self.avanzar_patrulla(dt, VELOCIDAD_ENEMIGO)
 
-    #---- Funciones auxiliares ----#
+    def _dibujar_mandoble(self, surface, rect, salto, estilo):
+        """Dibuja el mandoble del espectro melee según pose de telegrafía o guardia."""
+        centro_x = rect.centerx
+        base_y = rect.bottom + salto
+        signo = self.direccion
+        espada_base_x = centro_x + signo * 8
+        espada_base_y = rect.y + 14 + salto
+        en_aviso = self.aviso_tiempo > 0
+
+        punta_x = centro_x + signo * (16 if en_aviso else 12)
+        punta_y = (rect.y - 6 + salto) if en_aviso else (base_y - 2)
+
+        if estilo == "NES":
+            color_hoja = ENEMIGO_RIM_LUZ if en_aviso else (180, 190, 210)
+            pygame.draw.line(surface, color_hoja, (espada_base_x, espada_base_y), (punta_x, punta_y), 3)
+            if en_aviso:
+                pygame.draw.line(surface, BLANCO, (espada_base_x, espada_base_y), (punta_x, punta_y), 1)
+            return
+
+        pygame.draw.line(surface, MELEE_ACERO_CLARO, (espada_base_x, espada_base_y), (punta_x, punta_y), 3)
+        pygame.draw.line(surface, BLANCO, (espada_base_x, espada_base_y), (punta_x, punta_y), 1)
+        if en_aviso:
+            pygame.draw.arc(surface, CARMESÍ_SANGRE, (rect.centerx - 14 + signo * 8, rect.y + 2, 28, 28), 0, 3.14, 2)
+
     def dibujar(self, surface, camara, tiempo):
         if not self.vivo:
             return
@@ -1515,274 +1272,16 @@ class EnemigoMelee(EntidadPatrullera):
         rect = _escalar_rect_visual_enemigo(rect_cam, 23, 24)
         salto = int(math.sin(tiempo * 7 + rect.x * 0.02) * 2)
 
-        # Telegrafía de 250 ms: temblor horizontal sutil (±2 px) y arco en suelo
-        temblor = 0
         if self.aviso_tiempo > 0:
-            temblor = int(math.sin(tiempo * 55) * 2)
-            rect.x += temblor
+            rect.x += int(math.sin(tiempo * 55) * 2)
             pygame.draw.arc(surface, (210, 28, 50), (rect.centerx - 20, rect.bottom - 4, 40, 8), 0, math.pi, 2)
 
-        centro_x = rect.centerx
-        base_y = rect.bottom + salto
-
-        if getattr(self, "tiempo_flash", 0.0) > 0:
-            # Damage Flash: silueta blanca pura (costo cero)
-            pygame.draw.ellipse(surface, FX_IMPACTO_BLANCO, (rect.x - 2, rect.y + 4 + salto, rect.width + 4, rect.height - 2))
-            pygame.draw.circle(surface, FX_IMPACTO_BLANCO, (centro_x, rect.y + 9 + salto), 9)
+        if self._dibujar_flash_espectral(surface, rect, salto):
             return
 
-        import config
         estilo = resolver_estilo(getattr(config, "ESTILO_ENEMIGOS", "AUTO"))
-
-        # Sombra en el suelo
-        pygame.draw.ellipse(
-            surface,
-            NEGRO_NOCHE,
-            (rect.x + 1, rect.bottom - 4, rect.width - 2, 7),
-        )
-
-        ojo_offset = self.direccion * 2
-        ojo_y = rect.y + 8 + salto
-        signo = self.direccion
-        espada_base_x = centro_x + signo * 8
-        espada_base_y = rect.y + 14 + salto
-
-        if estilo == "NES":
-            # Estilo retro: silueta de alto contraste
-            pygame.draw.ellipse(surface, ENEMIGO_RIM_LUZ, (rect.x - 2, rect.y + 4 + salto, rect.width + 4, rect.height - 4))
-            pygame.draw.circle(surface, ENEMIGO_RIM_LUZ, (centro_x, rect.y + 9 + salto), 10)
-
-            # Cuerpo púrpura noche ortogonal
-            pygame.draw.ellipse(surface, (32, 20, 44), (rect.x, rect.y + 6 + salto, rect.width, rect.height - 6))
-            pygame.draw.circle(surface, HUESO_MARFIL, (centro_x, rect.y + 9 + salto), 8)
-            pygame.draw.circle(surface, (10, 8, 14), (centro_x, rect.y + 9 + salto), 8, 1)
-
-            # Ojos
-            pygame.draw.rect(surface, ENEMIGO_OJO_FUEGO, (centro_x - 4 + ojo_offset, ojo_y - 1, 3, 2))
-            pygame.draw.rect(surface, ENEMIGO_OJO_FUEGO, (centro_x + 2 + ojo_offset, ojo_y - 1, 3, 2))
-
-            # Mandoble ortogonal
-            if self.aviso_tiempo > 0:
-                punta_x = centro_x + signo * 16
-                punta_y = rect.y - 6 + salto
-                pygame.draw.line(surface, ENEMIGO_RIM_LUZ, (espada_base_x, espada_base_y), (punta_x, punta_y), 3)
-                pygame.draw.line(surface, BLANCO, (espada_base_x, espada_base_y), (punta_x, punta_y), 1)
-            else:
-                punta_x = centro_x + signo * 12
-                punta_y = base_y - 2
-                pygame.draw.line(surface, (180, 190, 210), (espada_base_x, espada_base_y), (punta_x, punta_y), 3)
-
-            for lado in (rect.x + 3, rect.right - 4):
-                pygame.draw.line(surface, HUESO_MARFIL, (lado, base_y - 2), (lado, base_y + 4), 2)
-
-        elif estilo == "SNES":
-            # Estilo intermedio con bordes iluminados
-            pygame.draw.ellipse(surface, (26, 16, 32), (rect.x - 2, rect.y + 8 + salto, rect.width + 4, rect.height - 6))
-            pygame.draw.ellipse(surface, ENEMIGO_PURPURA, (rect.x, rect.y + 6 + salto, rect.width, rect.height - 6))
-            pygame.draw.arc(surface, ENEMIGO_RIM_LUZ, (rect.x - 1, rect.y + 4 + salto, rect.width + 2, 14), 0, math.pi, 2)
-
-            pygame.draw.polygon(surface, (38, 22, 46), [(rect.x + 1, rect.y + 14 + salto), (rect.x + 9, rect.y + 22 + salto), (rect.x + 5, rect.y + 29 + salto), (rect.x - 1, rect.y + 20 + salto)])
-            pygame.draw.polygon(surface, (68, 38, 80), [(rect.x + 3, rect.y + 17 + salto), (rect.x + 10, rect.y + 23 + salto), (rect.x + 7, rect.y + 28 + salto), (rect.x + 1, rect.y + 21 + salto)])
-            pygame.draw.polygon(surface, (38, 22, 46), [(rect.right - 1, rect.y + 13 + salto), (rect.right - 10, rect.y + 22 + salto), (rect.right - 4, rect.y + 28 + salto), (rect.right + 1, rect.y + 19 + salto)])
-
-            # Cráneo
-            pygame.draw.circle(surface, HUESO_MARFIL, (centro_x, rect.y + 9 + salto), 8)
-            pygame.draw.circle(surface, NEGRO_NOCHE, (centro_x, rect.y + 9 + salto), 8, 1)
-            pygame.draw.arc(surface, ENEMIGO_RIM_LUZ, (centro_x - 8, rect.y + 1 + salto, 16, 16), 0.2, math.pi - 0.2, 2)
-
-            # Ojos
-            if self.aviso_tiempo > 0:
-                pygame.draw.circle(surface, CARMESÍ_SANGRE, (centro_x - 3 + ojo_offset, ojo_y), 3)
-                pygame.draw.circle(surface, CARMESÍ_SANGRE, (centro_x + 3 + ojo_offset, ojo_y), 3)
-                pygame.draw.circle(surface, (255, 40, 50), (centro_x - 3 + ojo_offset, ojo_y), 2)
-                pygame.draw.circle(surface, (255, 40, 50), (centro_x + 3 + ojo_offset, ojo_y), 2)
-                pygame.draw.circle(surface, BLANCO, (centro_x - 3 + ojo_offset, ojo_y), 1)
-                pygame.draw.circle(surface, BLANCO, (centro_x + 3 + ojo_offset, ojo_y), 1)
-            else:
-                pygame.draw.circle(surface, ENEMIGO_OJO_FUEGO, (centro_x - 3 + ojo_offset, ojo_y), 2)
-                pygame.draw.circle(surface, ENEMIGO_OJO_FUEGO, (centro_x + 3 + ojo_offset, ojo_y), 2)
-                pygame.draw.circle(surface, (255, 200, 200), (centro_x - 2 + ojo_offset, ojo_y - 1), 1)
-                pygame.draw.circle(surface, (255, 200, 200), (centro_x + 4 + ojo_offset, ojo_y - 1), 1)
-
-            # Mandoble en MELEE_ACERO_CLARO
-            if self.aviso_tiempo > 0:
-                punta_x = centro_x + signo * 16
-                punta_y = rect.y - 6 + salto
-                pygame.draw.line(surface, MELEE_ACERO_CLARO, (espada_base_x, espada_base_y), (punta_x, punta_y), 3)
-                pygame.draw.line(surface, BLANCO, (espada_base_x, espada_base_y), (punta_x, punta_y), 1)
-                pygame.draw.arc(surface, CARMESÍ_SANGRE, (rect.centerx - 14 + signo * 8, rect.y + 2, 28, 28), 0, 3.14, 2)
-            else:
-                punta_x = centro_x + signo * 12
-                punta_y = base_y - 2
-                pygame.draw.line(surface, MELEE_ACERO_CLARO, (espada_base_x, espada_base_y), (punta_x, punta_y), 3)
-                pygame.draw.line(surface, BLANCO, (espada_base_x, espada_base_y), (punta_x, punta_y), 1)
-
-            for i in range(3):
-                ry = rect.y + 17 + i * 4 + salto
-                pygame.draw.line(surface, (10, 8, 14), (rect.x + 8, ry + 1), (rect.right - 8, ry + 1), 1)
-                pygame.draw.line(surface, HUESO_MARFIL, (rect.x + 8, ry), (rect.right - 8, ry), 1)
-
-            for lado, sgn in ((4, -1), (rect.width - 5, 1)):
-                bx = rect.x + lado
-                for dedo_dx in (-2, 0, 2):
-                    pygame.draw.line(surface, HUESO_MARFIL, (bx + dedo_dx, base_y - 3), (bx + dedo_dx + sgn, base_y + 6), 1)
-        else:
-            # Estilo procedural detallado
-            pygame.draw.ellipse(surface, (26, 16, 32), (rect.x - 2, rect.y + 8 + salto, rect.width + 4, rect.height - 6))
-            pygame.draw.ellipse(surface, ENEMIGO_PURPURA, (rect.x, rect.y + 6 + salto, rect.width, rect.height - 6))
-            pygame.draw.arc(surface, TURQUESA_ÁNIMA, (rect.x - 2, rect.y + 3 + salto, rect.width + 4, 16), 0, math.pi, 2)
-
-            pygame.draw.polygon(surface, (38, 22, 46), [(rect.x + 1, rect.y + 14 + salto), (rect.x + 9, rect.y + 22 + salto), (rect.x + 5, rect.y + 29 + salto), (rect.x - 1, rect.y + 20 + salto)])
-            pygame.draw.polygon(surface, (68, 38, 80), [(rect.x + 3, rect.y + 17 + salto), (rect.x + 10, rect.y + 23 + salto), (rect.x + 7, rect.y + 28 + salto), (rect.x + 1, rect.y + 21 + salto)])
-            pygame.draw.polygon(surface, (38, 22, 46), [(rect.right - 1, rect.y + 13 + salto), (rect.right - 10, rect.y + 22 + salto), (rect.right - 4, rect.y + 28 + salto), (rect.right + 1, rect.y + 19 + salto)])
-
-            # Cráneo con recorte cenital marfil de 2px
-            pygame.draw.circle(surface, HUESO_MARFIL, (centro_x, rect.y + 9 + salto), 8)
-            pygame.draw.circle(surface, NEGRO_NOCHE, (centro_x, rect.y + 9 + salto), 8, 1)
-            pygame.draw.arc(surface, (228, 224, 210), (centro_x - 8, rect.y + 1 + salto, 16, 16), 0.2, math.pi - 0.2, 2)
-
-            # Estela ocular roja de 4px detrás de las pupilas
-            trail_dx = -self.direccion * 4
-            pygame.draw.line(surface, CARMESÍ_SANGRE, (centro_x - 3 + ojo_offset, ojo_y), (centro_x - 3 + ojo_offset + trail_dx, ojo_y), 2)
-            pygame.draw.line(surface, CARMESÍ_SANGRE, (centro_x + 3 + ojo_offset, ojo_y), (centro_x + 3 + ojo_offset + trail_dx, ojo_y), 2)
-
-            # Ojos
-            if self.aviso_tiempo > 0:
-                pygame.draw.circle(surface, CARMESÍ_SANGRE, (centro_x - 3 + ojo_offset, ojo_y), 3)
-                pygame.draw.circle(surface, CARMESÍ_SANGRE, (centro_x + 3 + ojo_offset, ojo_y), 3)
-                pygame.draw.circle(surface, (255, 40, 50), (centro_x - 3 + ojo_offset, ojo_y), 2)
-                pygame.draw.circle(surface, (255, 40, 50), (centro_x + 3 + ojo_offset, ojo_y), 2)
-                pygame.draw.circle(surface, BLANCO, (centro_x - 3 + ojo_offset, ojo_y), 1)
-                pygame.draw.circle(surface, BLANCO, (centro_x + 3 + ojo_offset, ojo_y), 1)
-            else:
-                pygame.draw.circle(surface, (180, 20, 30), (centro_x - 3 + ojo_offset, ojo_y), 3)
-                pygame.draw.circle(surface, (180, 20, 30), (centro_x + 3 + ojo_offset, ojo_y), 3)
-                pygame.draw.circle(surface, ENEMIGO_OJO_FUEGO, (centro_x - 3 + ojo_offset, ojo_y), 2)
-                pygame.draw.circle(surface, ENEMIGO_OJO_FUEGO, (centro_x + 3 + ojo_offset, ojo_y), 2)
-                pygame.draw.circle(surface, BLANCO, (centro_x - 2 + ojo_offset, ojo_y - 1), 1)
-                pygame.draw.circle(surface, BLANCO, (centro_x + 4 + ojo_offset, ojo_y - 1), 1)
-
-            # Mandoble en MELEE_ACERO_CLARO
-            if self.aviso_tiempo > 0:
-                punta_x = centro_x + signo * 16
-                punta_y = rect.y - 6 + salto
-                pygame.draw.line(surface, MELEE_ACERO_CLARO, (espada_base_x, espada_base_y), (punta_x, punta_y), 3)
-                pygame.draw.line(surface, BLANCO, (espada_base_x, espada_base_y), (punta_x, punta_y), 1)
-                pygame.draw.arc(surface, CARMESÍ_SANGRE, (rect.centerx - 14 + signo * 8, rect.y + 2, 28, 28), 0, 3.14, 2)
-            else:
-                punta_x = centro_x + signo * 12
-                punta_y = base_y - 2
-                pygame.draw.line(surface, MELEE_ACERO_CLARO, (espada_base_x, espada_base_y), (punta_x, punta_y), 3)
-                pygame.draw.line(surface, BLANCO, (espada_base_x, espada_base_y), (punta_x, punta_y), 1)
-
-            # Fuego fatuo wisp
-            pulso = (math.sin(tiempo * 6.0) + 1.0) * 0.5
-            col_fuego = (int(160 + 50 * pulso), int(40 + 30 * pulso), int(190 + 50 * pulso))
-            pygame.draw.circle(surface, col_fuego, (centro_x, rect.y + 21 + salto), int(2 + 2 * pulso))
-
-            for i in range(3):
-                ry = rect.y + 17 + i * 4 + salto
-                pygame.draw.line(surface, HUESO_MARFIL, (rect.x + 8, ry), (rect.right - 8, ry), 1)
-
-            for lado, sgn in ((4, -1), (rect.width - 5, 1)):
-                bx = rect.x + lado
-                for dedo_dx in (-2, 0, 2):
-                    pygame.draw.line(surface, HUESO_MARFIL, (bx + dedo_dx, base_y - 3), (bx + dedo_dx + sgn, base_y + 6), 1)
-
-
-#---- Clase TotemProyectil ----#
-class TotemProyectil:
-    """Totem que lanza proyectiles a intervalos regulares."""
-
-    def __init__(self, x, y):
-        self.rect = pygame.Rect(x - 16, y - 32, 32, 32)
-        self.x = float(self.rect.x)
-        self.y = float(self.rect.y)
-        self.vivo = True
-        self.temporizador_proyectil = 0.0
-        self.ultimo_proyectil = 0.0
-        self.conproyectil = False
-
-    #---- Funciones auxiliares ----#
-    def reiniciar(self):
-        self.rect = pygame.Rect(self.x - 16, self.y - 32, 32, 32)
-        self.vivo = True
-        self.temporizador_proyectil = 0.0
-        self.ultimo_proyectil = 0.0
-        self.conproyectil = False
-
-    #---- Funciones auxiliares ----#
-    def actualizar(self, dt, jugador):
-        if not self.vivo:
-            return
-
-        self.temporizador_proyectil = max(0.0, self.temporizador_proyectil - dt)
-        self.ultimo_proyectil = max(0.0, self.ultimo_proyectil - dt)
-
-        # Lanzar proyectil a intervalos regulares (2 segundos)
-        if self.temporizador_proyectil <= 0:
-            self.ultimo_proyectil = 0.5
-            self.conproyectil = True
-
-        # Si está siendo atacado, crear daño
-        if self.conproyectil and jugador.ataque_tiempo > 0:
-            if jugador.rect.colliderect(self.rect):
-                self.conproyectil = False
-                jugador.ataque_golpeado = True
-                jugador.dash_usos_aire = DASH_USOS_AIRE
-                jugador.dash_cooldown = 0.0
-
-    #---- Funciones auxiliares ----#
-    def dibujar(self, surface, camara, tiempo):
-        if not self.vivo:
-            return
-
-        rect = camara.aplicar_rect(self.rect)
-
-        # Dibujar el totem (basado en los monumentos del juego)
-        pygame.draw.polygon(
-            surface,
-            (72, 54, 38),  # Color Marrón
-            [
-                (rect.centerx, rect.top),
-                (rect.left, rect.bottom),
-                (rect.right, rect.bottom),
-            ],
-        )
-
-        pygame.draw.rect(
-            surface,
-            (52, 38, 31),  # Color Marrón Oscuro
-            (rect.left + 6, rect.top + 12, rect.width - 12, rect.height - 24),
-            border_radius=4,
-        )
-
-        # Proyectil
-        if self.conproyectil:
-            pygame.draw.circle(
-                surface,
-                (190, 104, 48),  # Color Naranja
-                (rect.centerx + 8 * (1 if tiempo % 1 < 0.5 else -1), rect.centery - 20),
-                4,
-            )
-
-        # Advertencia cuando es atacado
-        if self.conproyectil and int(tiempo * 2) % 2 == 0:
-            pygame.draw.circle(
-                surface,
-                (255, 0, 0),  # Rojo
-                (rect.centerx, rect.centery - 8),
-                6,
-                2,  # Borde
-            )
-        for lado in (4, rect.width - 5):
-            pygame.draw.line(
-                surface,
-                HUESO,
-                (rect.x + lado, base_y - 3),
-                (rect.x + lado - 2, base_y + 4),
-                2,
-            )
+        self._dibujar_espectro(surface, rect, salto, tiempo, estilo, "melee", alerta=(self.aviso_tiempo > 0))
+        self._dibujar_mandoble(surface, rect, salto, estilo)
 
 
 #---- Clase OndaCustodio ----#
@@ -1798,7 +1297,6 @@ class OndaCustodio:
         self.vida = 3.4
         self.viva = True
 
-    #---- Funciones auxiliares ----#
     def actualizar(self, dt):
         self.vida -= dt
         if self.vida <= 0:
@@ -1807,7 +1305,6 @@ class OndaCustodio:
         self.x += self.direccion * self.velocidad * dt
         self.rect.x = round(self.x)
 
-    #---- Funciones auxiliares ----#
     def dibujar(self, surface, camara, tiempo):
         if not self.viva:
             return
@@ -1890,7 +1387,6 @@ class Custodio:
         self.tiempo_muerte = 0.0
         self.tiempo_flash = 0.0
 
-    #---- Funciones auxiliares ----#
     def reiniciar(self):
         self.rect = pygame.Rect(self.inicial_rect)
         self.x = float(self.rect.x)
@@ -1910,7 +1406,6 @@ class Custodio:
         self.tiempo_muerte = 0.0
         self.tiempo_flash = 0.0
 
-    #---- Aplicar daño interno ----#
     def _aplicar_dano(self):
         """Descuenta 1 vida, maneja transición a Fase 2 y muerte."""
         self.vida -= 1
@@ -1938,7 +1433,6 @@ class Custodio:
             self.temporizador = vuln_time
         return True
 
-    #---- Funciones auxiliares ----#
     def recibir_golpe_pala(self, rango_mejorado=False):
         """Pala: funciona en Fase 1. En Fase 2 requiere la Guadaña Consagrada (rango_mejorado).
         En ambas fases solo daña dentro de la ventana de vulnerabilidad."""
@@ -1948,7 +1442,6 @@ class Custodio:
             return False  # Pala rebota en Fase 2 sin power-up X
         return self._aplicar_dano()
 
-    #---- Funciones auxiliares ----#
     def recibir_pisaton(self, rango_mejorado=False):
         """Pisotón: funciona en Fase 1. En Fase 2 requiere la Guadaña Consagrada (rango_mejorado).
         En ambas fases solo daña dentro de la ventana de vulnerabilidad."""
@@ -1958,51 +1451,72 @@ class Custodio:
             return False  # Pisotón rebota en Fase 2 sin power-up X
         return self._aplicar_dano()
 
-    #---- Funciones auxiliares ----#
+    def _actualizar_espera(self, dt, jugador):
+        """Gestiona la patrulla fuera de rango o la persecución y elección de ataque."""
+        dist_x_j = abs(jugador.rect.centerx - self.rect.centerx)
+        dist_y_j = abs(jugador.rect.centery - self.rect.centery)
+        en_rango_jefe = (dist_y_j <= 14 * TILE and dist_x_j <= 28 * TILE) or (self.vida < JEFE_VIDA and dist_y_j <= 14 * TILE)
+        if not en_rango_jefe:
+            # Patrulla silenciosa en su catedral sin sacudir la cámara en pisos alejados.
+            self.x += self.direccion * (JEFE_VELOCIDAD * 0.65) * dt
+            if self.x <= self.minimo_x:
+                self.x = float(self.minimo_x)
+                self.direccion = 1
+            elif self.x >= self.maximo_x:
+                self.x = float(self.maximo_x)
+                self.direccion = -1
+            self.rect.x = round(self.x)
+            return
+
+        if dist_x_j > 60:
+            self.direccion = 1 if jugador.rect.centerx > self.rect.centerx else -1
+            self.x += self.direccion * JEFE_VELOCIDAD * dt
+            self.x = max(self.minimo_x, min(self.maximo_x, self.x))
+            self.rect.x = round(self.x)
+        self.temporizador -= dt
+        if self.temporizador <= 0:
+            # Fase 2: 40 % de probabilidad de carga en lugar de pisotón.
+            if self.fase >= 2 and random.random() < 0.40:
+                self.estado = "telegrafia_carga"
+                self.temporizador = 0.45
+            else:
+                self.estado = "telegrafia"
+                self.temporizador = max(0.38, 0.78 - self.fase * 0.12)
+            self.aviso_recien = True
+
+    def _actualizar_carga(self, dt):
+        """Ejecuta la embestida horizontal hasta agotar tiempo o impactar contra un muro."""
+        self.x += self.direccion * JEFE_CARGA_VELOCIDAD * dt
+        choco_muro = False
+        if self.x <= self.minimo_x:
+            self.x = float(self.minimo_x)
+            choco_muro = True
+        elif self.x >= self.maximo_x:
+            self.x = float(self.maximo_x)
+            choco_muro = True
+        self.rect.x = round(self.x)
+        self.temporizador -= dt
+
+        if self.temporizador <= 0 or choco_muro:
+            self.carga_activa = False
+            self.estado = "recuperacion"
+            self.temporizador = JEFE_VULN_FASE2
+            self.vulnerable = True
+            if choco_muro:
+                self.ondas_recien = True
+
     def actualizar(self, dt, jugador):
         self.recien_golpeado = False
         self.ondas_recien = False
         self.aviso_recien = False
         if self.tiempo_flash > 0:
             self.tiempo_flash = max(0.0, self.tiempo_flash - dt)
-
         if not self.vivo:
             self.tiempo_muerte += dt
             return
 
         if self.estado == "espera":
-            dist_x_j = abs(jugador.rect.centerx - self.rect.centerx)
-            dist_y_j = abs(jugador.rect.centery - self.rect.centery)
-            en_rango_jefe = (dist_y_j <= 14 * TILE and dist_x_j <= 28 * TILE) or (self.vida < JEFE_VIDA and dist_y_j <= 14 * TILE)
-            if not en_rango_jefe:
-                # Patrulla centinela silenciosa en su catedral sin sacudir la cámara en otros pisos
-                self.x += self.direccion * (JEFE_VELOCIDAD * 0.65) * dt
-                if self.x <= self.minimo_x:
-                    self.x = float(self.minimo_x)
-                    self.direccion = 1
-                elif self.x >= self.maximo_x:
-                    self.x = float(self.maximo_x)
-                    self.direccion = -1
-                self.rect.x = round(self.x)
-                return
-
-            if dist_x_j > 60:
-                self.direccion = 1 if jugador.rect.centerx > self.rect.centerx else -1
-                self.x += self.direccion * JEFE_VELOCIDAD * dt
-                self.x = max(self.minimo_x, min(self.maximo_x, self.x))
-                self.rect.x = round(self.x)
-            self.temporizador -= dt
-            if self.temporizador <= 0:
-                # Fase 2: 40% de chance de carga en vez de pisotón
-                import random
-                if self.fase >= 2 and random.random() < 0.40:
-                    self.estado = "telegrafia_carga"
-                    self.temporizador = 0.45
-                else:
-                    self.estado = "telegrafia"
-                    self.temporizador = max(0.38, 0.78 - self.fase * 0.12)
-                self.aviso_recien = True
-
+            self._actualizar_espera(dt, jugador)
         elif self.estado == "telegrafia":
             self.direccion = 1 if jugador.rect.centerx > self.rect.centerx else -1
             self.temporizador -= dt
@@ -2010,28 +1524,23 @@ class Custodio:
                 self.estado = "golpe"
                 self.temporizador = 0.14
                 self.ondas_recien = True
-
         elif self.estado == "golpe":
             self.temporizador -= dt
             if self.temporizador <= 0:
                 self.estado = "recuperacion"
-                vuln_dur = JEFE_VULN_FASE2 if self.fase >= 2 else max(0.75, 1.7 - self.fase * 0.25)
-                self.temporizador = vuln_dur
+                self.temporizador = JEFE_VULN_FASE2 if self.fase >= 2 else max(0.75, 1.7 - self.fase * 0.25)
                 self.vulnerable = True
-
         elif self.estado == "recuperacion":
             self.temporizador -= dt
             if self.temporizador <= 0:
                 self.estado = "espera"
                 self.temporizador = max(0.65, 1.45 - self.fase * 0.22)
                 self.vulnerable = False
-
         elif self.estado == "cambio":
             self.temporizador -= dt
             if self.temporizador <= 0:
                 self.estado = "espera"
                 self.temporizador = max(0.55, 1.2 - self.fase * 0.18)
-
         elif self.estado == "telegrafia_carga":
             self.temporizador -= dt
             if self.temporizador <= 0:
@@ -2039,47 +1548,15 @@ class Custodio:
                 self.carga_activa = True
                 self.direccion = 1 if jugador.rect.centerx > self.rect.centerx else -1
                 self.temporizador = 0.75
-
         elif self.estado == "carga":
-            # Corre rápido a través de la arena hasta el límite
-            self.x += self.direccion * JEFE_CARGA_VELOCIDAD * dt
-            choco_muro = False
-            if self.x <= self.minimo_x:
-                self.x = float(self.minimo_x)
-                choco_muro = True
-            elif self.x >= self.maximo_x:
-                self.x = float(self.maximo_x)
-                choco_muro = True
-            self.rect.x = round(self.x)
-            self.temporizador -= dt
+            self._actualizar_carga(dt)
 
-            if self.temporizador <= 0 or choco_muro:
-                # Al chocar contra el muro o frenar: aturdido de rodillas (oportunidad de pisar)
-                self.carga_activa = False
-                self.estado = "recuperacion"
-                self.temporizador = JEFE_VULN_FASE2
-                self.vulnerable = True
-                if choco_muro:
-                    self.ondas_recien = True
-
-    #---- Funciones auxiliares ----#
-    def dibujar(self, surface, camara, tiempo):
-        if not self.vivo:
-            return
-
-        rect = camara.aplicar_rect(self.rect)
-        centro_x = rect.centerx
-        base_y = rect.bottom
-        pulso = 0.5 + 0.5 * math.sin(tiempo * 5)
-
-        # Sombra en el suelo
-        pygame.draw.ellipse(surface, NEGRO_NOCHE, (rect.x, base_y - 6, rect.width, 10))
-
-        # Fase 2: "La Máscara de la Muerte Roja" - Aura ardiente carmesí con anillos sinusoidales
+    def _dibujar_auras_estado(self, surface, rect, tiempo, pulso):
+        """Dibuja la sombra, las auras de fase/vulnerabilidad y el brillo de telegrafía."""
+        pygame.draw.ellipse(surface, NEGRO_NOCHE, (rect.x, rect.bottom - 6, rect.width, 10))
         if self.fase >= 2:
             aura = obtener_aura_custodio(rect.width + 24, rect.height + 22, CARMESÍ_SANGRE, int(22 + pulso * 24))
             surface.blit(aura, (rect.x - 12, rect.y - 11))
-            # Anillos sinusoidales concéntricos de fuego rojo
             for r_offset in (16, 26):
                 ondulacion = int(2.5 * math.sin(tiempo * 7.5 + r_offset * 0.3))
                 ring_box = pygame.Rect(
@@ -2090,17 +1567,18 @@ class Custodio:
                 )
                 pygame.draw.ellipse(surface, CARMESÍ_SANGRE, ring_box, 1)
         elif self.vulnerable:
-            # Aura dorada de oportunidad en Fase 1 (cacheada)
             aura = obtener_aura_custodio(rect.width + 18, rect.height + 16, ORO_LITÚRGICO, 32)
             surface.blit(aura, (rect.x - 9, rect.y - 8))
 
-        # Telegrafía de pisotón o carga: resplandor ardiente telegrafiado
         if self.estado in ("telegrafia", "telegrafia_carga"):
             color_brillo = CARMESÍ_SANGRE if self.estado == "telegrafia_carga" else (180, 32, 42)
             brillo = obtener_aura_custodio(rect.width + 48, rect.height + 40, color_brillo, int(45 + pulso * 35))
             surface.blit(brillo, (rect.x - 24, rect.y - 20))
 
-        # Capa y joroba episcopal — carmesí fúnebre en Fase 2, litúrgico púrpura oscuro en Fase 1
+    def _dibujar_vestimenta_y_mitra(self, surface, rect):
+        """Dibuja la capa episcopal, el brocado pectoral y la mitra litúrgica."""
+        centro_x = rect.centerx
+        base_y = rect.bottom
         capa_color = (68, 16, 22) if self.fase >= 2 else (38, 28, 44)
         pygame.draw.polygon(
             surface,
@@ -2116,7 +1594,6 @@ class Custodio:
         )
         cuerpo_color = (44, 14, 18) if self.fase >= 2 else (23, 19, 28)
         pygame.draw.rect(surface, cuerpo_color, (centro_x - 21, rect.y + 12, 42, 44), border_radius=10)
-        # Brocado pectoral litúrgico
         pygame.draw.line(surface, ORO_LITÚRGICO if self.fase < 2 else (180, 50, 45), (centro_x - 15, rect.y + 26), (centro_x + 15, rect.y + 26), 2)
         for i in range(4):
             pygame.draw.line(
@@ -2127,7 +1604,6 @@ class Custodio:
                 1,
             )
 
-        # Mitra episcopal (tocado litúrgico en el cráneo colosal)
         mitra_y = rect.y + 4
         puntos_mitra = [
             (centro_x - 9, mitra_y + 4),
@@ -2139,36 +1615,37 @@ class Custodio:
         color_mitra = (85, 20, 28) if self.fase >= 2 else (52, 38, 62)
         pygame.draw.polygon(surface, color_mitra, puntos_mitra)
         pygame.draw.polygon(surface, ORO_LITÚRGICO, puntos_mitra, 1)
-        # Cruz litúrgica en la mitra
         pygame.draw.line(surface, ORO_LITÚRGICO, (centro_x, mitra_y - 14), (centro_x, mitra_y - 2), 1)
         pygame.draw.line(surface, ORO_LITÚRGICO, (centro_x - 3, mitra_y - 9), (centro_x + 3, mitra_y - 9), 1)
 
-        # Cráneo colosal
+    def _dibujar_craneo_y_farol(self, surface, rect):
+        """Dibuja el cráneo colosal, sus ojos expresivos y el farol pectoral."""
+        centro_x = rect.centerx
         pygame.draw.circle(surface, HUESO_MARFIL, (centro_x, rect.y + 16), 12)
         pygame.draw.circle(surface, NEGRO_NOCHE, (centro_x, rect.y + 16), 12, 1)
 
-        # Ojos: fuego rojo carmesí en Fase 2; dorado si vulnerable en Fase 1; rubí ardiente en espera
         if self.fase >= 2:
             color_ojo = (255, 45, 55)
         else:
             color_ojo = (245, 205, 95) if self.vulnerable else CARMESÍ_SANGRE
-        pygame.draw.circle(surface, color_ojo, (centro_x - 4, rect.y + 15), 2.5)
-        pygame.draw.circle(surface, color_ojo, (centro_x + 4, rect.y + 15), 2.5)
-        pygame.draw.circle(surface, BLANCO, (centro_x - 4, rect.y + 15), 1)
-        pygame.draw.circle(surface, BLANCO, (centro_x + 4, rect.y + 15), 1)
+        for dx_ojo in (-4, 4):
+            pygame.draw.circle(surface, color_ojo, (centro_x + dx_ojo, rect.y + 15), 2.5)
+            pygame.draw.circle(surface, BLANCO, (centro_x + dx_ojo, rect.y + 15), 1)
         pygame.draw.rect(surface, NEGRO_NOCHE, (centro_x - 5, rect.y + 21, 10, 2))
 
-        # Farol incrustado en el pecho del Custodio
         pygame.draw.circle(surface, (115, 78, 28), (centro_x, rect.y + 34), 7)
         pygame.draw.circle(surface, FAROL_CÁLIDO, (centro_x, rect.y + 34), 3)
 
-        # Maza de Osario colosal orientada según la dirección del Custodio
+    def _dibujar_maza_osario(self, surface, rect):
+        """Dibuja la maza de osario orientada hacia la dirección del Custodio."""
+        centro_x = rect.centerx
+        base_y = rect.bottom
         signo = 1 if self.direccion >= 0 else -1
         maza_mango_ini = (centro_x + signo * 20, rect.y + 22)
         maza_mango_fin = (centro_x + signo * 30, base_y - 4)
         pygame.draw.line(surface, MARRON_OSCURO, maza_mango_ini, maza_mango_fin, 5)
         pygame.draw.line(surface, HUESO_MARFIL, maza_mango_ini, maza_mango_fin, 2)
-        # Cabeza de maza con calavera de osario
+
         maza_cx = centro_x + signo * 30
         maza_cy = base_y - 8
         pygame.draw.circle(surface, (85, 78, 88), (maza_cx, maza_cy), 8)
@@ -2179,7 +1656,17 @@ class Custodio:
             ey = maza_cy + math.sin(espina_ang) * 10
             pygame.draw.line(surface, (160, 155, 170), (maza_cx, maza_cy), (int(ex), int(ey)), 2)
 
-        # Flash de silueta al recibir daño (1 frame BLEND_RGB_ADD 140)
+    def dibujar(self, surface, camara, tiempo):
+        if not self.vivo:
+            return
+        rect = camara.aplicar_rect(self.rect)
+        pulso = 0.5 + 0.5 * math.sin(tiempo * 5)
+
+        self._dibujar_auras_estado(surface, rect, tiempo, pulso)
+        self._dibujar_vestimenta_y_mitra(surface, rect)
+        self._dibujar_craneo_y_farol(surface, rect)
+        self._dibujar_maza_osario(surface, rect)
+
         if self.tiempo_flash > 0:
             flash_overlay = obtener_aura_custodio(rect.width, rect.height, (140, 140, 140), 140)
             surface.blit(flash_overlay, rect.topleft, special_flags=pygame.BLEND_RGB_ADD)
@@ -2666,12 +2153,10 @@ class Alma:
         self.inicial_rect = pygame.Rect(rect)
         self.recogida = False
 
-    #---- Funciones auxiliares ----#
     def reiniciar(self):
         self.rect = pygame.Rect(self.inicial_rect)
         self.recogida = False
 
-    #---- Funciones auxiliares ----#
     def actualizar(self, jugador):
         if not self.recogida and self.rect.colliderect(jugador.rect):
             self.recogida = True
@@ -2679,7 +2164,6 @@ class Alma:
             return True
         return False
 
-    #---- Funciones auxiliares ----#
     def dibujar(self, surface, camara, tiempo):
         if self.recogida:
             return
@@ -2738,7 +2222,6 @@ class PowerUpBase:
 class PalaRecogible(PowerUpBase):
     """Pala que desbloquea el ataque y el pisotón."""
 
-    #---- Funciones auxiliares ----#
     def actualizar(self, jugador):
         if not self.recogida and self.rect.colliderect(jugador.rect):
             self.recogida = True
@@ -2746,7 +2229,6 @@ class PalaRecogible(PowerUpBase):
             return True
         return False
 
-    #---- Funciones auxiliares ----#
     def dibujar(self, surface, camara, tiempo):
         if self.recogida:
             return
@@ -3167,9 +2649,6 @@ class IncensarioRebote:
             onda_surf = obtener_onda_campana(prog)
             ow = onda_surf.get_width()
             surface.blit(onda_surf, (centro_campana_x - ow // 2, centro_campana_y - ow // 2))
-
-
-CampanaResonancia = IncensarioRebote
 
 
 

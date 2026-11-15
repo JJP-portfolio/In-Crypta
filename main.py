@@ -19,12 +19,12 @@ if venv_python.exists() and sys.executable != str(venv_python) and not os.enviro
     os.environ["_IN_CRYPTA_VENV_ACTIVE"] = "1"
     os.execv(str(venv_python), [str(venv_python)] + sys.argv)
 
-import pygame  # Motor grafico y de audio
-from juego import Juego  # Clase principal del juego
+from juego import Juego
 
 
-#---- Funcion principal ----#
+#---- Punto de entrada ----#
 def main():
+    """Inicializa el entorno, procesa argumentos CLI y ejecuta el juego."""
     nivel_inicio = None
     iniciar_tut = False
 

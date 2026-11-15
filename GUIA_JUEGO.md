@@ -30,7 +30,6 @@ Asegúrate de tener **Python** instalado en tu computadora:
    ```text
    jugar_windows.bat
    ```
-   *(También puedes hacer doble clic en `jugar_pygame.bat`, que funciona exactamente igual)*.
 
 ### ¿Qué hace el script automáticamente?
 * Detecta tu instalación de Python.
@@ -120,7 +119,7 @@ Accede a **Configuración** desde el Menú Principal o pausando el juego (`Esc`)
   * **Media:** Partículas intermedias e iluminación optimizada.
   * **Baja:** Pensado para computadoras de muy bajos recursos (elimina penumbra pesada para asegurar 60 FPS).
 * **Reducción de Movimiento:**
-  * Desactiva el temblor de cámara (screenshake) y suaviza los flashes si preferís una experiencia visual más estable.
+  * Desactiva el temblor de cámara (screenshake) y suaviza los flashes si prefieres una experiencia visual más estable.
 
 ---
 
@@ -128,15 +127,14 @@ Accede a **Configuración** desde el Menú Principal o pausando el juego (`Esc`)
 
 ### Tabla de Controles
 
-| Acción | Preset Estándar (Recomendado) | Preset Retro | Mando / Gamepad |
-|---|---|---|---|
-| **Moverse a los lados** | `A` / `D` o `Flechas` | `Flechas` o `A` / `D` | `D-Pad` o `Stick Izquierdo` |
-| **Salto Variable** | `Espacio` o `W` | `Z` o `Espacio` | `Botón Sur (A / Cruz)` |
-| **Dash de Sombras** | `Shift` o `X` | `X` o `Shift` | `Gatillo / RB / R1` |
-| **Golpe de Pala** | `J` o `Z` o `Click Izquierdo` | `C` o `J` | `Botón Oeste (X / Cuadrado)` |
-| **Pisotón Aéreo (Pogo/Stomp)** | `Abajo + Ataque` en el aire | `Abajo + Ataque` en el aire | `Abajo + Ataque` en el aire |
-| **Consagrar Farol** | `F` frente al farol | `F` frente al farol | `Botón Norte (Y / Triángulo)` |
-| **Pausa / Menú** | `Escape` o `P` | `Escape` o `P` | `Start / Options` |
+| Acción | Preset Estándar (Recomendado) | Preset Retro |
+|---|---|---|
+| **Moverse a los lados** | `A` / `D` o `Flechas` | `Flechas` o `A` / `D` |
+| **Salto Variable** | `Espacio` o `W` | `Z` o `Espacio` |
+| **Dash de Sombras** | `Shift` o `X` | `X` o `Shift` |
+| **Golpe de Pala** | `J` o `Z` o `Click Izquierdo` | `C` o `J` |
+| **Pisotón Aéreo (Pogo/Stomp)** | `Abajo + Ataque` en el aire | `Abajo + Ataque` en el aire |
+| **Pausa / Menú** | `Escape` o `P` | `Escape` o `P` |
 
 ### Mecánicas Esenciales de Supervivencia:
 1. **Salto Variable:**
@@ -147,8 +145,8 @@ Accede a **Configuración** desde el Menú Principal o pausando el juego (`Esc`)
    - ¡El rebote en el aire recarga tu **Dash** inmediatamente!
 3. **El Farol de Reposo y el Manto Protector:**
    - Recoge **Almas celestes** de los enemigos caídos.
-   - Al llegar a un Farol, pulsa `F` para consagrar tu avance (punto de control).
-   - Con suficientes almas consagradas, desbloqueas el **Manto del Farol** (un aura defensiva celeste que absorbe un golpe mortal completo sin perder vida).
+   - Al alcanzar un **Farol de Reposo**, el contacto consagra automáticamente las almas cosechadas y registra el punto de control.
+   - Con suficientes almas consagradas en un tramo, desbloqueas el **Manto del Farol** (un aura defensiva celeste que absorbe un golpe mortal completo sin perder vida) y el **Filo de Ánima**.
 
 ---
 

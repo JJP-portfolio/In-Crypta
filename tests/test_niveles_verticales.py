@@ -1,5 +1,6 @@
 #---- Tests de niveles verticales ----#
 
+import ast
 import hashlib
 import os
 import sys
@@ -9,15 +10,17 @@ RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 sys.path.insert(0, str(RAIZ / "tools"))
 
+import config
 import niveles
 import validar_niveles as V
-import config
 
 HAS_PYGAME = True
 try:
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
     os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
     import pygame
+    from camara import Camara
+    from nivel import Nivel
 except ImportError:
     HAS_PYGAME = False
 
@@ -88,8 +91,16 @@ def probar_interruptor_activado():
 
 #---- Con parser y camara ----#
 
+def _extraer_mismo_piso():
+    """Extrae la función auxiliar `_mismo_piso` desde `juego.py` vía AST."""
+    arbol = ast.parse((RAIZ / "juego.py").read_text(encoding="utf-8"))
+    fn = next(n for n in arbol.body if isinstance(n, ast.FunctionDef) and n.name == "_mismo_piso")
+    espacio = {"TILE": TILE}
+    exec(compile(ast.Module(body=[fn], type_ignores=[]), "juego_mismo_piso", "exec"), espacio)
+    return espacio["_mismo_piso"]
+
+
 def probar_parser_osario_vertical():
-    from nivel import Nivel
     n = Nivel(niveles.NIVEL_3_VERTICAL, "osario_vertical")
     assert n.alto == 36 * TILE == 1152, f"alto esperado 1152, hay {n.alto}"
     assert n.meta.y // TILE >= 18, "la meta G debe estar en el piso inferior"
@@ -99,8 +110,6 @@ def probar_parser_osario_vertical():
 
 
 def probar_caida_por_pozo_con_camara_real():
-    from nivel import Nivel
-    from camara import Camara
     n = Nivel(niveles.NIVEL_3_VERTICAL, "osario_vertical")
 
     class _J:
@@ -129,9 +138,6 @@ def probar_caida_por_pozo_con_camara_real():
 
 
 def probar_camara_nivel_18_filas_no_se_mueve():
-    from nivel import Nivel
-    from camara import Camara
-
     class _J:
         pass
     n = Nivel(niveles.NIVEL_1, "nivel_1")
@@ -146,13 +152,7 @@ def probar_camara_nivel_18_filas_no_se_mueve():
 def probar_mismo_piso_identico_en_niveles_de_18_filas():
     """El filtro de franja de piso debe ser siempre verdadero en los niveles originales,
     así que el reinicio desde faro no cambia para ellos."""
-    import ast
-    from nivel import Nivel
-    arbol = ast.parse((RAIZ / "juego.py").read_text(encoding="utf-8"))
-    fn = next(n for n in arbol.body if isinstance(n, ast.FunctionDef) and n.name == "_mismo_piso")
-    espacio = {"TILE": TILE}
-    exec(compile(ast.Module(body=[fn], type_ignores=[]), "juego_mismo_piso", "exec"), espacio)
-    mismo_piso = espacio["_mismo_piso"]
+    mismo_piso = _extraer_mismo_piso()
     for nombre in ("NIVEL_1", "NIVEL_2", "NIVEL_3"):
         n = Nivel(getattr(niveles, nombre), nombre)
         entidades = (list(n.almas) + n.enemigos + n.enemigos_melee)
@@ -162,12 +162,7 @@ def probar_mismo_piso_identico_en_niveles_de_18_filas():
 
 
 def probar_mismo_piso_separa_franjas():
-    import ast
-    arbol = ast.parse((RAIZ / "juego.py").read_text(encoding="utf-8"))
-    fn = next(n for n in arbol.body if isinstance(n, ast.FunctionDef) and n.name == "_mismo_piso")
-    espacio = {"TILE": TILE}
-    exec(compile(ast.Module(body=[fn], type_ignores=[]), "juego_mismo_piso", "exec"), espacio)
-    mismo_piso = espacio["_mismo_piso"]
+    mismo_piso = _extraer_mismo_piso()
     r_superior = pygame.Rect(0, 14 * TILE, 24, 30)
     r_inferior = pygame.Rect(0, 34 * TILE, 24, 30)
     assert mismo_piso(r_superior, 14 * TILE + 2)

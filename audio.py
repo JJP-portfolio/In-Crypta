@@ -142,19 +142,52 @@ def sintetizar_dron_funebre(duracion=4.0, volumen=0.10):
     return pygame.mixer.Sound(buffer=muestras.tobytes())
 
 
+#---- Tabla de sintesis de efectos de sonido ----#
+_PRESETS_SFX = {
+    "salto": (0.14, [("seno", 210, 160, 0.7, None), ("ruido", 0, 0, 0.2, None), ("fm", 320, 80, 0.2, (640, 0.6))], (0.01, 0.04, 0.5, 0.09), 0.18),
+    "dash": (0.18, [("ruido", 0, 0, 0.45, None), ("sierra", 140, 320, 0.4, None), ("seno", 90, 180, 0.35, None)], (0.02, 0.06, 0.4, 0.10), 0.18),
+    "ataque": (0.11, [("fm", 280, 480, 0.65, (560, 1.2)), ("ruido", 0, 0, 0.35, None)], (0.005, 0.03, 0.4, 0.075), 0.18),
+    "pala": (0.20, [("ruido", 0, 0, 0.45, None), ("seno", 115, -60, 0.5, None), ("fm", 440, -180, 0.35, (880, 1.8))], (0.005, 0.05, 0.3, 0.145), 0.26),
+    "rebote_pala": (0.16, [("fm", 880, -320, 0.6, (1420, 2.5)), ("ruido", 0, 0, 0.3, None), ("seno", 220, -90, 0.4, None)], (0.004, 0.04, 0.3, 0.116), 0.24),
+    "stomp": (0.18, [("ruido", 0, 0, 0.5, None), ("seno", 85, -45, 0.6, None), ("cuadrada", 55, -20, 0.25, None)], (0.005, 0.04, 0.4, 0.135), 0.26),
+    "onda": (0.40, [("ruido", 0, 0, 0.5, None), ("seno", 65, 50, 0.55, None), ("sierra", 85, 40, 0.25, None)], (0.02, 0.10, 0.6, 0.28), 0.22),
+    "jefe_aviso": (0.28, [("cuadrada", 180, -50, 0.6, None), ("fm", 360, -100, 0.4, (180, 1.4))], (0.02, 0.08, 0.5, 0.18), 0.18),
+    "jefe_fase": (0.55, [("cuadrada", 110, -35, 0.6, None), ("seno", 55, 30, 0.5, None), ("ruido", 0, 0, 0.3, None)], (0.04, 0.15, 0.6, 0.36), 0.25),
+    "pala_recoger": (0.25, [("fm", 540, 260, 0.7, (1080, 1.2)), ("seno", 720, 220, 0.4, None)], (0.01, 0.08, 0.6, 0.16), 0.18),
+    "dash_recoger": (0.28, [("seno", 340, 380, 0.65, None), ("fm", 680, 420, 0.35, (1360, 1.1))], (0.01, 0.08, 0.6, 0.19), 0.18),
+    "checkpoint": (0.32, [("seno", 520, 260, 0.6, None), ("fm", 1040, 180, 0.3, (1560, 0.8))], (0.01, 0.08, 0.6, 0.23), 0.18),
+    "vida_extra": (0.44, [("seno", 680, 480, 0.6, None), ("seno", 850, 420, 0.3, None), ("fm", 1360, 240, 0.25, (2040, 0.6))], (0.02, 0.12, 0.6, 0.30), 0.20),
+    "ui": (0.06, [("cuadrada", 420, -60, 0.6, None), ("seno", 840, -120, 0.4, None)], (0.005, 0.02, 0.3, 0.035), 0.10),
+    "daño": (0.26, [("cuadrada", 160, -90, 0.65, None), ("ruido", 0, 0, 0.45, None)], (0.005, 0.06, 0.4, 0.195), 0.24),
+    "muerte": (0.65, [("cuadrada", 75, -40, 0.7, None), ("seno", 55, -25, 0.5, None), ("ruido", 0, 0, 0.35, None)], (0.03, 0.18, 0.6, 0.44), 0.28),
+    "meta": (0.55, [("seno", 220, 280, 0.6, None), ("fm", 440, 360, 0.35, (880, 1.0))], (0.02, 0.14, 0.6, 0.39), 0.20),
+    "losa_romper": (0.19, [("ruido", 0, 0, 0.65, None), ("cuadrada", 95, -50, 0.45, None), ("seno", 60, -30, 0.4, None)], (0.003, 0.04, 0.25, 0.147), 0.28),
+    "campana_repique": (0.55, [("seno", 660, -20, 0.60, None), ("fm", 990, -30, 0.40, (1980, 0.8)), ("seno", 1320, -40, 0.25, None), ("seno", 330, -10, 0.20, None)], (0.004, 0.08, 0.45, 0.466), 0.26),
+}
+
+_NOTAS_ALMAS = (523.25, 587.33, 659.25, 783.99, 880.00, 1046.50)
+
+_TIERS_FAROL = {
+    "farol_tier_1": (0.48, [("seno", 293.66, 0, 0.45, None), ("seno", 349.23, 0, 0.40, None), ("seno", 440.00, 0, 0.45, None), ("fm", 587.33, 0, 0.25, (1174.66, 0.6))], (0.02, 0.10, 0.6, 0.36), 0.22),
+    "farol_tier_2": (0.58, [("seno", 523.25, 0, 0.45, None), ("seno", 659.25, 0, 0.40, None), ("seno", 783.99, 0, 0.45, None), ("fm", 1046.50, 0, 0.35, (2093.0, 0.8))], (0.015, 0.12, 0.65, 0.445), 0.24),
+    "farol_tier_3": (0.72, [("seno", 587.33, 0, 0.45, None), ("seno", 739.99, 0, 0.40, None), ("seno", 880.00, 0, 0.40, None), ("fm", 1174.66, 0, 0.35, (2349.32, 1.2)), ("seno", 1320.00, -20, 0.25, None)], (0.02, 0.15, 0.7, 0.55), 0.26),
+}
+
+
+def _crear_constructor_sfx(duracion, capas, adsr, volumen):
+    return lambda: sintetizar_sfx(duracion, capas, adsr=adsr, volumen=volumen)
+
+
 #---- Clase Audio ----#
 class Audio:
+    """Gestiona efectos pregrabados, sintesis procedural y pistas musicales."""
+
     DIR_SFX_WAV = Path(__file__).resolve().parent / "assets" / "audio" / "sfx"
     DIR_MUSICA = Path(__file__).resolve().parent / "assets" / "audio" / "musica"
 
     def _cargar_sfx(self, clave):
-        # Carga el archivo de audio pregrabado si existe
-        if clave == "daño":
-            base = "dano"
-        elif clave == "alma":
-            base = "alma_ref"
-        else:
-            base = clave
+        """Carga el archivo de audio base si existe en disco."""
+        base = "dano" if clave == "daño" else clave
         for ext in (".ogg", ".wav"):
             ruta = self.DIR_SFX_WAV / f"{base}{ext}"
             if ruta.exists():
@@ -164,22 +197,13 @@ class Audio:
                     pass
         return None
 
-    def _sonido(self, clave, fn_sintesis):
-        # Devuelve el archivo si existe, sino lo sintetiza
-        cargado = self._cargar_sfx(clave)
-        if cargado is not None:
-            return cargado
-        return fn_sintesis()
-
     def __init__(self):
         self.activo = False
         self.sonidos = {}
-        self.variaciones = {}
         self._lazy_builders = {}
         self.canal_dron = None
         self.sonido_dron = None
         self.sonido_latido = None
-        self.tiempo_ultimo_latido = 0.0
         self.musica_actual = None
 
         try:
@@ -196,72 +220,25 @@ class Audio:
             self.activo = False
 
     def _construir_banco(self):
-        # Precargamos los sonidos del juego desde disco
+        """Carga los efectos base en disco y sintetiza los restantes."""
         claves_wav = (
             "salto", "dash", "ataque", "pala", "rebote_pala", "stomp",
             "onda", "jefe_aviso", "jefe_fase", "pala_recoger", "dash_recoger",
             "checkpoint", "vida_extra", "ui", "daño", "muerte", "meta",
-            "corazon_latido", "dron_catacumbas", "alma"
+            "corazon_latido", "dron_catacumbas",
         )
         for c_wav in claves_wav:
             snd_disco = self._cargar_sfx(c_wav)
             if snd_disco is not None:
                 self.sonidos[c_wav] = snd_disco
 
-        # Salto
-        if "salto" not in self.sonidos:
-            capas_salto = [
-                ("seno", 210, 160, 0.7, None),
-                ("ruido", 0, 0, 0.2, None),
-                ("fm", 320, 80, 0.2, (640, 0.6)),
-            ]
-            self.sonidos["salto"] = sintetizar_sfx(0.14, capas_salto, adsr=(0.01, 0.04, 0.5, 0.09), volumen=0.18)
-        self.variaciones["salto"] = [self.sonidos["salto"]] * 3
+        for clave, (dur, capas, adsr, vol) in _PRESETS_SFX.items():
+            if clave not in self.sonidos:
+                self.sonidos[clave] = sintetizar_sfx(dur, capas, adsr=adsr, volumen=vol)
+        self.sonidos["rebote_metalico"] = self.sonidos["rebote_pala"]
 
-        # Dash
-        if "dash" not in self.sonidos:
-            capas_dash = [
-                ("ruido", 0, 0, 0.45, None),
-                ("sierra", 140, 320, 0.4, None),
-                ("seno", 90, 180, 0.35, None),
-            ]
-            self.sonidos["dash"] = sintetizar_sfx(0.18, capas_dash, adsr=(0.02, 0.06, 0.4, 0.10), volumen=0.18)
-        self.variaciones["dash"] = [self.sonidos["dash"]] * 3
-
-        # Ataque con la pala o guadana
-        if "ataque" not in self.sonidos:
-            capas_ataque = [
-                ("fm", 280, 480, 0.65, (560, 1.2)),
-                ("ruido", 0, 0, 0.35, None),
-            ]
-            self.sonidos["ataque"] = sintetizar_sfx(0.11, capas_ataque, adsr=(0.005, 0.03, 0.4, 0.075), volumen=0.18)
-        self.variaciones["ataque"] = [self.sonidos["ataque"]] * 3
-
-        # Golpe de impacto
-        if "pala" not in self.sonidos:
-            capas_pala = [
-                ("ruido", 0, 0, 0.45, None),
-                ("seno", 115, -60, 0.5, None),
-                ("fm", 440, -180, 0.35, (880, 1.8)),
-            ]
-            self.sonidos["pala"] = sintetizar_sfx(0.20, capas_pala, adsr=(0.005, 0.05, 0.3, 0.145), volumen=0.26)
-        if "rebote_pala" not in self.sonidos:
-            self.sonidos["rebote_pala"] = self.sonidos["pala"]
-        self.variaciones["pala"] = [self.sonidos["pala"]] * 3
-
-        # Pisoton
-        if "stomp" not in self.sonidos:
-            capas_stomp = [
-                ("ruido", 0, 0, 0.5, None),
-                ("seno", 85, -45, 0.6, None),
-                ("cuadrada", 55, -20, 0.25, None),
-            ]
-            self.sonidos["stomp"] = sintetizar_sfx(0.18, capas_stomp, adsr=(0.005, 0.04, 0.4, 0.135), volumen=0.26)
-        self.variaciones["stomp"] = [self.sonidos["stomp"]] * 3
-
-        # Sonidos de almas en escala ascendente
-        notas_almas = [523.25, 587.33, 659.25, 783.99, 880.00, 1046.50]
-        for idx, nota in enumerate(notas_almas, 1):
+        # Escala pentatonica ascendente al recolectar almas
+        for idx, nota in enumerate(_NOTAS_ALMAS, 1):
             capas_chime = [
                 ("seno", nota, 0, 0.65, None),
                 ("seno", nota * 2.0, 15, 0.35, None),
@@ -269,182 +246,24 @@ class Audio:
                 ("seno", nota * 3.0, 40, 0.15, None),
             ]
             self.sonidos[f"alma_{idx}"] = sintetizar_sfx(
-                0.34,
-                capas_chime,
-                adsr=(0.004, 0.07, 0.45, 0.266),
-                volumen=0.22,
+                0.34, capas_chime, adsr=(0.004, 0.07, 0.45, 0.266), volumen=0.22
             )
         self.sonidos["alma"] = self.sonidos["alma_1"]
-        self.variaciones.pop("alma", None)
 
-        # Onda del jefe
-        if "onda" not in self.sonidos:
-            capas_onda = [
-                ("ruido", 0, 0, 0.5, None),
-                ("seno", 65, 50, 0.55, None),
-                ("sierra", 85, 40, 0.25, None),
-            ]
-            self.sonidos["onda"] = sintetizar_sfx(0.40, capas_onda, adsr=(0.02, 0.10, 0.6, 0.28), volumen=0.22)
-
-        # Avisos del jefe
-        if "jefe_aviso" not in self.sonidos:
-            capas_aviso = [
-                ("cuadrada", 180, -50, 0.6, None),
-                ("fm", 360, -100, 0.4, (180, 1.4)),
-            ]
-            self.sonidos["jefe_aviso"] = sintetizar_sfx(0.28, capas_aviso, adsr=(0.02, 0.08, 0.5, 0.18), volumen=0.18)
-
-        if "jefe_fase" not in self.sonidos:
-            capas_fase = [
-                ("cuadrada", 110, -35, 0.6, None),
-                ("seno", 55, 30, 0.5, None),
-                ("ruido", 0, 0, 0.3, None),
-            ]
-            self.sonidos["jefe_fase"] = sintetizar_sfx(0.55, capas_fase, adsr=(0.04, 0.15, 0.6, 0.36), volumen=0.25)
-
-        # Recoleccion de items
-        if "pala_recoger" not in self.sonidos:
-            capas_pala_recoger = [
-                ("fm", 540, 260, 0.7, (1080, 1.2)),
-                ("seno", 720, 220, 0.4, None),
-            ]
-            self.sonidos["pala_recoger"] = sintetizar_sfx(0.25, capas_pala_recoger, adsr=(0.01, 0.08, 0.6, 0.16), volumen=0.18)
-
-        if "dash_recoger" not in self.sonidos:
-            capas_dash_recoger = [
-                ("seno", 340, 380, 0.65, None),
-                ("fm", 680, 420, 0.35, (1360, 1.1)),
-            ]
-            self.sonidos["dash_recoger"] = sintetizar_sfx(0.28, capas_dash_recoger, adsr=(0.01, 0.08, 0.6, 0.19), volumen=0.18)
-
-        if "checkpoint" not in self.sonidos:
-            capas_checkpoint = [
-                ("seno", 520, 260, 0.6, None),
-                ("fm", 1040, 180, 0.3, (1560, 0.8)),
-            ]
-            self.sonidos["checkpoint"] = sintetizar_sfx(0.32, capas_checkpoint, adsr=(0.01, 0.08, 0.6, 0.23), volumen=0.18)
-
-        if "vida_extra" not in self.sonidos:
-            capas_vida_extra = [
-                ("seno", 680, 480, 0.6, None),
-                ("seno", 850, 420, 0.3, None),
-                ("fm", 1360, 240, 0.25, (2040, 0.6)),
-            ]
-            self.sonidos["vida_extra"] = sintetizar_sfx(0.44, capas_vida_extra, adsr=(0.02, 0.12, 0.6, 0.30), volumen=0.20)
-
-        # Interfaz de usuario
-        if "ui" not in self.sonidos:
-            capas_ui = [
-                ("cuadrada", 420, -60, 0.6, None),
-                ("seno", 840, -120, 0.4, None),
-            ]
-            self.sonidos["ui"] = sintetizar_sfx(0.06, capas_ui, adsr=(0.005, 0.02, 0.3, 0.035), volumen=0.10)
-
-        # Danio y muerte
-        if "daño" not in self.sonidos:
-            capas_dano = [
-                ("cuadrada", 160, -90, 0.65, None),
-                ("ruido", 0, 0, 0.45, None),
-            ]
-            self.sonidos["daño"] = sintetizar_sfx(0.26, capas_dano, adsr=(0.005, 0.06, 0.4, 0.195), volumen=0.24)
-
-        if "muerte" not in self.sonidos:
-            capas_muerte = [
-                ("cuadrada", 75, -40, 0.7, None),
-                ("seno", 55, -25, 0.5, None),
-                ("ruido", 0, 0, 0.35, None),
-            ]
-            self.sonidos["muerte"] = sintetizar_sfx(0.65, capas_muerte, adsr=(0.03, 0.18, 0.6, 0.44), volumen=0.28)
-
-        # Fin de nivel
-        if "meta" not in self.sonidos:
-            capas_meta = [
-                ("seno", 220, 280, 0.6, None),
-                ("fm", 440, 360, 0.35, (880, 1.0)),
-            ]
-            self.sonidos["meta"] = sintetizar_sfx(0.55, capas_meta, adsr=(0.02, 0.14, 0.6, 0.39), volumen=0.20)
-
-        # Rebote de metal
-        if "rebote_pala" not in self.sonidos:
-            capas_rebote = [
-                ("fm", 880, -320, 0.6, (1420, 2.5)),
-                ("ruido", 0, 0, 0.3, None),
-                ("seno", 220, -90, 0.4, None),
-            ]
-            self.sonidos["rebote_pala"] = sintetizar_sfx(0.16, capas_rebote, adsr=(0.004, 0.04, 0.3, 0.116), volumen=0.24)
-        self.sonidos["rebote_metalico"] = self.sonidos["rebote_pala"]
-
-        # Latido
         if "corazon_latido" not in self.sonidos:
-            self.sonido_latido = self._sonido("corazon_latido", lambda: sintetizar_corazon_delator(volumen=0.34))
-            self.sonidos["corazon_latido"] = self.sonido_latido
-        else:
-            self.sonido_latido = self.sonidos["corazon_latido"]
+            self.sonidos["corazon_latido"] = sintetizar_corazon_delator(volumen=0.34)
+        self.sonido_latido = self.sonidos["corazon_latido"]
         self.sonidos["corazon"] = self.sonido_latido
 
-        # Dron ambiental
         if "dron_catacumbas" not in self.sonidos:
-            self.sonido_dron = self._sonido("dron_catacumbas", lambda: sintetizar_dron_funebre(duracion=4.0, volumen=0.045))
-            self.sonidos["dron_catacumbas"] = self.sonido_dron
-        else:
-            self.sonido_dron = self.sonidos["dron_catacumbas"]
+            self.sonidos["dron_catacumbas"] = sintetizar_dron_funebre(duracion=4.0, volumen=0.045)
+        self.sonido_dron = self.sonidos["dron_catacumbas"]
 
-        # Losa rompiendose
-        if "losa_romper" not in self.sonidos:
-            capas_losa = [
-                ("ruido", 0, 0, 0.65, None),
-                ("cuadrada", 95, -50, 0.45, None),
-                ("seno", 60, -30, 0.4, None),
-            ]
-            self.sonidos["losa_romper"] = sintetizar_sfx(0.19, capas_losa, adsr=(0.003, 0.04, 0.25, 0.147), volumen=0.28)
-        self.variaciones["losa_romper"] = [self.sonidos["losa_romper"]] * 3
-
-        # Campana
-        if "campana_repique" not in self.sonidos:
-            capas_campana = [
-                ("seno", 660, -20, 0.60, None),
-                ("fm", 990, -30, 0.40, (1980, 0.8)),
-                ("seno", 1320, -40, 0.25, None),
-                ("seno", 330, -10, 0.20, None),
-            ]
-            self.sonidos["campana_repique"] = sintetizar_sfx(0.55, capas_campana, adsr=(0.004, 0.08, 0.45, 0.466), volumen=0.26)
-        self.variaciones["campana_repique"] = [self.sonidos["campana_repique"]] * 3
-
-        # Sonidos del farol segun el tier
-        def _build_tier1():
-            capas = [
-                ("seno", 293.66, 0, 0.45, None),
-                ("seno", 349.23, 0, 0.40, None),
-                ("seno", 440.00, 0, 0.45, None),
-                ("fm", 587.33, 0, 0.25, (1174.66, 0.6)),
-            ]
-            return sintetizar_sfx(0.48, capas, adsr=(0.02, 0.10, 0.6, 0.36), volumen=0.22)
-
-        def _build_tier2():
-            capas = [
-                ("seno", 523.25, 0, 0.45, None),
-                ("seno", 659.25, 0, 0.40, None),
-                ("seno", 783.99, 0, 0.45, None),
-                ("fm", 1046.50, 0, 0.35, (2093.0, 0.8)),
-            ]
-            return sintetizar_sfx(0.58, capas, adsr=(0.015, 0.12, 0.65, 0.445), volumen=0.24)
-
-        def _build_tier3():
-            capas = [
-                ("seno", 587.33, 0, 0.45, None),
-                ("seno", 739.99, 0, 0.40, None),
-                ("seno", 880.00, 0, 0.40, None),
-                ("fm", 1174.66, 0, 0.35, (2349.32, 1.2)),
-                ("seno", 1320.00, -20, 0.25, None),
-            ]
-            return sintetizar_sfx(0.72, capas, adsr=(0.02, 0.15, 0.7, 0.55), volumen=0.26)
-
-        self._lazy_builders["farol_tier_1"] = _build_tier1
-        self._lazy_builders["farol_tier_2"] = _build_tier2
-        self._lazy_builders["farol_tier_3"] = _build_tier3
+        for clave_tier, params in _TIERS_FAROL.items():
+            self._lazy_builders[clave_tier] = _crear_constructor_sfx(*params)
 
     def reproducir(self, nombre):
-        # Reproduce un efecto de sonido
+        """Reproduce el efecto indicado si el mezclador esta activo."""
         if not self.activo:
             return
         if nombre not in self.sonidos and nombre in self._lazy_builders:
@@ -452,12 +271,6 @@ class Audio:
                 self.sonidos[nombre] = self._lazy_builders[nombre]()
             except Exception:
                 pass
-
-        if nombre in self.variaciones:
-            variantes = self.variaciones[nombre]
-            sonido = random.choice(variantes)
-            sonido.play()
-            return
 
         sonido = self.sonidos.get(nombre)
         if sonido is not None:

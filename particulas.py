@@ -3,29 +3,37 @@ import math
 import random
 import pygame
 
+import config
 from config import (
     AMARILLO,
     BLANCO,
     CARMESI_SANGRE,
-    FAROL_CALIDO,
-    GRIS,
-    HUESO,
+    FX_IMPACTO_BLANCO,
     HUESO_MARFIL,
-    NARANJA,
     NEGRO_NOCHE,
-    ORO,
     ORO_LITURGICO,
     PIEDRA_FRIA,
     ROJO,
     SALITRE_CRIPTA,
     SANGRE,
-    TURQUESA,
     TURQUESA_ANIMA,
     VIOLETA,
     VIOLETA_POE,
 )
 
-FX_IMPACTO_BLANCO = (250, 248, 240)
+
+def _puntos_estrella(cx, cy, radio, ancho_cruz):
+    """Devuelve los 8 vertices de un destello en estrella de cuatro puntas."""
+    return [
+        (cx, cy - radio),
+        (cx + ancho_cruz, cy - ancho_cruz),
+        (cx + radio, cy),
+        (cx + ancho_cruz, cy + ancho_cruz),
+        (cx, cy + radio),
+        (cx - ancho_cruz, cy + ancho_cruz),
+        (cx - radio, cy),
+        (cx - ancho_cruz, cy - ancho_cruz),
+    ]
 
 
 #---- Chispas de impacto ----#
@@ -44,7 +52,6 @@ class HitSpark:
     def dibujar(self, surface, camara):
         if self.vida <= 0:
             return
-        import config
         estilo = config.resolver_estilo(getattr(config, "ESTILO_EFECTOS", "AUTO"))
         cx = int(camara.aplicar_x(self.x))
         cy = int(camara.aplicar_y(self.y))
@@ -53,43 +60,22 @@ class HitSpark:
         color_puntas = (215, 80, 255) if self.mejorado else (216, 180, 104)
 
         if estilo == "NES":
-            # Cruz sencilla tipo retro
             radio = int(6 * progreso) + 2
             pygame.draw.line(surface, color_puntas, (cx - radio, cy), (cx + radio, cy), 2)
             pygame.draw.line(surface, color_puntas, (cx, cy - radio), (cx, cy + radio), 2)
             pygame.draw.rect(surface, color_centro, (cx - 1, cy - 1, 3, 3))
         elif estilo == "SNES":
-            # Destello en diagonal con cruz
             radio = int(8 * progreso) + 3
             pygame.draw.line(surface, color_puntas, (cx - radio, cy), (cx + radio, cy), 2)
             pygame.draw.line(surface, color_puntas, (cx, cy - radio), (cx, cy + radio), 2)
-            pygame.draw.line(surface, color_centro, (cx - radio // 2, cy - radio // 2), (cx + radio // 2, cy + radio // 2), 1)
-            pygame.draw.line(surface, color_centro, (cx - radio // 2, cy + radio // 2), (cx + radio // 2, cy - radio // 2), 1)
+            diag = radio // 2
+            pygame.draw.line(surface, color_centro, (cx - diag, cy - diag), (cx + diag, cy + diag), 1)
+            pygame.draw.line(surface, color_centro, (cx - diag, cy + diag), (cx + diag, cy - diag), 1)
             pygame.draw.circle(surface, color_centro, (cx, cy), 2)
         else:
-            # Estrella de cuatro puntas
             radio = int(10 * progreso) + 4
-            puntos = [
-                (cx, cy - radio),
-                (cx + 2, cy - 2),
-                (cx + radio, cy),
-                (cx + 2, cy + 2),
-                (cx, cy + radio),
-                (cx - 2, cy + 2),
-                (cx - radio, cy),
-                (cx - 2, cy - 2),
-            ]
-            pygame.draw.polygon(surface, color_puntas, puntos)
-            pygame.draw.polygon(surface, color_centro, [
-                (cx, cy - radio // 2),
-                (cx + 1, cy - 1),
-                (cx + radio // 2, cy),
-                (cx + 1, cy + 1),
-                (cx, cy + radio // 2),
-                (cx - 1, cy + 1),
-                (cx - radio // 2, cy),
-                (cx - 1, cy - 1),
-            ])
+            pygame.draw.polygon(surface, color_puntas, _puntos_estrella(cx, cy, radio, 2))
+            pygame.draw.polygon(surface, color_centro, _puntos_estrella(cx, cy, radio // 2, 1))
 
 
 #---- Particula individual ----#
@@ -251,33 +237,27 @@ class SistemaParticulas:
             ))
 
     def ataque(self, x, y, direccion, mejorado=False):
-        # Chispas al atacar con pala o guadana
+        """Genera chispas direccionales al atacar con pala o guadana."""
         if mejorado:
-            colores = ((215, 80, 255), (245, 170, 255), (170, 50, 240), BLANCO)
-            for _ in range(16):
-                self.particulas.append(Particula(
-                    x + random.uniform(-4, 4),
-                    y + random.uniform(-14, 14),
-                    direccion * random.uniform(260, 480),
-                    random.uniform(-110, 110),
-                    random.uniform(0.18, 0.32),
-                    random.choice(colores),
-                    random.uniform(3, 6),
-                    40,
-                ))
+            cantidad, colores = 16, ((215, 80, 255), (245, 170, 255), (170, 50, 240), BLANCO)
+            dx_off, dy_off = 4, 14
+            vx_rango, vy_lim, vida_rango, tam_rango, grav = (260, 480), 110, (0.18, 0.32), (3, 6), 40
         else:
-            colores = (ORO_LITURGICO, (240, 215, 130), (220, 220, 230), BLANCO)
-            for _ in range(8):
-                self.particulas.append(Particula(
-                    x + random.uniform(-5, 5),
-                    y + random.uniform(-10, 10),
-                    direccion * random.uniform(180, 360),
-                    random.uniform(-90, 90),
-                    random.uniform(0.12, 0.25),
-                    random.choice(colores),
-                    random.uniform(2, 4),
-                    80,
-                ))
+            cantidad, colores = 8, (ORO_LITURGICO, (240, 215, 130), (220, 220, 230), BLANCO)
+            dx_off, dy_off = 5, 10
+            vx_rango, vy_lim, vida_rango, tam_rango, grav = (180, 360), 90, (0.12, 0.25), (2, 4), 80
+
+        for _ in range(cantidad):
+            self.particulas.append(Particula(
+                x + random.uniform(-dx_off, dx_off),
+                y + random.uniform(-dy_off, dy_off),
+                direccion * random.uniform(*vx_rango),
+                random.uniform(-vy_lim, vy_lim),
+                random.uniform(*vida_rango),
+                random.choice(colores),
+                random.uniform(*tam_rango),
+                grav,
+            ))
 
     def pala(self, x, y):
         # Golpe seco de la pala
@@ -335,9 +315,6 @@ class SistemaParticulas:
     def daño(self, x, y):
         # Salpicadura al recibir danio
         self.emitir(x, y, 16, (ROJO, CARMESI_SANGRE, (215, 65, 55), BLANCO), 250, 0.6, 5, 680)
-
-    # Alias sin acento
-    dano = daño
 
     def meta(self, x, y):
         # Destello al cruzar el porton

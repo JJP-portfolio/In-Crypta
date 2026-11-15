@@ -16,6 +16,9 @@ import pygame
 pygame.init()
 pygame.display.set_mode((1, 1))
 
+from camara import Camara
+from config import ANCHO, ALTO, JEFE_VIDA, MINIJEFE_VIDA
+from entidades import FarolCheckpoint, Jugador
 from hud import (
     HudLayout,
     HudOrquestador,
@@ -26,14 +29,24 @@ from hud import (
     TextoCache,
     Tween,
     envolver,
-    fmt_cooldown,
-    fmt_dash,
     fmt_tiempo,
-    fmt_tiempo_dec,
     _partir_palabra,
-    fmt_arma,
 )
-from config import ALMAS_POR_VIDA, ANCHO, ALTO, JEFE_VIDA, VIDAS_MAXIMAS
+
+
+def _solapamientos_layout(layout: HudLayout):
+    rects = [
+        ("izq", layout.zona_izq),
+        ("centro", layout.zona_centro),
+        ("der", layout.zona_der),
+        ("mensajes", layout.canal_mensajes),
+    ]
+    pares = []
+    for i in range(len(rects)):
+        for j in range(i + 1, len(rects)):
+            if rects[i][1].colliderect(rects[j][1]):
+                pares.append((rects[i][0], rects[j][0]))
+    return pares
 
 
 class TestTween(unittest.TestCase):
@@ -57,52 +70,16 @@ class TestTween(unittest.TestCase):
 
 
 class TestFormatos(unittest.TestCase):
-    def test_fmt_cooldown(self):
-        self.assertEqual(fmt_cooldown(0), "LISTO")
-        self.assertEqual(fmt_cooldown(0.35), "0.4s")
-        self.assertEqual(fmt_cooldown(0.60), "0.6s")
-        self.assertEqual(fmt_cooldown(0.05), "0.1s")
-        self.assertEqual(fmt_cooldown(0.01), "0.1s")
-
-    def test_fmt_dash(self):
-        m = HudModel(dash_cooldown=0.3, en_suelo=True, dash_usos_aire=1)
-        self.assertEqual(fmt_dash(m), "[DASH] 0.3s")
-        m.dash_cooldown = 0.0
-        self.assertEqual(fmt_dash(m), "[DASH] LISTO")
-        # Prioridad: cooldown > SIN USO
-        m.dash_cooldown = 0.2
-        m.en_suelo = False
-        m.dash_usos_aire = 0
-        self.assertEqual(fmt_dash(m), "[DASH] 0.2s")
-        # En el aire sin uso
-        m.dash_cooldown = 0.0
-        self.assertEqual(fmt_dash(m), "[DASH] SIN USO")
-
-    def test_fmt_arma(self):
-        m = HudModel(tiene_pala=False)
-        self.assertEqual(fmt_arma(m), "[PALA] --")
-        m.tiene_pala = True
-        m.rango_ataque_mejorado = False
-        m.ataque_cooldown = 0.0
-        self.assertEqual(fmt_arma(m), "[PALA] LISTO")
-        m.ataque_cooldown = 0.35
-        self.assertEqual(fmt_arma(m), "[PALA] 0.4s")
-        m.rango_ataque_mejorado = True
-        m.ataque_cooldown = 0.0
-        self.assertEqual(fmt_arma(m), "[GUADAÑA] LISTO")
-
     def test_fmt_tiempo(self):
         self.assertEqual(fmt_tiempo(59.9), "00:59")
         self.assertEqual(fmt_tiempo(60), "01:00")
         self.assertEqual(fmt_tiempo(0), "00:00")
-        self.assertEqual(fmt_tiempo_dec(83.27), "01:23.2")
-        self.assertEqual(fmt_tiempo_dec(0.0), "00:00.0")
 
 
 class TestLayout(unittest.TestCase):
     def test_no_hay_solapamientos(self):
         layout = HudLayout.construir()
-        self.assertEqual(layout.solapamientos(), [])
+        self.assertEqual(_solapamientos_layout(layout), [])
 
     def test_geometria_exacta(self):
         layout = HudLayout.construir()
@@ -211,33 +188,21 @@ class TestTextoCache(unittest.TestCase):
         self.assertEqual(llamado["n"], 2)
 
 
-class TestModeloEventos(unittest.TestCase):
-    def test_evento_alma_recogida(self):
-        m = HudModel(almas=5)
-        m.almas_prev = 3
-        self.assertTrue(m.evento_alma_recogida())
-        m.almas_prev = 5
-        self.assertFalse(m.evento_alma_recogida())
+class TestModeloPropiedades(unittest.TestCase):
+    def test_dash_listo(self):
+        m = HudModel(tiene_dash=True, dash_cooldown=0.0, en_suelo=True, dash_usos_aire=0)
+        self.assertTrue(m.dash_listo)
+        m.en_suelo = False
+        self.assertFalse(m.dash_listo)
+        m.dash_usos_aire = 1
+        self.assertTrue(m.dash_listo)
+        m.dash_cooldown = 0.2
+        self.assertFalse(m.dash_listo)
 
-    def test_evento_perdio_vida(self):
-        m = HudModel(vidas=2)
-        m.vidas_prev = 3
-        self.assertTrue(m.evento_perdio_vida())
-
-    def test_evento_vida_extra(self):
-        m = HudModel(vidas=4)
-        m.vidas_prev = 3
-        self.assertTrue(m.evento_vida_extra())
-
-    def test_evento_dash_listo(self):
-        m = HudModel(dash_cooldown=0.0)
-        m.dash_cooldown_prev = 0.3
-        self.assertTrue(m.evento_dash_listo())
-
-    def test_evento_jefe_cambio_fase(self):
-        m = HudModel(jefe_fase=2)
-        m.jefe_fase_prev = 1
-        self.assertTrue(m.evento_jefe_cambio_fase())
+    def test_rango_mejorado_y_nombre(self):
+        m = HudModel(rango_ataque_mejorado=True, nivel_nombre="El Osario")
+        self.assertTrue(m.rango_mejorado)
+        self.assertEqual(m.nombre_nivel, "El Osario")
 
 
 class TestOrquestador(unittest.TestCase):
@@ -360,7 +325,7 @@ class TestOrquestador(unittest.TestCase):
         o.dibujar(pantalla, JuegoFalso(), 0.016)
         self.assertTrue(o.modelo.jefe_vivo)
         self.assertEqual(o.modelo.jefe_vida, 2)
-        self.assertEqual(o.modelo.jefe_vida_max, 3)
+        self.assertEqual(o.modelo.jefe_vida_max, MINIJEFE_VIDA)
         self.assertEqual(o.modelo.jefe_nombre, "EL CARCELERO DEL OSARIO")
 
 
@@ -375,37 +340,22 @@ class TestUIUX(unittest.TestCase):
         self.assertEqual(layout.zona_izq.width, 336)
         self.assertEqual(layout.zona_centro.width, 512)
 
-        # Formatos de la grilla 2x2
-        m = HudModel(almas=5, almas_total=20, almas_para_vida=3)
-        self.assertEqual(fmt_dash(m), "[DASH] LISTO")
-        self.assertEqual(fmt_arma(m), "[PALA] --")
-        m.tiene_pala = True
-        self.assertEqual(fmt_arma(m), "[PALA] LISTO")
-        m.rango_ataque_mejorado = True
-        self.assertEqual(fmt_arma(m), "[GUADAÑA] LISTO")
-
     def test_ui_diegetica_faroles(self):
-        """Farol del jugador (llama turquesa/ámbar) y Checkpoints activos/inactivos."""
-        from entidades import Jugador, FarolCheckpoint
-
+        """Farol del jugador (llama turquesa/ambar) y Checkpoints activos/inactivos."""
         j = Jugador(100, 100)
         j.tiene_dash = True
         j.dash_cooldown = 0.0
         j.en_suelo = True
         self.assertTrue(j.dash_listo())
 
-        # Checkpoint: inactivo (apagado) y activo (encendido)
         cp = FarolCheckpoint(pygame.Rect(200, 200, 20, 30))
         self.assertFalse(cp.activo)
-        # Jugador toca el checkpoint
         j.rect.center = cp.rect.center
         cp.actualizar(j)
         self.assertTrue(cp.activo)
 
     def test_ui_espacial_coordenadas_y_distancia(self):
-        """Calculo de distancia a 140 px y proyección mediante camara.aplicar_rect."""
-        from camara import Camara
-
+        """Calculo de distancia a 140 px y proyeccion mediante camara.aplicar_rect."""
         cam = Camara()
         cam.x = 200.0
         cam.y = 50.0
@@ -418,7 +368,7 @@ class TestUIUX(unittest.TestCase):
     def test_layout_cero_solapamientos(self):
         """Garantiza cero colisiones ni solapamientos en el riel superior."""
         layout = HudLayout.construir()
-        self.assertEqual(layout.solapamientos(), [])
+        self.assertEqual(_solapamientos_layout(layout), [])
         self.assertTrue(layout.riel.width <= ANCHO)
         self.assertTrue(layout.riel.height <= ALTO)
 
@@ -432,9 +382,8 @@ class TestUIUX(unittest.TestCase):
         mensajes = MensajeHUD(layout, tema, cache)
         modelo = HudModel(vidas=3, almas=10, almas_total=25)
 
-        # Modo 0: Completo
         renderer.dibujar(pantalla, modelo, mensajes, False, 0.016, modo_hud=0)
-        self.assertEqual(layout.solapamientos(), [])
+        self.assertEqual(_solapamientos_layout(layout), [])
 
         # Modo 1: Compacto (alpha 140)
         renderer.dibujar(pantalla, modelo, mensajes, False, 0.016, modo_hud=1)
@@ -536,17 +485,18 @@ class TestUIUX(unittest.TestCase):
         renderer.dibujar(pantalla, m, mensajes, False, 0.016)
 
     def test_paneles_cache_limite_lru(self):
-        """Verifica que _paneles_cache desaloja con política LRU y nunca excede 32 elementos."""
+        """Verifica que _paneles_cache desaloja con politica LRU y nunca excede 32 elementos."""
         layout = HudLayout.construir()
         tema = HudTheme()
         cache = TextoCache(lambda t: pygame.font.Font(None, t))
         renderer = HudRenderer(layout, tema, cache)
 
-        # Generar 60 paneles distintos simulando transiciones continuas de fade alfa
-        for a in range(60):
-            renderer._panel(100 + a, 50, alpha=a * 4)
+        for idx in range(60):
+            renderer._guardar_panel_cache(("panel", idx), pygame.Surface((32, 32)))
+            renderer._obtener_panel_cache(("panel", 0))
 
         self.assertLessEqual(len(renderer._paneles_cache), 32)
+        self.assertIn(("panel", 0), renderer._paneles_cache)
 
 
 if __name__ == "__main__":

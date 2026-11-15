@@ -20,6 +20,11 @@
 #   ~  losa que se rompe al pisarla
 #   I  campana para rebotar
 
+try:
+    from niveles_redisenados import SALAS_PRUEBA_RED
+except ImportError:
+    SALAS_PRUEBA_RED = []
+
 #---- Nivel Tutorial: El Ritual del Sepulturero ----#
 NIVEL_TUTORIAL = """
 ###################################################################################################################################################################################################
@@ -256,10 +261,5 @@ SALAS_PRUEBA = [
         "pista": "Salta sobre las ondas del Custodio y castígalo cuando se arrodille vulnerable. Vencerlo consagrará la salida.",
     },
 ]
-
-try:
-    from niveles_redisenados import SALAS_PRUEBA_RED
-except ImportError:
-    SALAS_PRUEBA_RED = []
 
 SALAS_PRUEBA.extend(SALAS_PRUEBA_RED)
