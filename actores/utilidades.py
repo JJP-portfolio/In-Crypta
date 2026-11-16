@@ -6,7 +6,7 @@ import pygame
 def _escalar_rect_visual_enemigo(
     rect_camara: pygame.Rect, ancho_vis: int, alto_vis: int
 ) -> pygame.Rect:
-    """Reduce la caja de renderizado un 10%-15% manteniendo los pies apoyados en rect_camara.bottom."""
+    """Reduce la caja visual manteniendo los pies apoyados en rect_camara.bottom."""
     return pygame.Rect(
         rect_camara.centerx - ancho_vis // 2,
         rect_camara.bottom - alto_vis,
