@@ -27,12 +27,12 @@ except ImportError:
 TILE = config.TILE
 HABILIDADES_OSARIO = ("dash", "pala")
 
-# SHA-256 del texto del mapa original (niveles.py antes del cambio, leido con el AST).
+# SHA-256 del mapa esperado (tras correcciones espaciales, limpieza natural de decoraciones y faroles).
 HASH_MAPA_ORIGINAL = {
-    "NIVEL_1": "e4ac309c78cf02fa4078ccef231a2e56863f168cdd85a3e79202795aa8217059",
-    "NIVEL_2": "ba1a296408a0d62c57409e5faea6cd462881ead75c0c9f08a369c55afa9dccdb",
+    "NIVEL_1": "624c2bb4ac7ee852d6acfe086069d5790b7530f1f40ab47e5c06435b1a10cd3c",
+    "NIVEL_2": "b42a958abf74c97ba4e7cc1ee037cf8e4003ae4663081b42af08b74e6e79b266",
     "NIVEL_3": "8da4886dc45f76ce45d3057c567358f06c86932e924128a3de9d617fca582ca4",
-    "NIVEL_TUTORIAL": "681ba6b8ee02989a038a8e0be47d3d7b40fb0e5dbc275180f7be8d6f1678611c",
+    "NIVEL_TUTORIAL": "173d42d43575471198061b7f8798b7e27bb469f6ca3738fc577a24fffc087cae",
 }
 
 
@@ -77,7 +77,7 @@ def probar_validador_detecta_fallos_plantados():
         "pinchos bajo el aterrizaje": lambda m: m[34].__setitem__(313, "^"),
         "abertura antes del spawn": lambda m: m[17].__setitem__(2, "."),
         "sin meta G": lambda m: [m.__setitem__(r, [("." if c == "G" else c) for c in m[r]]) for r in range(len(m))],
-        "abertura dentro de la sala del jefe": lambda m: m[17].__setitem__(62, "."),
+        "abertura dentro de la sala del jefe": lambda m: m[17].__setitem__(116, "."),
     }
     for nombre, mod in casos.items():
         res = V.validar(con(mod), nombre, habilidades=HABILIDADES_OSARIO,

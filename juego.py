@@ -346,7 +346,7 @@ class Juego:
         self.corriendo = True
         self.fuentes = {}
         self._cache_texto = OrderedDict()
-        p_font = Path("assets/NotoSerifDisplay-Bold.ttf")
+        p_font = Path(__file__).resolve().parent / getattr(config, "RUTA_FUENTE_GOTICA", "assets/NotoSerif-Bold.ttf")
         self._ruta_fuente_gotica = str(p_font) if p_font.exists() else None
         self.fondos = {}
         self.vineta = self.crear_vineta(90)
@@ -416,6 +416,12 @@ class Juego:
         self.debug_colisiones = False
         self.estilos_visuales = ("AUTO", "NES", "SNES", "PROC")
         self.estilo_visual_idx = 0
+        self.escala_fuente_idx = 0
+        self._escala_fuente_cache = getattr(config, "ESCALA_FUENTES_ACTIVA", 1.15)
+        self.campanas_combo_count = 0
+        self.campanas_combo_timer = 0.0
+        self.continues = getattr(config, "CONTINUES_INICIALES", 2)
+        self.derrota_opcion = 0
 
         if sala_inicial is not None:
             self.cargar_sala_prueba(sala_inicial)
@@ -462,6 +468,12 @@ class Juego:
         self.almas_vida_consagradas = 0
         self.aviso_jefe = 0.0
         self.hud_aviso_altar = 0.0
+        self.campanas_combo_count = 0
+        self.campanas_combo_timer = 0.0
+        self.derrota_opcion = 0
+        self.tiempo_en_borde_fe = 0.0
+        self.pista_fe_mostrada = False
+        self._jefe_victoria_procesada = False
         self.audio.iniciar_dron()
         self.audio.reproducir_musica(self.nivel.tema, bucle=True, fade_ms=800)
 
@@ -618,6 +630,20 @@ class Juego:
         self.hud.mostrar_mensaje(f"ACCESIBILIDAD: REDUCIR MOVIMIENTO {estado_str}", 3, 2.5)
         self.audio.reproducir("ui")
 
+    def alternar_escala_fuente(self, delta=1):
+        """Alterna la escala tipográfica in-game (+15%, +20%, +25%) mediante F2."""
+        opciones = getattr(config, "OPCIONES_ESCALA_FUENTE", ((1.15, "+15%"), (1.20, "+20%"), (1.25, "+25%")))
+        self.escala_fuente_idx = (self.escala_fuente_idx + delta) % len(opciones)
+        escala, etiqueta = opciones[self.escala_fuente_idx]
+        config.ESCALA_FUENTES_ACTIVA = escala
+        self._escala_fuente_cache = escala
+        self.fuentes.clear()
+        self._cache_texto.clear()
+        if hasattr(self, "hud") and hasattr(self.hud, "limpiar_caches_texto"):
+            self.hud.limpiar_caches_texto()
+        self.hud.mostrar_mensaje(f"TAMAÑO DE TEXTO (F2): {etiqueta}", 1, 2.5)
+        self.audio.reproducir("ui")
+
     def ejecutar_seleccion_nivel(self, indice):
         if indice == 0:
             self.iniciar_tutorial()
@@ -639,6 +665,8 @@ class Juego:
             return
         self.almas_totales = 0
         self.tiempo_total = 0.0
+        self.continues = getattr(config, "CONTINUES_INICIALES", 2)
+        self.derrota_opcion = 0
         self.cargar_nivel(indice, vidas=VIDAS_INICIALES)
         self.estado = "jugando"
 
@@ -656,6 +684,8 @@ class Juego:
         """Inicia la campaña narrativa completa comenzando en el Preludio."""
         self.almas_totales = 0
         self.tiempo_total = 0.0
+        self.continues = getattr(config, "CONTINUES_INICIALES", 2)
+        self.derrota_opcion = 0
         self.jugador = None
         self.en_campaña = True
         self.iniciar_tutorial()
@@ -663,6 +693,8 @@ class Juego:
     def reiniciar_juego(self):
         self.almas_totales = 0
         self.tiempo_total = 0.0
+        self.continues = getattr(config, "CONTINUES_INICIALES", 2)
+        self.derrota_opcion = 0
         self.jugador = None
         self.cargar_nivel(0, vidas=VIDAS_INICIALES)
 
@@ -749,10 +781,10 @@ class Juego:
 
     def _manejar_tecla_pausa(self, key):
         if key in (pygame.K_UP, pygame.K_w):
-            self.pausa_opcion = (self.pausa_opcion - 1) % 4
+            self.pausa_opcion = (self.pausa_opcion - 1) % 5
             self.audio.reproducir("ui")
         elif key in (pygame.K_DOWN, pygame.K_s):
-            self.pausa_opcion = (self.pausa_opcion + 1) % 4
+            self.pausa_opcion = (self.pausa_opcion + 1) % 5
             self.audio.reproducir("ui")
         elif key in (pygame.K_c, pygame.K_o):
             self.abrir_configuracion("pausa")
@@ -761,15 +793,17 @@ class Juego:
             if self.pausa_opcion == 0:
                 self.estado = "jugando"
             elif self.pausa_opcion == 1:
+                self.abrir_configuracion("pausa")
+            elif self.pausa_opcion == 2:
                 if self.punto_reintento:
                     self.reintentar_nivel()
                 else:
                     self._reiniciar_nivel_actual()
                 self.estado = "jugando"
-            elif self.pausa_opcion == 2:
+            elif self.pausa_opcion == 3:
                 self._reiniciar_nivel_actual()
                 self.estado = "jugando"
-            elif self.pausa_opcion == 3:
+            elif self.pausa_opcion == 4:
                 self.abrir_menu()
         elif key in (pygame.K_ESCAPE, pygame.K_p):
             self.audio.reproducir("ui")
@@ -805,6 +839,20 @@ class Juego:
         elif key in (pygame.K_RETURN, pygame.K_SPACE):
             self.cargar_sala_prueba(self.test_opcion)
 
+    def _manejar_tecla_derrota(self, key):
+        tiene_continues = (
+            not self.sala_prueba
+            and not self.es_tutorial
+            and getattr(self, "continues", 0) > 0
+        )
+        if tiene_continues and key in (pygame.K_UP, pygame.K_w, pygame.K_DOWN, pygame.K_s, pygame.K_LEFT, pygame.K_a, pygame.K_RIGHT, pygame.K_d):
+            self.derrota_opcion = 1 - getattr(self, "derrota_opcion", 0)
+            self.audio.reproducir("ui")
+        elif key in (pygame.K_RETURN, pygame.K_SPACE):
+            self._manejar_tecla_enter_estado()
+        elif key == pygame.K_ESCAPE:
+            self.abrir_menu()
+
     def _manejar_tecla_enter_estado(self):
         if self.estado == "titulo":
             self.audio.reproducir("ui")
@@ -816,8 +864,14 @@ class Juego:
         elif self.estado == "derrota":
             if self.sala_prueba or self.es_tutorial:
                 self._reiniciar_nivel_actual()
+            elif getattr(self, "continues", 0) > 0 and getattr(self, "derrota_opcion", 0) == 0:
+                # Usa 1 Continue y reinicia desde 0 el nivel donde perdió todas las vidas
+                self.continues -= 1
+                self.cargar_nivel(self.nivel_indice, vidas=VIDAS_INICIALES)
+                self.estado = "jugando"
             else:
-                self.reintentar_nivel()
+                # Sin continues (o eligiendo empezar de nuevo): arranca desde el Nivel 1 (El Camposanto), NO el tutorial
+                self.reiniciar_juego()
                 self.estado = "jugando"
 
     def _manejar_tecla_global(self, key):
@@ -834,6 +888,8 @@ class Juego:
             self.audio.alternar()
         elif key == pygame.K_F1:
             self.alternar_accesibilidad()
+        elif key == pygame.K_F2:
+            self.alternar_escala_fuente()
         elif key == pygame.K_F3:
             self.debug_colisiones = not self.debug_colisiones
             estado_f3 = "ACTIVADO" if self.debug_colisiones else "DESACTIVADO"
@@ -881,6 +937,7 @@ class Juego:
             "pausa": self._manejar_tecla_pausa,
             "seleccion_nivel": self._manejar_tecla_seleccion_nivel,
             "test_selector": self._manejar_tecla_test_selector,
+            "derrota": self._manejar_tecla_derrota,
         }
         for evento in pygame.event.get():
             if evento.type == pygame.QUIT:
@@ -951,13 +1008,21 @@ class Juego:
         else:
             self.timer_corazon = 0.0
 
+        self._dt_actual = dt
         self.tiempo_nivel += dt
         self.tiempo_total += dt
+        if self.nivel and getattr(self.nivel, "tema", None):
+            self.audio.asegurar_musica_activa(self.nivel.tema)
 
         if self.almas_combo_timer > 0:
             self.almas_combo_timer = max(0.0, self.almas_combo_timer - dt)
             if self.almas_combo_timer <= 0:
                 self.almas_combo_count = 0
+
+        if self.campanas_combo_timer > 0:
+            self.campanas_combo_timer = max(0.0, self.campanas_combo_timer - dt)
+            if self.campanas_combo_timer <= 0:
+                self.campanas_combo_count = 0
 
         self.actualizar_plataformas(dt)
         self.actualizar_losas(dt)
@@ -998,6 +1063,7 @@ class Juego:
         self.actualizar_power_ups_dash()
         self.actualizar_power_ups_rango()
         self.actualizar_checkpoints()
+        self._actualizar_duda_salto_de_fe(dt)
         if self.es_tutorial:
             self.actualizar_tutorial_contextual()
         self.particulas.actualizar(dt)
@@ -1030,11 +1096,11 @@ class Juego:
 
     def actualizar_plataformas(self, dt):
         soporte = None
-        if self.jugador.en_suelo:
+        if self.jugador.en_suelo or self.jugador.vy >= 0:
             for plataforma in self.nivel.plataformas:
                 rect = plataforma.rect
                 if (
-                    abs(self.jugador.rect.bottom - rect.top) <= 2
+                    abs(self.jugador.rect.bottom - rect.top) <= 3
                     and self.jugador.rect.right > rect.left
                     and self.jugador.rect.left < rect.right
                 ):
@@ -1045,9 +1111,26 @@ class Juego:
 
         if soporte is not None:
             self.jugador.x += soporte.dx
-            self.jugador.y += soporte.dy
             self.jugador.rect.x = round(self.jugador.x)
-            self.jugador.rect.y = round(self.jugador.y)
+            self.jugador.rect.bottom = soporte.rect.top
+            self.jugador.y = float(self.jugador.rect.y)
+            self.jugador.en_suelo = True
+            self.jugador.vy = 0.0
+        elif self.jugador.vy >= 0:
+            # Si una plataforma vertical sube hacia los pies del jugador, apoyarlo arriba antes de mover_x
+            for plataforma in self.nivel.plataformas:
+                rect = plataforma.rect
+                if (
+                    plataforma.dy < 0
+                    and 0 < (self.jugador.rect.bottom - rect.top) <= abs(plataforma.dy) + 4
+                    and self.jugador.rect.right > rect.left
+                    and self.jugador.rect.left < rect.right
+                ):
+                    self.jugador.rect.bottom = rect.top
+                    self.jugador.y = float(self.jugador.rect.y)
+                    self.jugador.en_suelo = True
+                    self.jugador.vy = 0.0
+                    break
 
     def actualizar_losas(self, dt):
         for losa in getattr(self.nivel, "losas_quebradizas", []):
@@ -1088,7 +1171,43 @@ class Juego:
                     2,
                 )
 
+    def _tolerancia_pisoton_frame(self, dt=None):
+        """Calcula tolerancia vertical dinámica para evitar túneles a velocidad terminal."""
+        dt_eff = max(float(dt if dt is not None else getattr(self, "_dt_actual", 0.016)), 0.016)
+        vy_abs = abs(getattr(self.jugador, "vy", 0.0)) if self.jugador else 0.0
+        return max(TOLERANCIA_PISOTON, int(vy_abs * dt_eff) + 6)
+
+    def _aplicar_rebote_campana(self, incensario, por_ataque=False):
+        """Aplica el rebote del jugador sobre un incensario/campana con escala ascendente."""
+        incensario.activar_rebote()
+        if por_ataque:
+            self.jugador.ataque_golpeado = True
+            self.jugador.dash_tiempo = 0.0
+        self.jugador.rect.bottom = min(self.jugador.rect.bottom, incensario.rect.top)
+        self.jugador.y = float(self.jugador.rect.y)
+        self.jugador.vy = -REBOTE_ENEMIGO
+        self.jugador.en_suelo = False
+        self.jugador.dash_usos_aire = DASH_USOS_AIRE
+        self.jugador.dash_cooldown = 0.0
+
+        if self.campanas_combo_timer > 0:
+            self.campanas_combo_count = min(6, self.campanas_combo_count + 1)
+        else:
+            self.campanas_combo_count = 1
+        self.campanas_combo_timer = 1.05
+        self.audio.reproducir(f"campana_{self.campanas_combo_count}")
+
+        self.particulas.campana_repique(incensario.rect.centerx, incensario.rect.centery)
+        if por_ataque:
+            self.camara.sacudir(6.0, 0.14, dir_x=self.jugador.direccion, dir_y=-0.5)
+            self.flash = 0.08
+            self.flash_color = TURQUESA_ÁNIMA
+        else:
+            self.camara.sacudir(5.0, 0.12, dir_x=0.0, dir_y=1.0)
+        self.hitstop = 0.08
+
     def actualizar_incensarios(self, dt):
+        tol = self._tolerancia_pisoton_frame(dt)
         for incensario in getattr(self.nivel, "incensarios", []):
             if not incensario.puede_rebotar():
                 continue
@@ -1097,19 +1216,9 @@ class Juego:
             if (
                 self.jugador.vy > 0
                 and self.jugador.rect.colliderect(incensario.rect)
-                and self.jugador.rect.bottom <= incensario.rect.top + TOLERANCIA_PISOTON
+                and self.jugador.rect.bottom <= incensario.rect.top + tol
             ):
-                incensario.activar_rebote()
-                self.jugador.rect.bottom = min(self.jugador.rect.bottom, incensario.rect.top)
-                self.jugador.y = float(self.jugador.rect.y)
-                self.jugador.vy = -REBOTE_ENEMIGO
-                self.jugador.en_suelo = False
-                self.jugador.dash_usos_aire = DASH_USOS_AIRE
-                self.jugador.dash_cooldown = 0.0
-                self.audio.reproducir("campana_repique")
-                self.particulas.campana_repique(incensario.rect.centerx, incensario.rect.centery)
-                self.camara.sacudir(5.0, 0.12, dir_x=0.0, dir_y=1.0)
-                self.hitstop = 0.08
+                self._aplicar_rebote_campana(incensario, por_ataque=False)
 
     def limitar_jugador(self):
         minimo = 0
@@ -1144,6 +1253,7 @@ class Juego:
             )
 
         if self.jugador.dash_recien:
+            self.jugador.dash_recien = False
             self.audio.reproducir("dash")
             self.camara.sacudir(3.5, 0.10, dir_x=self.jugador.direccion, dir_y=0.0)
 
@@ -1159,21 +1269,7 @@ class Juego:
         for incensario in getattr(self.nivel, "incensarios", []):
             if not (incensario.puede_rebotar() and golpe.colliderect(incensario.rect)):
                 continue
-            incensario.activar_rebote()
-            self.jugador.ataque_golpeado = True
-            self.jugador.rect.bottom = min(self.jugador.rect.bottom, incensario.rect.top)
-            self.jugador.y = float(self.jugador.rect.y)
-            self.jugador.vy = -REBOTE_ENEMIGO
-            self.jugador.en_suelo = False
-            self.jugador.dash_tiempo = 0.0
-            self.jugador.dash_usos_aire = DASH_USOS_AIRE
-            self.jugador.dash_cooldown = 0.0
-            self.audio.reproducir("campana_repique")
-            self.particulas.campana_repique(incensario.rect.centerx, incensario.rect.centery)
-            self.camara.sacudir(6.0, 0.14, dir_x=self.jugador.direccion, dir_y=-0.5)
-            self.hitstop = 0.08
-            self.flash = 0.08
-            self.flash_color = TURQUESA_ÁNIMA
+            self._aplicar_rebote_campana(incensario, por_ataque=True)
             return True
         return False
 
@@ -1274,31 +1370,120 @@ class Juego:
                 self.jefe.tiempo_flash = 0.06
             self.dañar_jefe_pala()
 
+    def _anunciar_cambio_fase3(self, jefe):
+        """Activa el clímax visual, musical y de aviso al entrar a Fase III (Sepulcro)."""
+        jefe.cambio_fase3_recien = False
+        self.audio.reproducir("jefe_fase")
+        self.audio.reproducir_musica("custodio_f3", bucle=True, fade_ms=350)
+        self.camara.sacudir(13.0, 0.30, dir_x=0.0, dir_y=1.0)
+        self.aviso_jefe = 3.2
+        self.particulas.emitir(
+            jefe.rect.centerx, jefe.rect.centery, 28,
+            ((165, 70, 235), CARMESÍ_SANGRE, ORO, BLANCO), 250, 0.85, 5, 320,
+        )
+        self.hud.mostrar_mensaje(
+            "¡FASE III · EL SEPULCRO! · Esquiva su salto y golpéalo al aterrizar [J/Z] para hundir el piso",
+            5, 4.5,
+        )
+
+    def _procesar_victoria_jefe(self, jefe):
+        """Abre las compuertas y celebra la caída definitiva del Custodio (una sola vez)."""
+        if getattr(self, "_jefe_victoria_procesada", False):
+            return
+        self._jefe_victoria_procesada = True
+        for compuerta in getattr(self.nivel, "compuertas_arena", []):
+            compuerta.abrir()
+        if getattr(self.nivel, "compuertas_arena", None):
+            self.audio.reproducir("compuerta")
+        self.audio.detener_dron()
+        self.audio.reproducir("meta")
+        self.particulas.meta(jefe.rect.centerx, jefe.rect.centery)
+        self.ondas_jefe = []
+        self.aviso_jefe = 3.2
+        self.flash = 0.22
+        self.hud.mostrar_mensaje("¡EL CUSTODIO CAYÓ EN SU PROPIA TUMBA! · Las compuertas se abren", 5, 4.2)
+
     def actualizar_jefe(self, dt):
         if self.jefe is None:
             return False
 
         jefe = self.jefe
-        jefe.actualizar(dt, self.jugador)
+        solidos_cripta = self.nivel.solidos + [
+            b.rect for b in getattr(self.nivel, "bloques_cripta", []) if not b.roto
+        ]
+        jefe.actualizar(dt, self.jugador, solidos_cripta=solidos_cripta)
+
+        compuertas = getattr(self.nivel, "compuertas_arena", [])
+        if jefe.vivo and compuertas and not all(c.cerrada for c in compuertas):
+            arena_izq = min(c.rect.right for c in compuertas)
+            arena_der = max(c.rect.left for c in compuertas)
+            if (arena_izq + 14) <= self.jugador.rect.centerx <= (arena_der - 14) and abs(self.jugador.rect.centery - jefe.rect.centery) < 6 * TILE:
+                for comp in compuertas:
+                    comp.cerrar()
+                self.audio.reproducir("compuerta")
+                self.camara.sacudir(6.0, 0.16, dir_x=0.0, dir_y=1.0)
+                self.audio.reproducir_musica("custodio_f1", bucle=True, fade_ms=600)
+                self.hud.mostrar_mensaje("¡LAS COMPUERTAS SE CIERRAN!", 3, 2.8)
 
         cerca_jefe = (
             abs(self.jugador.rect.centerx - jefe.rect.centerx) < 22 * TILE
             and abs(self.jugador.rect.centery - jefe.rect.centery) < 10 * TILE
         )
 
+        if getattr(jefe, "cambio_fase3_recien", False):
+            self._anunciar_cambio_fase3(jefe)
+
+        if getattr(jefe, "aplasto_suelo_recien", False):
+            self._romper_criptas_bajo_jefe(jefe)
+
+        if getattr(jefe, "en_abismo_recien", False):
+            self.audio.reproducir("jefe_caida")
+            self.camara.sacudir(7.0, 0.25)
+
         if jefe.aviso_recien and cerca_jefe:
             self.audio.reproducir("jefe_aviso")
             self.camara.sacudir(3.0, 0.12)
 
+        if getattr(jefe, "embate_recien", False):
+            # Silenciar temporalmente las campanas sobre el Custodio para evitar campeo aéreo
+            zona_silencio = pygame.Rect(
+                jefe.rect.centerx - 48,
+                jefe.rect.top - int(4.5 * TILE),
+                96,
+                int(5.0 * TILE),
+            )
+            for inc in getattr(self.nivel, "incensarios", []):
+                if zona_silencio.colliderect(inc.rect):
+                    inc.cooldown = max(inc.cooldown, 1.2)
+                    inc.tiempo_repique = max(inc.tiempo_repique, 0.45)
+            if cerca_jefe:
+                self.audio.reproducir("onda")
+                self.camara.sacudir(7.5, 0.18, dir_x=0.0, dir_y=-1.0)
+                self.particulas.emitir(
+                    jefe.rect.centerx,
+                    jefe.rect.top,
+                    18,
+                    (ORO, HUESO, CREMA, BLANCO),
+                    240,
+                    0.50,
+                    4,
+                    -180,
+                )
+
+        rect_emb = jefe.rect_embate() if hasattr(jefe, "rect_embate") else None
+        if rect_emb is not None and self.jugador.invulnerable <= 0 and rect_emb.colliderect(self.jugador.rect):
+            self.perder_vida(causa="Embate ascendente del Custodio")
+            return True
+
         if jefe.ondas_recien:
             velocidad = JEFE_ONDA_VELOCIDAD + (jefe.fase - 1) * 45
-            # Fase 1: 2 ondas expansivas (izq, der)
-            # Fase 2: 2 ondas iniciales + 2 ondas rápidas (sin ondas estáticas)
+            # En Fase 3 las ondas corren por el nivel superior de la arena aunque el Custodio haya excavado capas
+            y_onda = (int(jefe.y_suelo) + jefe.rect.height) if jefe.fase >= 3 else jefe.rect.bottom
             direcciones = (-1, 1)
             for direccion in direcciones:
                 self.ondas_jefe.append(OndaCustodio(
                     jefe.rect.centerx + direccion * 24,
-                    jefe.rect.bottom,
+                    y_onda,
                     direccion,
                     velocidad,
                 ))
@@ -1306,7 +1491,7 @@ class Juego:
                 for direccion in direcciones:
                     self.ondas_jefe.append(OndaCustodio(
                         jefe.rect.centerx + direccion * 48,
-                        jefe.rect.bottom,
+                        y_onda,
                         direccion,
                         velocidad * 1.35,
                     ))
@@ -1336,12 +1521,14 @@ class Juego:
         self.ondas_jefe = [onda for onda in self.ondas_jefe if onda.viva]
 
         if not jefe.vivo:
+            self._procesar_victoria_jefe(jefe)
             return False
 
+        tol_jefe = max(32, self._tolerancia_pisoton_frame(dt) + 12)
         if self.jugador.rect.colliderect(jefe.rect):
             viene_desde_arriba = (
                 self.jugador.vy > 0
-                and self.jugador.rect.bottom <= jefe.rect.top + 32
+                and self.jugador.rect.bottom <= jefe.rect.top + tol_jefe
             )
             if viene_desde_arriba:
                 # Pisotón limpio: posicionar sobre la cabeza y dar invulnerabilidad temporal
@@ -1383,17 +1570,78 @@ class Juego:
             -self.jugador.direccion,
         )
 
+    def _romper_criptas_bajo_jefe(self, jefe):
+        """Rompe 1 capa precisa (1-2 bloques) de cripta ('=') bajo el Custodio y desciende al siguiente nivel."""
+        area_aplast = jefe.rect_aplastamiento()
+        rotos = 0
+        for bloque in getattr(self.nivel, "bloques_cripta", []):
+            if not bloque.roto and bloque.rect.colliderect(area_aplast):
+                if bloque.romper():
+                    rotos += 1
+                    self.particulas.emitir(
+                        bloque.rect.centerx, bloque.rect.centery, 10,
+                        (PIEDRA_FRIA, SALITRE_CRIPTA, HUESO, (145, 75, 175)),
+                        170, 0.48, 4, 480,
+                    )
+        if rotos > 0:
+            self.audio.reproducir("cripta_romper")
+            self.camara.sacudir(9.5, 0.22, dir_x=0.0, dir_y=1.0)
+
+        # Evaluar las capas restantes bajo su columna central (4 capas de espesor en total)
+        franja_central = jefe.rect_soporte_central_f3()
+        soportes_restantes = [
+            b.rect
+            for b in getattr(self.nivel, "bloques_cripta", [])
+            if not b.roto and franja_central.colliderect(b.rect)
+        ] + [
+            s
+            for s in getattr(self.nivel, "solidos", [])
+            if franja_central.colliderect(s)
+        ]
+        if soportes_restantes:
+            nuevo_top = min(s.top for s in soportes_restantes)
+            jefe.y = float(nuevo_top - jefe.rect.height)
+            jefe.rect.y = round(jefe.y)
+            if getattr(jefe, "quiebre_sismico_recien", False):
+                self.hud.mostrar_mensaje("¡QUIEBRE SÍSMICO! · ¡Hundiste una capa más del sepulcro bajo el Custodio!", 4, 2.8, forzar=True)
+        else:
+            jefe.estado = "cayendo_abismo"
+            jefe.en_abismo_recien = True
+            jefe.vy = max(jefe.vy, 280.0)
+            if getattr(jefe, "quiebre_sismico_recien", False):
+                self.hud.mostrar_mensaje("¡QUIEBRE SÍSMICO DEFINITIVO! · ¡El sepulcro se abre bajo el Custodio!", 5, 3.5, forzar=True)
+        return rotos
+
     def dañar_jefe_pala(self):
-        """Golpe de pala: daña en Fase 1; rebota en Fase 2 sin Guadaña Consagrada (X)."""
+        """Golpe de pala/guadaña: daña en Fase 1 y Fase 2 (en recuperación); en Fase 3 provoca Quiebre Sísmico al aterrizar."""
         if self.jefe is None or not self.jefe.vivo:
             return False
         rango_mejorado = getattr(self.jugador, "rango_ataque_mejorado", False)
-        if self.jefe.fase >= 2 and not rango_mejorado:
+        if self.jefe.fase >= 3:
+            if self.jefe.recibir_quiebre_sismico_f3(rango_mejorado=rango_mejorado):
+                self._romper_criptas_bajo_jefe(self.jefe)
+                self.jugador.dash_usos_aire = DASH_USOS_AIRE
+                self.jugador.dash_cooldown = 0.0
+                self.audio.reproducir("pala")
+                self.particulas.pala(self.jefe.rect.centerx, self.jefe.rect.centery)
+                dir_empuje = 1 if self.jugador.rect.centerx >= self.jefe.rect.centerx else -1
+                self.jugador.vx = dir_empuje * 240.0
+                self.jugador.retroceso_tiempo = 0.16
+                self.hitstop = 0.08
+                self.flash = 0.10
+                self.flash_color = (185, 95, 255)
+                return True
             self._rebotar_jefe_coraza()
-            self.hud.mostrar_mensaje("¡CORAZA ESPECTRAL! Necesitas la Guadaña Consagrada (X)", 2, 2.5)
+            self.hud.mostrar_mensaje("¡GUARDIA SÍSMICA! · Esquiva su salto y golpéalo al aterrizar [J/Z] para hundir el piso", 4, 2.5, forzar=True)
+            return False
+        if self.jefe.fase == 2 and not rango_mejorado:
+            self._rebotar_jefe_coraza()
+            self.hud.mostrar_mensaje("¡CORAZA ESPECTRAL! · Necesitas la Guadaña Consagrada del piso superior", 4, 2.5, forzar=True)
             return False
         if not self.jefe.recibir_golpe_pala(rango_mejorado=rango_mejorado):
             self._rebotar_jefe_coraza()
+            if self.jefe.fase == 2:
+                self.hud.mostrar_mensaje("¡GUARDIA CERRADA! · Espera a que termine su ataque y golpéalo con tu Guadaña [J/Z]", 4, 2.5, forzar=True)
             return False
         res = self._aplicar_golpe_jefe()
         # Ráfaga de rechazo al dañar con pala frontal
@@ -1403,15 +1651,34 @@ class Juego:
         return res
 
     def dañar_jefe_pisaton(self):
-        """Pisotón: daña en Fase 1; en Fase 2 exige la Guadaña Consagrada (X)."""
+        """Pisotón: daña en Fase 1 y Fase 2 (en recuperación); en Fase 3 provoca Quiebre Sísmico al aterrizar."""
         if self.jefe is None or not self.jefe.vivo:
             return False
 
         # Dirección de expulsión: hacia el lateral relativo al centro del jefe
         dir_empuje = 1 if self.jugador.rect.centerx >= self.jefe.rect.centerx else -1
         rango_mejorado = getattr(self.jugador, "rango_ataque_mejorado", False)
+        if self.jefe.fase >= 3:
+            self.jugador.vx = dir_empuje * 280.0
+            self.jugador.vy = -240.0
+            self.jugador.retroceso_tiempo = 0.22
+            self.jugador.dash_usos_aire = DASH_USOS_AIRE
+            self.jugador.dash_cooldown = 0.0
+            if self.jefe.recibir_quiebre_sismico_f3(rango_mejorado=rango_mejorado):
+                self._romper_criptas_bajo_jefe(self.jefe)
+                self.audio.reproducir("stomp")
+                self.particulas.stomp(self.jefe.rect.centerx, self.jefe.rect.top)
+                self.hitstop = 0.08
+                self.flash = 0.10
+                self.flash_color = (185, 95, 255)
+                return True
+            self.audio.reproducir("rebote_pala")
+            self.particulas.chispas_rebote(self.jefe.rect.centerx, self.jefe.rect.top, dir_empuje)
+            self.camara.sacudir(5.0, 0.12, dir_x=dir_empuje, dir_y=0.0)
+            self.hud.mostrar_mensaje("¡GUARDIA SÍSMICA! · Esquiva su salto y golpéalo al aterrizar [J/Z] para hundir el piso", 4, 2.5, forzar=True)
+            return False
 
-        if self.jefe.fase >= 2 and not rango_mejorado:
+        if self.jefe.fase == 2 and not rango_mejorado:
             # Coraza en Fase 2 sin guadaña: rebote oblicuo defensivo que expulsa al jugador
             self.jugador.vx = dir_empuje * 280.0
             self.jugador.vy = -220.0
@@ -1421,7 +1688,7 @@ class Juego:
             self.audio.reproducir("rebote_pala")
             self.particulas.chispas_rebote(self.jefe.rect.centerx, self.jefe.rect.top, dir_empuje)
             self.camara.sacudir(5.0, 0.12, dir_x=dir_empuje, dir_y=0.0)
-            self.hud.mostrar_mensaje("¡CORAZA ESPECTRAL! Necesitas la Guadaña Consagrada (X)", 2, 2.5)
+            self.hud.mostrar_mensaje("¡CORAZA ESPECTRAL! · Necesitas la Guadaña Consagrada del piso superior", 4, 2.5, forzar=True)
             return False
 
         if not self.jefe.recibir_pisaton(rango_mejorado=rango_mejorado):
@@ -1432,6 +1699,8 @@ class Juego:
             self.audio.reproducir("rebote_pala")
             self.particulas.chispas_rebote(self.jefe.rect.centerx, self.jefe.rect.top, dir_empuje)
             self.camara.sacudir(4.0, 0.10, dir_x=dir_empuje, dir_y=0.0)
+            if self.jefe.fase == 2:
+                self.hud.mostrar_mensaje("¡GUARDIA CERRADA! · Espera a que termine su ataque y golpéalo con tu Guadaña [J/Z]", 4, 2.5, forzar=True)
             return False
 
         # Impacto exitoso en ventana vulnerable: daño y ráfaga de expulsión cinética
@@ -1466,13 +1735,9 @@ class Juego:
         self.flash_color = AMARILLO
 
         if not self.jefe.vivo:
-            self.audio.detener_dron()
-            self.audio.reproducir("meta")
-            self.particulas.meta(self.jefe.rect.centerx, self.jefe.rect.centery)
-            self.ondas_jefe = []
-            self.aviso_jefe = 3.2
-            self.flash = 0.22
-            self.hud.mostrar_mensaje("¡EL CUSTODIO CAYÓ! · La cripta se abre…", 5, 4.0)
+            self._procesar_victoria_jefe(self.jefe)
+        elif getattr(self.jefe, "estado", "") == "cambio_f3":
+            self._anunciar_cambio_fase3(self.jefe)
         elif self.jefe.estado == "cambio":
             self.audio.reproducir("jefe_fase")
             self.audio.reproducir_musica("custodio_f2", bucle=True, fade_ms=400)
@@ -1489,9 +1754,15 @@ class Juego:
             )
             self.aviso_jefe = 2.0
             if getattr(self.jugador, "rango_ataque_mejorado", False):
-                self.hud.mostrar_mensaje("¡FASE II! · Coraza espectral · La Guadaña Consagrada (X) la quiebra", 4, 4.5)
+                self.hud.mostrar_mensaje(
+                    "¡FASE II · CORAZA CARMESÍ! · Espera a que termine su ataque y golpéalo con tu Guadaña [J/Z] o Pisotón",
+                    4, 4.5,
+                )
             else:
-                self.hud.mostrar_mensaje("¡FASE II! · Coraza espectral · Necesitas la Guadaña Consagrada (X)", 4, 4.5)
+                self.hud.mostrar_mensaje(
+                    "¡FASE II · CORAZA CARMESÍ! · Sin la Guadaña Consagrada del piso superior no podrás herirlo",
+                    4, 4.5,
+                )
 
         return True
 
@@ -1517,6 +1788,14 @@ class Juego:
             enemigo_melee.actualizar(dt, self.jugador)
             if self._resolver_contacto(enemigo_melee, "Embestida del Guardia de la cripta"):
                 return
+            espada = enemigo_melee.rect_espada() if hasattr(enemigo_melee, "rect_espada") else None
+            if (
+                espada is not None
+                and self.jugador.invulnerable <= 0
+                and espada.colliderect(self.jugador.rect)
+            ):
+                self.perder_vida(causa="Estocada del Guardia de la cripta")
+                return
 
         # Cuervos: vuelo circular. Pisables con pala (trampolín aéreo).
         for cuervo in self.nivel.cuervos:
@@ -1537,10 +1816,10 @@ class Juego:
                 return
 
     def _viene_desde_arriba(self, rect):
-        """Pisotón válido: cayendo y con los pies a ≤ 18 px de la cabeza del enemigo."""
+        """Pisotón válido: cayendo y dentro de la tolerancia dinámica por frame."""
         return (
             self.jugador.vy > 0
-            and self.jugador.rect.bottom <= rect.top + TOLERANCIA_PISOTON
+            and self.jugador.rect.bottom <= rect.top + self._tolerancia_pisoton_frame()
         )
 
     def _rebote_pisoton(self, rect, fuerza_sacudida=6.0):
@@ -1571,21 +1850,72 @@ class Juego:
         return True
 
     def actualizar_minijefes(self, dt):
+        muros_mj = getattr(self.nivel, "muros_minijefe", [])
+        if muros_mj and all(getattr(m, "usado_ciclo", False) for m in muros_mj):
+            for m in muros_mj:
+                m.usado_ciclo = False
+                m.enfriamiento = min(getattr(m, "enfriamiento", 0.0), 0.5)
+
+        for muro in muros_mj:
+            if getattr(muro, "recien_armado", False) and abs(muro.x - self.jugador.rect.centerx) < 520:
+                self.audio.reproducir("compuerta")
+                self.camara.sacudir(2.5, 0.08)
+
         for mj in getattr(self.nivel, "minijefes", []):
-            mj.actualizar(dt, self.jugador)
+            mj.actualizar(dt, self.jugador, muros=muros_mj if muros_mj else None)
             if not mj.vivo:
                 continue
 
-            if abs(mj.rect.centerx - self.jugador.rect.centerx) < 450:
+            if getattr(mj, "activado", False) and abs(mj.rect.centerx - self.jugador.rect.centerx) < 480:
                 self.audio.reproducir_musica("carcelero", bucle=True, fade_ms=600)
 
-            if mj.aviso_recien:
-                # Telegrafía: brillo carmesí (dibujar) + sonido de aviso.
-                self.audio.reproducir("jefe_aviso")
+            if mj.estado in ("cansado", "recuperacion") and muros_mj:
+                for m in muros_mj:
+                    if m.estado == "armado":
+                        m.retraer()
 
-            if getattr(mj, "choque_recien", False) and abs(mj.rect.centerx - self.jugador.rect.centerx) < 480:
-                self.camara.sacudir(4.5, 0.12)
-                self.particulas.chispas_rebote(mj.rect.centerx + mj.direccion * 16, mj.rect.bottom - 4, -mj.direccion)
+            if mj.aviso_recien:
+                # Telegrafía: brillo carmesí + sonido de aviso + emergencia de un muro disponible distinto
+                self.audio.reproducir("jefe_aviso")
+                if muros_mj:
+                    disponibles = [m for m in muros_mj if getattr(m, "puede_activarse", lambda: True)()]
+                    if not disponibles:
+                        for m in muros_mj:
+                            m.usado_ciclo = False
+                            m.enfriamiento = 0.0
+                        disponibles = [m for m in muros_mj if m.estado == "oculto"]
+
+                    frente = [
+                        m for m in disponibles
+                        if 64 <= (m.x + m.ancho // 2 - mj.rect.centerx) * mj.direccion <= 460
+                    ]
+                    if not frente:
+                        opuestos = [
+                            m for m in disponibles
+                            if 64 <= (m.x + m.ancho // 2 - mj.rect.centerx) * (-mj.direccion) <= 460
+                        ]
+                        if opuestos:
+                            mj.direccion = -mj.direccion
+                            frente = opuestos
+
+                    if frente:
+                        frente.sort(key=lambda m: abs(m.x + m.ancho // 2 - mj.rect.centerx))
+                        elegido = frente[0]
+                        for m in muros_mj:
+                            if m is not elegido and m.estado in ("aviso", "armado"):
+                                m.retraer()
+                        elegido.activar(duracion_aviso=0.16, duracion_armado=1.5)
+
+            if getattr(mj, "choque_recien", False) and abs(mj.rect.centerx - self.jugador.rect.centerx) < 520:
+                self.audio.reproducir("compuerta")
+                self.audio.reproducir("stomp")
+                self.camara.sacudir(6.5, 0.16)
+                self.hitstop = max(self.hitstop, 0.05)
+                px_ch, py_ch = getattr(mj, "punto_choque", None) or (
+                    mj.rect.centerx + mj.direccion * 16,
+                    mj.rect.bottom - 12,
+                )
+                self.particulas.chispas_rebote(px_ch, py_ch, -mj.direccion)
 
             if not self.jugador.rect.colliderect(mj.rect):
                 continue
@@ -1627,6 +1957,8 @@ class Juego:
         self.hud.mostrar_mensaje(
             f"¡EL CARCELERO HA CAÍDO! · El altar de la Guadaña se abre (+{ALMAS_MINIJEFE} Almas)", 2, 4.0
         )
+        for muro in getattr(self.nivel, "muros_minijefe", []):
+            muro.retraer()
         self.audio.reproducir_musica(self.nivel.tema, bucle=True, fade_ms=800)
 
     def _sumar_almas_para_vida(self, cantidad):
@@ -1695,6 +2027,42 @@ class Juego:
                 self.mostrar_ayuda = 4.0
                 self.hud.mostrar_mensaje("¡AMULETO DEL VELO! · SHIFT / X: Desgarrar el velo de la cripta en pleno vuelo", 2, 4.0)
 
+    def _inscripcion_farol(self, checkpoint):
+        """Obtiene la inscripción críptica estilo MK1 Arcade correspondiente al farol."""
+        inscripciones = getattr(config, "INSCRIPCIONES_FAROLES", {})
+        clave = 0 if getattr(self, "es_tutorial", False) else getattr(self, "nivel_indice", 0) + 1
+        lista = inscripciones.get(clave, ())
+        if not lista or not self.nivel:
+            return "EN ALGÚN MOMENTO HAY QUE CREER."
+        col_cp = checkpoint.rect.centerx // TILE
+        if clave == 3 and checkpoint.rect.centery < 18 * TILE and 290 <= col_cp <= 312:
+            return "NO BUSQUES PUENTE: EN ALGÚN MOMENTO HAY QUE CREER."
+        if clave == 3 and checkpoint.rect.centery >= 18 * TILE and 138 <= col_cp <= 165:
+            return "LAS COMPUERTAS SE CIERRAN. ÉL MISMO CAVARÁ SU TUMBA."
+        try:
+            idx = self.nivel.checkpoints.index(checkpoint)
+        except ValueError:
+            idx = 0
+        return lista[idx % len(lista)]
+
+    def _actualizar_duda_salto_de_fe(self, dt):
+        """Susurra la pista oculta cuando el jugador duda ante el abismo del Salto de Fe."""
+        if getattr(self, "es_tutorial", False) or getattr(self, "nivel_indice", 0) != 2 or not self.jugador:
+            return
+        col = self.jugador.rect.centerx // TILE
+        fila = self.jugador.rect.centery // TILE
+        if 296 <= col <= 311 and fila <= 16 and self.jugador.en_suelo:
+            if abs(self.jugador.vx) < 25.0:
+                self.tiempo_en_borde_fe += dt
+            else:
+                self.tiempo_en_borde_fe = max(0.0, self.tiempo_en_borde_fe - dt * 0.5)
+            if self.tiempo_en_borde_fe >= 2.0 and not self.pista_fe_mostrada:
+                self.pista_fe_mostrada = True
+                pista = getattr(config, "PISTA_SALTO_DE_FE_DUDA", "LO INVISIBLE SOSTIENE AL QUE CAMINA SIN VER.")
+                self.hud.mostrar_mensaje(f"VOZ DEL FAROL · {pista}", 3, 5.0, forzar=True)
+        else:
+            self.tiempo_en_borde_fe = 0.0
+
     def actualizar_checkpoints(self):
         for checkpoint in self.nivel.checkpoints:
             if checkpoint.actualizar(self.jugador):
@@ -1713,24 +2081,23 @@ class Juego:
 
                 # Curación y Consagración de Almas: El Pacto del Farol (3 Grados)
                 almas_tramo = self.jugador.almas - getattr(self, "almas_consagradas", 0)
-                msg_partes = ["FARO SEPULCRAL"]
                 if almas_tramo >= ALMAS_FILO_ANIMA:
                     checkpoint.tier = 3
                     self.jugador.escudo_farol = True
                     self.jugador.filo_anima = True
                     self.destello_manto = 0.45
-                    msg_partes.append("Filo de Ánima y Manto Consagrado (Grado III)")
+                    grado_txt = "Grado III"
                 elif almas_tramo >= ALMAS_MANTO_FAROL:
                     checkpoint.tier = 2
                     self.jugador.escudo_farol = True
                     self.destello_manto = 0.40
-                    msg_partes.append("Manto del Sepulcro (Grado II)")
+                    grado_txt = "Grado II"
                 elif almas_tramo >= 1:
                     checkpoint.tier = 1
-                    msg_partes.append("Lumbre de Purificación (Grado I)")
+                    grado_txt = "Grado I"
                 else:
                     checkpoint.tier = 0
-                    msg_partes.append("Lumbre encendida en la penumbra")
+                    grado_txt = ""
 
                 if checkpoint.tier > 0:
                     self.particulas.consagracion_farol(checkpoint.rect.centerx, checkpoint.rect.bottom, checkpoint.tier)
@@ -1741,81 +2108,38 @@ class Juego:
                     elif checkpoint.tier >= 3:
                         self.audio.reproducir("farol_tier_3")
 
+                vida_txt = ""
                 if self.jugador.vidas < VIDAS_INICIALES:
                     self.jugador.vidas += 1
-                    msg_partes.append("(+1 Vida)")
+                    vida_txt = " (+1 Vida)"
 
+                inscripcion = self._inscripcion_farol(checkpoint)
+                encabezado = f"FARO{' · ' + grado_txt if grado_txt else ''}{vida_txt}"
                 self.almas_consagradas = self.jugador.almas
                 self.almas_vida_consagradas = self.jugador.almas_para_vida
-                self.hud.mostrar_mensaje(" · ".join(msg_partes), 2, 4.5)
+                self.hud.mostrar_mensaje(f"{encabezado} · {inscripcion}", 2, 4.8)
 
     def actualizar_tutorial_contextual(self):
+        """Muestra solo indicaciones breves al primer contacto real sin saturar de texto."""
         col = self.jugador.rect.x // TILE
         piso = self.jugador.rect.centery // (18 * TILE)
 
+        zona = None
+        msg = None
         if piso == 0:
-            # Recorrido de Piso Superior hacia la derecha (cols 0 a 170)
-            if col < 25:
+            if 6 <= col < 22:
                 zona = 1
-                msg = "[ESPACIO] Un toque breve da un salto corto; mantenerlo presionado eleva el salto al máximo."
-            elif col < 58:
+                msg = "[ESPACIO] · Salto breve o alto según duración"
+            elif 60 <= col < 76:
                 zona = 2
-                msg = "Las losas agrietadas ceden poco después de pisarlas. Cruza sin detenerte."
-            elif col < 80:
-                zona = 3
-                msg = "Cae sobre la campana de bronce para impulsarte hacia la cornisa superior."
-            elif col < 105:
-                zona = 4
-                msg = "Aguarda la plataforma férrea. Si caes al foso, los peldaños laterales permiten volver a subir."
-            elif col < 125:
-                zona = 5
-                msg = "El elevador vertical conduce al atrio superior donde aguarda el farol."
-            elif col < 155:
-                zona = 6
-                msg = "El farol consagra tu avance y otorga su bendición protectora al encenderse."
-            else:
-                zona = 7
-                msg = "El pozo desciende hacia la cripta subterránea. Déjate caer sin temor."
-        else:
-            # Recorrido de Piso Inferior / Catacumba hacia la izquierda (cols 195 a 10)
-            if col >= 158:
-                zona = 8
-                msg = "Bajo el camposanto se extienden las catacumbas. Avanza hacia el oeste por las galerías."
-            elif col >= 142:
-                zona = 9
-                msg = "El guardia vigila el foso inferior. Observa su ronda y continúa por la cornisa."
-            elif col >= 126:
-                zona = 10
-                msg = "La polilla espectral ronda la bóveda alta. Pasa cuando despeje el arco."
-            elif col >= 112:
-                zona = 11
-                msg = "El cuervo patrulla en línea recta sobre la cripta. Mide su paso antes de saltar."
-            elif col >= 100:
-                zona = 12
-                msg = "La araña acecha bajo el arco de piedra. Mantén el paso firme por el suelo."
-            elif col >= 88:
-                zona = 13
-                msg = "Salta hacia la campana sobre el foso para cruzar de un solo impulso."
-            elif col >= 72:
-                zona = 14
-                msg = "Encadena el rebote entre las dos campanas sin tocar el fondo del foso."
-            elif col >= 57:
-                zona = 15
-                msg = "Sube en el elevador y usa la campana alta para alcanzar la plataforma."
-            elif col >= 36:
-                zona = 16
-                msg = "Cuatro campanas en ascenso: encadena cada rebote para franquear la muralla."
-            else:
-                zona = 17
-                msg = "Cruza la bóveda final y atraviesa el Portón Sacro para iniciar la campaña."
+                msg = "Brinca sobre el bronce y encadena"
+        elif piso > 0 and 12 <= col < 30:
+            zona = 3
+            msg = "Atraviesa el Portón Sacro"
 
-        # No interrumpir la cita inicial de Poe si el jugador aún no ha comenzado a moverse
-        if zona == 1 and col < 6:
-            return
-
-        if getattr(self, "tutorial_zona_actual", None) != zona:
+        if zona is not None and getattr(self, "tutorial_zona_actual", None) != zona:
             self.tutorial_zona_actual = zona
-            self.hud.mostrar_mensaje(msg, 2, 5.5, forzar=True)
+            self.hud.mostrar_mensaje(msg, 2, 3.6, forzar=True)
 
     def actualizar_power_ups_rango(self):
         carcelero_vivo = any(mj.vivo for mj in getattr(self.nivel, "minijefes", []))
@@ -1889,6 +2213,7 @@ class Juego:
         if self.jugador.vidas <= 0:
             self.muertes_totales += 1
             self.causa_muerte = causa
+            self.derrota_opcion = 0
             self.estado = "derrota"
             self.audio.detener_dron()
             self.audio.reproducir("muerte")
@@ -1930,6 +2255,13 @@ class Juego:
             losa.reiniciar()
         for inc in getattr(self.nivel, "incensarios", []):
             inc.reiniciar()
+        for bloque in getattr(self.nivel, "bloques_cripta", []):
+            bloque.reiniciar()
+        for compuerta in getattr(self.nivel, "compuertas_arena", []):
+            compuerta.reiniciar()
+        for muro in getattr(self.nivel, "muros_minijefe", []):
+            muro.reiniciar()
+        self._jefe_victoria_procesada = False
 
     def _reaparecer_en_checkpoint(self, reiniciar_enemigos=False):
         """Restaura al jugador en el último farol consagrado conservando reliquias."""
@@ -1953,6 +2285,9 @@ class Juego:
         self.jugador.rango_ataque_mejorado = tenia_guadana
         self.jugador.tiene_pala = tenia_pala
         self.jugador.tiene_dash = tenia_dash
+        if self.nivel and getattr(self.nivel, "tema", None):
+            if getattr(self.audio, "musica_actual", None) != self.nivel.tema or not getattr(self.audio, "musica_bucle", True):
+                self.audio.reproducir_musica(self.nivel.tema, bucle=True, fade_ms=500)
 
     def reintentar_nivel(self):
         """Reinicia desde el último Farol activado o desde el inicio del nivel con vidas iniciales."""
@@ -1961,6 +2296,8 @@ class Juego:
             self._reaparecer_en_checkpoint(reiniciar_enemigos=True)
             self.camara.actualizar(self.jugador, self.nivel, 1.0)
             self.audio.iniciar_dron()
+            if self.nivel and getattr(self.nivel, "tema", None):
+                self.audio.reproducir_musica(self.nivel.tema, bucle=True, fade_ms=500)
         else:
             self.cargar_nivel(self.nivel_indice, vidas=VIDAS_INICIALES)
 
@@ -2324,8 +2661,6 @@ class Juego:
             pygame.draw.line(destino, (26, 18, 20), (x, -offset_y_chain), (x + 8, largo - offset_y_chain), 5)
             pygame.draw.line(destino, (26, 18, 20), (x + 8, largo - offset_y_chain), (x - 12, largo + 24 - offset_y_chain), 3)
 
-        pygame.draw.ellipse(destino, (38, 11, 14), (w // 2 - 260, h - 68 - int(cam_y * 0.12), 520, 120))
-
         # Brasas ascendentes deterministas en Calidad Alta/Media (paralaje 0.45)
         if calidad in (0, 1):
             ember_slots = 18
@@ -2337,19 +2672,35 @@ class Juego:
                 col = (230, 80, 40) if idx % 2 == 0 else (255, 140, 50)
                 pygame.draw.circle(destino, col, (em_x, em_y), rad)
 
+        # Velo abismal en el Salto de Fe (cols 308+ del piso superior): oscuridad pura sin arquitectura de fondo
+        if self.nivel and getattr(self.nivel, "num_filas", 18) > 18 and cam_y < 320:
+            x_abismo = int(308 * TILE - self.camara.x)
+            if x_abismo < w:
+                x_ini = max(0, x_abismo - 32)
+                ancho_velo = w - x_ini
+                velo = pygame.Surface((ancho_velo, h - 32), pygame.SRCALPHA)
+                for vx in range(ancho_velo):
+                    mundo_dx = (x_ini + vx) - x_abismo
+                    if mundo_dx < 0:
+                        alfa_x = int(238 * ((mundo_dx + 32) / 32.0))
+                    else:
+                        alfa_x = min(246, 238 + int(8 * min(1.0, mundo_dx / 96.0)))
+                    pygame.draw.line(velo, (4, 2, 6, max(0, alfa_x)), (vx, 0), (vx, h - 32))
+                destino.blit(velo, (x_ini, 32))
+
     def dibujar_niebla(self, destino=None, tema="camposanto"):
         if destino is None:
             destino = self.pantalla
         if getattr(self, "config_calidad_idx", 0) == 2:
             return
         w, h = destino.get_width(), destino.get_height()
-        color = (25, 38, 50) if tema != "osario" else (56, 32, 34)
+        color = (25, 38, 50) if tema != "osario" else (32, 16, 20)
         alto_niebla = 64
         niebla = pygame.Surface((w, alto_niebla), pygame.SRCALPHA)
         for i in range(alto_niebla):
-            alfa = int(24 * (i / alto_niebla))
+            alfa = int(20 * (i / alto_niebla))
             pygame.draw.line(niebla, (*color, alfa), (0, i), (w, i))
-        destino.blit(niebla, (0, h - alto_niebla), special_flags=pygame.BLEND_RGBA_ADD)
+        destino.blit(niebla, (0, h - alto_niebla))
 
     def dibujar_titulo(self):
         self.dibujar_fondo(self.pantalla)
@@ -2526,8 +2877,13 @@ class Juego:
                 val_fmt = f"< {valor} >" if sel else valor
                 self.dibujar_texto(val_fmt, x_c + ancho_c - 18, y_c + 11, 15, TURQUESA if sel else CREMA, derecha=True, sombra=sel)
 
+        opciones_escala = getattr(config, "OPCIONES_ESCALA_FUENTE", ((1.15, "+15%"),))
+        _, etiq_fuente = opciones_escala[self.escala_fuente_idx % len(opciones_escala)]
         self.dibujar_texto(preset_activo["resumen"], 0, py + ph - 54, 13, CREMA, centrado=True)
-        self.dibujar_texto("[W/S] Elegir | [A/D o ENTER] Cambiar | [F4] Estilo Visual | [ESC] Volver", 0, py + ph - 24, 12, HUD_MUTED, centrado=True)
+        self.dibujar_texto(
+            f"[W/S] Elegir | [A/D] Cambiar | [F2] Texto ({etiq_fuente}) | [F4] Estilo | [ESC] Volver",
+            0, py + ph - 24, 12, HUD_MUTED, centrado=True,
+        )
 
     def _dibujar_mundo_y_luz(self, destino):
         """Renderiza nivel, entidades, partículas y máscara de penumbra en el lienzo virtual."""
@@ -2561,17 +2917,16 @@ class Juego:
                 fy = int(self.jugador.rect.y + 19 - self.camara.y)
                 self.mascara_penumbra.blit(_obtener_luz_perforacion(95), (fx - 95, fy - 95), special_flags=pygame.BLEND_RGBA_SUB)
             for cp in self.nivel.checkpoints:
-                if cp.activo and self.camara.is_on_screen(cp.rect):
+                if self.camara.is_on_screen(cp.rect):
                     cpx = int(cp.rect.centerx - self.camara.x)
                     cpy = int(cp.rect.centery - self.camara.y)
-                    self.mascara_penumbra.blit(_obtener_luz_perforacion(65), (cpx - 65, cpy - 65), special_flags=pygame.BLEND_RGBA_SUB)
-            if hasattr(self.nivel, "decoraciones"):
-                luz_brasero = _obtener_luz_perforacion(50)
-                for dec in self.nivel.decoraciones:
-                    if dec.get("tipo") == "b" and self.camara.is_on_screen(dec["rect"]):
-                        bx = int(dec["rect"].centerx - self.camara.x)
-                        by = int(dec["rect"].centery - 6 - self.camara.y)
-                        self.mascara_penumbra.blit(luz_brasero, (bx - 50, by - 50), special_flags=pygame.BLEND_RGBA_SUB)
+                    # Antes de activar, el farol solo abre un resplandor sutil estilo vela azul.
+                    radio_cp = 78 if cp.activo else 36
+                    self.mascara_penumbra.blit(
+                        _obtener_luz_perforacion(radio_cp),
+                        (cpx - radio_cp, cpy - radio_cp),
+                        special_flags=pygame.BLEND_RGBA_SUB,
+                    )
             destino.blit(self.mascara_penumbra, (0, 0))
 
         if calidad in (0, 1):
@@ -2590,13 +2945,20 @@ class Juego:
                 luz_add = _obtener_luz_calida(radio_luz, color_luz, factor_luz)
                 destino.blit(luz_add, (fx - radio_luz, fy - radio_luz), special_flags=pygame.BLEND_RGB_ADD)
 
-            if calidad == 0:
+            if calidad in (0, 1):
                 for cp in self.nivel.checkpoints:
-                    if cp.activo and self.camara.is_on_screen(cp.rect):
-                        cpx = int(cp.rect.centerx - self.camara.x)
-                        cpy = int(cp.rect.centery - self.camara.y)
+                    if not self.camara.is_on_screen(cp.rect):
+                        continue
+                    cpx = int(cp.rect.centerx - self.camara.x)
+                    cpy = int(cp.rect.centery - self.camara.y)
+                    if cp.activo:
                         col_cp = {1: (90, 200, 255), 2: (120, 235, 255), 3: (218, 178, 86)}.get(cp.tier, (90, 200, 255))
-                        destino.blit(_obtener_luz_calida(75, col_cp, 0.13), (cpx - 75, cpy - 75), special_flags=pygame.BLEND_RGB_ADD)
+                        radio_add = 80 if calidad == 0 else 64
+                        factor_add = 0.16 if calidad == 0 else 0.11
+                        destino.blit(_obtener_luz_calida(radio_add, col_cp, factor_add), (cpx - radio_add, cpy - radio_add), special_flags=pygame.BLEND_RGB_ADD)
+                    else:
+                        # Halo azul tenue equivalente al de una vela antes de encender el farol.
+                        destino.blit(_obtener_luz_calida(40, (70, 185, 255), 0.07), (cpx - 40, cpy - 40), special_flags=pygame.BLEND_RGB_ADD)
 
         if getattr(self, "debug_colisiones", False):
             self.dibujar_debug_colisiones(destino, self.camara)
@@ -2728,7 +3090,14 @@ class Juego:
             r_jug = camara.aplicar_rect(self.jugador.rect)
             pygame.draw.rect(destino, (40, 255, 120), r_jug, 1)
 
-        # 4. Hitbox activo jugador.rect_ataque(): rojo (255, 40, 60) de 2px con cruz
+        # 4. Hitbox activo jugador.rect_ataque() y estocada melee: rojo (255, 40, 60)
+        if self.nivel:
+            for em in getattr(self.nivel, "enemigos_melee", []):
+                esp = em.rect_espada() if hasattr(em, "rect_espada") else None
+                if esp is not None and camara.is_on_screen(esp):
+                    pygame.draw.rect(destino, (255, 65, 95), camara.aplicar_rect(esp), 2)
+        if self.jefe and self.jefe.vivo and self.jefe.fase >= 3 and camara.is_on_screen(self.jefe.rect):
+            pygame.draw.rect(destino, (195, 90, 255), camara.aplicar_rect(self.jefe.rect_aplastamiento()), 1)
         if self.jugador and self.jugador.ataque_tiempo > 0:
             hitbox = self.jugador.rect_ataque()
             r_atk = camara.aplicar_rect(hitbox)
@@ -2824,7 +3193,7 @@ class Juego:
         self.pantalla.blit(overlay, (0, 0))
 
         ancho_panel = 480
-        alto_panel = 340
+        alto_panel = 392
         px = (ANCHO - ancho_panel) // 2
         py = (ALTO - alto_panel) // 2
         self.dibujar_marco_heraldico(self.pantalla, px, py, ancho_panel, alto_panel, color_fondo=(12, 10, 18, 238))
@@ -2834,6 +3203,7 @@ class Juego:
 
         opciones_pausa = (
             "CONTINUAR",
+            "OPCIONES",
             "REINICIAR DESDE FAROL",
             "REINICIAR NIVEL",
             "VOLVER AL MENÚ",
@@ -2890,14 +3260,15 @@ class Juego:
         for cp in getattr(self.nivel, "checkpoints", []):
             es_farol_salto_fe = (
                 n_idx == 2
+                and not es_tut
                 and cp.rect.centery < 18 * TILE
                 and 290 <= (cp.rect.centerx // TILE) <= 312
             )
-            if es_farol_salto_fe:
-                if self.jugador.rect.colliderect(cp.rect.inflate(32, 24)):
-                    puntos_clave.append((cp.rect.centerx, cp.rect.top, "EL ABISMO", "Haz el salto de fe", False))
-            elif not getattr(cp, "activo", False):
-                puntos_clave.append((cp.rect.centerx, cp.rect.top, "FAROL DE REPOSO", "Consagrar almas y guardar", False))
+            if es_farol_salto_fe and self.pista_fe_mostrada:
+                etq = getattr(config, "PISTA_SALTO_DE_FE_DUDA", "LO INVISIBLE SOSTIENE AL QUE CAMINA SIN VER.")
+                puntos_clave.append((cp.rect.centerx, cp.rect.top, "EL ABISMO", etq, False))
+            else:
+                puntos_clave.append((cp.rect.centerx, cp.rect.top, "INSCRIPCIÓN", self._inscripcion_farol(cp), False))
 
         if es_tut or n_idx < 2:
             inc_cercanos = [
@@ -2942,13 +3313,15 @@ class Juego:
 
         sx = int((wx - camara.x) * CAMARA_ZOOM)
         sy = int((wy - camara.y) * CAMARA_ZOOM + bobbing)
-        label_corta = label_corta[:28]
+        label_corta = label_corta[:58]
 
         fuente_kc, fuente_lbl = fuentes
-        kw, _ = fuente_kc.size(encabezado)
-        lw, _ = fuente_lbl.size(label_corta)
-        bw = max(kw + 20, lw + 20)
-        bh = 32
+        kw, kh = fuente_kc.size(encabezado)
+        lw, lh = fuente_lbl.size(label_corta)
+        kc_h = max(14, kh + 2)
+        hdr_h = max(kc_h, kh)
+        bw = max(kw + 22, lw + 22)
+        bh = hdr_h + max(13, lh) + 9
         h_conector = 16
         bh_total = bh + h_conector
         bx = sx - bw // 2
@@ -2969,25 +3342,27 @@ class Juego:
         pygame.draw.rect(lienzo, (198, 162, 82, min(alfa, 210)), (1, 1, bw - 2, bh - 2), 1, border_radius=4)
 
         if es_tecla:
-            kc_w, kc_h = kw + 10, 14
+            kc_w = kw + 10
             kc_x, kc_y = (bw - kc_w) // 2, 3
             pygame.draw.rect(lienzo, (150, 115, 45, alfa), (kc_x, kc_y + 1, kc_w, kc_h - 1), border_radius=3)
             pygame.draw.rect(lienzo, (228, 195, 110, alfa), (kc_x, kc_y, kc_w, kc_h - 1), border_radius=3)
             pygame.draw.rect(lienzo, (24, 20, 16, alfa), (kc_x, kc_y, kc_w, kc_h), 1, border_radius=3)
             img_kc = fuente_kc.render(encabezado, True, (24, 18, 20))
             img_kc.set_alpha(alfa)
-            lienzo.blit(img_kc, (kc_x + (kc_w - kw) // 2, kc_y))
+            lienzo.blit(img_kc, (kc_x + (kc_w - kw) // 2, kc_y + (kc_h - kh) // 2))
         else:
             img_hdr = fuente_kc.render(encabezado, True, (224, 188, 98))
             img_hdr.set_alpha(alfa)
             lienzo.blit(img_hdr, ((bw - kw) // 2, 3))
-            pygame.draw.line(lienzo, (130, 102, 48, min(alfa, 145)), (8, 15), (bw - 8, 15), 1)
+            sep_y = hdr_h + 4
+            pygame.draw.line(lienzo, (130, 102, 48, min(alfa, 145)), (8, sep_y), (bw - 8, sep_y), 1)
 
         img_lbl = fuente_lbl.render(label_corta, True, (244, 238, 226))
         img_sombra = fuente_lbl.render(label_corta, True, (0, 0, 0))
         img_lbl.set_alpha(alfa)
         img_sombra.set_alpha(alfa)
-        lx, ly = (bw - lw) // 2, 17
+        lx = (bw - lw) // 2
+        ly = hdr_h + 6
         lienzo.blit(img_sombra, (lx + 1, ly + 1))
         lienzo.blit(img_lbl, (lx, ly))
         destino.blit(lienzo, (bx, by))
@@ -3137,18 +3512,40 @@ class Juego:
                              (px + 30, y_stat + 28), (px + pw - 30, y_stat + 28), 1)
             y_stat += 52
 
-        # Separador inferior y llamada a la acción
+        # Separador inferior y opciones de Continue / Reinicio desde Nivel 1
         pygame.draw.line(self.pantalla, (160, 40, 50, 160),
-                         (px + 30, py + 372), (px + pw - 30, py + 372), 1)
-        self.dibujar_texto("[ENTER] Reintentar · [ESC] Volver al Menú",
-                           0, py + 396, 16, HUD_ORO, centrado=True, sombra=True)
+                         (px + 30, py + 336), (px + pw - 30, py + 336), 1)
+        if self.sala_prueba or self.es_tutorial:
+            self.dibujar_texto("[ENTER] Reintentar · [ESC] Volver al Menú",
+                               0, py + 382, 16, HUD_ORO, centrado=True, sombra=True)
+        else:
+            cont_restantes = getattr(self, "continues", 0)
+            if cont_restantes > 0:
+                op_sel = getattr(self, "derrota_opcion", 0)
+                txt_op0 = f"{'▶ ' if op_sel == 0 else '   '}USAR CONTINUE ({cont_restantes} disp.) · Reiniciar Nivel {self.nivel_indice + 1} desde 0"
+                txt_op1 = f"{'▶ ' if op_sel == 1 else '   '}NUEVA PARTIDA · Empezar desde Nivel 1 (El Camposanto)"
+                self.dibujar_texto(txt_op0, 0, py + 362, 15, HUD_ORO if op_sel == 0 else HUD_MUTED, centrado=True, sombra=True)
+                self.dibujar_texto(txt_op1, 0, py + 390, 15, HUD_ORO if op_sel == 1 else HUD_MUTED, centrado=True, sombra=True)
+                self.dibujar_texto("[↑/↓] Elegir · [ENTER] Confirmar · [ESC] Menú",
+                                   0, py + 418, 12, CREMA, centrado=True)
+            else:
+                self.dibujar_texto("SIN CONTINUES DISPONIBLES (0 / 2)",
+                                   0, py + 362, 15, HUD_ROJO, centrado=True, sombra=True)
+                self.dibujar_texto("[ENTER] Empezar desde Nivel 1 (El Camposanto) · [ESC] Menú",
+                                   0, py + 396, 15, HUD_ORO, centrado=True, sombra=True)
 
     def obtener_fuente(self, tamano):
+        escala = float(getattr(config, "ESCALA_FUENTES_ACTIVA", 1.15))
+        if escala != getattr(self, "_escala_fuente_cache", escala):
+            self._escala_fuente_cache = escala
+            self.fuentes.clear()
+            self._cache_texto.clear()
         if tamano not in self.fuentes:
+            tam_eff = max(8, round(tamano * escala))
             try:
-                self.fuentes[tamano] = pygame.font.Font(self._ruta_fuente_gotica, tamano)
+                self.fuentes[tamano] = pygame.font.Font(self._ruta_fuente_gotica, tam_eff)
             except Exception:
-                self.fuentes[tamano] = pygame.font.Font(None, tamano)
+                self.fuentes[tamano] = pygame.font.Font(None, tam_eff)
         return self.fuentes[tamano]
 
     def dibujar_texto(self, texto, x, y, tamano=24, color=BLANCO, centrado=False, sombra=False, derecha=False):

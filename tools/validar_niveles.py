@@ -10,11 +10,19 @@ _RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _RAIZ not in sys.path:
     sys.path.insert(0, _RAIZ)
 
-from config import DASH_DURACION, DASH_VELOCIDAD, GRAVEDAD, SALTO, TILE, VELOCIDAD
+from config import (
+    DASH_DURACION,
+    DASH_VELOCIDAD,
+    GRAVEDAD,
+    REBOTE_ENEMIGO,
+    SALTO,
+    TILE,
+    VELOCIDAD,
+)
 import niveles as _n
 
 #---- Simbolos del mapa ----#
-SOLIDO = set("#~MV")            # bloquea el cuerpo y sirve de apoyo
+SOLIDO = set("#~MV=")           # bloquea el cuerpo y sirve de apoyo (incluye cripta '=')
 TRAMPOLIN = "I"                 # campana de resonancia: permite rebotar y recargar dash sin bloquear el paso
 PELIGRO = "^"                   # daño al pisar o caer en él
 APOYADAS = set("EKBLAFWDX")     # entidades que deben tener suelo debajo (I2)
@@ -24,6 +32,8 @@ ALTO_PISO = 18                  # filas por piso lógico (V1)
 #---- Fisica de comprobacion ----#
 # Altura máxima del salto puro: v²/(2g). Con SALTO=-620 y GRAVEDAD=1500 da ~128 px.
 ALTURA_SALTO_FISICA = (SALTO * SALTO) / (2 * GRAVEDAD) / TILE           # tiles
+# Altura máxima del rebote en campana: v²/(2g). Con REBOTE_ENEMIGO=360 da ~43.2 px (1.35 tiles).
+ALTURA_REBOTE_FISICA = (REBOTE_ENEMIGO * REBOTE_ENEMIGO) / (2 * GRAVEDAD) / TILE
 # Alcance horizontal del salto puro: v_x * t_vuelo. t_vuelo = 2|SALTO|/g.
 ALCANCE_SALTO_FISICO = VELOCIDAD * (2 * abs(SALTO) / GRAVEDAD) / TILE   # tiles
 # Desplazamiento extra del dash: velocidad * duración.
@@ -31,6 +41,7 @@ ALCANCE_DASH = DASH_VELOCIDAD * DASH_DURACION / TILE                    # tiles
 
 # El alcance de llegada se usa conservador (por debajo del físico).
 JH_LLEGADA = int(math.floor(ALTURA_SALTO_FISICA)) - 1                   # 3
+JH_REBOTE = int(math.floor(ALTURA_REBOTE_FISICA))                       # 1
 JX_SALTO = int(math.floor(ALCANCE_SALTO_FISICO)) - 1                    # 5
 JX_DASH = JX_SALTO + int(math.floor(ALCANCE_DASH)) - 1                  # 8
 # La caja de colisión del arco usa la altura física completa (conservador).
@@ -205,11 +216,12 @@ def _caer(filas, x, y):
         y += 1
 
 
-def _alcanzable(filas, habilidades, inicio=None, meta=None, usar_k=True, usar_b=True):
+def _alcanzable(filas, habilidades, inicio=None, meta=None, usar_k=True, usar_b=True, visitados_cr=None):
     """BFS sobre (columna, fila_de_pie, flagK, flagB). Devuelve (ok, camino).
 
     inicio / meta: celdas (columna, fila de pie). Por defecto P y G.
-    usar_k / usar_b: exigir pasar por K / B (si existen en el mapa)."""
+    usar_k / usar_b: exigir pasar por K / B (si existen en el mapa).
+    visitados_cr: set opcional donde se acumulan todas las celdas (c, r) alcanzadas."""
     spawn = inicio or _posiciones(filas, "P")[0]
     meta = meta or _posiciones(filas, "G")[0]
     kx = _posiciones(filas, "K") if usar_k else []
@@ -223,9 +235,12 @@ def _alcanzable(filas, habilidades, inicio=None, meta=None, usar_k=True, usar_b=
 
     estado0 = (spawn[0], spawn[1], False, False)
     visitados = {estado0}
+    if visitados_cr is not None:
+        visitados_cr.add((spawn[0], spawn[1]))
     cola = deque([estado0])
     padre = {estado0: None}
     nc = len(filas[0])
+    camino_ok = None
 
     def conviene(c, r, fk, fb):
         if k_cel is not None and not fk and cerca((c, r), k_cel):
@@ -237,14 +252,15 @@ def _alcanzable(filas, habilidades, inicio=None, meta=None, usar_k=True, usar_b=
     while cola:
         estado = cola.popleft()
         c, r, fk, fb = estado
-        if cerca((c, r), meta, 0) and (k_cel is None or fk) and (b_cel is None or fb):
-            camino = []
+        if camino_ok is None and cerca((c, r), meta, 0) and (k_cel is None or fk) and (b_cel is None or fb):
+            camino_ok = []
             s = estado
             while s is not None:
-                camino.append(s)
+                camino_ok.append(s)
                 s = padre[s]
-            camino.reverse()
-            return True, camino
+            camino_ok.reverse()
+            if visitados_cr is None:
+                return True, camino_ok
 
         sucesores = []
         # 1) Caminar a izquierda/derecha; si hay escalón de 1 tile, subir.
@@ -267,15 +283,11 @@ def _alcanzable(filas, habilidades, inicio=None, meta=None, usar_k=True, usar_b=
                 if pie is not None:
                     sucesores.append((nx, pie))
 
-        # 2) Salto. Aproximación del arco: el cuerpo sube hasta JH_ARCO filas
-        #    por encima de los pies. Las columnas INTERMEDIAS entre la de
-        #    partida y la de llegada deben estar libres en esa altura (si no,
-        #    el arco choca). La columna de llegada solo se comprueba en su
-        #    propia altura de aterrizaje. Se recorre columna a columna y se
-        #    corta en la primera columna que bloquea el arco.
+        # 2) Salto / Rebote de campana. Física real: salto sube hasta JH_LLEGADA (3),
+        #    rebote en campana (I) sube hasta JH_REBOTE (1 fila, 43 px reales).
         es_rebote_campana = (r + 1 < len(filas) and filas[r + 1][c] == TRAMPOLIN)
-        arco_h = 2 if es_rebote_campana else JH_ARCO
-        max_dy = 2 if es_rebote_campana else JH_LLEGADA
+        arco_h = JH_REBOTE if es_rebote_campana else JH_ARCO
+        max_dy = JH_REBOTE if es_rebote_campana else JH_LLEGADA
         if all(not _es_solido(filas, c, y) for y in range(max(1, r - arco_h - 1), r)):
             for sentido in (-1, 1):
                 for k in range(1, jx + 1):
@@ -302,6 +314,8 @@ def _alcanzable(filas, habilidades, inicio=None, meta=None, usar_k=True, usar_b=
                         break
 
         for nx, ny in sucesores:
+            if visitados_cr is not None:
+                visitados_cr.add((nx, ny))
             nfk, nfb = conviene(nx, ny, fk, fb)
             nuevo = (nx, ny, nfk, nfb)
             if nuevo not in visitados:
@@ -309,6 +323,8 @@ def _alcanzable(filas, habilidades, inicio=None, meta=None, usar_k=True, usar_b=
                 padre[nuevo] = estado
                 cola.append(nuevo)
 
+    if camino_ok is not None:
+        return True, camino_ok
     return False, None
 
 
@@ -331,57 +347,232 @@ def _borde_del_pozo(filas, losa, c):
     return None
 
 
-def _validar_alcance(filas, res, habilidades, estricto):
+def _detectar_superficies_huerfanas(filas, visitados_cr):
+    """Agrupa plataformas horizontales (>= 2 tiles) con espacio superior libre no alcanzadas por el BFS."""
+    nf, nc = len(filas), len(filas[0])
+    suelo_superficie = set("#~=")
+    bloquea_arriba = SOLIDO | {PELIGRO, "|"}
+    huerfanas_celdas = []
+    for r in range(2, nf - 1):
+        for c in range(1, nc - 1):
+            if not (filas[r + 1][c] in suelo_superficie
+                    and filas[r][c] not in bloquea_arriba
+                    and filas[r - 1][c] not in bloquea_arriba
+                    and (c, r) not in visitados_cr):
+                continue
+            # Ignorar la tapa superior de muros verticales macizos de cierre tras la losa divisoria (ej. borde tras Salto de Fe)
+            if r + 1 == ALTO_PISO - 1 and all(filas[rr][c] in SOLIDO for rr in range(r + 1, nf - 1)):
+                continue
+            huerfanas_celdas.append((r, c))
+
+    grupos = []
+    for r, c in sorted(huerfanas_celdas):
+        if grupos and grupos[-1][0] == r and grupos[-1][2] == c - 1:
+            grupos[-1][2] = c
+        else:
+            grupos.append([r, c, c])
+    return [(r, a, b) for r, a, b in grupos if b - a + 1 >= 2]
+
+
+def _validar_alcance(filas, res, habilidades, principal, estricto):
     if not _posiciones(filas, "P") or not _posiciones(filas, "G"):
         res.avisos.append("V4: omitido (falta P o G)")
         return
 
     aberturas = [(losa, c) for losa, c in _pozos(filas) if losa < len(filas) - 1]
+    visitados_cr = set()
     if not aberturas:
         # Sin pozos entre pisos: se comprueba P -> G completo.
         etiqueta = " -> ".join(x for x, presente in (
             ("K", bool(_posiciones(filas, "K"))), ("B", bool(_posiciones(filas, "B")))) if presente)
         etiqueta = "P -> " + (etiqueta + " -> " if etiqueta else "") + "G"
-        ok, camino = _alcanzable(filas, habilidades)
+        ok, camino = _alcanzable(filas, habilidades, visitados_cr=visitados_cr)
         if ok:
             res.info.append(f"V4: ruta conservadora {etiqueta} ({len(camino)} estados)")
         else:
             mensaje = (f"V4: {etiqueta} no demostrado con el modelo conservador "
                        "(esto no prueba que sea imposible)")
             (res.errores if estricto else res.avisos).append(mensaje)
-        return
+    else:
+        # Tramo superior: P -> borde del pozo, pasando por K.
+        for losa, c in aberturas:
+            if losa >= len(filas) - 1:
+                continue
+            borde = _borde_del_pozo(filas, losa, c)
+            if borde is None:
+                res.avisos.append(f"V4-sup: no hay borde de pozo para la abertura col {c}")
+                continue
+            ok, _ = _alcanzable(filas, habilidades, inicio=_posiciones(filas, "P")[0],
+                                meta=borde, usar_k=True, usar_b=False, visitados_cr=visitados_cr)
+            mensaje = f"V4-sup: P -> K -> borde del pozo (col {borde[0]}, fila {borde[1]})"
+            if ok:
+                res.info.append(mensaje + " demostrado")
+            else:
+                aviso = (mensaje + " NO demostrado con el modelo (el modelo no entiende plataformas "
+                         "móviles, rebote de pisotón ni tramos de salto largo; validar en juego)")
+                (res.errores if estricto else res.avisos).append(aviso)
 
-    # Tramo superior: P -> borde del pozo, pasando por K.
-    for losa, c in aberturas:
-        if losa >= len(filas) - 1:
-            continue
-        borde = _borde_del_pozo(filas, losa, c)
-        if borde is None:
-            res.avisos.append(f"V4-sup: no hay borde de pozo para la abertura col {c}")
-            continue
-        ok, _ = _alcanzable(filas, habilidades, inicio=_posiciones(filas, "P")[0],
-                            meta=borde, usar_k=True, usar_b=False)
-        mensaje = f"V4-sup: P -> K -> borde del pozo (col {borde[0]}, fila {borde[1]})"
-        if ok:
-            res.info.append(mensaje + " demostrado")
-        else:
-            aviso = (mensaje + " NO demostrado con el modelo (el modelo no entiende plataformas "
-                     "móviles, rebote de pisotón ni tramos de salto largo; validar en juego)")
-            (res.errores if estricto else res.avisos).append(aviso)
+        # Tramo inferior: aterrizaje -> G, pasando por B.
+        for losa, c in aberturas:
+            pie = _aterrizaje(filas, losa, c)
+            if pie is None:
+                continue
+            ok, _ = _alcanzable(filas, habilidades, inicio=(c, pie),
+                                meta=_posiciones(filas, "G")[0], usar_k=False, usar_b=True,
+                                visitados_cr=visitados_cr)
+            mensaje = f"V4-inf: aterrizaje (col {c}, fila {pie}) -> B -> G"
+            if ok:
+                res.info.append(mensaje + " demostrado")
+            else:
+                (res.errores if estricto else res.avisos).append(
+                    mensaje + " NO demostrado con el modelo conservador")
 
-    # Tramo inferior: aterrizaje -> G, pasando por B.
-    for losa, c in aberturas:
-        pie = _aterrizaje(filas, losa, c)
-        if pie is None:
-            continue
-        ok, _ = _alcanzable(filas, habilidades, inicio=(c, pie),
-                            meta=_posiciones(filas, "G")[0], usar_k=False, usar_b=True)
-        mensaje = f"V4-inf: aterrizaje (col {c}, fila {pie}) -> B -> G"
-        if ok:
-            res.info.append(mensaje + " demostrado")
-        else:
-            (res.errores if estricto else res.avisos).append(
-                mensaje + " NO demostrado con el modelo conservador")
+    # V5: detectar plataformas huérfanas con física real (error en niveles multipiso principales como El Osario).
+    huerfanas = _detectar_superficies_huerfanas(filas, visitados_cr)
+    es_multipiso_principal = principal and len(filas) > ALTO_PISO
+    if not huerfanas:
+        res.info.append("V5: 0 plataformas huérfanas con física real")
+    else:
+        destino = res.errores if es_multipiso_principal else res.info
+        for r, a, b in huerfanas:
+            destino.append(f"V5: plataforma huérfana en fila {r} (cols {a}..{b})")
+
+
+DECORACIONES_PISO = set("tcrbsgu")
+DECORACIONES_TECHO = set("j")
+ENTIDADES_PISO = APOYADAS | set("PG")
+ENEMIGOS_PISO = set("ELA")
+HITOS_SEGURIDAD = set("FPGDWX")
+
+
+def _validar_apoyo_decoraciones(filas, res):
+    """I6a: verifica que ninguna decoración de piso o cadena 'j' quede flotando."""
+    nf = len(filas)
+    for r, fila in enumerate(filas):
+        for c, ch in enumerate(fila):
+            if ch in DECORACIONES_PISO:
+                abajo = filas[r + 1][c] if r + 1 < nf else "#"
+                arriba = filas[r - 1][c] if r > 0 else "."
+                if abajo not in "#=":
+                    res.errores.append(
+                        f"I6: decoración '{ch}' flotando sin piso sólido ('#'/'=') en col {c}, fila {r}"
+                    )
+                elif arriba in SOLIDO:
+                    res.errores.append(
+                        f"I6: decoración '{ch}' incrustada bajo sólido en col {c}, fila {r}"
+                    )
+            elif ch in DECORACIONES_TECHO and r > 0 and filas[r - 1][c] not in "#j":
+                res.errores.append(
+                    f"I6: cadena 'j' suelta sin techo ni eslabón encima en col {c}, fila {r}"
+                )
+
+
+def _grupos_horizontales(filas, caracteres, min_largo=1):
+    """Agrupa corridas horizontales contiguas de `caracteres` como tuplas (fila, col_ini, col_fin)."""
+    grupos = []
+    for r, fila in enumerate(filas):
+        for c, ch in enumerate(fila):
+            if ch not in caracteres:
+                continue
+            if grupos and grupos[-1][0] == r and grupos[-1][2] == c - 1:
+                grupos[-1][2] = c
+            else:
+                grupos.append([r, c, c])
+    return [(r, a, b) for r, a, b in grupos if b - a + 1 >= min_largo]
+
+
+def _validar_recorridos_moviles(filas, res, destino_no_critico):
+    """I6b: verifica recorridos de plataformas M (±3 cols), V (±2 filas) y órbita de Cuervos C."""
+    nf, nc = len(filas), len(filas[0])
+    # Plataformas horizontales M (oscilan ±3 columnas)
+    for r, c0, c1 in _grupos_horizontales(filas, "M"):
+        for dc in (-3, -2, -1):
+            cc = c0 + dc
+            if 0 <= cc < nc and filas[r][cc] not in (".", "o"):
+                destino_no_critico.append(
+                    f"I6: recorrido izquierdo de M({c0}..{c1}, {r}) choca con '{filas[r][cc]}' en ({cc}, {r})"
+                )
+        for dc in (1, 2, 3):
+            cc = c1 + dc
+            if 0 <= cc < nc and filas[r][cc] not in (".", "o"):
+                destino_no_critico.append(
+                    f"I6: recorrido derecho de M({c0}..{c1}, {r}) choca con '{filas[r][cc]}' en ({cc}, {r})"
+                )
+    # Plataformas verticales V (oscilan ±2 filas) y Cuervos C (órbita de radio 3 tiles)
+    for r, fila in enumerate(filas):
+        for c, ch in enumerate(fila):
+            if ch == "V":
+                for dr in (-2, -1, 1, 2):
+                    rr = r + dr
+                    if 0 <= rr < nf and filas[rr][c] not in (".", "o"):
+                        destino_no_critico.append(
+                            f"I6: recorrido vertical de V({c}, {r}) choca con '{filas[rr][c]}' en ({c}, {rr})"
+                        )
+            elif ch == "C":
+                choque = next(
+                    ((c + dc, r + dr, filas[r + dr][c + dc])
+                     for dr in range(-3, 4) for dc in range(-3, 4)
+                     if dc * dc + dr * dr <= 9
+                     and 0 <= r + dr < nf and 0 <= c + dc < nc
+                     and filas[r + dr][c + dc] in "#=~"),
+                    None,
+                )
+                if choque is not None:
+                    destino_no_critico.append(
+                        f"I6: órbita de Cuervo C({c}, {r}) intersecta '{choque[2]}' en ({choque[0]}, {choque[1]})"
+                    )
+
+
+def _validar_espaciado_natural(filas, destino):
+    """I6c: evita decoraciones pegadas celda a celda, aglomeraciones y enemigos junto a hitos."""
+    nc = len(filas[0])
+    ocupantes_piso = DECORACIONES_PISO | ENTIDADES_PISO
+    for r, fila in enumerate(filas):
+        for c in range(nc - 1):
+            if fila[c] in ocupantes_piso and fila[c + 1] in ocupantes_piso:
+                destino.append(
+                    f"I6: objetos '{fila[c]}{fila[c + 1]}' pegados sin aire en fila {r}, cols {c}..{c + 1}"
+                )
+        for c, ch in enumerate(fila):
+            if ch in ENEMIGOS_PISO:
+                for cc in range(max(0, c - 2), min(nc, c + 3)):
+                    if fila[cc] in HITOS_SEGURIDAD:
+                        destino.append(
+                            f"I6: enemigo '{ch}' en ({c}, {r}) demasiado cerca del hito '{fila[cc]}' (col {cc})"
+                        )
+        # Detectar "trencitos": 3+ decoraciones de piso en una ventana <= 7 columnas
+        decos_cols = [c for c, ch in enumerate(fila) if ch in DECORACIONES_PISO]
+        i = 0
+        while i < len(decos_cols):
+            j = i
+            while j + 1 < len(decos_cols) and decos_cols[j + 1] - decos_cols[i] <= 6:
+                j += 1
+            if j - i + 1 >= 3:
+                tramo = fila[decos_cols[i]:decos_cols[j] + 1]
+                destino.append(
+                    f"I6: aglomeración de decoraciones '{tramo}' en fila {r}, cols {decos_cols[i]}..{decos_cols[j]}"
+                )
+                i = j + 1
+            else:
+                i += 1
+
+
+def _validar_coherencia_espacial(filas, res, nombre, principal):
+    """I6: coherencia espacial, recorridos móviles y separación natural de decoraciones."""
+    es_historico = (
+        "NIVELES[2]" in nombre
+        or (principal and len(filas) == ALTO_PISO and bool(_posiciones(filas, "K")) and bool(_posiciones(filas, "B")))
+    )
+    errores_antes = len(res.errores)
+    avisos_antes = len(res.avisos)
+    destino = res.avisos if es_historico else res.errores
+
+    _validar_apoyo_decoraciones(filas, res)
+    _validar_recorridos_moviles(filas, res, destino)
+    _validar_espaciado_natural(filas, destino)
+
+    if len(res.errores) == errores_antes and len(res.avisos) == avisos_antes:
+        res.info.append("I6: coherencia espacial y decoraciones limpias")
 
 
 #---- Entrada publica ----#
@@ -392,7 +583,8 @@ def validar(mapa, nombre="nivel", habilidades=("dash",), principal=True, estrict
     _validar_apoyo(filas, res)
     _validar_faroles(filas, res)
     _validar_huecos(filas, res, principal)
-    _validar_alcance(filas, res, habilidades, estricto)
+    _validar_coherencia_espacial(filas, res, nombre, principal)
+    _validar_alcance(filas, res, habilidades, principal, estricto)
     return res
 
 

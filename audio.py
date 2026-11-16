@@ -113,26 +113,26 @@ def sintetizar_corazon_delator(volumen=0.32):
 
 
 #---- Dron ambiental de fondo ----#
-def sintetizar_dron_funebre(duracion=4.0, volumen=0.10):
-    # Genera un zumbido grave continuo para las catacumbas
+def sintetizar_dron_funebre(duracion=4.0, volumen=0.025):
+    """Genera una brisa nocturna filtrada sin subgraves para no cargar la mezcla musical."""
     total = int(FRECUENCIA_MUESTREO * duracion)
     muestras = array.array("h")
     tau = math.tau
 
     for i in range(total):
         t = i / FRECUENCIA_MUESTREO
-        lfo = 0.5 + 0.5 * math.sin(tau * 0.25 * t)
-        lfo2 = 0.5 + 0.5 * math.cos(tau * 0.18 * t)
+        lfo = 0.55 + 0.45 * math.sin(tau * 0.25 * t)
+        lfo2 = 0.55 + 0.45 * math.cos(tau * 0.25 * t)
 
-        f1 = math.sin(tau * 55.0 * t)
-        f2 = 0.45 * math.sin(tau * 110.0 * t + 0.4)
-        f3 = 0.25 * math.sin(tau * 164.8 * t + 0.8)
-        f4 = 0.15 * math.sin(tau * 220.0 * t)
+        # Armónicos aireados en registro medio-alto (>= 293 Hz, sin subgraves < 160 Hz)
+        f1 = math.sin(tau * 293.66 * t) * 0.45
+        f2 = math.sin(tau * 440.0 * t + 0.6) * 0.35
+        f3 = math.sin(tau * 659.25 * t + 1.1) * 0.20
 
-        s_left = (f1 + f2 * (0.8 + 0.2 * lfo) + f3 + f4) * volumen
-        s_right = (f1 + f2 * (0.8 + 0.2 * lfo2) + f3 * 1.1 + f4 * 0.9) * volumen
+        s_left = (f1 * lfo + f2 + f3 * lfo2) * volumen
+        s_right = (f1 * lfo2 + f2 * 0.9 + f3 * lfo) * volumen
 
-        edge_env = min(1.0, min(i, total - i) / (FRECUENCIA_MUESTREO * 0.1))
+        edge_env = min(1.0, min(i, total - i) / (FRECUENCIA_MUESTREO * 0.12))
 
         val_l = int(max(-32767, min(32767, s_left * edge_env * 32767)))
         val_r = int(max(-32767, min(32767, s_right * edge_env * 32767)))
@@ -144,9 +144,9 @@ def sintetizar_dron_funebre(duracion=4.0, volumen=0.10):
 
 #---- Tabla de sintesis de efectos de sonido ----#
 _PRESETS_SFX = {
-    "salto": (0.14, [("seno", 210, 160, 0.7, None), ("ruido", 0, 0, 0.2, None), ("fm", 320, 80, 0.2, (640, 0.6))], (0.01, 0.04, 0.5, 0.09), 0.18),
-    "dash": (0.18, [("ruido", 0, 0, 0.45, None), ("sierra", 140, 320, 0.4, None), ("seno", 90, 180, 0.35, None)], (0.02, 0.06, 0.4, 0.10), 0.18),
-    "ataque": (0.11, [("fm", 280, 480, 0.65, (560, 1.2)), ("ruido", 0, 0, 0.35, None)], (0.005, 0.03, 0.4, 0.075), 0.18),
+    "salto": (0.14, [("seno", 210, 160, 0.7, None), ("ruido", 0, 0, 0.2, None), ("fm", 320, 80, 0.2, (640, 0.6))], (0.01, 0.04, 0.5, 0.09), 0.26),
+    "dash": (0.18, [("ruido", 0, 0, 0.45, None), ("sierra", 140, 320, 0.4, None), ("seno", 90, 180, 0.35, None)], (0.02, 0.06, 0.4, 0.10), 0.36),
+    "ataque": (0.11, [("fm", 280, 480, 0.65, (560, 1.2)), ("ruido", 0, 0, 0.35, None)], (0.005, 0.03, 0.4, 0.075), 0.26),
     "pala": (0.20, [("ruido", 0, 0, 0.45, None), ("seno", 115, -60, 0.5, None), ("fm", 440, -180, 0.35, (880, 1.8))], (0.005, 0.05, 0.3, 0.145), 0.26),
     "rebote_pala": (0.16, [("fm", 880, -320, 0.6, (1420, 2.5)), ("ruido", 0, 0, 0.3, None), ("seno", 220, -90, 0.4, None)], (0.004, 0.04, 0.3, 0.116), 0.24),
     "stomp": (0.18, [("ruido", 0, 0, 0.5, None), ("seno", 85, -45, 0.6, None), ("cuadrada", 55, -20, 0.25, None)], (0.005, 0.04, 0.4, 0.135), 0.26),
@@ -161,17 +161,100 @@ _PRESETS_SFX = {
     "daño": (0.26, [("cuadrada", 160, -90, 0.65, None), ("ruido", 0, 0, 0.45, None)], (0.005, 0.06, 0.4, 0.195), 0.24),
     "muerte": (0.65, [("cuadrada", 75, -40, 0.7, None), ("seno", 55, -25, 0.5, None), ("ruido", 0, 0, 0.35, None)], (0.03, 0.18, 0.6, 0.44), 0.28),
     "meta": (0.55, [("seno", 220, 280, 0.6, None), ("fm", 440, 360, 0.35, (880, 1.0))], (0.02, 0.14, 0.6, 0.39), 0.20),
-    "losa_romper": (0.19, [("ruido", 0, 0, 0.65, None), ("cuadrada", 95, -50, 0.45, None), ("seno", 60, -30, 0.4, None)], (0.003, 0.04, 0.25, 0.147), 0.28),
-    "campana_repique": (0.55, [("seno", 660, -20, 0.60, None), ("fm", 990, -30, 0.40, (1980, 0.8)), ("seno", 1320, -40, 0.25, None), ("seno", 330, -10, 0.20, None)], (0.004, 0.08, 0.45, 0.466), 0.26),
+    "losa_romper": (0.19, [("ruido", 0, 0, 0.65, None), ("cuadrada", 95, -50, 0.45, None), ("seno", 60, -30, 0.4, None)], (0.003, 0.04, 0.25, 0.147), 0.46),
+    "compuerta": (0.38, [("cuadrada", 92, -38, 0.55, None), ("ruido", 0, 0, 0.40, None), ("seno", 62, -22, 0.50, None), ("fm", 210, -45, 0.35, (380, 1.1))], (0.004, 0.09, 0.30, 0.286), 0.46),
+    "cripta_romper": (0.28, [("ruido", 0, 0, 0.72, None), ("cuadrada", 84, -44, 0.55, None), ("seno", 52, -26, 0.50, None)], (0.003, 0.06, 0.22, 0.197), 0.48),
+    "jefe_caida": (0.72, [("seno", 320, -245, 0.55, None), ("fm", 190, -135, 0.45, (140, 1.4)), ("ruido", 0, 0, 0.35, None)], (0.010, 0.14, 0.45, 0.57), 0.50),
+}
+
+# Realce moderado para efectos en disco con menor sonoridad media respecto a la música (0.45)
+_GANANCIA_SFX_DISCO = {
+    "ataque": 1.25,
+    "checkpoint": 1.50,
+    "dash": 1.38,
+    "dash_recoger": 1.35,
+    "meta": 1.28,
+    "pala": 1.45,
+    "pala_recoger": 1.35,
+    "salto": 1.22,
+    "stomp": 1.45,
+    "ui": 1.45,
 }
 
 _NOTAS_ALMAS = (523.25, 587.33, 659.25, 783.99, 880.00, 1046.50)
+_NOTAS_CAMPANAS = (587.33, 698.46, 783.99, 880.00, 1046.50, 1174.66)
 
 _TIERS_FAROL = {
-    "farol_tier_1": (0.48, [("seno", 293.66, 0, 0.45, None), ("seno", 349.23, 0, 0.40, None), ("seno", 440.00, 0, 0.45, None), ("fm", 587.33, 0, 0.25, (1174.66, 0.6))], (0.02, 0.10, 0.6, 0.36), 0.22),
-    "farol_tier_2": (0.58, [("seno", 523.25, 0, 0.45, None), ("seno", 659.25, 0, 0.40, None), ("seno", 783.99, 0, 0.45, None), ("fm", 1046.50, 0, 0.35, (2093.0, 0.8))], (0.015, 0.12, 0.65, 0.445), 0.24),
-    "farol_tier_3": (0.72, [("seno", 587.33, 0, 0.45, None), ("seno", 739.99, 0, 0.40, None), ("seno", 880.00, 0, 0.40, None), ("fm", 1174.66, 0, 0.35, (2349.32, 1.2)), ("seno", 1320.00, -20, 0.25, None)], (0.02, 0.15, 0.7, 0.55), 0.26),
+    "farol_tier_1": (0.48, [("seno", 293.66, 0, 0.45, None), ("seno", 349.23, 0, 0.40, None), ("seno", 440.00, 0, 0.45, None), ("fm", 587.33, 0, 0.25, (1174.66, 0.6))], (0.02, 0.10, 0.6, 0.36), 0.40),
+    "farol_tier_2": (0.58, [("seno", 523.25, 0, 0.45, None), ("seno", 659.25, 0, 0.40, None), ("seno", 783.99, 0, 0.45, None), ("fm", 1046.50, 0, 0.35, (2093.0, 0.8))], (0.015, 0.12, 0.65, 0.445), 0.42),
+    "farol_tier_3": (0.72, [("seno", 587.33, 0, 0.45, None), ("seno", 739.99, 0, 0.40, None), ("seno", 880.00, 0, 0.40, None), ("fm", 1174.66, 0, 0.35, (2349.32, 1.2)), ("seno", 1320.00, -20, 0.25, None)], (0.02, 0.15, 0.7, 0.55), 0.44),
 }
+
+
+def _escalar_ganancia_sound(sonido, factor):
+    """Aplica ganancia moderada en memoria con limitación suave sobre ±0.85."""
+    if abs(factor - 1.0) < 1e-3:
+        return sonido
+    crudo = array.array("h")
+    crudo.frombytes(sonido.get_raw())
+    inv = factor / 32767.0
+    for idx, muestra in enumerate(crudo):
+        escalada = muestra * inv
+        if escalada > 0.85 or escalada < -0.85:
+            escalada = math.tanh(escalada)
+        crudo[idx] = int(max(-32767, min(32767, escalada * 32767.0)))
+    return pygame.mixer.Sound(buffer=crudo.tobytes())
+
+
+def sintetizar_campana_carillon(frecuencia, duracion=0.50, volumen=0.42):
+    """Sintetiza una campana metálica de bronce con parciales modales y badajo agudo."""
+    total = max(1, int(FRECUENCIA_MUESTREO * duracion))
+    muestras = array.array("h")
+    tau = math.tau
+    inv_sr = 1.0 / FRECUENCIA_MUESTREO
+    muestras_cola = int(0.030 * FRECUENCIA_MUESTREO)
+    muestras_ataque = int(0.0018 * FRECUENCIA_MUESTREO)
+
+    # Serie modal de campana metálica (fundamental, nominal 2.0, tierce 2.382, quinta 3.014 y armónicos de bronce)
+    w1 = tau * frecuencia
+    w2 = tau * (frecuencia * 2.0)
+    w_tierce = tau * (frecuencia * 2.382)
+    w3 = tau * (frecuencia * 3.014)
+    w4 = tau * (frecuencia * 4.07)
+    w5 = tau * (frecuencia * 5.43)
+    w_clapper1 = tau * (frecuencia * 6.83)
+    w_clapper2 = tau * (frecuencia * 8.41)
+    w_chorus = tau * 1.1
+
+    for i in range(total):
+        t = i * inv_sr
+        env_atq = min(1.0, i / max(1, muestras_ataque))
+        env_cola = min(1.0, (total - i) / max(1, muestras_cola))
+        compuerta = env_atq * env_cola
+
+        # Modulación FM breve en el ataque para timbre metálico de hierro/bronce
+        mod_metal = 0.55 * math.exp(-34.0 * t) * math.sin(w_tierce * t)
+        fund = math.sin(w1 * t) * 0.46 * math.exp(-5.4 * t)
+        octava = math.sin(w2 * t + mod_metal) * 0.38 * math.exp(-7.5 * t)
+        tierce = math.sin(w_tierce * t) * 0.25 * math.exp(-11.0 * t)
+        duodecima = math.sin(w3 * t) * 0.22 * math.exp(-13.5 * t)
+        bronce_alto = (
+            math.sin(w4 * t) * 0.18 * math.exp(-19.0 * t)
+            + math.sin(w5 * t) * 0.13 * math.exp(-28.0 * t)
+        )
+        badajo = (
+            math.sin(w_clapper1 * t) * 0.18 + math.sin(w_clapper2 * t) * 0.12
+        ) * math.exp(-130.0 * t)
+        apertura_estereo = math.sin(w2 * t + 0.18 * math.sin(w_chorus * t)) * 0.08 * math.exp(-6.5 * t)
+
+        base = math.tanh((fund + octava + tierce + duodecima + bronce_alto + badajo) * 0.92)
+        muestra_l = (base + apertura_estereo) * compuerta * volumen
+        muestra_r = (base - apertura_estereo) * compuerta * volumen
+
+        muestras.append(int(max(-32767, min(32767, muestra_l * 32767))))
+        muestras.append(int(max(-32767, min(32767, muestra_r * 32767))))
+
+    return pygame.mixer.Sound(buffer=muestras.tobytes())
 
 
 def _crear_constructor_sfx(duracion, capas, adsr, volumen):
@@ -202,9 +285,11 @@ class Audio:
         self.sonidos = {}
         self._lazy_builders = {}
         self.canal_dron = None
+        self.canal_campana = None
         self.sonido_dron = None
         self.sonido_latido = None
         self.musica_actual = None
+        self.musica_bucle = True
 
         try:
             if pygame.mixer.get_init() is None:
@@ -230,7 +315,8 @@ class Audio:
         for c_wav in claves_wav:
             snd_disco = self._cargar_sfx(c_wav)
             if snd_disco is not None:
-                self.sonidos[c_wav] = snd_disco
+                factor = _GANANCIA_SFX_DISCO.get(c_wav, 1.0)
+                self.sonidos[c_wav] = _escalar_ganancia_sound(snd_disco, factor)
 
         for clave, (dur, capas, adsr, vol) in _PRESETS_SFX.items():
             if clave not in self.sonidos:
@@ -246,9 +332,14 @@ class Audio:
                 ("seno", nota * 3.0, 40, 0.15, None),
             ]
             self.sonidos[f"alma_{idx}"] = sintetizar_sfx(
-                0.34, capas_chime, adsr=(0.004, 0.07, 0.45, 0.266), volumen=0.22
+                0.34, capas_chime, adsr=(0.004, 0.07, 0.45, 0.266), volumen=0.40
             )
         self.sonidos["alma"] = self.sonidos["alma_1"]
+
+        # Carillón brillante en Re menor pentatónico agudo (D5..D6) con timbre metálico de bronce
+        for idx, nota in enumerate(_NOTAS_CAMPANAS, 1):
+            self.sonidos[f"campana_{idx}"] = sintetizar_campana_carillon(nota, duracion=0.50, volumen=0.42)
+        self.sonidos["campana_repique"] = self.sonidos["campana_1"]
 
         if "corazon_latido" not in self.sonidos:
             self.sonidos["corazon_latido"] = sintetizar_corazon_delator(volumen=0.34)
@@ -256,8 +347,10 @@ class Audio:
         self.sonidos["corazon"] = self.sonido_latido
 
         if "dron_catacumbas" not in self.sonidos:
-            self.sonidos["dron_catacumbas"] = sintetizar_dron_funebre(duracion=4.0, volumen=0.045)
+            self.sonidos["dron_catacumbas"] = sintetizar_dron_funebre(duracion=4.0, volumen=0.025)
         self.sonido_dron = self.sonidos["dron_catacumbas"]
+        if self.sonido_dron is not None:
+            self.sonido_dron.set_volume(0.26)
 
         for clave_tier, params in _TIERS_FAROL.items():
             self._lazy_builders[clave_tier] = _crear_constructor_sfx(*params)
@@ -274,6 +367,14 @@ class Audio:
 
         sonido = self.sonidos.get(nombre)
         if sonido is not None:
+            if nombre.startswith("campana"):
+                try:
+                    if self.canal_campana is None:
+                        self.canal_campana = pygame.mixer.Channel(6)
+                    self.canal_campana.play(sonido)
+                    return
+                except pygame.error:
+                    pass
             sonido.play()
 
     def iniciar_dron(self):
@@ -283,6 +384,7 @@ class Audio:
         try:
             if self.canal_dron is None:
                 self.canal_dron = pygame.mixer.Channel(7)
+            self.canal_dron.set_volume(0.26)
             if not self.canal_dron.get_busy():
                 self.canal_dron.play(self.sonido_dron, loops=-1)
         except pygame.error:
@@ -310,6 +412,7 @@ class Audio:
 
     def reproducir_musica(self, id_musica, bucle=True, fade_ms=800):
         # Cambia la pista de musica si no estaba sonando ya
+        self.musica_bucle = bool(bucle)
         if not self.activo:
             self.musica_actual = id_musica
             return
@@ -320,6 +423,7 @@ class Audio:
         if ruta and ruta.exists():
             try:
                 loops = -1 if bucle else 0
+                pygame.mixer.music.stop()
                 pygame.mixer.music.load(str(ruta))
                 pygame.mixer.music.set_volume(0.45)
                 pygame.mixer.music.play(loops=loops, fade_ms=fade_ms)
@@ -327,9 +431,20 @@ class Audio:
             except pygame.error:
                 pass
 
+    def asegurar_musica_activa(self, id_musica_fallback=None):
+        """Relanza la pista en bucle si el mezclador quedó en silencio tras una transición rápida."""
+        if not self.activo:
+            return
+        objetivo = self.musica_actual if self.musica_bucle else id_musica_fallback
+        if not objetivo:
+            objetivo = id_musica_fallback
+        if objetivo and (not pygame.mixer.music.get_busy() or not self.musica_bucle):
+            self.reproducir_musica(objetivo, bucle=True, fade_ms=400)
+
     def detener_musica(self, fade_ms=800):
         # Detiene la musica con desvanecimiento
         self.musica_actual = None
+        self.musica_bucle = False
         try:
             pygame.mixer.music.fadeout(fade_ms)
         except pygame.error:

@@ -180,39 +180,41 @@ def obtener_estampa_fantasma(ancho, alto, alfa, color=TURQUESA_ÁNIMA):
 
 
 def obtener_arco_guadaña(direccion):
-    """Caché del arco espectral de energía de 76px de la Guadaña Mística."""
+    """Caché del arco espectral de energía de la Guadaña Consagrada (3 capas)."""
     signo = 1 if direccion > 0 else -1
-    clave = ("guadaña_arco", signo)
+    clave = ("guadaña_arco_v2", signo)
     surf = _CACHE_ARCOS.get(clave)
     if surf is None:
-        surf = pygame.Surface((80, 52), pygame.SRCALPHA)
-        start_ang = 0.0 if signo > 0 else 1.57
-        end_ang = 3.14 if signo > 0 else 4.71
-        # Arco violeta místico
-        pygame.draw.arc(surf, (215, 80, 255, 190), (2, 2, 76, 48), start_ang, end_ang, 5)
-        # Filo central blanco luminoso
-        pygame.draw.arc(surf, (255, 235, 255, 255), (4, 4, 72, 44), start_ang, end_ang, 2)
-        # Runas flotantes translúcidas
-        for rx, ry in ((22, 10), (42, 8), (62, 16)):
-            pygame.draw.line(surf, (230, 180, 255, 180), (rx, ry), (rx + 4, ry + 4), 1)
-            pygame.draw.line(surf, (230, 180, 255, 180), (rx + 4, ry), (rx, ry + 4), 1)
+        surf = pygame.Surface((84, 56), pygame.SRCALPHA)
+        start_ang = -0.15 if signo > 0 else 1.50
+        end_ang = 3.15 if signo > 0 else 4.80
+        # Estela exterior amatista profunda
+        pygame.draw.arc(surf, (175, 58, 232, 165), (2, 2, 80, 52), start_ang, end_ang, 7)
+        # Media luna principal neón violeta
+        pygame.draw.arc(surf, (232, 120, 255, 225), (4, 4, 76, 48), start_ang, end_ang, 4)
+        # Filo central marfil-cristal
+        pygame.draw.arc(surf, (255, 245, 255, 255), (6, 6, 72, 44), start_ang, end_ang, 2)
+        # Destellos rúnicos a lo largo del tajo
+        for rx, ry in ((18, 12), (40, 7), (60, 14), (28, 22)):
+            pygame.draw.line(surf, (240, 200, 255, 200), (rx, ry), (rx + 4, ry + 4), 1)
+            pygame.draw.line(surf, (240, 200, 255, 200), (rx + 4, ry), (rx, ry + 4), 1)
         surf = surf.convert_alpha()
         _CACHE_ARCOS[clave] = surf
     return surf
 
 
 def obtener_halo_alma(step):
-    """Caché de resplandor espectral translúcido de Alma (cuantizado en 8 pasos)."""
+    """Caché de resplandor espectral tenue de Alma (atenuado para prioridad visual)."""
     step = max(0, min(7, int(step)))
-    clave = ("halo_alma", step)
+    clave = ("halo_alma_v2", step)
     surf = _CACHE_HALOS.get(clave)
     if surf is None:
         surf = pygame.Surface((44, 44), pygame.SRCALPHA)
         pulso = step / 7.0
         factor = 0.8 + 0.2 * pulso
-        pygame.draw.circle(surf, (160, 90, 245, int(22 * factor)), (22, 22), 18)
-        pygame.draw.circle(surf, (180, 120, 255, int(42 * factor)), (22, 22), 12)
-        pygame.draw.circle(surf, (210, 180, 255, int(70 * factor)), (22, 22), 6)
+        pygame.draw.circle(surf, (160, 90, 245, int(14 * factor)), (22, 22), 18)
+        pygame.draw.circle(surf, (180, 120, 255, int(28 * factor)), (22, 22), 12)
+        pygame.draw.circle(surf, (210, 180, 255, int(48 * factor)), (22, 22), 6)
         surf = surf.convert_alpha()
         _CACHE_HALOS[clave] = surf
     return surf
@@ -235,6 +237,26 @@ def obtener_aura_pickup(color_base, step):
                 (32, 32),
                 radio,
             )
+        surf = surf.convert_alpha()
+        _CACHE_HALOS[clave] = surf
+    return surf
+
+
+def obtener_halo_vela_farol(step):
+    """Caché de halo tenue estilo vela azul para faroles aún sin consagrar."""
+    step = max(0, min(7, int(step)))
+    clave = ("vela_azul_farol", step)
+    surf = _CACHE_HALOS.get(clave)
+    if surf is None:
+        pulso = step / 7.0
+        radio = 18
+        diam = radio * 2 + 2
+        surf = pygame.Surface((diam, diam), pygame.SRCALPHA)
+        c = diam // 2
+        for r in range(radio, 2, -2):
+            norm = r / float(radio)
+            alfa = int((26 + pulso * 10) * (1.0 - norm * norm))
+            pygame.draw.circle(surf, (70, 185, 255, alfa), (c, c), r)
         surf = surf.convert_alpha()
         _CACHE_HALOS[clave] = surf
     return surf
@@ -287,15 +309,15 @@ def obtener_fantasma_losa(width, height, step):
 
 
 def obtener_halo_campana(repicando, step):
-    """Caché de halo turquesa de campana / incensario."""
+    """Caché de halo turquesa de campana / incensario (atenuado en reposo)."""
     step = max(0, min(7, int(step)))
-    clave = ("halo_campana", bool(repicando), step)
+    clave = ("halo_campana_v2", bool(repicando), step)
     surf = _CACHE_HALOS.get(clave)
     if surf is None:
         pulso = step / 7.0
         brillo_radio = 24 if repicando else 16
         surf = pygame.Surface((brillo_radio * 2, brillo_radio * 2), pygame.SRCALPHA)
-        alfa_halo = int(60 + pulso * 40) if repicando else int(25 + pulso * 15)
+        alfa_halo = int(60 + pulso * 40) if repicando else int(16 + pulso * 10)
         pygame.draw.circle(surf, (92, 190, 174, alfa_halo), (brillo_radio, brillo_radio), brillo_radio)
         pygame.draw.circle(surf, (180, 240, 230, int(alfa_halo * 0.7)), (brillo_radio, brillo_radio), brillo_radio // 2)
         surf = surf.convert_alpha()
@@ -414,6 +436,7 @@ class Jugador:
         self.vx = self.direccion * DASH_VELOCIDAD
         self.vy = 0.0
         self.dash_recien = True
+        self._dash_pendiente_feedback = True
         return True
 
     def dash_listo(self):
@@ -468,7 +491,11 @@ class Jugador:
 
     def actualizar(self, dt, teclas, solidos):
         self.salto_recien = False
-        self.dash_recien = False
+        if getattr(self, "_dash_pendiente_feedback", False):
+            self._dash_pendiente_feedback = False
+            self.dash_recien = True
+        else:
+            self.dash_recien = False
         self.aterrizaje_recien = False
 
         if self.squash_timer > 0:
@@ -688,6 +715,8 @@ class Jugador:
             sonda = self.rect.move(0, 1)
             for solido in solidos:
                 if sonda.colliderect(solido):
+                    self.rect.bottom = solido.top
+                    self.y = float(self.rect.y)
                     self.en_suelo = True
                     self.vy = 0.0
                     break
@@ -776,23 +805,34 @@ class Jugador:
                 "ataque3": base_y + (4 if es_guadana else -1),
             }[pose]
             punta_x = centro_x + self.direccion * alcance
-            pygame.draw.line(surface, color_mango, (hombro_x, rect.y + 8), (punta_x, alto_pala), 4 if es_guadana else 3)
+            origen_mango = (hombro_x, rect.y + 8)
+            pygame.draw.line(surface, color_mango, origen_mango, (punta_x, alto_pala), 4 if es_guadana else 3)
+            if es_guadana:
+                # Virola de bronce y remache amatista en la empuñadura
+                pygame.draw.line(surface, ORO_LITÚRGICO, (punta_x - self.direccion * 5, alto_pala - 2), (punta_x + self.direccion * 2, alto_pala + 2), 2)
+                pygame.draw.circle(surface, (215, 110, 255), origen_mango, 2)
             if not con_pala:
                 return
             signo = self.direccion
             arco_caja = camara.aplicar_rect(self.rect_ataque())
             if es_guadana:
                 puntos_hoja = [
-                    (punta_x, alto_pala - 10),
-                    (punta_x + signo * 22, alto_pala - 3),
-                    (punta_x + signo * 30, alto_pala + 16),
-                    (punta_x + signo * 20, alto_pala + 12),
-                    (punta_x + signo * 9, alto_pala + 5),
+                    (punta_x - signo * 4, alto_pala - 8),
+                    (punta_x + signo * 12, alto_pala - 11),
+                    (punta_x + signo * 25, alto_pala - 5),
+                    (punta_x + signo * 33, alto_pala + 9),
+                    (punta_x + signo * 31, alto_pala + 20),
+                    (punta_x + signo * 23, alto_pala + 13),
+                    (punta_x + signo * 15, alto_pala + 6),
+                    (punta_x + signo * 4, alto_pala + 3),
                     (punta_x - signo * 2, alto_pala),
                 ]
-                pygame.draw.polygon(surface, (215, 80, 255), puntos_hoja)
-                pygame.draw.lines(surface, (255, 220, 255), False, puntos_hoja[:4], 2)
-                onda_x, onda_y = arco_caja.x, arco_caja.y - 2
+                lomo_hoja = puntos_hoja[:5]
+                pygame.draw.polygon(surface, (150, 48, 200), puntos_hoja)
+                pygame.draw.polygon(surface, (215, 105, 255), [puntos_hoja[1], puntos_hoja[2], puntos_hoja[3], puntos_hoja[6], puntos_hoja[7]])
+                pygame.draw.lines(surface, (255, 240, 255), False, lomo_hoja, 2)
+                pygame.draw.circle(surface, ORO_LITÚRGICO, (punta_x, alto_pala), 3)
+                onda_x, onda_y = arco_caja.x - 2, arco_caja.y - 4
                 surface.blit(obtener_arco_guadaña(signo), (onda_x, onda_y))
                 if getattr(self, "filo_anima", False):
                     start_ang = 0.0 if signo > 0 else 1.57
@@ -829,9 +869,16 @@ class Jugador:
             pygame.draw.line(surface, color_mango, (centro_x, rect.centery + 2), (centro_x, base_y + 11), 4 if es_guadana else 3)
             punta_pogo_y = base_y + (16 if es_guadana else 13)
             if es_guadana:
-                puntos_pogo = [(centro_x - 4, base_y + 5), (centro_x + 9, base_y + 9), (centro_x, punta_pogo_y), (centro_x - 3, base_y + 10)]
-                pygame.draw.polygon(surface, (215, 80, 255), puntos_pogo)
-                pygame.draw.lines(surface, (255, 235, 255), False, puntos_pogo, 1)
+                puntos_pogo = [
+                    (centro_x - 6, base_y + 6),
+                    (centro_x + 11, base_y + 7),
+                    (centro_x + 9, base_y + 14),
+                    (centro_x, punta_pogo_y + 2),
+                    (centro_x - 3, base_y + 10),
+                ]
+                pygame.draw.polygon(surface, (185, 65, 235), puntos_pogo)
+                pygame.draw.lines(surface, (255, 240, 255), False, puntos_pogo[:4], 2)
+                pygame.draw.circle(surface, ORO_LITÚRGICO, (centro_x, base_y + 7), 2)
             else:
                 pygame.draw.polygon(surface, (195, 198, 208), [(centro_x - 5, base_y + 4), (centro_x + 5, base_y + 4), (centro_x, punta_pogo_y)])
                 pygame.draw.polygon(surface, ORO_LITÚRGICO, [(centro_x - 3, base_y + 5), (centro_x + 3, base_y + 5), (centro_x, punta_pogo_y - 1)])
@@ -843,15 +890,22 @@ class Jugador:
         if not con_pala:
             return
         if es_guadana:
-            pygame.draw.line(surface, color_mango, (hombro_x, rect.y + 4), (hombro_x - self.direccion * 8, base_y + 4), 3)
-            pygame.draw.arc(
-                surface,
-                (215, 80, 255),
-                (hombro_x - 6 if self.direccion > 0 else hombro_x - 14, rect.y - 10, 20, 22),
-                0.0,
-                3.14,
-                3,
-            )
+            top_x = hombro_x + self.direccion * 2
+            top_y = rect.y - 4
+            bot_x = hombro_x - self.direccion * 10
+            bot_y = base_y + 4
+            pygame.draw.line(surface, color_mango, (top_x, top_y), (bot_x, bot_y), 3)
+            pygame.draw.circle(surface, ORO_LITÚRGICO, (top_x, top_y), 2)
+            signo = self.direccion
+            hoja_espalda = [
+                (top_x - signo * 2, top_y - 2),
+                (top_x + signo * 9, top_y - 8),
+                (top_x + signo * 17, top_y - 2),
+                (top_x + signo * 11, top_y + 4),
+                (top_x + signo * 4, top_y + 1),
+            ]
+            pygame.draw.polygon(surface, (190, 72, 238), hoja_espalda)
+            pygame.draw.lines(surface, (255, 232, 255), False, hoja_espalda[:3], 1)
         else:
             pygame.draw.line(surface, MARRON, (hombro_x, rect.y + 7), (hombro_x - self.direccion * 4, base_y - 2), 3)
             pygame.draw.polygon(
@@ -1206,17 +1260,29 @@ class Enemigo(EntidadPatrullera):
 
 #---- Clase EnemigoMelee ----#
 class EnemigoMelee(EntidadPatrullera):
-    """Enemigo que ataca en rango melee (70px)."""
+    """Enemigo que ataca en rango melee (70px) con ciclo aviso -> estocada -> enfriamiento."""
 
     def __init__(self, rect, minimo_x, maximo_x):
         super().__init__(rect, minimo_x, maximo_x)
         self.aviso_tiempo = 0.0
+        self.estocada_tiempo = 0.0
+        self.enfriamiento_tiempo = 0.0
         self.atacando = False
 
     def reiniciar(self):
         super().reiniciar()
         self.aviso_tiempo = 0.0
+        self.estocada_tiempo = 0.0
+        self.enfriamiento_tiempo = 0.0
         self.atacando = False
+
+    def rect_espada(self):
+        """Devuelve el hitbox activo del mandoble durante la estocada."""
+        if not (self.vivo and self.atacando):
+            return None
+        alcance = 20
+        x = self.rect.right - 2 if self.direccion > 0 else self.rect.left - alcance + 2
+        return pygame.Rect(x, self.rect.y + 4, alcance, max(12, self.rect.height - 8))
 
     def actualizar(self, dt, jugador):
         if not self.vivo:
@@ -1224,44 +1290,73 @@ class EnemigoMelee(EntidadPatrullera):
 
         self.actualizar_flash(dt)
 
-        if self.aviso_tiempo > 0:
-            self.aviso_tiempo = max(0.0, self.aviso_tiempo - dt)
+        if self.estocada_tiempo > 0:
+            self.estocada_tiempo = max(0.0, self.estocada_tiempo - dt)
+            self.x += self.direccion * (VELOCIDAD_ENEMIGO * 2.6) * dt
+            self.x = limitar(self.x, self.minimo_x, self.maximo_x)
+            self.rect.x = round(self.x)
+            if self.estocada_tiempo <= 0:
+                self.atacando = False
+                self.enfriamiento_tiempo = 0.50
+            return
+
+        if self.enfriamiento_tiempo > 0:
+            self.enfriamiento_tiempo = max(0.0, self.enfriamiento_tiempo - dt)
+            return
 
         distancia_x = abs(self.rect.centerx - jugador.rect.centerx)
         distancia_y = abs(self.rect.centery - jugador.rect.centery)
 
-        # Si está en rango melee o en aviso de ataque, encara de inmediato al jugador.
-        if (distancia_x <= 70 and distancia_y <= 20) or self.aviso_tiempo > 0:
+        if self.aviso_tiempo > 0:
+            self.aviso_tiempo = max(0.0, self.aviso_tiempo - dt)
             if distancia_x > 2:
                 self.direccion = 1 if jugador.rect.centerx > self.rect.centerx else -1
             if self.aviso_tiempo <= 0:
-                self.aviso_tiempo = 0.25
+                self.estocada_tiempo = 0.22
+                self.atacando = True
+            return
+
+        # Detecta al jugador en rango melee e inicia la telegrafía de estocada.
+        if distancia_x <= 70 and distancia_y <= 24:
+            if distancia_x > 2:
+                self.direccion = 1 if jugador.rect.centerx > self.rect.centerx else -1
+            self.aviso_tiempo = 0.28
             return
 
         self.avanzar_patrulla(dt, VELOCIDAD_ENEMIGO)
 
     def _dibujar_mandoble(self, surface, rect, salto, estilo):
-        """Dibuja el mandoble del espectro melee según pose de telegrafía o guardia."""
+        """Dibuja el mandoble del espectro melee según aviso, estocada o guardia."""
         centro_x = rect.centerx
         base_y = rect.bottom + salto
         signo = self.direccion
         espada_base_x = centro_x + signo * 8
         espada_base_y = rect.y + 14 + salto
         en_aviso = self.aviso_tiempo > 0
+        en_estocada = self.atacando
 
-        punta_x = centro_x + signo * (16 if en_aviso else 12)
-        punta_y = (rect.y - 6 + salto) if en_aviso else (base_y - 2)
+        if en_estocada:
+            punta_x = centro_x + signo * 26
+            punta_y = rect.y + 12 + salto
+        elif en_aviso:
+            punta_x = centro_x + signo * 16
+            punta_y = rect.y - 6 + salto
+        else:
+            punta_x = centro_x + signo * 12
+            punta_y = base_y - 2
 
         if estilo == "NES":
-            color_hoja = ENEMIGO_RIM_LUZ if en_aviso else (180, 190, 210)
+            color_hoja = (255, 220, 130) if en_estocada else (ENEMIGO_RIM_LUZ if en_aviso else (180, 190, 210))
             pygame.draw.line(surface, color_hoja, (espada_base_x, espada_base_y), (punta_x, punta_y), 3)
-            if en_aviso:
+            if en_aviso or en_estocada:
                 pygame.draw.line(surface, BLANCO, (espada_base_x, espada_base_y), (punta_x, punta_y), 1)
             return
 
         pygame.draw.line(surface, MELEE_ACERO_CLARO, (espada_base_x, espada_base_y), (punta_x, punta_y), 3)
         pygame.draw.line(surface, BLANCO, (espada_base_x, espada_base_y), (punta_x, punta_y), 1)
-        if en_aviso:
+        if en_estocada:
+            pygame.draw.line(surface, (255, 195, 110), (espada_base_x, espada_base_y), (punta_x + signo * 4, punta_y), 2)
+        elif en_aviso:
             pygame.draw.arc(surface, CARMESÍ_SANGRE, (rect.centerx - 14 + signo * 8, rect.y + 2, 28, 28), 0, 3.14, 2)
 
     def dibujar(self, surface, camara, tiempo):
@@ -1358,11 +1453,12 @@ class OndaCustodio:
 
 #---- Clase Custodio ----#
 class Custodio:
-    """Jefe final: 2 fases.
-    Fase 1 (vida 6->3): pala y pisotón lo dañan en su ventana vulnerable, 2 ondas por golpe.
-    Fase 2 (vida 3->0): coraza espectral; pala y pisotón SOLO lo dañan si el jugador
-    posee la Guadaña Consagrada ('X'). 4 ondas, ventana vulnerable más corta,
-    carga horizontal telegrafiada.
+    """Jefe final en 3 fases:
+    Fase 1 (vida 6->4): pala y pisotón lo dañan en su ventana vulnerable.
+    Fase 2 (vida 3->1): coraza espectral; requiere Guadaña Consagrada ('X') y suma carga.
+    Fase 3 (Furia del Sepulcro - estilo Super Mario Bros. 3): invulnerable a golpes directos;
+    salta sobre el sepulturero aplastando los bloques de cripta bajo sus pies hasta abrir
+    el abismo y precipitarse en su propia tumba.
     """
 
     def __init__(self, rect, minimo_x, maximo_x):
@@ -1370,6 +1466,9 @@ class Custodio:
         self.inicial_rect = pygame.Rect(rect)
         self.x = float(self.rect.x)
         self.y = float(self.rect.y)
+        self.y_suelo = float(self.inicial_rect.y)
+        self.vy = 0.0
+        self.vx_smb3 = 0.0
         self.minimo_x = int(minimo_x)
         self.maximo_x = int(maximo_x)
         self.vida = JEFE_VIDA
@@ -1380,10 +1479,19 @@ class Custodio:
         self.vivo = True
         self.direccion = -1
         self.golpes_fase = 0
+        self.saltos_smb3 = 0
+        self.quiebres_sismicos = 0
+        self.quiebre_usado_en_salto = False
         self.recien_golpeado = False
         self.ondas_recien = False
         self.aviso_recien = False
+        self.embate_recien = False
         self.carga_activa = False
+        self.aplasto_suelo_recien = False
+        self.quiebre_sismico_recien = False
+        self.en_abismo_recien = False
+        self.cambio_fase3_recien = False
+        self.tiempo_jugador_arriba = 0.0
         self.tiempo_muerte = 0.0
         self.tiempo_flash = 0.0
 
@@ -1391,6 +1499,9 @@ class Custodio:
         self.rect = pygame.Rect(self.inicial_rect)
         self.x = float(self.rect.x)
         self.y = float(self.rect.y)
+        self.y_suelo = float(self.inicial_rect.y)
+        self.vy = 0.0
+        self.vx_smb3 = 0.0
         self.vida = JEFE_VIDA
         self.fase = 1
         self.estado = "espera"
@@ -1399,15 +1510,79 @@ class Custodio:
         self.vivo = True
         self.direccion = -1
         self.golpes_fase = 0
+        self.saltos_smb3 = 0
+        self.quiebres_sismicos = 0
+        self.quiebre_usado_en_salto = False
         self.recien_golpeado = False
         self.ondas_recien = False
         self.aviso_recien = False
+        self.embate_recien = False
         self.carga_activa = False
+        self.aplasto_suelo_recien = False
+        self.quiebre_sismico_recien = False
+        self.en_abismo_recien = False
+        self.cambio_fase3_recien = False
+        self.tiempo_jugador_arriba = 0.0
         self.tiempo_muerte = 0.0
         self.tiempo_flash = 0.0
 
+    def rect_embate(self):
+        """Hitbox vertical del Embate Ascendente contra campanas en Fases 1 y 2."""
+        if self.estado != "embate":
+            return None
+        alto = int(3.5 * TILE)
+        ancho = 80
+        return pygame.Rect(self.rect.centerx - ancho // 2, self.rect.top - alto, ancho, alto + 12)
+
+    def rect_aplastamiento(self):
+        """Franja precisa bajo los pies del Custodio (1-2 columnas de ancho y 1 sola fila de profundidad por impacto)."""
+        ancho_preciso = 28
+        return pygame.Rect(
+            self.rect.centerx - ancho_preciso // 2,
+            self.rect.bottom - 2,
+            ancho_preciso,
+            16,
+        )
+
+    def rect_soporte_central_f3(self):
+        """Columna central bajo los pies del Custodio a través de las 4 capas de criptas ('=') en Fase 3."""
+        ancho_nucleo = 28
+        return pygame.Rect(
+            self.rect.centerx - ancho_nucleo // 2,
+            int(self.y_suelo) + self.rect.height - 2,
+            ancho_nucleo,
+            4 * TILE + 12,
+        )
+
+    def puede_quiebre_sismico_f3(self):
+        """Indica si el Custodio está en la ventana post-salto donde un golpe quiebra 1 capa extra bajo él."""
+        return (
+            self.vivo
+            and self.fase >= 3
+            and self.estado == "aterrizaje_smb3"
+            and not getattr(self, "quiebre_usado_en_salto", False)
+        )
+
+    def recibir_quiebre_sismico_f3(self, rango_mejorado=False):
+        """En Fase 3, golpear al Custodio con Guadaña/Pisotón al aterrizar rompe 1 capa extra bajo sus pies."""
+        if not self.puede_quiebre_sismico_f3() or not rango_mejorado:
+            return False
+        self.quiebres_sismicos += 1
+        self.quiebre_usado_en_salto = True
+        self.quiebre_sismico_recien = True
+        self.aplasto_suelo_recien = True
+        self.tiempo_flash = 0.08
+        self.temporizador = min(self.temporizador, 0.18)
+        return True
+
+    def matar_por_abismo(self):
+        """Culmina la Fase 3 cuando el Custodio cae en el abismo que él mismo abrió."""
+        self.vivo = False
+        self.estado = "muerto"
+        self.tiempo_muerte = 0.0
+
     def _aplicar_dano(self):
-        """Descuenta 1 vida, maneja transición a Fase 2 y muerte."""
+        """Descuenta 1 vida, maneja transición a Fase 2 y salto a Fase 3 (Sepulcro)."""
         self.vida -= 1
         self.golpes_fase += 1
         self.vulnerable = False
@@ -1416,12 +1591,18 @@ class Custodio:
         self.tiempo_flash = 0.06
 
         if self.vida <= 0:
-            self.vivo = False
-            self.estado = "muerto"
-            self.tiempo_muerte = 0.0
+            self.vida = 0
+            self.fase = 3
+            self.golpes_fase = 0
+            self.estado = "cambio_f3"
+            self.temporizador = 1.15
+            self.cambio_fase3_recien = True
+            self.aviso_recien = True
+            self.vy = 0.0
+            self.vx_smb3 = 0.0
             return True
 
-        # Transición: 3 golpes acumulados en la fase → avanza a Fase 2
+        # Transición: 3 golpes acumulados en la fase 1 → avanza a Fase 2
         if self.golpes_fase >= 3 and self.fase < 2:
             self.fase += 1
             self.golpes_fase = 0
@@ -1434,29 +1615,28 @@ class Custodio:
         return True
 
     def recibir_golpe_pala(self, rango_mejorado=False):
-        """Pala: funciona en Fase 1. En Fase 2 requiere la Guadaña Consagrada (rango_mejorado).
-        En ambas fases solo daña dentro de la ventana de vulnerabilidad."""
-        if not self.vivo or not self.vulnerable:
+        """Pala: daña en Fase 1 y (con Guadaña Consagrada) en Fase 2. Invulnerable en Fase 3."""
+        if not self.vivo or not self.vulnerable or self.fase >= 3:
             return False
-        if self.fase >= 2 and not rango_mejorado:
+        if self.fase == 2 and not rango_mejorado:
             return False  # Pala rebota en Fase 2 sin power-up X
         return self._aplicar_dano()
 
     def recibir_pisaton(self, rango_mejorado=False):
-        """Pisotón: funciona en Fase 1. En Fase 2 requiere la Guadaña Consagrada (rango_mejorado).
-        En ambas fases solo daña dentro de la ventana de vulnerabilidad."""
-        if not self.vivo or not self.vulnerable:
+        """Pisotón: daña en Fase 1 y (con Guadaña) en Fase 2. Invulnerable en Fase 3."""
+        if not self.vivo or not self.vulnerable or self.fase >= 3:
             return False
-        if self.fase >= 2 and not rango_mejorado:
+        if self.fase == 2 and not rango_mejorado:
             return False  # Pisotón rebota en Fase 2 sin power-up X
         return self._aplicar_dano()
 
     def _actualizar_espera(self, dt, jugador):
-        """Gestiona la patrulla fuera de rango o la persecución y elección de ataque."""
+        """Gestiona la patrulla fuera de rango, anti-campeo superior y elección de ataque."""
         dist_x_j = abs(jugador.rect.centerx - self.rect.centerx)
         dist_y_j = abs(jugador.rect.centery - self.rect.centery)
         en_rango_jefe = (dist_y_j <= 14 * TILE and dist_x_j <= 28 * TILE) or (self.vida < JEFE_VIDA and dist_y_j <= 14 * TILE)
         if not en_rango_jefe:
+            self.tiempo_jugador_arriba = 0.0
             # Patrulla silenciosa en su catedral sin sacudir la cámara en pisos alejados.
             self.x += self.direccion * (JEFE_VELOCIDAD * 0.65) * dt
             if self.x <= self.minimo_x:
@@ -1468,11 +1648,31 @@ class Custodio:
             self.rect.x = round(self.x)
             return
 
-        if dist_x_j > 60:
-            self.direccion = 1 if jugador.rect.centerx > self.rect.centerx else -1
-            self.x += self.direccion * JEFE_VELOCIDAD * dt
-            self.x = max(self.minimo_x, min(self.maximo_x, self.x))
-            self.rect.x = round(self.x)
+        sobre_jefe = (
+            self.fase in (1, 2)
+            and jugador.rect.bottom <= self.rect.top + 10
+            and dist_x_j <= 2.5 * TILE
+        )
+        if sobre_jefe:
+            # Si el jugador permanece arriba sobre las campanas, el Custodio se alinea debajo y prepara Embate Ascendente
+            if dist_x_j > 8:
+                self.direccion = 1 if jugador.rect.centerx > self.rect.centerx else -1
+                self.x = max(self.minimo_x, min(self.maximo_x, self.x + self.direccion * (JEFE_VELOCIDAD * 1.4) * dt))
+                self.rect.x = round(self.x)
+            self.tiempo_jugador_arriba += dt
+            if self.tiempo_jugador_arriba >= 0.60:
+                self.tiempo_jugador_arriba = 0.0
+                self.estado = "telegrafia_embate"
+                self.temporizador = 0.45
+                self.aviso_recien = True
+                return
+        else:
+            self.tiempo_jugador_arriba = max(0.0, self.tiempo_jugador_arriba - dt * 1.5)
+            if dist_x_j > 60:
+                self.direccion = 1 if jugador.rect.centerx > self.rect.centerx else -1
+                self.x += self.direccion * JEFE_VELOCIDAD * dt
+                self.x = max(self.minimo_x, min(self.maximo_x, self.x))
+                self.rect.x = round(self.x)
         self.temporizador -= dt
         if self.temporizador <= 0:
             # Fase 2: 40 % de probabilidad de carga en lugar de pisotón.
@@ -1505,10 +1705,15 @@ class Custodio:
             if choco_muro:
                 self.ondas_recien = True
 
-    def actualizar(self, dt, jugador):
+    def actualizar(self, dt, jugador, solidos_cripta=None):
         self.recien_golpeado = False
         self.ondas_recien = False
         self.aviso_recien = False
+        self.embate_recien = False
+        self.aplasto_suelo_recien = False
+        self.quiebre_sismico_recien = False
+        self.en_abismo_recien = False
+        self.cambio_fase3_recien = False
         if self.tiempo_flash > 0:
             self.tiempo_flash = max(0.0, self.tiempo_flash - dt)
         if not self.vivo:
@@ -1550,30 +1755,162 @@ class Custodio:
                 self.temporizador = 0.75
         elif self.estado == "carga":
             self._actualizar_carga(dt)
+        elif self.estado == "telegrafia_embate":
+            if abs(jugador.rect.centerx - self.rect.centerx) > 6:
+                self.direccion = 1 if jugador.rect.centerx > self.rect.centerx else -1
+                self.x = max(self.minimo_x, min(self.maximo_x, self.x + self.direccion * (JEFE_VELOCIDAD * 1.5) * dt))
+                self.rect.x = round(self.x)
+            self.temporizador -= dt
+            if self.temporizador <= 0:
+                self.estado = "embate"
+                self.temporizador = 0.22
+                self.embate_recien = True
+        elif self.estado == "embate":
+            self.temporizador -= dt
+            if self.temporizador <= 0:
+                self.estado = "recuperacion"
+                self.temporizador = JEFE_VULN_FASE2 if self.fase >= 2 else 0.70
+                self.vulnerable = True
+        elif self.estado in ("cambio_f3", "espera_smb3", "telegrafia_smb3", "salto_smb3", "aterrizaje_smb3", "cayendo_abismo"):
+            self._actualizar_fase3_smb3(dt, jugador, solidos_cripta)
+
+    def _actualizar_fase3_smb3(self, dt, jugador, solidos_cripta):
+        """Máquina de estados de Fase 3: saltos precisos que excavan las 4 capas de criptas del suelo."""
+        self.vulnerable = False
+        if self.estado == "cambio_f3":
+            self.y = self.y_suelo
+            self.vy = 0.0
+            self.rect.y = round(self.y)
+            self.temporizador -= dt
+            if self.temporizador <= 0:
+                self.estado = "espera_smb3"
+                self.temporizador = 0.28
+        elif self.estado == "espera_smb3":
+            self.direccion = 1 if jugador.rect.centerx > self.rect.centerx else -1
+            self.temporizador -= dt
+            if self.temporizador <= 0:
+                self.estado = "telegrafia_smb3"
+                self.temporizador = 0.28
+                self.aviso_recien = True
+        elif self.estado == "telegrafia_smb3":
+            self.direccion = 1 if jugador.rect.centerx > self.rect.centerx else -1
+            self.temporizador -= dt
+            if self.temporizador <= 0:
+                self.estado = "salto_smb3"
+                self.quiebre_usado_en_salto = False
+                profundidad_actual = max(0.0, self.y - self.y_suelo)
+                self.vy = -660.0 - min(80.0, profundidad_actual * 0.65)
+                dx = float(jugador.rect.centerx - self.rect.centerx)
+                self.vx_smb3 = limitar(dx / 0.72, -280.0, 280.0)
+        elif self.estado == "salto_smb3":
+            if self.vy < 40.0:
+                objetivo_vx = limitar((jugador.rect.centerx - self.rect.centerx) * 2.5, -280.0, 280.0)
+                self.vx_smb3 += (objetivo_vx - self.vx_smb3) * min(1.0, 5.0 * dt)
+            else:
+                # Al iniciar la caída vertical como Bowser en Mario 3, se alinea en columna para aplastar
+                self.vx_smb3 *= max(0.0, 1.0 - 9.0 * dt)
+            self.x = limitar(self.x + self.vx_smb3 * dt, self.minimo_x, self.maximo_x)
+            self.vy += 1520.0 * dt
+            self.y += self.vy * dt
+            self.rect.x = round(self.x)
+            self.rect.y = round(self.y)
+
+            if self.vy > 0 and self.y >= self.y_suelo:
+                franja_suelo = self.rect_soporte_central_f3()
+                if solidos_cripta is not None:
+                    soportes = [s for s in solidos_cripta if franja_suelo.colliderect(s)]
+                    if soportes:
+                        y_aterrizaje = float(min(s.top for s in soportes) - self.rect.height)
+                        if self.y >= y_aterrizaje:
+                            self.y = y_aterrizaje
+                            self.vy = 0.0
+                            self.vx_smb3 = 0.0
+                            self.rect.y = round(self.y)
+                            self.aplasto_suelo_recien = True
+                            self.ondas_recien = True
+                            self.saltos_smb3 += 1
+                            self.estado = "aterrizaje_smb3"
+                            self.temporizador = 0.50
+                    else:
+                        self.estado = "cayendo_abismo"
+                        self.en_abismo_recien = True
+                        self.vy = max(self.vy, 280.0)
+                else:
+                    self.y = self.y_suelo
+                    self.vy = 0.0
+                    self.vx_smb3 = 0.0
+                    self.rect.y = round(self.y)
+                    self.aplasto_suelo_recien = True
+                    self.ondas_recien = True
+                    self.saltos_smb3 += 1
+                    self.estado = "aterrizaje_smb3"
+                    self.temporizador = 0.50
+        elif self.estado == "aterrizaje_smb3":
+            self.temporizador -= dt
+            if self.temporizador <= 0:
+                self.estado = "espera_smb3"
+                self.temporizador = 0.24
+        elif self.estado == "cayendo_abismo":
+            self.vy += 1200.0 * dt
+            self.y += self.vy * dt
+            self.rect.y = round(self.y)
+            if self.y >= self.y_suelo + 4 * TILE + 80:
+                self.matar_por_abismo()
 
     def _dibujar_auras_estado(self, surface, rect, tiempo, pulso):
         """Dibuja la sombra, las auras de fase/vulnerabilidad y el brillo de telegrafía."""
         pygame.draw.ellipse(surface, NEGRO_NOCHE, (rect.x, rect.bottom - 6, rect.width, 10))
-        if self.fase >= 2:
-            aura = obtener_aura_custodio(rect.width + 24, rect.height + 22, CARMESÍ_SANGRE, int(22 + pulso * 24))
-            surface.blit(aura, (rect.x - 12, rect.y - 11))
-            for r_offset in (16, 26):
-                ondulacion = int(2.5 * math.sin(tiempo * 7.5 + r_offset * 0.3))
-                ring_box = pygame.Rect(
-                    rect.x - r_offset // 2,
-                    rect.y - r_offset // 2 + ondulacion,
-                    rect.width + r_offset,
-                    rect.height + r_offset,
-                )
-                pygame.draw.ellipse(surface, CARMESÍ_SANGRE, ring_box, 1)
+        if self.fase >= 3:
+            aura_f3 = obtener_aura_custodio(rect.width + 28, rect.height + 26, (165, 70, 235), int(30 + pulso * 30))
+            surface.blit(aura_f3, (rect.x - 14, rect.y - 13))
+            pygame.draw.ellipse(surface, (205, 130, 255), rect.inflate(14, 10), 2)
+            if self.estado == "aterrizaje_smb3":
+                # Anillo sísmico dorado/violeta en la base indicando ventana de Quiebre Sísmico
+                anillo_sismico = pygame.Rect(rect.x - 14, rect.bottom - 10, rect.width + 28, 16)
+                pygame.draw.ellipse(surface, ORO_LITÚRGICO, anillo_sismico, 2)
+                pygame.draw.ellipse(surface, (235, 180, 255), anillo_sismico.inflate(8, 4), 1)
+        elif self.fase == 2:
+            if self.vulnerable:
+                # Guardia abierta en Fase 2: aura dorada-carmesí y escudo fragmentado en arcos
+                aura = obtener_aura_custodio(rect.width + 26, rect.height + 24, ORO_LITÚRGICO, int(34 + pulso * 26))
+                surface.blit(aura, (rect.x - 13, rect.y - 12))
+                ring_box = rect.inflate(20, 18)
+                for ang_ini in (0.2, 1.8, 3.4, 5.0):
+                    pygame.draw.arc(surface, ORO_LITÚRGICO, ring_box, ang_ini, ang_ini + 0.7, 2)
+            else:
+                # Guardia cerrada en Fase 2: escudo espectral carmesí continuo
+                aura = obtener_aura_custodio(rect.width + 24, rect.height + 22, CARMESÍ_SANGRE, int(22 + pulso * 24))
+                surface.blit(aura, (rect.x - 12, rect.y - 11))
+                for r_offset in (16, 26):
+                    ondulacion = int(2.5 * math.sin(tiempo * 7.5 + r_offset * 0.3))
+                    ring_box = pygame.Rect(
+                        rect.x - r_offset // 2,
+                        rect.y - r_offset // 2 + ondulacion,
+                        rect.width + r_offset,
+                        rect.height + r_offset,
+                    )
+                    pygame.draw.ellipse(surface, CARMESÍ_SANGRE, ring_box, 1)
         elif self.vulnerable:
             aura = obtener_aura_custodio(rect.width + 18, rect.height + 16, ORO_LITÚRGICO, 32)
             surface.blit(aura, (rect.x - 9, rect.y - 8))
 
-        if self.estado in ("telegrafia", "telegrafia_carga"):
-            color_brillo = CARMESÍ_SANGRE if self.estado == "telegrafia_carga" else (180, 32, 42)
+        if self.estado in ("telegrafia", "telegrafia_carga", "telegrafia_smb3", "telegrafia_embate"):
+            color_brillo = (
+                (245, 200, 80) if self.estado == "telegrafia_embate"
+                else ((185, 85, 255) if self.estado == "telegrafia_smb3"
+                      else (CARMESÍ_SANGRE if self.estado == "telegrafia_carga" else (180, 32, 42)))
+            )
             brillo = obtener_aura_custodio(rect.width + 48, rect.height + 40, color_brillo, int(45 + pulso * 35))
             surface.blit(brillo, (rect.x - 24, rect.y - 20))
+            if self.estado == "telegrafia_embate":
+                col_aviso = pygame.Surface((80, int(3.5 * TILE)), pygame.SRCALPHA)
+                col_aviso.fill((245, 200, 80, int(28 + pulso * 36)))
+                surface.blit(col_aviso, (rect.centerx - 40, rect.top - int(3.5 * TILE)))
+        elif self.estado == "embate":
+            haz = pygame.Surface((80, int(3.5 * TILE) + 12), pygame.SRCALPHA)
+            haz.fill((255, 225, 130, 115))
+            pygame.draw.rect(haz, (255, 248, 210, 210), (14, 0, 52, haz.get_height()), 2)
+            surface.blit(haz, (rect.centerx - 40, rect.top - int(3.5 * TILE)))
 
     def _dibujar_vestimenta_y_mitra(self, surface, rect):
         """Dibuja la capa episcopal, el brocado pectoral y la mitra litúrgica."""
@@ -1624,10 +1961,12 @@ class Custodio:
         pygame.draw.circle(surface, HUESO_MARFIL, (centro_x, rect.y + 16), 12)
         pygame.draw.circle(surface, NEGRO_NOCHE, (centro_x, rect.y + 16), 12, 1)
 
-        if self.fase >= 2:
+        if self.vulnerable or self.puede_quiebre_sismico_f3():
+            color_ojo = (245, 205, 95)
+        elif self.fase >= 2:
             color_ojo = (255, 45, 55)
         else:
-            color_ojo = (245, 205, 95) if self.vulnerable else CARMESÍ_SANGRE
+            color_ojo = CARMESÍ_SANGRE
         for dx_ojo in (-4, 4):
             pygame.draw.circle(surface, color_ojo, (centro_x + dx_ojo, rect.y + 15), 2.5)
             pygame.draw.circle(surface, BLANCO, (centro_x + dx_ojo, rect.y + 15), 1)
@@ -1637,17 +1976,23 @@ class Custodio:
         pygame.draw.circle(surface, FAROL_CÁLIDO, (centro_x, rect.y + 34), 3)
 
     def _dibujar_maza_osario(self, surface, rect):
-        """Dibuja la maza de osario orientada hacia la dirección del Custodio."""
+        """Dibuja la maza de osario orientada hacia la dirección del Custodio (alzada en Embate Ascendente)."""
         centro_x = rect.centerx
         base_y = rect.bottom
         signo = 1 if self.direccion >= 0 else -1
-        maza_mango_ini = (centro_x + signo * 20, rect.y + 22)
-        maza_mango_fin = (centro_x + signo * 30, base_y - 4)
+        if self.estado in ("telegrafia_embate", "embate"):
+            elev = 48 if self.estado == "embate" else 22
+            maza_mango_ini = (centro_x + signo * 12, rect.y + 18)
+            maza_cx = centro_x + signo * 14
+            maza_cy = rect.y - elev
+            maza_mango_fin = (maza_cx, maza_cy)
+        else:
+            maza_mango_ini = (centro_x + signo * 20, rect.y + 22)
+            maza_mango_fin = (centro_x + signo * 30, base_y - 4)
+            maza_cx = centro_x + signo * 30
+            maza_cy = base_y - 8
         pygame.draw.line(surface, MARRON_OSCURO, maza_mango_ini, maza_mango_fin, 5)
         pygame.draw.line(surface, HUESO_MARFIL, maza_mango_ini, maza_mango_fin, 2)
-
-        maza_cx = centro_x + signo * 30
-        maza_cy = base_y - 8
         pygame.draw.circle(surface, (85, 78, 88), (maza_cx, maza_cy), 8)
         pygame.draw.circle(surface, HUESO_MARFIL, (maza_cx, maza_cy), 6)
         pygame.draw.rect(surface, (55, 48, 58), (maza_cx - 9, maza_cy - 2, 18, 4))
@@ -1666,6 +2011,15 @@ class Custodio:
         self._dibujar_vestimenta_y_mitra(surface, rect)
         self._dibujar_craneo_y_farol(surface, rect)
         self._dibujar_maza_osario(surface, rect)
+
+        if self.vulnerable or self.puede_quiebre_sismico_f3():
+            # Emblema de guardia abierta sobre la mitra para indicar el momento exacto de atacar
+            bob = int(2.5 * math.sin(tiempo * 9.0))
+            cx, cy = rect.centerx, rect.y - 24 + bob
+            color_emblema = (225, 165, 255) if self.puede_quiebre_sismico_f3() else ORO_LITÚRGICO
+            rombo = [(cx, cy - 6), (cx + 6, cy), (cx, cy + 6), (cx - 6, cy)]
+            pygame.draw.polygon(surface, color_emblema, rombo)
+            pygame.draw.polygon(surface, BLANCO, rombo, 1)
 
         if self.tiempo_flash > 0:
             flash_overlay = obtener_aura_custodio(rect.width, rect.height, (140, 140, 140), 140)
@@ -1700,6 +2054,8 @@ class MiniJefe:
         self.vx = 0.0
         self.aviso_recien = False
         self.choque_recien = False
+        self.punto_choque = None
+        self.activado = False
 
     def reiniciar(self):
         self.rect = pygame.Rect(self.inicial_rect)
@@ -1717,10 +2073,12 @@ class MiniJefe:
         self.vx = 0.0
         self.aviso_recien = False
         self.choque_recien = False
+        self.punto_choque = None
+        self.activado = False
 
     def _aplicar_dano_vertical(self):
-        # El Carcelero porta blindaje frontal pesado: solo recibe daño desde arriba (rebote/pisotón).
-        if not self.vivo or self.invulnerable > 0:
+        # El Carcelero porta blindaje pesado: solo es vulnerable cuando queda aturdido tras embestir.
+        if not self.vivo or self.invulnerable > 0 or not self.vulnerable:
             return False
         self.vida -= 1
         self.tiempo_flash = 0.12
@@ -1742,7 +2100,7 @@ class MiniJefe:
     def recibir_pisaton(self):
         return self._aplicar_dano_vertical()
 
-    def actualizar(self, dt, jugador):
+    def actualizar(self, dt, jugador, muros=None):
         self.aviso_recien = False
         self.choque_recien = False
         if not self.vivo:
@@ -1756,19 +2114,28 @@ class MiniJefe:
         dist_x = jugador.rect.centerx - self.rect.centerx
         dist_y = jugador.rect.centery - self.rect.centery
         dir_jugador = 1 if dist_x > 0 else -1
-        en_arena = abs(dist_y) <= 4 * TILE and abs(dist_x) <= 13 * TILE
+        jugador_dentro_arena = (
+            (self.minimo_x - 8) <= jugador.rect.centerx <= (self.maximo_x + self.rect.width + 8)
+            and abs(dist_y) <= 5 * TILE
+        )
+        if muros is None:
+            self.activado = True
+        elif jugador_dentro_arena:
+            self.activado = True
 
-        if not en_arena and self.estado == "patrulla":
-            # Patrulla centinela de lado a lado sin clavarse en el borde antes de que el jugador suba
+        if not self.activado and self.estado == "patrulla":
+            # Vigilia en el fondo derecho de la arena (cerca de su posición inicial) sin pegarse al muro izquierdo
             self.vulnerable = False
-            self.temporizador = max(self.temporizador, 1.0)
-            self.vx = self.direccion * (MINIJEFE_VELOCIDAD * 0.85)
+            self.temporizador = 0.85
+            lim_vigilia_izq = max(self.minimo_x + 6 * TILE, self.inicial_rect.x - 4 * TILE)
+            lim_vigilia_der = min(self.maximo_x, self.inicial_rect.x + 2 * TILE)
+            self.vx = self.direccion * (MINIJEFE_VELOCIDAD * 0.65)
             self.x += self.vx * dt
-            if self.x <= self.minimo_x:
-                self.x = float(self.minimo_x)
+            if self.x <= lim_vigilia_izq:
+                self.x = float(lim_vigilia_izq)
                 self.direccion = 1
-            elif self.x >= self.maximo_x:
-                self.x = float(self.maximo_x)
+            elif self.x >= lim_vigilia_der:
+                self.x = float(lim_vigilia_der)
                 self.direccion = -1
             self.rect.x = int(self.x)
             return
@@ -1777,8 +2144,11 @@ class MiniJefe:
 
         if self.estado == "patrulla":
             self.vulnerable = False
-            # Si el jugador aún está fuera de los bordes de su losa, patrullar sin clavarse en la esquina
-            if (self.x <= self.minimo_x + 2 and dir_jugador < 0) or (self.x >= self.maximo_x - 2 and dir_jugador > 0):
+            if not jugador_dentro_arena and muros is not None:
+                # Si el jugador salió a la cornisa previa, regresar hacia el centro-derecha de la arena
+                objetivo_x = (self.minimo_x + self.maximo_x) * 0.58
+                self.direccion = 1 if objetivo_x >= self.x else -1
+            elif (self.x <= self.minimo_x + 2 and dir_jugador < 0) or (self.x >= self.maximo_x - 2 and dir_jugador > 0):
                 if self.x <= self.minimo_x + 2:
                     self.direccion = 1
                 elif self.x >= self.maximo_x - 2:
@@ -1786,34 +2156,96 @@ class MiniJefe:
             else:
                 self.direccion = dir_jugador
             self.vx = self.direccion * MINIJEFE_VELOCIDAD
-            self.x += self.vx * dt
-            if abs(dist_x) < 170 or self.temporizador <= 0:
+            self.x = max(float(self.minimo_x), min(float(self.maximo_x), self.x + self.vx * dt))
+            self.rect.x = int(self.x)
+
+            if (jugador_dentro_arena or muros is None) and (abs(dist_x) < 210 or self.temporizador <= 0):
                 self.estado = "telegrafo"
                 self.temporizador = MINIJEFE_TELEGRAFO
                 self.vx = 0.0
-                self.direccion = dir_jugador
+                if self.x <= self.minimo_x + 36:
+                    self.direccion = 1
+                elif self.x >= self.maximo_x - 36:
+                    self.direccion = -1
+                else:
+                    self.direccion = dir_jugador
                 self.aviso_recien = True
 
         elif self.estado == "telegrafo":
             self.vulnerable = False
             self.vx = 0.0
-            self.direccion = dir_jugador
             if self.temporizador <= 0:
                 self.estado = "ataque"
-                self.temporizador = 0.42
-                self.direccion = dir_jugador
-                vel_embestida = 220.0 + max(0, MINIJEFE_VIDA - self.vida) * 45.0
+                self.temporizador = 1.25 if muros is not None else 0.42
+                vel_embestida = (320.0 if muros is not None else 220.0) + max(0, MINIJEFE_VIDA - self.vida) * 45.0
                 self.vx = self.direccion * vel_embestida
 
         elif self.estado == "ataque":
             self.vulnerable = False
             self.x += self.vx * dt
-            if self.temporizador <= 0:
+            self.rect.x = int(self.x)
+            choco_muro = False
+
+            if muros:
+                for m in muros:
+                    r_m = m.rect if hasattr(m, "rect") else m
+                    es_solido = getattr(m, "es_solido", lambda: True)()
+                    if es_solido and r_m.height >= 16 and self.rect.colliderect(r_m):
+                        if self.direccion > 0:
+                            self.rect.right = r_m.left
+                            px_choque = r_m.left
+                        else:
+                            self.rect.left = r_m.right
+                            px_choque = r_m.right
+                        self.x = float(self.rect.x) - self.direccion * 10.0
+                        self.rect.x = int(self.x)
+                        self.punto_choque = (px_choque, self.rect.centery)
+                        if hasattr(m, "recibir_impacto"):
+                            m.recibir_impacto()
+                        choco_muro = True
+                        break
+
+            # Límites laterales de la arena: si hay muros móviles, el borde de la sala lo frena sin aturdirlo
+            if not choco_muro and muros is not None:
+                if self.x <= self.minimo_x and self.direccion < 0:
+                    self.x = float(self.minimo_x) + 6.0
+                    self.rect.x = int(self.x)
+                    self.direccion = 1
+                    self.estado = "recuperacion"
+                    self.temporizador = 0.40
+                    self.vulnerable = False
+                    self.vx = 0.0
+                    return
+                if self.x >= self.maximo_x and self.direccion > 0:
+                    self.x = float(self.maximo_x) - 6.0
+                    self.rect.x = int(self.x)
+                    self.direccion = -1
+                    self.estado = "recuperacion"
+                    self.temporizador = 0.40
+                    self.vulnerable = False
+                    self.vx = 0.0
+                    return
+
+            if choco_muro:
                 self.estado = "cansado"
                 self.temporizador = MINIJEFE_VULNERABLE
                 self.vulnerable = True
                 self.vx = 0.0
                 self.choque_recien = True
+            elif self.temporizador <= 0:
+                if muros is None:
+                    # Compatibilidad con pruebas unitarias aisladas sin muros de arena
+                    self.estado = "cansado"
+                    self.temporizador = MINIJEFE_VULNERABLE
+                    self.vulnerable = True
+                    self.vx = 0.0
+                    self.choque_recien = True
+                else:
+                    # Si termina la carrera en espacio abierto sin chocar contra muro, mantiene su guardia
+                    self.estado = "recuperacion"
+                    self.temporizador = 0.45
+                    self.vulnerable = False
+                    self.vx = 0.0
 
         elif self.estado == "cansado":
             self.vulnerable = True
@@ -1853,12 +2285,22 @@ class MiniJefe:
             pygame.draw.circle(alerta, (180, 20, 36, int(70 + pulso * 60)), (radio_alerta, radio_alerta), radio_alerta, 3)
             surface.blit(alerta, (cx - radio_alerta, rect.centery - radio_alerta))
 
-        # Aura de cansancio / vulnerabilidad dorada/ámbar
+        # Aura de cansancio / vulnerabilidad dorada + estrellas de aturdimiento
         if self.vulnerable:
             pulso_v = 0.5 + 0.5 * math.sin(tiempo * 10)
             alerta_v = pygame.Surface((rect.width + 12, rect.height + 12), pygame.SRCALPHA)
             pygame.draw.ellipse(alerta_v, (240, 200, 70, int(60 + pulso_v * 50)), (0, 0, rect.width + 12, rect.height + 12), 2)
             surface.blit(alerta_v, (rect.x - 6, rect.y - 6))
+            for i_st in range(3):
+                ang_st = tiempo * 5.0 + i_st * 2.094
+                sx_st = cx + int(math.cos(ang_st) * 14)
+                sy_st = rect.y - 5 + int(math.sin(ang_st) * 4)
+                pygame.draw.circle(surface, (255, 230, 110), (sx_st, sy_st), 2)
+        else:
+            # Escudo dorsal de hierro remachado (indica invulnerabilidad frontal/superior mientras patrulla o embiste)
+            arco_esc = (rect.x - 1, rect.y - 4, rect.width + 2, 16)
+            pygame.draw.arc(surface, (140, 152, 170), arco_esc, 0.15, math.pi - 0.15, 3)
+            pygame.draw.arc(surface, (215, 225, 240), (rect.x + 1, rect.y - 2, rect.width - 2, 12), 0.3, math.pi - 0.3, 1)
 
         # Cuerpo del Carcelero: Túnica pesada de hierro y cuero oscuro
         cuerpo = pygame.Rect(rect.x + 3, rect.y + 12, rect.width - 6, rect.height - 12)
@@ -2302,30 +2744,39 @@ class RangoPowerUp(PowerUpBase):
 
         rect = camara.aplicar_rect(self.rect)
         if self.sellado:
-            # Altar sellado: guadaña apagada tras cadenas cruzadas.
+            # Altar sellado: guadaña apagada tras cadenas cruzadas y candado rúnico.
             cx, cy = rect.centerx, rect.centery
-            pygame.draw.circle(surface, (60, 40, 70), (cx, cy), 14, 1)
-            pygame.draw.line(surface, (110, 70, 130), (cx - 6, cy - 6), (cx + 6, cy + 6), 2)
-            pygame.draw.line(surface, (110, 70, 130), (cx + 6, cy + 6), (cx + 10, cy + 2), 2)
-            pygame.draw.line(surface, (110, 70, 130), (cx - 6, cy - 6), (cx - 2, cy - 10), 2)
+            pygame.draw.circle(surface, (55, 38, 68), (cx, cy), 15, 1)
+            pygame.draw.line(surface, (70, 50, 82), (cx - 8, cy + 10), (cx + 5, cy - 8), 3)
+            pygame.draw.arc(surface, (115, 82, 140), (cx - 4, cy - 14, 16, 14), 0.2, 3.0, 3)
             pygame.draw.line(surface, (130, 125, 140), (cx - 12, cy - 12), (cx + 12, cy + 12), 2)
             pygame.draw.line(surface, (130, 125, 140), (cx + 12, cy - 12), (cx - 12, cy + 12), 2)
+            pygame.draw.rect(surface, (165, 130, 62), (cx - 4, cy - 2, 8, 7), border_radius=1)
             return
 
         rect, pulso = self.obtener_transformacion_visual(camara, tiempo)
-        self.dibujar_aura_base(surface, rect, pulso, (200, 100, 255), 14)
+        self.dibujar_aura_base(surface, rect, pulso, (200, 100, 255), 16)
         pygame.draw.circle(
             surface,
             (230, 150, 255),
             (rect.centerx, rect.centery),
-            14 + int(pulso * 2),
+            15 + int(pulso * 2),
             1,
         )
-        # Dibujo de guadaña estilizada.
+        # Guadaña Consagrada: asta de ébano/bronce + hoja creciente de amatista y filo marfil.
         cx, cy = rect.centerx, rect.centery
-        pygame.draw.line(surface, (200, 100, 255), (cx - 6, cy - 6), (cx + 6, cy + 6), 2)
-        pygame.draw.line(surface, (200, 100, 255), (cx + 6, cy + 6), (cx + 10, cy + 2), 2)
-        pygame.draw.line(surface, (200, 100, 255), (cx - 6, cy - 6), (cx - 2, cy - 10), 2)
+        pygame.draw.line(surface, (58, 38, 68), (cx - 8, cy + 10), (cx + 6, cy - 9), 3)
+        pygame.draw.circle(surface, ORO_LITÚRGICO, (cx + 6, cy - 9), 2)
+        hoja = [
+            (cx + 2, cy - 10),
+            (cx + 12, cy - 11),
+            (cx + 14, cy - 3),
+            (cx + 10, cy + 3),
+            (cx + 6, cy - 4),
+            (cx, cy - 6),
+        ]
+        pygame.draw.polygon(surface, (195, 85, 248), hoja)
+        pygame.draw.lines(surface, (255, 240, 255), False, hoja[:4], 2)
 
 
 #---- Clase DashPowerUp ----#
@@ -2371,14 +2822,22 @@ class FarolCheckpoint:
         self.rect = pygame.Rect(rect)
         self.activo = False
         self.tier = 0
+        self.tiempo_encendido = 0.0
 
     def reiniciar(self):
         self.activo = False
         self.tier = 0
+        self.tiempo_encendido = 0.0
+
+    def actualizar_dt(self, dt):
+        """Avanza el temporizador visual de ignición del farol."""
+        if self.tiempo_encendido > 0:
+            self.tiempo_encendido = max(0.0, self.tiempo_encendido - dt)
 
     def actualizar(self, jugador):
         if not self.activo and self.rect.colliderect(jugador.rect):
             self.activo = True
+            self.tiempo_encendido = 0.65
             return True
         return False
 
@@ -2391,14 +2850,14 @@ class FarolCheckpoint:
         pygame.draw.rect(surface, (45, 42, 50), (cx - 2, base_y - 24, 4, 24))
         # Base de piedra
         pygame.draw.rect(surface, (60, 56, 68), (cx - 6, base_y - 4, 12, 4))
-        # Jaula del farol
-        pygame.draw.rect(surface, (65, 60, 75), (cx - 7, base_y - 32, 14, 10), 1)
+        # Jaula del farol con cristal sutilmente iluminado
+        pygame.draw.rect(surface, (75, 72, 88), (cx - 7, base_y - 32, 14, 10), 1)
         # Techo piramidal
         pygame.draw.polygon(surface, (80, 75, 92), [(cx - 8, base_y - 32), (cx + 8, base_y - 32), (cx, base_y - 38)])
 
         flame_y = base_y - 27
+        pulso = 0.5 + 0.5 * math.sin(tiempo * 8 + cx * 0.05)
         if self.activo:
-            pulso = 0.5 + 0.5 * math.sin(tiempo * 8 + cx * 0.05)
             step = int(pulso * 7)
             brillo = obtener_aura_farol(self.tier, step)
             bc = brillo.get_width() // 2
@@ -2406,18 +2865,49 @@ class FarolCheckpoint:
 
             if self.tier >= 3:
                 color_nucleo = (255, 245, 180)
-            elif self.tier >= 2:
-                color_nucleo = (240, 255, 255)
+                color_llama = (255, 205, 90)
+                color_destello = (255, 225, 130)
             else:
                 color_nucleo = (240, 255, 255)
+                color_llama = (120, 220, 255)
+                color_destello = (130, 235, 255)
 
             radio_llama = int((4 if self.tier >= 3 else 3) + pulso * 2)
-            color_llama = (255, 205, 90) if self.tier >= 3 else (120, 220, 255)
             pygame.draw.circle(surface, color_llama, (cx, flame_y), radio_llama)
             pygame.draw.circle(surface, color_nucleo, (cx, flame_y), max(1, radio_llama - 2))
+
+            if self.tiempo_encendido > 0:
+                prog = 1.0 - (self.tiempo_encendido / 0.65)
+                r_onda = int(6 + prog * 30)
+                alfa_onda = max(0, int(230 * (1.0 - prog)))
+                onda_s = pygame.Surface((r_onda * 2 + 6, r_onda * 2 + 6), pygame.SRCALPHA)
+                oc = r_onda + 3
+                col_ring = (*color_destello, alfa_onda)
+                pygame.draw.circle(onda_s, col_ring, (oc, oc), r_onda, 2)
+                if r_onda > 10:
+                    pygame.draw.circle(onda_s, (240, 255, 255, alfa_onda // 2), (oc, oc), r_onda - 5, 1)
+                # Destello vertical y horizontal durante la ignición del farol
+                rayo = int(14 * (1.0 - prog) + 4)
+                pygame.draw.line(onda_s, (245, 255, 255, alfa_onda), (oc - rayo, oc), (oc + rayo, oc), 2)
+                pygame.draw.line(onda_s, col_ring, (oc, oc - rayo), (oc, oc + rayo), 2)
+                surface.blit(onda_s, (cx - oc, flame_y - oc))
         else:
-            # Vela apagada
-            pygame.draw.rect(surface, (120, 110, 100), (cx - 1, flame_y, 2, 4))
+            # Vela azul tenue dentro del farol antes de la consagración
+            step_p = int(pulso * 7)
+            halo_vela = obtener_halo_vela_farol(step_p)
+            hc = halo_vela.get_width() // 2
+            surface.blit(halo_vela, (cx - hc, flame_y - hc))
+            # Cirio interior y flama tipo vela en azul
+            pygame.draw.rect(surface, (145, 165, 185), (cx - 1, base_y - 25, 2, 3))
+            vaiven = int(round((pulso - 0.5) * 2))
+            pts_llama_azul = [
+                (cx + vaiven, base_y - 32),
+                (cx + 3, base_y - 27),
+                (cx, base_y - 24),
+                (cx - 3, base_y - 27),
+            ]
+            pygame.draw.polygon(surface, (65, 180, 255), pts_llama_azul)
+            pygame.draw.circle(surface, (205, 244, 255), (cx, base_y - 27), 1)
 
 
 #---- Clase LosaQuebradiza ----#
@@ -2649,6 +3139,274 @@ class IncensarioRebote:
             onda_surf = obtener_onda_campana(prog)
             ow = onda_surf.get_width()
             surface.blit(onda_surf, (centro_campana_x - ow // 2, centro_campana_y - ow // 2))
+
+
+#---- Clase BloqueCripta ----#
+class BloqueCripta:
+    """Bloque de cripta destructible ('=') bajo los pies del Custodio en Fase 3."""
+
+    def __init__(self, rect):
+        self.rect = pygame.Rect(rect)
+        self.inicial_rect = pygame.Rect(rect)
+        self.roto = False
+
+    def reiniciar(self):
+        self.roto = False
+
+    def romper(self):
+        """Rompe el bloque de cripta al recibir el pisotón del Custodio."""
+        if self.roto:
+            return False
+        self.roto = True
+        return True
+
+    def dibujar(self, surface, camara, tiempo=0.0):
+        rect = camara.aplicar_rect(self.rect)
+        if self.roto:
+            return
+        # Piedra funeraria grabada con sello carmesí/violeta tenue para distinguirla del muro sólido
+        pygame.draw.rect(surface, (42, 34, 48), rect)
+        pygame.draw.rect(surface, (22, 16, 26), rect, 1)
+        pygame.draw.line(surface, (118, 92, 130), (rect.x + 2, rect.y + 1), (rect.right - 3, rect.y + 1), 2)
+        pulso = 0.5 + 0.5 * math.sin(tiempo * 4.5 + rect.x * 0.08)
+        col_sello = (int(145 + pulso * 60), int(75 + pulso * 35), int(175 + pulso * 55))
+        pygame.draw.line(surface, col_sello, (rect.x + 6, rect.y + 6), (rect.centerx, rect.centery + 2), 1)
+        pygame.draw.line(surface, col_sello, (rect.right - 6, rect.y + 6), (rect.centerx, rect.centery + 2), 1)
+        pygame.draw.line(surface, (24, 18, 28), (rect.centerx, rect.y + 4), (rect.centerx - 3, rect.bottom - 5), 1)
+        pygame.draw.line(surface, (24, 18, 28), (rect.x + 4, rect.bottom - 8), (rect.right - 5, rect.bottom - 5), 1)
+
+
+#---- Clase CompuertaArena ----#
+class CompuertaArena:
+    """Rastrillo de hierro forjado que sella la cámara del Custodio durante el combate."""
+
+    def __init__(self, rect):
+        self.rect = pygame.Rect(rect)
+        self.inicial_rect = pygame.Rect(rect)
+        self.cerrada = False
+        self.progreso = 0.0
+
+    def cerrar(self):
+        """Sella la compuerta de la cámara del jefe."""
+        self.cerrada = True
+
+    def abrir(self):
+        """Abre la compuerta al caer el jefe."""
+        self.cerrada = False
+
+    def reiniciar(self):
+        self.cerrada = False
+        self.progreso = 0.0
+
+    def actualizar(self, dt):
+        objetivo = 1.0 if self.cerrada else 0.0
+        if self.progreso < objetivo:
+            self.progreso = min(1.0, self.progreso + dt * 6.5)
+        elif self.progreso > objetivo:
+            self.progreso = max(0.0, self.progreso - dt * 3.5)
+
+    def dibujar(self, surface, camara, tiempo=0.0):
+        vis = self.progreso if self.cerrada else max(0.18, self.progreso)
+        rect = camara.aplicar_rect(self.rect)
+        alto_vis = max(8, int(rect.height * vis))
+        barra_rect = pygame.Rect(rect.x + 4, rect.y, rect.width - 8, alto_vis)
+
+        # Marco de hierro superior
+        pygame.draw.rect(surface, (36, 30, 42), (rect.x + 2, rect.y, rect.width - 4, 5))
+        pygame.draw.rect(surface, (112, 92, 60), (rect.x + 2, rect.y, rect.width - 4, 5), 1)
+
+        # Barrotes verticales de acero forjado con puntas de lanza abajo
+        for bx in (barra_rect.x + 4, barra_rect.centerx, barra_rect.right - 5):
+            pygame.draw.line(surface, (55, 52, 66), (bx, rect.y + 4), (bx, rect.y + alto_vis - 2), 3)
+            pygame.draw.line(surface, (140, 146, 165), (bx - 1, rect.y + 4), (bx - 1, rect.y + alto_vis - 4), 1)
+        for by in range(rect.y + 14, rect.y + alto_vis - 4, 18):
+            pygame.draw.line(surface, (42, 38, 52), (barra_rect.x, by), (barra_rect.right, by), 3)
+
+        if self.cerrada:
+            # Sello rúnico carmesí pulsante cuando la arena está trabada
+            pulso = int(160 + 80 * math.sin(tiempo * 7.0))
+            pygame.draw.circle(surface, (pulso, 45, 70), (barra_rect.centerx, rect.y + alto_vis // 2), 4)
+            pygame.draw.circle(surface, ORO_LITÚRGICO, (barra_rect.centerx, rect.y + alto_vis // 2), 4, 1)
+
+
+#---- Clase MuroMovilCompuerta ----#
+class MuroMovilCompuerta:
+    """Muro móvil tipo compuerta que se arma bloque a bloque de abajo hacia arriba en la arena del Mini-Boss."""
+
+    def __init__(self, x, base_y, ancho=TILE, alto_max=3 * TILE):
+        self.x = int(x)
+        self.base_y = int(base_y)
+        self.ancho = int(ancho)
+        self.alto_max = int(alto_max)
+        self.estado = "oculto"
+        self.progreso = 0.0
+        self.temporizador = 0.0
+        self.duracion_armado = 1.5
+        self.tiempo_temblor = 0.0
+        self.enfriamiento = 0.0
+        self.usado_ciclo = False
+        self.recien_aviso = False
+        self.recien_armado = False
+        self.rect = pygame.Rect(self.x, self.base_y, self.ancho, 0)
+
+    def _actualizar_rect(self):
+        # Cuantización suave por tercios para enfatizar el armado de abajo hacia arriba en 3 bloques
+        if self.progreso <= 0.02:
+            alto_vis = 0
+        else:
+            tercios = self.progreso * 3.0
+            bloque_idx = int(min(2.0, math.floor(tercios)))
+            frac = tercios - bloque_idx
+            frac_suave = min(1.0, frac * 1.25)
+            progreso_esc = (bloque_idx + frac_suave) / 3.0
+            alto_vis = max(6, int(round(self.alto_max * min(1.0, progreso_esc))))
+        self.rect = pygame.Rect(self.x, self.base_y - alto_vis, self.ancho, alto_vis)
+
+    def es_solido(self):
+        return self.estado in ("emergiendo", "armado") and self.rect.height >= 12
+
+    def puede_activarse(self):
+        return self.estado == "oculto" and self.enfriamiento <= 0.0 and not self.usado_ciclo
+
+    def activar(self, duracion_aviso=0.16, duracion_armado=1.5):
+        """Inicia la secuencia de emergencia de abajo hacia arriba si no está en enfriamiento."""
+        if self.enfriamiento > 0.0 or self.usado_ciclo:
+            return False
+        if self.estado in ("oculto", "retrayendo"):
+            self.estado = "aviso"
+            self.temporizador = duracion_aviso
+            self.duracion_armado = duracion_armado
+            self.recien_aviso = True
+            return True
+        if self.estado == "armado":
+            self.temporizador = max(self.temporizador, duracion_armado)
+        return False
+
+    def retraer(self):
+        if self.estado not in ("oculto", "retrayendo"):
+            self.estado = "retrayendo"
+
+    def recibir_impacto(self):
+        """Absorbe el choque de la embestida del Carcelero, entra en enfriamiento y se retrae."""
+        self.tiempo_temblor = 0.30
+        self.enfriamiento = 9.0
+        self.usado_ciclo = True
+        if self.estado in ("emergiendo", "armado"):
+            self.progreso = min(1.0, max(0.75, self.progreso))
+            self.estado = "retrayendo"
+            self._actualizar_rect()
+
+    def reiniciar(self):
+        self.estado = "oculto"
+        self.progreso = 0.0
+        self.temporizador = 0.0
+        self.tiempo_temblor = 0.0
+        self.enfriamiento = 0.0
+        self.usado_ciclo = False
+        self.recien_aviso = False
+        self.recien_armado = False
+        self.rect = pygame.Rect(self.x, self.base_y, self.ancho, 0)
+
+    def actualizar(self, dt, jugador=None):
+        self.recien_aviso = False
+        self.recien_armado = False
+        if self.tiempo_temblor > 0:
+            self.tiempo_temblor = max(0.0, self.tiempo_temblor - dt)
+        if self.enfriamiento > 0:
+            self.enfriamiento = max(0.0, self.enfriamiento - dt)
+
+        if self.estado == "aviso":
+            self.temporizador -= dt
+            if self.temporizador <= 0:
+                self.estado = "emergiendo"
+        elif self.estado == "emergiendo":
+            self.progreso = min(1.0, self.progreso + dt * 3.8)
+            self._actualizar_rect()
+            if jugador is not None and self.rect.height > 0 and jugador.rect.colliderect(self.rect):
+                # Si el jugador está sobre la ranura mientras sube el muro, elevarlo con la compuerta
+                if jugador.rect.centery <= self.rect.top + 20:
+                    jugador.rect.bottom = self.rect.top
+                    jugador.y = float(jugador.rect.y)
+                    jugador.vy = min(0.0, jugador.vy)
+                    jugador.en_suelo = True
+                elif jugador.rect.centerx < self.rect.centerx:
+                    jugador.rect.right = self.rect.left
+                    jugador.x = float(jugador.rect.x)
+                else:
+                    jugador.rect.left = self.rect.right
+                    jugador.x = float(jugador.rect.x)
+            if self.progreso >= 1.0:
+                self.progreso = 1.0
+                self.estado = "armado"
+                self.temporizador = self.duracion_armado
+                self.recien_armado = True
+                self._actualizar_rect()
+        elif self.estado == "armado":
+            self.temporizador -= dt
+            self._actualizar_rect()
+            if self.temporizador <= 0:
+                self.estado = "retrayendo"
+        elif self.estado == "retrayendo":
+            self.progreso = max(0.0, self.progreso - dt * 3.8)
+            self._actualizar_rect()
+            if self.progreso <= 0.0:
+                self.progreso = 0.0
+                self.estado = "oculto"
+                self._actualizar_rect()
+
+    def dibujar(self, surface, camara, tiempo=0.0):
+        base_screen = camara.aplicar_rect(pygame.Rect(self.x, self.base_y - 4, self.ancho, 6))
+        sx = base_screen.x
+        by = base_screen.y + 4
+
+        # Zócalo / ranura mecánica en el suelo de la arena
+        pygame.draw.rect(surface, (28, 24, 34), (sx - 2, by - 3, self.ancho + 4, 5), border_radius=1)
+        pygame.draw.rect(surface, (112, 92, 60), (sx - 2, by - 3, self.ancho + 4, 5), 1, border_radius=1)
+
+        if self.estado == "aviso":
+            pulso = 0.5 + 0.5 * math.sin(tiempo * 24.0)
+            col_av = (255, int(150 + 80 * pulso), 70)
+            pygame.draw.line(surface, col_av, (sx + 2, by - 2), (sx + self.ancho - 3, by - 2), 2)
+            for i_b in range(3):
+                h_guia = 12 + i_b * 10 + int(pulso * 6)
+                gx = sx + 6 + i_b * 10
+                pygame.draw.line(surface, (92, 220, 200), (gx, by - 3), (gx, by - h_guia), 1)
+            return
+
+        if self.rect.height <= 2:
+            return
+
+        rect_cam = camara.aplicar_rect(self.rect)
+        ox = int(math.sin(tiempo * 55.0) * 2) if self.tiempo_temblor > 0 else 0
+        rx = rect_cam.x + ox
+        ry = rect_cam.y
+        rw = rect_cam.width
+        rh = rect_cam.height
+
+        # Dibujar los módulos apilados de abajo hacia arriba (hasta 3 bloques de alto TILE)
+        n_bloques = max(1, math.ceil(rh / float(TILE)))
+        for b_idx in range(n_bloques):
+            b_bottom = by - b_idx * TILE
+            b_top = max(ry, b_bottom - TILE)
+            b_h = max(4, b_bottom - b_top)
+            b_rect = pygame.Rect(rx + 2, b_top, rw - 4, b_h)
+
+            # Cuerpo de piedra acorazada y marco de hierro forjado
+            col_cuerpo = (68, 62, 82) if self.tiempo_temblor <= 0 else (150, 142, 165)
+            pygame.draw.rect(surface, col_cuerpo, b_rect, border_radius=3)
+            pygame.draw.rect(surface, (32, 28, 42), b_rect, 2, border_radius=3)
+
+            # Costillas verticales de compuerta y remaches de bronce
+            pygame.draw.line(surface, (118, 124, 145), (b_rect.x + 5, b_top + 2), (b_rect.x + 5, b_bottom - 2), 2)
+            pygame.draw.line(surface, (118, 124, 145), (b_rect.right - 6, b_top + 2), (b_rect.right - 6, b_bottom - 2), 2)
+            pygame.draw.line(surface, ORO_LITÚRGICO, (b_rect.x + 2, b_top + 1), (b_rect.right - 3, b_top + 1), 1)
+
+            if b_h >= 16:
+                cy_b = b_top + b_h // 2
+                col_runa = (255, 220, 110) if self.tiempo_temblor > 0 else (92, 220, 200)
+                pygame.draw.circle(surface, col_runa, (b_rect.centerx, cy_b), 3)
+                pygame.draw.circle(surface, (24, 20, 32), (b_rect.centerx, cy_b), 3, 1)
+
 
 
 

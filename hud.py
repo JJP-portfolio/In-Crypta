@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pygame
 
+import config
 from config import (
     ANCHO,
     ALTO,
@@ -43,9 +44,9 @@ FUENTE_LABEL = 12
 FUENTE_CONTADOR = 14
 FUENTE_NOMBRE = 18
 
-# Ruta absoluta de la fuente gotica
+# Ruta absoluta de la fuente gotica legible (trazos firmes sin astas ultrafinas)
 _RAIZ_HUD = Path(__file__).resolve().parent
-_RUTA_FUENTE = _RAIZ_HUD / "assets/NotoSerifDisplay-Bold.ttf"
+_RUTA_FUENTE = _RAIZ_HUD / getattr(config, "RUTA_FUENTE_GOTICA", "assets/NotoSerif-Bold.ttf")
 
 
 #---- Funciones de easing para transiciones ----#
@@ -109,7 +110,8 @@ class TextoCache:
         self.cache = {}
 
     def render(self, texto, tamano, color, sombra=False):
-        clave = (texto, tamano, tuple(color), sombra)
+        escala = round(float(getattr(config, "ESCALA_FUENTES_ACTIVA", 1.15)), 2)
+        clave = (texto, tamano, escala, tuple(color), sombra)
         imagen = self.cache.get(clave)
         if imagen is None:
             fuente = self.cargar_fuente(tamano)
@@ -423,12 +425,20 @@ class HudRenderer:
         return None
 
     def _fuente(self, tamano):
-        if tamano not in self._fuentes:
+        escala = float(getattr(config, "ESCALA_FUENTES_ACTIVA", 1.15))
+        tam_eff = max(8, round(tamano * escala))
+        if tam_eff not in self._fuentes:
             try:
-                self._fuentes[tamano] = pygame.font.Font(str(_RUTA_FUENTE), tamano)
+                self._fuentes[tam_eff] = pygame.font.Font(str(_RUTA_FUENTE), tam_eff)
             except Exception:
-                self._fuentes[tamano] = pygame.font.Font(None, tamano)
-        return self._fuentes[tamano]
+                self._fuentes[tam_eff] = pygame.font.Font(None, tam_eff)
+        return self._fuentes[tam_eff]
+
+    def limpiar_caches_texto(self):
+        """Descarta las superficies de texto cacheadas al cambiar la escala tipográfica."""
+        self.texto_cache.cache.clear()
+        self._fuentes.clear()
+        self._paneles_cache.clear()
 
     def _texto(self, texto, tamano, color, sombra=False):
         return self.texto_cache.render(texto, tamano, color, sombra)
@@ -746,22 +756,28 @@ class HudRenderer:
         bx = (sw - bw) // 2
         by = 46
         tiempo = getattr(self, "tiempo", 0.0)
-        temblor_x = int(math.sin(tiempo * 45.0) * 2) if getattr(modelo, "jefe_fase", 1) >= 2 else 0
+        fase = getattr(modelo, "jefe_fase", 1)
+        temblor_x = int(math.sin(tiempo * 45.0) * 2) if fase >= 2 else 0
         bx += temblor_x
 
-        # Placa catedralicia de respaldo para el nombre y la barra (y = 16..68)
-        placa_w, placa_h = bw + 32, 52
+        # Nombre litúrgico del Jefe en marfil/oro escalado (compacto para respetar badges laterales en +25%)
+        nombre_jefe = getattr(modelo, "jefe_nombre", "EL CUSTODIO DEL OSARIO").upper()
+        if fase >= 3:
+            nombre_jefe = "EL CUSTODIO · FASE III · SEPULCRO"
+        elif fase == 2:
+            nombre_jefe = "EL CUSTODIO · FASE II"
+        img_j = self._texto(nombre_jefe, 13, (242, 224, 168), sombra=True)
+
+        # Placa catedralicia adaptable al tamaño tipográfico activo (F2)
+        placa_w = max(bw + 32, img_j.get_width() + 36)
+        placa_h = max(56, img_j.get_height() + bh + 22)
         placa_x, placa_y = (sw - placa_w) // 2, 16
+        by = placa_y + img_j.get_height() + 9
         pygame.draw.rect(surface, (10, 8, 16), (placa_x, placa_y, placa_w, placa_h), border_radius=6)
         pygame.draw.rect(surface, (4, 3, 8), (placa_x, placa_y, placa_w, placa_h), 1, border_radius=6)
         pygame.draw.rect(surface, (198, 162, 82), (placa_x + 2, placa_y + 2, placa_w - 4, placa_h - 4), 1, border_radius=5)
 
-        # Nombre litúrgico del Jefe en 13px marfil/oro (y = 22)
-        nombre_jefe = getattr(modelo, "jefe_nombre", "EL CUSTODIO DEL OSARIO").upper()
-        if getattr(modelo, "jefe_fase", 1) >= 2:
-            nombre_jefe += " · FASE II"
-        img_j = self._texto(nombre_jefe, 13, (242, 224, 168), sombra=True)
-        surface.blit(img_j, (sw // 2 - img_j.get_width() // 2, placa_y + 6))
+        surface.blit(img_j, (sw // 2 - img_j.get_width() // 2, placa_y + 5))
 
         # Marco de obsidiana y filigrana de la barra de sangre
         pygame.draw.rect(surface, (6, 4, 10), (bx - 2, by - 2, bw + 4, bh + 4), border_radius=3)
@@ -771,26 +787,41 @@ class HudRenderer:
         proporcion = max(0.0, min(1.0, modelo.jefe_vida / float(vida_max)))
         ancho_lleno = int(bw * proporcion)
         if ancho_lleno > 0:
-            col_barra = (210, 28, 50) if getattr(modelo, "jefe_fase", 1) >= 2 else (172, 34, 48)
+            if fase >= 3:
+                col_barra = (145, 58, 210)
+                col_brillo = (225, 175, 255)
+            elif fase == 2:
+                col_barra = (210, 28, 50)
+                col_brillo = (255, 150, 160)
+            else:
+                col_barra = (172, 34, 48)
+                col_brillo = (255, 150, 160)
             pygame.draw.rect(surface, col_barra, (bx, by, ancho_lleno, bh), border_radius=2)
-            pygame.draw.line(surface, (255, 150, 160), (bx + 2, by + 2), (bx + max(2, ancho_lleno - 2), by + 2), 2)
+            pygame.draw.line(surface, col_brillo, (bx + 2, by + 2), (bx + max(2, ancho_lleno - 2), by + 2), 2)
 
-        # Separadores de hueso por punto de vida
+        # Separadores de hueso por punto de vida / bloque de cripta
         seg_w = bw / float(vida_max)
         for s_idx in range(1, vida_max):
             sx = int(bx + s_idx * seg_w)
             pygame.draw.line(surface, (6, 5, 10), (sx, by), (sx, by + bh), 2)
             pygame.draw.line(surface, (228, 224, 210), (sx + 1, by + 2), (sx + 1, by + bh - 2), 1)
 
-        # Aviso de Fase II del Jefe debajo de la placa superior (sin tocar jamás el suelo)
-        if getattr(modelo, "aviso_jefe", 0.0) > 0:
-            aviso_txt = "¡FASE II! LA PALA REBOTA — USA LA GUADAÑA CONSAGRADA (X)"
-            img_av = self._texto(aviso_txt, 12, (255, 120, 130), sombra=True)
+        # Aviso de Fase II o III del Jefe debajo de la placa superior (sin tocar jamás el suelo)
+        if getattr(modelo, "aviso_jefe", 0.0) > 0 and fase >= 2:
+            if fase >= 3:
+                aviso_txt = "¡FASE III! ES INVULNERABLE — HAZ QUE ROMPA LAS CRIPTAS DEL SUELO"
+                borde_av = (165, 92, 235)
+                color_av = (232, 188, 255)
+            else:
+                aviso_txt = "¡FASE II! LA PALA REBOTA — USA LA GUADAÑA CONSAGRADA (X)"
+                borde_av = (210, 45, 65)
+                color_av = (255, 120, 130)
+            img_av = self._texto(aviso_txt, 12, color_av, sombra=True)
             av_w = img_av.get_width() + 18
             av_x = sw // 2 - av_w // 2
             av_y = placa_y + placa_h + 4
             pygame.draw.rect(surface, (10, 8, 16), (av_x, av_y, av_w, img_av.get_height() + 4), border_radius=4)
-            pygame.draw.rect(surface, (210, 45, 65), (av_x, av_y, av_w, img_av.get_height() + 4), 1, border_radius=4)
+            pygame.draw.rect(surface, borde_av, (av_x, av_y, av_w, img_av.get_height() + 4), 1, border_radius=4)
             surface.blit(img_av, (sw // 2 - img_av.get_width() // 2, av_y + 2))
 
     #---- Canal de mensajes ----#
@@ -804,30 +835,6 @@ class HudRenderer:
         if alpha <= 0:
             return
 
-        caja = pygame.Surface((m.w, m.h), pygame.SRCALPHA)
-        caja.fill((0, 0, 0, 0))
-
-        # 1. Fondo de Lápida de Obsidiana Grabada (opacidad base uniforme; el fade se aplica una sola vez con set_alpha)
-        pygame.draw.rect(caja, (*self.tema.panel_bg[:3], 235),
-                         caja.get_rect(), border_radius=10)
-        pygame.draw.rect(caja, (*self.tema.panel_border, self.tema.panel_border_alpha),
-                         caja.get_rect(), 1, border_radius=10)
-        pygame.draw.rect(caja, (218, 178, 86, 200),
-                         (2, 2, m.w - 4, m.h - 4), 1, border_radius=8)
-        pygame.draw.rect(caja, (*self.tema.oro, 255), (0, 0, 4, m.h), border_radius=2)
-
-        # 2. Medallón circular a la izquierda con icono
-        med_cx, med_cy = 18, m.h // 2
-        pygame.draw.circle(caja, (24, 20, 28, 255), (med_cx, med_cy), 11)
-        pygame.draw.circle(caja, (218, 178, 86, 255), (med_cx, med_cy), 11, 1)
-
-        color_icono = self.tema.rojo if mensajes.prioridad >= 3 else self.tema.oro
-        if mensajes.prioridad >= 3:
-            self._icono_calavera(caja, med_cx - 8, med_cy - 8, color_icono)
-        else:
-            self._icono_reloj(caja, med_cx - 8, med_cy - 8, color_icono)
-
-        # 3. Detección opcional de Keycap Físico Biselado (solo cuando se indica una tecla real entre corchetes)
         texto_crudo = mensajes.texto.strip()
         keycap_tag = None
         texto_resto = texto_crudo
@@ -839,13 +846,46 @@ class HudRenderer:
                 texto_resto = texto_resto[1:].strip()
 
         texto_x = 38
-        if keycap_tag:
-            fuente_kc = self._fuente(11)
-            kw, kh = fuente_kc.size(keycap_tag)
+        fuente_kc = self._fuente(11) if keycap_tag else None
+        kc_w = kc_h = 0
+        if keycap_tag and fuente_kc is not None:
+            kw, _kh = fuente_kc.size(keycap_tag)
             kc_w = kw + 12
-            kc_h = 20
+            kc_h = max(20, fuente_kc.get_height() + 4)
+
+        ancho_util = m.w - (texto_x + (kc_w + 8 if keycap_tag else 0)) - 12
+        fuente = self._fuente(self.tema.fuente_contador)
+        lineas = envolver(texto_resto, fuente, ancho_util, max_lineas=2)
+        linea_h = max(18, fuente.get_height() + 2)
+        alto_bloque = len(lineas) * linea_h
+        alto_caja = max(m.h, alto_bloque + 12)
+
+        caja = pygame.Surface((m.w, alto_caja), pygame.SRCALPHA)
+        caja.fill((0, 0, 0, 0))
+
+        # 1. Fondo de Lápida de Obsidiana Grabada (opacidad base uniforme; el fade se aplica una sola vez con set_alpha)
+        pygame.draw.rect(caja, (*self.tema.panel_bg[:3], 235),
+                         caja.get_rect(), border_radius=10)
+        pygame.draw.rect(caja, (*self.tema.panel_border, self.tema.panel_border_alpha),
+                         caja.get_rect(), 1, border_radius=10)
+        pygame.draw.rect(caja, (218, 178, 86, 200),
+                         (2, 2, m.w - 4, alto_caja - 4), 1, border_radius=8)
+        pygame.draw.rect(caja, (*self.tema.oro, 255), (0, 0, 4, alto_caja), border_radius=2)
+
+        # 2. Medallón circular a la izquierda con icono
+        med_cx, med_cy = 18, alto_caja // 2
+        pygame.draw.circle(caja, (24, 20, 28, 255), (med_cx, med_cy), 11)
+        pygame.draw.circle(caja, (218, 178, 86, 255), (med_cx, med_cy), 11, 1)
+
+        color_icono = self.tema.rojo if mensajes.prioridad >= 3 else self.tema.oro
+        if mensajes.prioridad >= 3:
+            self._icono_calavera(caja, med_cx - 8, med_cy - 8, color_icono)
+        else:
+            self._icono_reloj(caja, med_cx - 8, med_cy - 8, color_icono)
+
+        if keycap_tag and fuente_kc is not None:
             kc_x = texto_x
-            kc_y = (m.h - kc_h) // 2
+            kc_y = (alto_caja - kc_h) // 2
 
             # Botón marfil / oro con bisel físico
             pygame.draw.rect(caja, (150, 115, 45, 255), (kc_x, kc_y + 2, kc_w, kc_h - 2), border_radius=4)
@@ -853,23 +893,20 @@ class HudRenderer:
             pygame.draw.rect(caja, (24, 20, 16, 255), (kc_x, kc_y, kc_w, kc_h), 1, border_radius=4)
 
             img_kc = self._texto(keycap_tag, 11, (24, 18, 20), sombra=False)
-            caja.blit(img_kc, (kc_x + (kc_w - kw) // 2, kc_y + 2))
+            caja.blit(img_kc, (kc_x + (kc_w - img_kc.get_width()) // 2, kc_y + (kc_h - img_kc.get_height()) // 2))
 
             texto_x = kc_x + kc_w + 8
 
-        ancho_util = m.w - texto_x - 12
-        fuente = self._fuente(self.tema.fuente_contador)
-        lineas = envolver(texto_resto, fuente, ancho_util, max_lineas=2)
-        alto_bloque = len(lineas) * 18
-        texto_y = max(4, (m.h - alto_bloque) // 2)
-
+        texto_y = max(4, (alto_caja - alto_bloque) // 2)
         for i, linea in enumerate(lineas):
             img = self._texto(linea, self.tema.fuente_contador, self.tema.texto, sombra=True)
-            caja.blit(img, (texto_x, texto_y + i * 18))
+            caja.blit(img, (texto_x, texto_y + i * linea_h))
 
         if alpha < 255:
             caja.set_alpha(alpha)
-        pantalla.blit(caja, (m.x, m.y + mensajes.offset_y()))
+        jefe_con_aviso = modelo.jefe_vivo and getattr(modelo, "jefe_fase", 1) >= 2 and getattr(modelo, "aviso_jefe", 0.0) > 0
+        desp_jefe = 34 if jefe_con_aviso else (16 if modelo.jefe_vivo else 0)
+        pantalla.blit(caja, (m.x, m.y + desp_jefe + mensajes.offset_y()))
 
 
 #---- Orquestador del HUD ----#
@@ -877,15 +914,17 @@ class HudOrquestador:
     def __init__(self):
         self.layout = HudLayout.construir()
         self.tema = HudTheme()
-        self.texto_cache = TextoCache(lambda t: pygame.font.Font(str(_RUTA_FUENTE), t)
-                                      if _RUTA_FUENTE.exists()
-                                      else pygame.font.Font(None, t))
+        self.texto_cache = TextoCache(lambda t: self.renderer._fuente(t))
         self.renderer = HudRenderer(self.layout, self.tema, self.texto_cache)
         self.mensajes = MensajeHUD(self.layout, self.tema, self.texto_cache)
         self.modelo = HudModel()
         self.reducir_movimiento = False
         self.modo_hud = 0
         self.timer_inmersivo = 0.0
+
+    def limpiar_caches_texto(self):
+        """Limpia las cachés tipográficas del HUD al alternar escala."""
+        self.renderer.limpiar_caches_texto()
 
     def actualizar(self, dt):
         self.mensajes.actualizar(dt)
@@ -968,8 +1007,14 @@ class HudOrquestador:
 
         if jefe_cerca:
             self.modelo.jefe_vivo = True
-            self.modelo.jefe_vida = jefe.vida
-            self.modelo.jefe_vida_max = JEFE_VIDA
+            if jefe.fase >= 3 and nivel and getattr(nivel, "bloques_cripta", None):
+                total_cr = len(nivel.bloques_cripta)
+                sanos_cr = sum(1 for b in nivel.bloques_cripta if not getattr(b, "roto", False))
+                self.modelo.jefe_vida = sanos_cr
+                self.modelo.jefe_vida_max = max(1, total_cr)
+            else:
+                self.modelo.jefe_vida = jefe.vida
+                self.modelo.jefe_vida_max = JEFE_VIDA
             self.modelo.jefe_fase = jefe.fase
             self.modelo.jefe_nombre = "EL CUSTODIO DEL OSARIO"
         elif minijefe_activo is not None:

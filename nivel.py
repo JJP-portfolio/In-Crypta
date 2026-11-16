@@ -8,6 +8,7 @@ import pygame
 import config
 from config import (
     AMARILLO,
+    ARANA_ALTO,
     CARMESÍ_SANGRE,
     ENEMIGO_ALTO,
     ENEMIGO_ANCHO,
@@ -36,6 +37,8 @@ from config import (
 from entidades import (
     Alma,
     Araña,
+    BloqueCripta,
+    CompuertaArena,
     Cuervo,
     Custodio,
     DashPowerUp,
@@ -45,6 +48,7 @@ from entidades import (
     IncensarioRebote,
     LosaQuebradiza,
     MiniJefe,
+    MuroMovilCompuerta,
     PalaRecogible,
     Polilla,
     RangoPowerUp,
@@ -106,26 +110,18 @@ def _construir_halo_radial(diametro, radio_max, color_rgb, alpha_max):
 
 
 def _obtener_halo_brasero():
-    """Halo espectral turquesa cacheado para braseros 'b' (CPU BLEND_RGB_ADD)."""
+    """Halo cálido y tenue para braseros 'b' en segundo plano (similar a velas)."""
     global _HALO_BRASERO_ESPECTRAL
     if _HALO_BRASERO_ESPECTRAL is None:
-        diam = 96
-        _HALO_BRASERO_ESPECTRAL = pygame.Surface((diam, diam), pygame.SRCALPHA)
-        cx, cy = diam // 2, diam // 2
-        for r in range(cx, 2, -2):
-            norm = r / float(cx)
-            factor = (1.0 - norm * norm) ** 2.0
-            rgb = (int(75 * factor * 0.28), int(220 * factor * 0.28), int(205 * factor * 0.28))
-            pygame.draw.circle(_HALO_BRASERO_ESPECTRAL, rgb, (cx, cy), r)
-        _HALO_BRASERO_ESPECTRAL = _HALO_BRASERO_ESPECTRAL.convert_alpha()
+        _HALO_BRASERO_ESPECTRAL = _construir_halo_radial(36, 15, (235, 145, 58), 14)
     return _HALO_BRASERO_ESPECTRAL
 
 
 def _obtener_halo_vela():
-    """Halo translucido calido cacheado para velas decorativas."""
+    """Halo translucido calido atenuado para velas decorativas de fondo."""
     global _HALO_VELA
     if _HALO_VELA is None:
-        _HALO_VELA = _construir_halo_radial(40, 18, (255, 185, 65), 32)
+        _HALO_VELA = _construir_halo_radial(36, 15, (255, 185, 65), 16)
     return _HALO_VELA
 
 
@@ -205,9 +201,12 @@ class Nivel:
         self.checkpoints = self._crear_checkpoints()
         self.plataformas = self._crear_plataformas()
         self.losas_quebradizas = self._crear_losas_quebradizas()
+        self.bloques_cripta = self._crear_bloques_cripta()
+        self.compuertas_arena = self._crear_compuertas_arena()
         self.incensarios = self._crear_incensarios()
         self.jefes = self._crear_jefes()
         self.minijefes = self._crear_minijefes()
+        self.muros_minijefe = self._crear_muros_minijefe()
         self.cuervos = self._crear_cuervos()
         self.polillas = self._crear_polillas()
         self.aranias = self._crear_aranias()
@@ -371,14 +370,38 @@ class Nivel:
             polillas.append(Polilla(rect, minimo_x, maximo_x))
         return polillas
 
+    def _crear_bloques_cripta(self):
+        return [
+            BloqueCripta(pygame.Rect(col * TILE, fila * TILE, TILE, TILE))
+            for col, fila in self._posiciones.get("=", ())
+        ]
+
+    def _crear_compuertas_arena(self):
+        """Agrupa columnas contiguas de '|' en compuertas verticales de arena."""
+        por_col = defaultdict(list)
+        for col, fila in self._posiciones.get("|", ()):
+            por_col[col].append(fila)
+        compuertas = []
+        for col, filas in sorted(por_col.items()):
+            filas.sort()
+            ini = prev = filas[0]
+            for f in filas[1:]:
+                if f == prev + 1:
+                    prev = f
+                else:
+                    compuertas.append(CompuertaArena(pygame.Rect(col * TILE, ini * TILE, TILE, (prev - ini + 1) * TILE)))
+                    ini = prev = f
+            compuertas.append(CompuertaArena(pygame.Rect(col * TILE, ini * TILE, TILE, (prev - ini + 1) * TILE)))
+        return compuertas
+
     def _crear_aranias(self):
         aranias = []
         for columna, fila in self._posiciones.get("A", ()):
             rect = pygame.Rect(
                 columna * TILE + (TILE - ENEMIGO_ANCHO) // 2,
-                fila * TILE + (TILE - ENEMIGO_ALTO),
+                fila * TILE + (TILE - ARANA_ALTO),
                 ENEMIGO_ANCHO,
-                ENEMIGO_ALTO,
+                ARANA_ALTO,
             )
             lim_izq, lim_der = self._limites_patrulla(columna, fila)
             minimo_x = max(lim_izq + 8, (columna - 6) * TILE)
@@ -397,8 +420,18 @@ class Nivel:
                 JEFE_ANCHO,
                 JEFE_ALTO,
             )
-            minimo_x = max(0, (columna - 20) * TILE)
-            maximo_x = min(self.ancho - JEFE_ANCHO, (columna + 20) * TILE)
+            fila_txt = self.filas[fila]
+            c_izq = columna
+            while c_izq > max(0, columna - 20) and fila_txt[c_izq - 1] not in ("#", "|"):
+                c_izq -= 1
+            c_der = columna + 1
+            while c_der < min(self.columnas, columna + 21) and fila_txt[c_der] not in ("#", "|"):
+                c_der += 1
+            minimo_x = max(0, c_izq * TILE + 2)
+            maximo_x = min(self.ancho - JEFE_ANCHO, c_der * TILE - JEFE_ANCHO - 2)
+            if maximo_x <= minimo_x:
+                minimo_x = max(0, (columna - 20) * TILE)
+                maximo_x = min(self.ancho - JEFE_ANCHO, (columna + 20) * TILE)
             jefes.append(Custodio(rect, minimo_x, maximo_x))
         return jefes
 
@@ -420,6 +453,20 @@ class Nivel:
                 maximo_x = min(self.ancho - MINIJEFE_ANCHO, (columna + 10) * TILE)
             minijefes.append(MiniJefe(rect, minimo_x, maximo_x))
         return minijefes
+
+    def _crear_muros_minijefe(self):
+        """Crea los 3 muros compuerta emergentes de abajo hacia arriba distribuidos en la arena del Mini-Boss."""
+        muros = []
+        for columna, fila in self._posiciones.get("K", ()):
+            lim_izq, lim_der = self._limites_patrulla(columna, fila)
+            if lim_der - lim_izq >= 16 * TILE:
+                base_y = (fila + 1) * TILE
+                centro_col = (lim_izq + lim_der) // (2 * TILE)
+                for offset_col in (-8, 0, 8):
+                    col_m = max((lim_izq // TILE) + 5, min((lim_der // TILE) - 6, centro_col + offset_col))
+                    muros.append(MuroMovilCompuerta(col_m * TILE, base_y, ancho=TILE, alto_max=3 * TILE))
+        return muros
+
     def _crear_plataformas(self):
         plataformas = []
         for fila, texto in enumerate(self.filas):
@@ -506,12 +553,22 @@ class Nivel:
             losa.actualizar(dt)
         for incensario in getattr(self, "incensarios", []):
             incensario.actualizar(dt)
+        for cp in self.checkpoints:
+            if hasattr(cp, "actualizar_dt"):
+                cp.actualizar_dt(dt)
+        for compuerta in getattr(self, "compuertas_arena", []):
+            compuerta.actualizar(dt)
+        for muro in getattr(self, "muros_minijefe", []):
+            muro.actualizar(dt)
 
     def solidos_actuales(self):
         return (
             self.solidos
             + [plataforma.rect for plataforma in self.plataformas]
             + [losa.rect for losa in getattr(self, "losas_quebradizas", []) if losa.activa]
+            + [bloque.rect for bloque in getattr(self, "bloques_cripta", []) if not bloque.roto]
+            + [compuerta.rect for compuerta in getattr(self, "compuertas_arena", []) if compuerta.cerrada]
+            + [muro.rect for muro in getattr(self, "muros_minijefe", []) if muro.es_solido()]
         )
 
     def _tema_efectivo(self, fila):
@@ -543,6 +600,9 @@ class Nivel:
             self.minijefes,
             self.jefes,
             getattr(self, "losas_quebradizas", ()),
+            getattr(self, "bloques_cripta", ()),
+            getattr(self, "compuertas_arena", ()),
+            getattr(self, "muros_minijefe", ()),
             getattr(self, "incensarios", ()),
         )
         for grupo in grupos:
@@ -559,6 +619,9 @@ class Nivel:
         tiempo = pygame.time.get_ticks() / 1000
         grupos_dibujables = (
             getattr(self, "losas_quebradizas", ()),
+            getattr(self, "bloques_cripta", ()),
+            getattr(self, "compuertas_arena", ()),
+            getattr(self, "muros_minijefe", ()),
             getattr(self, "incensarios", ()),
             self.almas,
             self.palas,
@@ -967,35 +1030,33 @@ class Nivel:
         pygame.draw.polygon(surface, (218, 178, 86), [(cx - 5, base_y - 22), (cx + 5, base_y - 22), (cx, base_y - 27)])
 
     def _dibujar_brasero_y_osamenta(self, surface, rect, tiempo):
-        """'b': Brasero espectral de pared con halo aditivo cian y restos óseos al pie."""
+        """'b': Brasero y fogata tenue de fondo con tonos apagados para no competir con faroles."""
         cx = rect.centerx
         base_y = rect.bottom - 2
         estilo = config.resolver_estilo(getattr(config, "ESTILO_MUNDO", "AUTO"))
 
-        # 1. Osamenta cruzada al pie con recorte marfil
-        pygame.draw.line(surface, TINTA_ABISMO, (cx - 9, base_y - 4), (cx + 9, base_y + 1), 4)
-        pygame.draw.line(surface, MARFIL_XILOGRAFICO, (cx - 8, base_y - 4), (cx + 8, base_y), 2)
-        pygame.draw.line(surface, MARFIL_XILOGRAFICO, (cx + 8, base_y - 4), (cx - 8, base_y), 2)
+        # 1. Osamenta discreta al pie en piedra/ceniza de bajo contraste
+        pygame.draw.line(surface, (18, 16, 22), (cx - 8, base_y - 4), (cx + 8, base_y), 3)
+        pygame.draw.line(surface, (78, 72, 78), (cx - 7, base_y - 4), (cx + 7, base_y), 2)
+        pygame.draw.line(surface, (78, 72, 78), (cx + 7, base_y - 4), (cx - 7, base_y), 2)
 
-        # 2. Cazoleta de hierro forjado a media altura
-        py_copa = rect.y + 15
-        pygame.draw.polygon(surface, TINTA_ABISMO, [(cx - 8, py_copa), (cx + 8, py_copa), (cx + 5, py_copa + 6), (cx - 5, py_copa + 6)])
-        pygame.draw.line(surface, (218, 178, 86), (cx - 8, py_copa), (cx + 8, py_copa), 2)
+        # 2. Cazoleta de hierro envejecido a media altura
+        py_copa = rect.y + 16
+        pygame.draw.polygon(surface, (20, 18, 26), [(cx - 7, py_copa), (cx + 7, py_copa), (cx + 4, py_copa + 6), (cx - 4, py_copa + 6)])
+        pygame.draw.line(surface, (108, 84, 58), (cx - 7, py_copa), (cx + 7, py_copa), 1)
 
-        # 3. Llama espectral bioluminiscente (TURQUESA_ESPIRITU) + Halo BLEND_RGB_ADD
-        pulso = int(math.sin(tiempo * 8.0 + rect.x * 0.1) * 2)
-        pts_llama = [
-            (cx, rect.y + 4 + pulso),
-            (cx + 5, py_copa - 1),
-            (cx, py_copa + 1),
-            (cx - 5, py_copa - 1),
-        ]
-        pygame.draw.polygon(surface, (92, 220, 200), pts_llama)
-        pygame.draw.circle(surface, (235, 255, 255), (cx, py_copa - 3), 2)
-
+        # 3. Llama cálida tipo vela de fondo (sin cian intenso ni blanco brillante)
+        pulso = int(math.sin(tiempo * 7.0 + rect.x * 0.1) * 1.5)
         if estilo != "NES":
-            halo = _obtener_halo_brasero()
-            surface.blit(halo, (cx - 48, py_copa - 52), special_flags=pygame.BLEND_RGB_ADD)
+            surface.blit(_obtener_halo_brasero(), (cx - 18, py_copa - 22))
+        pts_llama = [
+            (cx, rect.y + 7 + pulso),
+            (cx + 4, py_copa - 2),
+            (cx, py_copa + 1),
+            (cx - 4, py_copa - 2),
+        ]
+        pygame.draw.polygon(surface, (205, 130, 56), pts_llama)
+        pygame.draw.circle(surface, (238, 182, 92), (cx, py_copa - 3), 2)
 
     def dibujar_peligros(self, surface, camara):
         tiempo = pygame.time.get_ticks() / 1000.0

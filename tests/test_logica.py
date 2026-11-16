@@ -677,9 +677,28 @@ def probar_jefe_final():
         jefe.vulnerable = True
         assert juego.dañar_jefe_pisaton()
         assert juego.jugador.retroceso_tiempo > 0, "Cada impacto exitoso debe generar ráfaga de expulsión"
-    assert not jefe.vivo
-    assert jefe.fase == 2  # Muere en Fase 2
+    assert jefe.vivo, "Tras 3 golpes en Fase 2 debe despertar la Fase 3 (Sepulcro)"
+    assert jefe.fase == 3
+    assert jefe.estado == "cambio_f3"
+    assert not juego.dañar_jefe_pisaton(), "En Fase 3 el Custodio es invulnerable: cae rompiendo criptas"
+
+    # Fase 3 (SMB3): al caer al abismo tras romper las criptas del suelo, muere y limpia las ondas
+    jefe.temporizador = 0.0
+    juego.actualizar_jefe(1 / 60)
+    assert jefe.estado == "espera_smb3"
+    for bc in juego.nivel.bloques_cripta:
+        bc.roto = True
+    jefe.estado = "salto_smb3"
+    jefe.vy = 200.0
+    jefe.y = jefe.y_suelo - 1.0
+    for _ in range(60):
+        juego.actualizar_jefe(1 / 60)
+        if not jefe.vivo:
+            break
+    assert not jefe.vivo, "Al caer por el abismo en Fase 3 el Custodio debe morir definitivamente"
+    assert jefe.estado == "muerto"
     assert not juego.ondas_jefe
+    assert all(not c.cerrada for c in juego.nivel.compuertas_arena)
 
     juego.jugador.rect.topleft = juego.nivel.meta.topleft
     juego.jugador.x = float(juego.jugador.rect.x)
@@ -967,10 +986,17 @@ def probar_menu_pausa_y_campana():
     juego.dibujar()
     assert juego.estado == "pausa"
 
-    # Navegar por las 4 opciones de pausa
-    for op in range(4):
+    # Navegar por las 5 opciones de pausa (incluyendo OPCIONES en índice 1)
+    for op in range(5):
         juego.pausa_opcion = op
         juego.dibujar()
+
+    juego.pausa_opcion = 1
+    juego._manejar_tecla_pausa(pygame.K_RETURN)
+    assert juego.estado == "configuracion"
+    assert juego.origen_configuracion == "pausa"
+    juego._cerrar_configuracion()
+    assert juego.estado == "pausa"
 
     # Campaña continua: desde Preludio pasa a Nivel 1 sin menú
     juego.iniciar_campaña()
@@ -1153,14 +1179,16 @@ def probar_minijefe():
     assert mj.recibir_pisaton()
     assert mj.vida == 2
 
-    # Durante la ventana de invulnerabilidad post-impacto no recibe segundo daño instantáneo
+    # Durante su recuperación blindada no recibe daño aunque pase la invulnerabilidad; al cansarse sí
     assert not mj.recibir_pisaton()
     mj.invulnerable = 0.0
+    assert not mj.recibir_pisaton()
+    _cansar(mj)
     assert mj.recibir_pisaton()
     assert mj.vida == 1
 
-    # Tercer impacto desde arriba: derrota
-    mj.invulnerable = 0.0
+    # Tercer impacto desde arriba (tras cansancio): derrota
+    _cansar(mj)
     assert mj.recibir_pisaton()
     assert mj.vida == 0
     assert not mj.vivo
@@ -1179,7 +1207,7 @@ def probar_minijefe():
     assert mj.estado == "cansado" and mj.vulnerable
     assert abs(mj.temporizador - MINIJEFE_VULNERABLE) < 1e-9
 
-    # En Juego: pisotón con pala desde arriba lo daña y rebota (recargando el dash)
+    # En Juego: patrullando el blindaje repele el pisotón (no daña); cansado sí recibe daño y recarga dash
     juego = Juego()
     juego.cargar_nivel(0)
     mj2 = MiniJefe(pygame.Rect(200, 200, 36, 48), 100, 300)
@@ -1190,12 +1218,25 @@ def probar_minijefe():
     juego.jugador.dash_usos_aire = 0
     juego.jugador.tiene_pala = True
     juego.actualizar_minijefes(1 / 60)
+    assert mj2.vida == 3, "Con el Carcelero blindado en patrulla, el pisotón rebota sin dañarlo"
+    assert juego.jugador.vy < 0
+
+    mj2.invulnerable = 0.0
+    mj2.estado = "cansado"
+    mj2.vulnerable = True
+    mj2.temporizador = MINIJEFE_VULNERABLE
+    juego.jugador.rect.midbottom = (mj2.rect.centerx, mj2.rect.top + 1)
+    juego.jugador.vy = 200
+    juego.jugador.dash_usos_aire = 0
+    juego.actualizar_minijefes(1 / 60)
     assert mj2.vida == 2
     assert juego.jugador.vy < 0, "Debe rebotar tras pisotón al mini-jefe"
     assert juego.jugador.dash_usos_aire == DASH_USOS_AIRE
 
     # Durante su invulnerabilidad breve post-impacto: rebota sin dañarlo ni dañar al jugador
     mj2.invulnerable = 0.25
+    mj2.estado = "cansado"
+    mj2.vulnerable = True
     juego.jugador.invulnerable = 0
     vidas = juego.jugador.vidas
     juego.jugador.rect.midbottom = (mj2.rect.centerx, mj2.rect.top + 1)
@@ -1213,8 +1254,11 @@ def probar_minijefe():
     assert mj2.vida == 2
     assert juego.jugador.vy == 200
 
-    # Golpe letal desde arriba: entrega 5 almas
+    # Golpe letal desde arriba (en ventana vulnerable): entrega 5 almas
     mj2.invulnerable = 0.0
+    mj2.estado = "cansado"
+    mj2.vulnerable = True
+    mj2.temporizador = MINIJEFE_VULNERABLE
     mj2.vida = 1
     juego.jugador.rect.midbottom = (mj2.rect.centerx, mj2.rect.top + 1)
     juego.jugador.vy = 200
@@ -1222,7 +1266,7 @@ def probar_minijefe():
     assert not mj2.vivo
     assert juego.jugador.almas == almas_antes + 5, "Derrotar al mini-jefe debe otorgar 5 almas"
 
-    # En el Juego: el ataque frontal con pala rebota y NO lo mata; el rebote desde arriba sí lo derrota
+    # En el Juego: el ataque frontal con pala rebota y NO lo mata; el rebote desde arriba (cuando aturdido) sí lo derrota
     juego = Juego()
     juego.cargar_nivel(2)
     mj3 = juego.nivel.minijefes[0]
@@ -1237,6 +1281,9 @@ def probar_minijefe():
     assert mj3.vida == 3, "El ataque frontal no debe dañar al Carcelero"
     for _ in range(3):
         mj3.invulnerable = 0.0
+        mj3.estado = "cansado"
+        mj3.vulnerable = True
+        mj3.temporizador = MINIJEFE_VULNERABLE
         jugador.rect.midbottom = (mj3.rect.centerx, mj3.rect.top + 1)
         jugador.vy = 200
         juego.actualizar_minijefes(1 / 60)
