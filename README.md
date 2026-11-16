@@ -71,15 +71,19 @@ También se encuentran disponibles los atajos `make run`, `make test` y `make va
 ## Estructura del proyecto
 
 * `main.py` — Punto de entrada y argumentos de línea de comandos (`--tutorial`, `--nivel`, `--sala`).
-* `juego.py` — Bucle principal, máquina de estados, combate, iluminación y pantallas.
-* `nivel.py` — Parseo ASCII, colisiones y renderizado de plataformas, losas y sólidos.
+* `juego.py` — Orquestador y fachada principal de `Juego`, caché de texto y coordinación de escenas.
+* `escena/` — Mixins y utilidades visuales: `constantes.py`, `menus.py`, `fondos.py`, `pantallas.py`, `render_mundo.py`, `render_nivel.py` y `decoraciones.py`.
+* `logica/` — Mixins de reglas de juego: `combate.py`, `jefes.py` y `mundo.py`.
+* `nivel.py` — Parseo ASCII, colisiones y construcción de entidades del nivel.
 * `niveles.py` — Matrices ASCII oficiales del tutorial y de los actos principales.
 * `niveles_redisenados.py` — Variantes verticalizadas y salas de prueba jugables.
-* `entidades.py` — Sepulturero, enemigos, Carcelero, Custodio, almas y mecanismos.
+* `entidades.py` — Fachada de actores que reexporta la API del paquete `actores/`.
+* `actores/` — Entidades separadas por responsabilidad: `jugador.py`, `render_jugador.py`, `enemigos.py`, `custodio.py`, `carcelero.py`, `recogibles.py`, `interactivos.py`, `estampas.py` y `utilidades.py`.
 * `camara.py` — Seguimiento suave, márgenes de encuadre y sacudida direccional.
 * `particulas.py` — Emisores de chispas, plumas, disolución y clima de bioma.
-* `hud.py` — Interfaz litúrgica de vidas, almas, habilidades, jefe y mensajería.
+* `hud.py` — Orquestador y fachada del HUD que reexporta la arquitectura de `ui/`.
+* `ui/` — Componentes de interfaz: `animacion.py`, `modelos.py` y `renderer.py`.
 * `audio.py` — Motor mixto de sonido: combina los 19 archivos WAV base de `assets/audio/sfx/` y música OGG con síntesis procedural en tiempo real (timbres de campana, latido cardíaco y consagración de farol), evitando pistas de audio redundantes en disco.
 * `config.py` — Constantes de física, paletas góticas, parámetros de entidades y estilos visuales.
-* `tests/` — Suite de pruebas unitarias e integración (`pytest`).
-* `tools/` — Validador de invariantes de mapas (`validar_niveles.py`) y generador de capturas (`capturar.py`).
+* `tests/` — Suite de pruebas unitarias, integración y huella de regresión (`pytest`).
+* `tools/` — Validador de invariantes (`validar_niveles.py`), métricas de estilo (`metricas_estilo.py`), huella de regresión (`huella_regresion.py`), generador musical (`generar_musica_synthlab.py`) y capturas (`capturar.py`).
