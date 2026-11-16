@@ -69,8 +69,12 @@ class HitSpark:
             pygame.draw.line(surface, color_puntas, (cx - radio, cy), (cx + radio, cy), 2)
             pygame.draw.line(surface, color_puntas, (cx, cy - radio), (cx, cy + radio), 2)
             diag = radio // 2
-            pygame.draw.line(surface, color_centro, (cx - diag, cy - diag), (cx + diag, cy + diag), 1)
-            pygame.draw.line(surface, color_centro, (cx - diag, cy + diag), (cx + diag, cy - diag), 1)
+            pygame.draw.line(
+                surface, color_centro, (cx - diag, cy - diag), (cx + diag, cy + diag), 1
+            )
+            pygame.draw.line(
+                surface, color_centro, (cx - diag, cy + diag), (cx + diag, cy - diag), 1
+            )
             pygame.draw.circle(surface, color_centro, (cx, cy), 2)
         else:
             radio = int(10 * progreso) + 4
@@ -137,7 +141,9 @@ class ParticulaPluma:
         p0 = (int(cx - dx), int(cy - dy))
         p1 = (int(cx + dx), int(cy + dy))
         pygame.draw.line(surface, (15, 13, 19), p0, p1, 2)
-        pygame.draw.line(surface, (36, 30, 42), (int(cx - dx * 0.4), int(cy - dy * 0.4)), (int(cx + dx * 0.4), int(cy + dy * 0.4)), 1)
+        c0 = (int(cx - dx * 0.4), int(cy - dy * 0.4))
+        c1 = (int(cx + dx * 0.4), int(cy + dy * 0.4))
+        pygame.draw.line(surface, (36, 30, 42), c0, c1, 1)
 
 
 #---- Administrador general de particulas ----#
@@ -187,7 +193,9 @@ class SistemaParticulas:
                 gravedad=-95,
             )
 
-    def emitir(self, x, y, cantidad, colores, velocidad=180.0, vida=0.45, tamano=4.0, gravedad=700.0):
+    def emitir(
+        self, x, y, cantidad, colores, velocidad=180.0, vida=0.45, tamano=4.0, gravedad=700.0
+    ):
         cant = max(1, int(round(cantidad * getattr(self, "factor_calidad", 1.0))))
         for _ in range(cant):
             angulo = random.uniform(0, math.tau)
@@ -241,11 +249,13 @@ class SistemaParticulas:
         if mejorado:
             cantidad, colores = 16, ((215, 80, 255), (245, 170, 255), (170, 50, 240), BLANCO)
             dx_off, dy_off = 4, 14
-            vx_rango, vy_lim, vida_rango, tam_rango, grav = (260, 480), 110, (0.18, 0.32), (3, 6), 40
+            vx_rango, vy_lim, vida_rango = (260, 480), 110, (0.18, 0.32)
+            tam_rango, grav = (3, 6), 40
         else:
             cantidad, colores = 8, (ORO_LITURGICO, (240, 215, 130), (220, 220, 230), BLANCO)
             dx_off, dy_off = 5, 10
-            vx_rango, vy_lim, vida_rango, tam_rango, grav = (180, 360), 90, (0.12, 0.25), (2, 4), 80
+            vx_rango, vy_lim, vida_rango = (180, 360), 90, (0.12, 0.25)
+            tam_rango, grav = (2, 4), 80
 
         for _ in range(cantidad):
             self.particulas.append(Particula(
@@ -261,7 +271,8 @@ class SistemaParticulas:
 
     def pala(self, x, y):
         # Golpe seco de la pala
-        self.emitir(x, y, 16, (HUESO_MARFIL, CARMESI_SANGRE, SANGRE, ORO_LITURGICO, BLANCO), 230, 0.55, 5, 580)
+        colores = (HUESO_MARFIL, CARMESI_SANGRE, SANGRE, ORO_LITURGICO, BLANCO)
+        self.emitir(x, y, 16, colores, 230, 0.55, 5, 580)
 
     def stomp(self, x, y):
         # Impacto del pisoton en el aire
@@ -318,7 +329,8 @@ class SistemaParticulas:
 
     def meta(self, x, y):
         # Destello al cruzar el porton
-        self.emitir(x, y, 32, (ORO_LITURGICO, BLANCO, TURQUESA_ANIMA, VIOLETA_POE), 260, 1.0, 5, 280)
+        colores = (ORO_LITURGICO, BLANCO, TURQUESA_ANIMA, VIOLETA_POE)
+        self.emitir(x, y, 32, colores, 260, 1.0, 5, 280)
 
     def losa_romper(self, x, y, w=32):
         # Fragmentos al romperse una losa
