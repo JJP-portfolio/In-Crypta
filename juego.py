@@ -112,7 +112,8 @@ class Juego(
         try:
             if pygame.mixer.get_init() is None:
                 pygame.mixer.pre_init(44100, -16, 2, 2048)
-        except Exception:
+        except (pygame.error, OSError):
+            # En entornos sin dispositivo de audio seguimos sin preinicializar el mezclador.
             pass
         pygame.init()
         self.pantalla = pygame.display.set_mode((ANCHO, ALTO))
@@ -486,6 +487,32 @@ class Juego(
         if self.es_tutorial:
             self.actualizar_tutorial_contextual()
 
+    def _actualizar_simulacion_jugando(self, dt):
+        self._actualizar_latido_y_combos(dt)
+        self.actualizar_plataformas(dt)
+        self.actualizar_losas(dt)
+        teclas = pygame.key.get_pressed()
+        self.jugador.actualizar(dt, teclas, self.nivel.solidos_actuales())
+        self.limitar_jugador()
+        self.procesar_feedback_jugador()
+        self.actualizar_ataque()
+        self.actualizar_incensarios(dt)
+        self._actualizar_particulas_bioma_juego(dt)
+        if self.actualizar_jefe(dt):
+            return
+        if self.jugador.rect.top > self.nivel.alto + 120:
+            self.perder_vida(
+                ignorar_invulnerabilidad=True, causa="Caída al abismo de la cripta"
+            )
+            return
+        if self.actualizar_peligros():
+            return
+        self._actualizar_objetos_y_progreso(dt)
+        self.particulas.actualizar(dt)
+        self.camara.actualizar(self.jugador, self.nivel, dt)
+        if self.jugador.rect.colliderect(self.nivel.meta):
+            self._resolver_meta_nivel()
+
     def actualizar(self, dt):
         """Actualiza la escena actual o delega la simulacion del nivel."""
         self._descontar_temporizadores_globales(dt)
@@ -501,33 +528,7 @@ class Juego(
                 particula.actualizar(dt)
             self.camara.actualizar_sacudida(dt)
             return
-
-        self._actualizar_latido_y_combos(dt)
-        self.actualizar_plataformas(dt)
-        self.actualizar_losas(dt)
-        teclas = pygame.key.get_pressed()
-        self.jugador.actualizar(dt, teclas, self.nivel.solidos_actuales())
-        self.limitar_jugador()
-        self.procesar_feedback_jugador()
-        self.actualizar_ataque()
-        self.actualizar_incensarios(dt)
-        self._actualizar_particulas_bioma_juego(dt)
-
-        if self.actualizar_jefe(dt):
-            return
-        if self.jugador.rect.top > self.nivel.alto + 120:
-            self.perder_vida(
-                ignorar_invulnerabilidad=True, causa="Caída al abismo de la cripta"
-            )
-            return
-        if self.actualizar_peligros():
-            return
-
-        self._actualizar_objetos_y_progreso(dt)
-        self.particulas.actualizar(dt)
-        self.camara.actualizar(self.jugador, self.nivel, dt)
-        if self.jugador.rect.colliderect(self.nivel.meta):
-            self._resolver_meta_nivel()
+        self._actualizar_simulacion_jugando(dt)
 
     def dibujar(self):
         pantallas_menu = {

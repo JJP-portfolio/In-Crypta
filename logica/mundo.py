@@ -77,7 +77,12 @@ class MundoMixin:
                 losa.pisar()
 
             # Mientras tiembla (0.40s): caen piedritas y polvo hacia abajo
-            if getattr(losa, "activa", False) and getattr(losa, "pisada", False) and getattr(losa, "tiempo_quiebre", 0.0) > 0:
+            temblando = (
+                getattr(losa, "activa", False)
+                and getattr(losa, "pisada", False)
+                and getattr(losa, "tiempo_quiebre", 0.0) > 0
+            )
+            if temblando:
                 if random.random() < 0.45:
                     self.particulas.emitir(
                         losa.rect.left + random.uniform(2, losa.rect.width - 2),
@@ -212,7 +217,11 @@ class MundoMixin:
                 self.particulas.alma(pala.rect.centerx, pala.rect.centery)
                 self.texto_ayuda = "¡HIERRO DEL SEPULTURERO! · J / Z: EXORCIZAR LAS SOMBRAS"
                 self.mostrar_ayuda = 4.0
-                self.hud.mostrar_mensaje("¡HIERRO SAGRADO RECLAMADO! · J / Z: Castigar el abismo · Caída: pisotón purificador", 2, 4.0)
+                self.hud.mostrar_mensaje(
+                    "¡HIERRO SAGRADO RECLAMADO! · J / Z: Castigar el abismo · "
+                    "Caída: pisotón purificador",
+                    2, 4.0,
+                )
 
     def actualizar_power_ups_dash(self):
         for power_up in self.nivel.power_ups_dash:
@@ -233,7 +242,11 @@ class MundoMixin:
                 self.flash_color = (60, 200, 255)
                 self.texto_ayuda = "¡MANTO DE SOMBRAS! · SHIFT / X: DESGARRAR EL VELO"
                 self.mostrar_ayuda = 4.0
-                self.hud.mostrar_mensaje("¡AMULETO DEL VELO! · SHIFT / X: Desgarrar el velo de la cripta en pleno vuelo", 2, 4.0)
+                self.hud.mostrar_mensaje(
+                    "¡AMULETO DEL VELO! · SHIFT / X: Desgarrar el velo de la cripta "
+                    "en pleno vuelo",
+                    2, 4.0,
+                )
 
     def _inscripcion_farol(self, checkpoint):
         """Obtiene la inscripción críptica estilo MK1 Arcade correspondiente al farol."""
@@ -359,7 +372,11 @@ class MundoMixin:
                 and self.hud_aviso_altar <= 0
             ):
                 self.hud_aviso_altar = 3.0
-                self.hud.mostrar_mensaje("ALTAR SELLADO · Derrota al Carcelero del Osario para disipar el cerrojo sacrílego", 2, 3.0)
+                self.hud.mostrar_mensaje(
+                    "ALTAR SELLADO · Derrota al Carcelero del Osario para disipar "
+                    "el cerrojo sacrílego",
+                    2, 3.0,
+                )
             if power_up.actualizar(self.jugador):
                 self.audio.reproducir("alma")
                 self.particulas.emitir(
@@ -375,10 +392,13 @@ class MundoMixin:
                 self.camara.sacudir(6.0, 0.16)
                 self.flash = 0.14
                 self.flash_color = (190, 60, 255)
-                self.texto_ayuda = "¡GUADAÑA CONSAGRADA! · EL HIERRO ESPECTRAL QUIEBRA LA CORAZA DEL CUSTODIO"
+                self.texto_ayuda = (
+                    "¡GUADAÑA CONSAGRADA! · EL HIERRO ESPECTRAL QUIEBRA LA CORAZA DEL CUSTODIO"
+                )
                 self.mostrar_ayuda = 4.0
                 self.hud.mostrar_mensaje(
-                    f"¡GUADAÑA CONSAGRADA! · Alcance espectral {ATAQUE_ALCANCE_MEJORADO}px · Quiebra la vil coraza del Custodio",
+                    f"¡GUADAÑA CONSAGRADA! · Alcance espectral {ATAQUE_ALCANCE_MEJORADO}px "
+                    "· Quiebra la vil coraza del Custodio",
                     3,
                     4.0,
                 )
@@ -495,7 +515,9 @@ class MundoMixin:
         self.jugador.tiene_pala = tenia_pala
         self.jugador.tiene_dash = tenia_dash
         if self.nivel and getattr(self.nivel, "tema", None):
-            if getattr(self.audio, "musica_actual", None) != self.nivel.tema or not getattr(self.audio, "musica_bucle", True):
+            tema_distinto = getattr(self.audio, "musica_actual", None) != self.nivel.tema
+            sin_bucle = not getattr(self.audio, "musica_bucle", True)
+            if tema_distinto or sin_bucle:
                 self.audio.reproducir_musica(self.nivel.tema, bucle=True, fade_ms=500)
 
     def reintentar_nivel(self):

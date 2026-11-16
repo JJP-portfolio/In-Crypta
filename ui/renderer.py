@@ -43,7 +43,8 @@ class HudRenderer:
         if tam_eff not in self._fuentes:
             try:
                 self._fuentes[tam_eff] = pygame.font.Font(str(_RUTA_FUENTE), tam_eff)
-            except Exception:
+            except (pygame.error, FileNotFoundError, OSError):
+                # Si falta la fuente gotica o falla SDL_ttf, recurrimos a la fuente base.
                 self._fuentes[tam_eff] = pygame.font.Font(None, tam_eff)
         return self._fuentes[tam_eff]
 
@@ -223,7 +224,9 @@ class HudRenderer:
                 pygame.draw.circle(surface, (24, 20, 30), (bx, y_rosario), 3)
                 pygame.draw.circle(surface, (104, 88, 66), (bx, y_rosario), 3, 1)
 
-    def _dibujar_cartela_central_transparente(self, surface: pygame.Surface, rect: pygame.Rect, modelo: HudModel, alfa: int = 235) -> None:
+    def _dibujar_cartela_central_transparente(
+        self, surface: pygame.Surface, rect: pygame.Rect, modelo: HudModel, alfa: int = 235
+    ) -> None:
         """Cartela central con respaldo de obsidiana de alto contraste y bisel limpio de 1px."""
         cx = rect.centerx
         nom = getattr(modelo, "nombre_nivel", "") or getattr(modelo, "nivel_nombre", "")

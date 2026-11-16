@@ -502,7 +502,8 @@ class Audio:
         if nombre not in self.sonidos and nombre in self._lazy_builders:
             try:
                 self.sonidos[nombre] = self._lazy_builders[nombre]()
-            except Exception:
+            except (pygame.error, OSError, ValueError):
+                # Si el mezclador o sintetizador no estan listos, omitimos el sfx diferido.
                 pass
 
         sonido = self.sonidos.get(nombre)

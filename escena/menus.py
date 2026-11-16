@@ -102,7 +102,7 @@ class MenusMixin:
         self.hud.mostrar_mensaje(f"CALIDAD GRÁFICA: {calidad.upper()}", 1, 3.0)
 
     #---- Modo de HUD e interfaz ----#
-    # Opciones: Completo (0: riel superior 100%), Compacto (1: riel con opacidad reducida), Inmersivo (2: interfaz minima, solo en eventos)
+    # Opciones: Completo (0: riel 100%), Compacto (1: reducido), Inmersivo (2: minimo).
     def alternar_modo_hud(self, delta=1):
         self.config_hud_idx = (self.config_hud_idx + delta) % len(OPCIONES_HUD)
         self.audio.reproducir("ui")
@@ -281,7 +281,17 @@ class MenusMixin:
             and not self.es_tutorial
             and getattr(self, "continues", 0) > 0
         )
-        if tiene_continues and key in (pygame.K_UP, pygame.K_w, pygame.K_DOWN, pygame.K_s, pygame.K_LEFT, pygame.K_a, pygame.K_RIGHT, pygame.K_d):
+        teclas_nav = (
+            pygame.K_UP,
+            pygame.K_w,
+            pygame.K_DOWN,
+            pygame.K_s,
+            pygame.K_LEFT,
+            pygame.K_a,
+            pygame.K_RIGHT,
+            pygame.K_d,
+        )
+        if tiene_continues and key in teclas_nav:
             self.derrota_opcion = 1 - getattr(self, "derrota_opcion", 0)
             self.audio.reproducir("ui")
         elif key in (pygame.K_RETURN, pygame.K_SPACE):
@@ -430,7 +440,8 @@ class MenusMixin:
         pygame.draw.rect(self.pantalla, color_fondo, rect_op, border_radius=6)
         pygame.draw.rect(self.pantalla, color_borde, rect_op, 2 if seleccionada else 1, border_radius=6)
         if seleccionada:
-            pygame.draw.rect(self.pantalla, HUD_ORO, (rect_op.x, rect_op.y + 8, 4, rect_op.height - 16), border_radius=2)
+            borde_lat = (rect_op.x, rect_op.y + 8, 4, rect_op.height - 16)
+            pygame.draw.rect(self.pantalla, HUD_ORO, borde_lat, border_radius=2)
 
     def dibujar_menu_principal(self):
         pw, ph = 520, 430
@@ -456,7 +467,10 @@ class MenusMixin:
             color_txt = HUD_ORO if seleccionada else HUD_TEXTO
             self.dibujar_texto(titulo_op, 0, y_caja + 25, 19, color_txt, centrado=True, sombra=seleccionada)
 
-        self.dibujar_texto("[W/S o Flechas] Navegar | [ENTER] Seleccionar | [ESC] Salir", 0, py + ph - 26, 13, HUD_MUTED, centrado=True)
+        self.dibujar_texto(
+            "[W/S o Flechas] Navegar | [ENTER] Seleccionar | [ESC] Salir",
+            0, py + ph - 26, 13, HUD_MUTED, centrado=True,
+        )
 
     def dibujar_seleccion_nivel(self):
         pw, ph = 640, 490
@@ -484,7 +498,10 @@ class MenusMixin:
             self.dibujar_texto(titulo_n, x_t + 68, y_t + 11, 17, HUD_ORO if sel else HUD_TEXTO, sombra=sel)
             self.dibujar_texto(sub_n, x_t + 68, y_t + 35, 13, CREMA if sel else HUD_MUTED)
 
-        self.dibujar_texto("[W/S o Flechas] Elegir | [ENTER] Jugar | [ESC] Volver", 0, py + ph - 26, 13, HUD_MUTED, centrado=True)
+        self.dibujar_texto(
+            "[W/S o Flechas] Elegir | [ENTER] Jugar | [ESC] Volver",
+            0, py + ph - 26, 13, HUD_MUTED, centrado=True,
+        )
 
     def dibujar_selector_pruebas(self):
         pw, ph = 700, 520
@@ -499,15 +516,25 @@ class MenusMixin:
 
         for i, sala in enumerate(SALAS_PRUEBA):
             y_tarjeta = y_base + i * 64
-            seleccionada = (i == self.test_opcion)
-            self._dibujar_tarjeta_opcion(pygame.Rect(x_tarjeta, y_tarjeta, ancho_tarjeta, alto_tarjeta), seleccionada, (32, 22, 40))
-            self.dibujar_texto(str(i + 1), x_tarjeta + 20, y_tarjeta + 14, 24, HUD_ORO if seleccionada else HUD_MUTED, sombra=seleccionada)
+            sel = (i == self.test_opcion)
+            rect_t = pygame.Rect(x_tarjeta, y_tarjeta, ancho_tarjeta, alto_tarjeta)
+            self._dibujar_tarjeta_opcion(rect_t, sel, (32, 22, 40))
+            self.dibujar_texto(
+                str(i + 1), x_tarjeta + 20, y_tarjeta + 14, 24, HUD_ORO if sel else HUD_MUTED, sombra=sel
+            )
             nombre_sala = sala.get("nombre", f"Sala de Prueba {i + 1}")
             desc_sala = sala.get("desc", "Verificación de mecánicas")
-            self.dibujar_texto(nombre_sala, x_tarjeta + 60, y_tarjeta + 10, 16, HUD_ORO if seleccionada else HUD_TEXTO, sombra=seleccionada)
-            self.dibujar_texto(desc_sala, x_tarjeta + 60, y_tarjeta + 32, 12, CREMA if seleccionada else HUD_MUTED)
+            self.dibujar_texto(
+                nombre_sala, x_tarjeta + 60, y_tarjeta + 10, 16, HUD_ORO if sel else HUD_TEXTO, sombra=sel
+            )
+            self.dibujar_texto(
+                desc_sala, x_tarjeta + 60, y_tarjeta + 32, 12, CREMA if sel else HUD_MUTED
+            )
 
-        self.dibujar_texto("[W/S o Flechas] Elegir | [1-6 o ENTER] Probar | [ESC] Volver", 0, py + ph - 24, 12, HUD_MUTED, centrado=True)
+        self.dibujar_texto(
+            "[W/S o Flechas] Elegir | [1-6 o ENTER] Probar | [ESC] Volver",
+            0, py + ph - 24, 12, HUD_MUTED, centrado=True,
+        )
 
     def dibujar_creditos(self):
         pw, ph = 640, 440

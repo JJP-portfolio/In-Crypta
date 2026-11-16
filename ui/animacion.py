@@ -1,5 +1,4 @@
 #---- Importamos librerias ----#
-from collections import OrderedDict
 from dataclasses import dataclass
 
 import pygame

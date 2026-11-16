@@ -49,7 +49,10 @@ class PantallasMixin:
         elif self.estado == "sala_completada":
             self.dibujar_overlay("DESAFÍO COMPLETADO", "ENTER para continuar · ESC volver al menú")
         elif self.estado == "tutorial_completado":
-            self.dibujar_overlay("¡RITUAL COMPLETADO!", "El sepulturero ha aprendido su oficio · ENTER para volver al menú")
+            self.dibujar_overlay(
+                "¡RITUAL COMPLETADO!",
+                "El sepulturero ha aprendido su oficio · ENTER para volver al menú",
+            )
         elif self.estado == "derrota":
             self.dibujar_derrota()
         elif self.estado == "victoria":
@@ -573,7 +576,8 @@ class PantallasMixin:
             tam_eff = max(8, round(tamano * escala))
             try:
                 self.fuentes[tamano] = pygame.font.Font(self._ruta_fuente_gotica, tam_eff)
-            except Exception:
+            except (pygame.error, FileNotFoundError, OSError):
+                # Si falta la fuente TTF o falla SDL_ttf, usamos la fuente por defecto.
                 self.fuentes[tamano] = pygame.font.Font(None, tam_eff)
         return self.fuentes[tamano]
 

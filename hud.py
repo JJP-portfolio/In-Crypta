@@ -178,7 +178,8 @@ class HudOrquestador:
             self.modelo.nivel_nombre = nivel.nombre.upper() if nivel and hasattr(nivel, "nombre") else "CAMPOSANTO"
         self.modelo.tiempo = juego.tiempo_total
         self.modelo.estado = juego.estado
-        self.modelo.pista = getattr(juego, "texto_ayuda", "") or (nivel.pista if nivel and hasattr(nivel, "pista") else "")
+        pista_nivel = nivel.pista if nivel and hasattr(nivel, "pista") else ""
+        self.modelo.pista = getattr(juego, "texto_ayuda", "") or pista_nivel
         self.modelo.aviso_jefe = juego.aviso_jefe
 
     def dibujar(self, pantalla, juego, dt):

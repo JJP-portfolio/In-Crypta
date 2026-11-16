@@ -32,7 +32,12 @@ class JefesMixin:
             if hasattr(mj, "tiempo_flash"):
                 mj.tiempo_flash = 0.04
             inter = golpe.clip(mj.rect)
-            self.particulas.hit_spark(inter.centerx, inter.centery, self.jugador.direccion, self.jugador.rango_ataque_mejorado)
+            self.particulas.hit_spark(
+                inter.centerx,
+                inter.centery,
+                self.jugador.direccion,
+                self.jugador.rango_ataque_mejorado,
+            )
             self.jugador.ataque_golpeado = True
             if mj.recibir_golpe_pala():
                 self.jugador.dash_usos_aire = DASH_USOS_AIRE
@@ -324,39 +329,52 @@ class JefesMixin:
         self._evaluar_soporte_f3_jefe(jefe)
         return rotos
 
+    def _ejecutar_quiebre_pala_f3(self, rango_mejorado):
+        if self.jefe.recibir_quiebre_sismico_f3(rango_mejorado=rango_mejorado):
+            self._romper_criptas_bajo_jefe(self.jefe)
+            self.jugador.dash_usos_aire = DASH_USOS_AIRE
+            self.jugador.dash_cooldown = 0.0
+            self.audio.reproducir("pala")
+            self.particulas.pala(self.jefe.rect.centerx, self.jefe.rect.centery)
+            dir_empuje = 1 if self.jugador.rect.centerx >= self.jefe.rect.centerx else -1
+            self.jugador.vx = dir_empuje * 240.0
+            self.jugador.retroceso_tiempo = 0.16
+            self.hitstop = 0.08
+            self.flash = 0.10
+            self.flash_color = (185, 95, 255)
+            return True
+        self._rebotar_jefe_coraza()
+        self.hud.mostrar_mensaje(
+            "¡GUARDIA SÍSMICA! · Esquiva su salto y golpéalo al aterrizar [J/Z] "
+            "para hundir el piso",
+            4, 2.5, forzar=True,
+        )
+        return False
+
     def dañar_jefe_pala(self):
-        """Golpe de pala/guadaña: daña en Fase 1 y Fase 2 (en recuperación); en Fase 3 provoca Quiebre Sísmico al aterrizar."""
+        """Golpe frontal: daña en Fase 1 y Fase 2; en Fase 3 provoca Quiebre Sismico."""
         if self.jefe is None or not self.jefe.vivo:
             return False
         rango_mejorado = getattr(self.jugador, "rango_ataque_mejorado", False)
         if self.jefe.fase >= 3:
-            if self.jefe.recibir_quiebre_sismico_f3(rango_mejorado=rango_mejorado):
-                self._romper_criptas_bajo_jefe(self.jefe)
-                self.jugador.dash_usos_aire = DASH_USOS_AIRE
-                self.jugador.dash_cooldown = 0.0
-                self.audio.reproducir("pala")
-                self.particulas.pala(self.jefe.rect.centerx, self.jefe.rect.centery)
-                dir_empuje = 1 if self.jugador.rect.centerx >= self.jefe.rect.centerx else -1
-                self.jugador.vx = dir_empuje * 240.0
-                self.jugador.retroceso_tiempo = 0.16
-                self.hitstop = 0.08
-                self.flash = 0.10
-                self.flash_color = (185, 95, 255)
-                return True
-            self._rebotar_jefe_coraza()
-            self.hud.mostrar_mensaje("¡GUARDIA SÍSMICA! · Esquiva su salto y golpéalo al aterrizar [J/Z] para hundir el piso", 4, 2.5, forzar=True)
-            return False
+            return self._ejecutar_quiebre_pala_f3(rango_mejorado)
         if self.jefe.fase == 2 and not rango_mejorado:
             self._rebotar_jefe_coraza()
-            self.hud.mostrar_mensaje("¡CORAZA ESPECTRAL! · Necesitas la Guadaña Consagrada del piso superior", 4, 2.5, forzar=True)
+            self.hud.mostrar_mensaje(
+                "¡CORAZA ESPECTRAL! · Necesitas la Guadaña Consagrada del piso superior",
+                4, 2.5, forzar=True,
+            )
             return False
         if not self.jefe.recibir_golpe_pala(rango_mejorado=rango_mejorado):
             self._rebotar_jefe_coraza()
             if self.jefe.fase == 2:
-                self.hud.mostrar_mensaje("¡GUARDIA CERRADA! · Espera a que termine su ataque y golpéalo con tu Guadaña [J/Z]", 4, 2.5, forzar=True)
+                self.hud.mostrar_mensaje(
+                    "¡GUARDIA CERRADA! · Espera a que termine su ataque y golpéalo "
+                    "con tu Guadaña [J/Z]",
+                    4, 2.5, forzar=True,
+                )
             return False
         res = self._aplicar_golpe_jefe()
-        # Ráfaga de rechazo al dañar con pala frontal
         dir_empuje = 1 if self.jugador.rect.centerx >= self.jefe.rect.centerx else -1
         self.jugador.vx = dir_empuje * 220.0
         self.jugador.retroceso_tiempo = 0.16

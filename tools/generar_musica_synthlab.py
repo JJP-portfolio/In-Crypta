@@ -17,7 +17,7 @@ RAIZ = Path(__file__).resolve().parent.parent
 DIR_MUSICA = RAIZ / "assets" / "audio" / "musica"
 
 
-#---- Teoría musical Z12 y utilidades de afinación ----#
+#---- Teoria musical Z12 y utilidades de afinacion ----#
 def midi_a_hz(nota_midi: float) -> float:
     """Convierte una altura MIDI en frecuencia (A4 = 440 Hz)."""
     return 440.0 * (2.0 ** ((nota_midi - 69.0) / 12.0))
@@ -50,7 +50,7 @@ def envolvente_adsr(n_muestras: int, ataque: float, decaimiento: float, sostenid
     return env
 
 
-#---- Síntesis instrumental (Armonía, Melodía, Bajo y Batería Rock/R&B) ----#
+#---- Sintesis instrumental (Armonia, Melodia, Bajo y Bateria Rock/R&B) ----#
 def inst_organo_barroco(freq: float, dur: float, vel: float = 0.8) -> np.ndarray:
     """Órgano cálido tipo Juno/catedral sin estridencia metálica."""
     n = max(64, int(dur * SR))
@@ -162,7 +162,7 @@ def percusion_charleston(abierto: bool, vel: float = 0.55, rng: np.random.Genera
     return (metal * np.exp(-decay * t) * vel * 0.24).astype(np.float32)
 
 
-#---- Mezclador estéreo en bucle perfecto ----#
+#---- Mezclador estereo en bucle perfecto ----#
 class PistaEstereo:
     """Buffer estéreo con mezcla circular para bucles sin cortes ni clics."""
 

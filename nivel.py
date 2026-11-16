@@ -302,9 +302,15 @@ class Nivel(RenderNivelMixin):
                 if f == prev + 1:
                     prev = f
                 else:
-                    compuertas.append(CompuertaArena(pygame.Rect(col * TILE, ini * TILE, TILE, (prev - ini + 1) * TILE)))
+                    rect_comp = pygame.Rect(
+                        col * TILE, ini * TILE, TILE, (prev - ini + 1) * TILE
+                    )
+                    compuertas.append(CompuertaArena(rect_comp))
                     ini = prev = f
-            compuertas.append(CompuertaArena(pygame.Rect(col * TILE, ini * TILE, TILE, (prev - ini + 1) * TILE)))
+            rect_comp = pygame.Rect(
+                col * TILE, ini * TILE, TILE, (prev - ini + 1) * TILE
+            )
+            compuertas.append(CompuertaArena(rect_comp))
         return compuertas
 
     def _crear_aranias(self):

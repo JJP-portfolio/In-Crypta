@@ -403,52 +403,63 @@ def _validar_sin_pozos(filas, res, habilidades, estricto, visitados_cr):
 
 def _validar_tramos_pozo(filas, aberturas, res, habilidades, estricto, visitados_cr):
     for losa, c in aberturas:
-        if losa >= len(filas) - 1:
-            continue
-        borde = _borde_del_pozo(filas, losa, c)
-        if borde is None:
-            res.avisos.append(f"V4-sup: no hay borde de pozo para la abertura col {c}")
-            continue
-        ok, _ = _alcanzable(
-            filas,
-            habilidades,
-            inicio=_posiciones(filas, "P")[0],
-            meta=borde,
-            usar_k=True,
-            usar_b=False,
-            visitados_cr=visitados_cr,
+        _validar_tramo_superior_pozo(
+            filas, losa, c, res, habilidades, estricto, visitados_cr
         )
-        mensaje = f"V4-sup: P -> K -> borde del pozo (col {borde[0]}, fila {borde[1]})"
-        if ok:
-            res.info.append(mensaje + " demostrado")
-        else:
-            aviso = (
-                mensaje
-                + " NO demostrado con el modelo (el modelo no entiende plataformas móviles, "
-                "rebote de pisotón ni tramos de salto largo; validar en juego)"
-            )
-            (res.errores if estricto else res.avisos).append(aviso)
-
     for losa, c in aberturas:
-        pie = _aterrizaje(filas, losa, c)
-        if pie is None:
-            continue
-        ok, _ = _alcanzable(
-            filas,
-            habilidades,
-            inicio=(c, pie),
-            meta=_posiciones(filas, "G")[0],
-            usar_k=False,
-            usar_b=True,
-            visitados_cr=visitados_cr,
+        _validar_tramo_inferior_pozo(
+            filas, losa, c, res, habilidades, estricto, visitados_cr
         )
-        mensaje = f"V4-inf: aterrizaje (col {c}, fila {pie}) -> B -> G"
-        if ok:
-            res.info.append(mensaje + " demostrado")
-        else:
-            (res.errores if estricto else res.avisos).append(
-                mensaje + " NO demostrado con el modelo conservador"
-            )
+
+
+def _validar_tramo_superior_pozo(filas, losa, c, res, habilidades, estricto, visitados_cr):
+    if losa >= len(filas) - 1:
+        return
+    borde = _borde_del_pozo(filas, losa, c)
+    if borde is None:
+        res.avisos.append(f"V4-sup: no hay borde de pozo para la abertura col {c}")
+        return
+    ok, _ = _alcanzable(
+        filas,
+        habilidades,
+        inicio=_posiciones(filas, "P")[0],
+        meta=borde,
+        usar_k=True,
+        usar_b=False,
+        visitados_cr=visitados_cr,
+    )
+    mensaje = f"V4-sup: P -> K -> borde del pozo (col {borde[0]}, fila {borde[1]})"
+    if ok:
+        res.info.append(mensaje + " demostrado")
+        return
+    aviso = (
+        mensaje
+        + " NO demostrado con el modelo (el modelo no entiende plataformas móviles, "
+        "rebote de pisotón ni tramos de salto largo; validar en juego)"
+    )
+    (res.errores if estricto else res.avisos).append(aviso)
+
+
+def _validar_tramo_inferior_pozo(filas, losa, c, res, habilidades, estricto, visitados_cr):
+    pie = _aterrizaje(filas, losa, c)
+    if pie is None:
+        return
+    ok, _ = _alcanzable(
+        filas,
+        habilidades,
+        inicio=(c, pie),
+        meta=_posiciones(filas, "G")[0],
+        usar_k=False,
+        usar_b=True,
+        visitados_cr=visitados_cr,
+    )
+    mensaje = f"V4-inf: aterrizaje (col {c}, fila {pie}) -> B -> G"
+    if ok:
+        res.info.append(mensaje + " demostrado")
+        return
+    (res.errores if estricto else res.avisos).append(
+        mensaje + " NO demostrado con el modelo conservador"
+    )
 
 
 def _validar_alcance(filas, res, habilidades, principal, estricto):

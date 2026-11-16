@@ -533,7 +533,7 @@ class Polilla(EntidadPatrullera):
             pygame.draw.circle(surface, ENEMIGO_OJO_FUEGO, (ox, rect.y + 8), 1.5)
 
 
-#---- Clase Araña ----#
+#---- Clase Arana ----#
 class Araña(EntidadPatrullera):
     """Arana que patrulla por el techo o el suelo."""
 

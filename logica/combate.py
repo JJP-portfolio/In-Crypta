@@ -143,7 +143,12 @@ class CombateMixin:
         ):
             self.jugador.ataque_golpeado = True
             inter = golpe.clip(self.jefe.rect)
-            self.particulas.hit_spark(inter.centerx, inter.centery, self.jugador.direccion, self.jugador.rango_ataque_mejorado)
+            self.particulas.hit_spark(
+                inter.centerx,
+                inter.centery,
+                self.jugador.direccion,
+                self.jugador.rango_ataque_mejorado,
+            )
             if hasattr(self.jefe, "tiempo_flash"):
                 self.jefe.tiempo_flash = 0.06
             self.dañar_jefe_pala()
