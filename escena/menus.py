@@ -310,16 +310,48 @@ class MenusMixin:
                 self.reiniciar_juego()
                 self.estado = "jugando"
 
+    def _alternar_pausa_tecla(self):
+        if self.estado == "jugando":
+            self.audio.reproducir("ui")
+            self.pausa_opcion = 0
+            self.estado = "pausa"
+        elif self.estado == "pausa":
+            self.audio.reproducir("ui")
+            self.estado = "jugando"
+
+    def _alternar_modo_visual_f4(self):
+        self.estilo_visual_idx = (self.estilo_visual_idx + 1) % len(self.estilos_visuales)
+        modo_estilo = self.estilos_visuales[self.estilo_visual_idx]
+        config.ESTILO_HUD = modo_estilo
+        config.ESTILO_MUNDO = modo_estilo
+        config.ESTILO_ENEMIGOS = modo_estilo
+        config.ESTILO_EFECTOS = modo_estilo
+        if hasattr(self, "hud") and hasattr(self.hud, "renderer"):
+            self.hud.renderer._paneles_cache.clear()
+        self.hud.mostrar_mensaje(f"MODELO VISUAL (F4): {modo_estilo}", 1, 3.0)
+        self.audio.reproducir("ui")
+
+    def _reiniciar_partida_tecla(self):
+        if self.sala_prueba:
+            self.cargar_sala_prueba(self.sala_prueba_indice)
+        elif self.es_tutorial:
+            self.iniciar_tutorial()
+        else:
+            self.reiniciar_juego()
+
+    def _manejar_tecla_escape(self):
+        if self.estado == "jugando":
+            self.audio.reproducir("ui")
+            self.pausa_opcion = 0
+            self.estado = "pausa"
+        elif self.estado == "titulo":
+            self.corriendo = False
+        else:
+            self.abrir_menu()
+
     def _manejar_tecla_global(self, key):
         if key == pygame.K_ESCAPE:
-            if self.estado == "jugando":
-                self.audio.reproducir("ui")
-                self.pausa_opcion = 0
-                self.estado = "pausa"
-            elif self.estado == "titulo":
-                self.corriendo = False
-            else:
-                self.abrir_menu()
+            self._manejar_tecla_escape()
         elif key == pygame.K_m:
             self.audio.alternar()
         elif key == pygame.K_F1:
@@ -332,39 +364,28 @@ class MenusMixin:
             self.hud.mostrar_mensaje(f"DEBUG HITBOX/HURTBOX (F3): {estado_f3}", 1, 3.0)
             self.audio.reproducir("ui")
         elif key == pygame.K_F4:
-            self.estilo_visual_idx = (self.estilo_visual_idx + 1) % len(self.estilos_visuales)
-            modo_estilo = self.estilos_visuales[self.estilo_visual_idx]
-            config.ESTILO_HUD = modo_estilo
-            config.ESTILO_MUNDO = modo_estilo
-            config.ESTILO_ENEMIGOS = modo_estilo
-            config.ESTILO_EFECTOS = modo_estilo
-            if hasattr(self, "hud") and hasattr(self.hud, "renderer"):
-                self.hud.renderer._paneles_cache.clear()
-            self.hud.mostrar_mensaje(f"MODELO VISUAL (F4): {modo_estilo}", 1, 3.0)
-            self.audio.reproducir("ui")
-        elif key == pygame.K_r and self.estado not in ("titulo", "menu", "seleccion_nivel", "creditos"):
-            if self.sala_prueba:
-                self.cargar_sala_prueba(self.sala_prueba_indice)
-            elif self.es_tutorial:
-                self.iniciar_tutorial()
-            else:
-                self.reiniciar_juego()
+            self._alternar_modo_visual_f4()
+        elif key == pygame.K_r and self.estado not in (
+            "titulo", "menu", "seleccion_nivel", "creditos"
+        ):
+            self._reiniciar_partida_tecla()
         elif key == pygame.K_p:
-            if self.estado == "jugando":
-                self.audio.reproducir("ui")
-                self.pausa_opcion = 0
-                self.estado = "pausa"
-            elif self.estado == "pausa":
-                self.audio.reproducir("ui")
-                self.estado = "jugando"
-        elif key in getattr(self, "teclas_salto", TECLAS_SALTO) and self.estado == "jugando":
-            self.jugador.pedir_salto()
-        elif key in getattr(self, "teclas_dash", (pygame.K_LSHIFT, pygame.K_RSHIFT, pygame.K_x)) and self.estado == "jugando":
-            self.jugador.pedir_dash()
-        elif key in getattr(self, "teclas_ataque", TECLAS_ATAQUE) and self.estado == "jugando":
-            self.intentar_ataque()
+            self._alternar_pausa_tecla()
+        elif self.estado == "jugando":
+            self._manejar_tecla_acciones_jugando(key)
         elif key == pygame.K_RETURN:
             self._manejar_tecla_enter_estado()
+
+    def _manejar_tecla_acciones_jugando(self, key):
+        teclas_dash = getattr(
+            self, "teclas_dash", (pygame.K_LSHIFT, pygame.K_RSHIFT, pygame.K_x)
+        )
+        if key in getattr(self, "teclas_salto", TECLAS_SALTO):
+            self.jugador.pedir_salto()
+        elif key in teclas_dash:
+            self.jugador.pedir_dash()
+        elif key in getattr(self, "teclas_ataque", TECLAS_ATAQUE):
+            self.intentar_ataque()
 
     def dibujar_titulo(self):
         self.dibujar_fondo(self.pantalla)
@@ -506,15 +527,8 @@ class MenusMixin:
         self.dibujar_texto("Inspirado en la obra de Edgar Allan Poe", 0, py + ph - 66, 14, HUD_ORO, centrado=True)
         self.dibujar_texto("[ENTER o ESC] Volver al Menú", 0, py + ph - 30, 14, TURQUESA, centrado=True)
 
-    def dibujar_configuracion(self):
-        pw, ph = 680, 510
-        px, py = self._dibujar_fondo_panel_menu(pw, ph, alfa=238)
-
-        self.dibujar_texto("CONFIGURACIÓN", 0, py + 30, 32, HUD_ORO, centrado=True, sombra=True)
-        pygame.draw.line(self.pantalla, (*HUD_ORO, 120), (ANCHO // 2 - 140, py + 64), (ANCHO // 2 + 140, py + 64), 1)
-
-        preset_activo = PRESETS_TECLADO[self.preset_teclado_idx]
-        opciones = (
+    def _opciones_configuracion_visibles(self, preset_activo):
+        return (
             ("CONTROLES", preset_activo["etiqueta"]),
             ("POST-PROCESADO", OPCIONES_SHADER[self.config_shader_idx]),
             ("CALIDAD GRÁFICA", OPCIONES_CALIDAD[self.config_calidad_idx]),
@@ -524,27 +538,64 @@ class MenusMixin:
             ("VOLVER", ""),
         )
 
+    def _dibujar_fila_configuracion(self, indice, etiqueta, valor, y_base):
         ancho_c, alto_c = 580, 44
         x_c = (ANCHO - ancho_c) // 2
-        y_base = py + 82
+        y_c = y_base + indice * 50
+        sel = indice == self.config_opcion
+        rect_c = pygame.Rect(x_c, y_c, ancho_c, alto_c)
+        fondo = (32, 24, 44) if sel else (16, 13, 22)
+        borde = HUD_ORO if sel else HUD_BORDE
+        pygame.draw.rect(self.pantalla, fondo, rect_c, border_radius=6)
+        pygame.draw.rect(self.pantalla, borde, rect_c, 2 if sel else 1, border_radius=6)
 
+        prefijo = "> " if sel else "  "
+        self.dibujar_texto(
+            prefijo + etiqueta,
+            x_c + 16,
+            y_c + 11,
+            16,
+            HUD_ORO if sel else HUD_TEXTO,
+            sombra=sel,
+        )
+        if valor:
+            val_fmt = f"< {valor} >" if sel else valor
+            self.dibujar_texto(
+                val_fmt,
+                x_c + ancho_c - 18,
+                y_c + 11,
+                15,
+                TURQUESA if sel else CREMA,
+                derecha=True,
+                sombra=sel,
+            )
+
+    def dibujar_configuracion(self):
+        pw, ph = 680, 510
+        _, py = self._dibujar_fondo_panel_menu(pw, ph, alfa=238)
+        self.dibujar_texto("CONFIGURACIÓN", 0, py + 30, 32, HUD_ORO, centrado=True, sombra=True)
+        pygame.draw.line(
+            self.pantalla,
+            (*HUD_ORO, 120),
+            (ANCHO // 2 - 140, py + 64),
+            (ANCHO // 2 + 140, py + 64),
+            1,
+        )
+
+        preset_activo = PRESETS_TECLADO[self.preset_teclado_idx]
+        opciones = self._opciones_configuracion_visibles(preset_activo)
         for i, (etiqueta, valor) in enumerate(opciones):
-            y_c = y_base + i * 50
-            sel = (i == self.config_opcion)
-            rect_c = pygame.Rect(x_c, y_c, ancho_c, alto_c)
-            pygame.draw.rect(self.pantalla, (32, 24, 44) if sel else (16, 13, 22), rect_c, border_radius=6)
-            pygame.draw.rect(self.pantalla, HUD_ORO if sel else HUD_BORDE, rect_c, 2 if sel else 1, border_radius=6)
-
-            prefijo = "> " if sel else "  "
-            self.dibujar_texto(prefijo + etiqueta, x_c + 16, y_c + 11, 16, HUD_ORO if sel else HUD_TEXTO, sombra=sel)
-            if valor:
-                val_fmt = f"< {valor} >" if sel else valor
-                self.dibujar_texto(val_fmt, x_c + ancho_c - 18, y_c + 11, 15, TURQUESA if sel else CREMA, derecha=True, sombra=sel)
+            self._dibujar_fila_configuracion(i, etiqueta, valor, py + 82)
 
         opciones_escala = getattr(config, "OPCIONES_ESCALA_FUENTE", ((1.15, "+15%"),))
         _, etiq_fuente = opciones_escala[self.escala_fuente_idx % len(opciones_escala)]
         self.dibujar_texto(preset_activo["resumen"], 0, py + ph - 54, 13, CREMA, centrado=True)
         self.dibujar_texto(
-            f"[W/S] Elegir | [A/D] Cambiar | [F2] Texto ({etiq_fuente}) | [F4] Estilo | [ESC] Volver",
-            0, py + ph - 24, 12, HUD_MUTED, centrado=True,
+            f"[W/S] Elegir | [A/D] Cambiar | [F2] Texto ({etiq_fuente}) | "
+            "[F4] Estilo | [ESC] Volver",
+            0,
+            py + ph - 24,
+            12,
+            HUD_MUTED,
+            centrado=True,
         )

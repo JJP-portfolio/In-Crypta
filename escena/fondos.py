@@ -110,47 +110,63 @@ class ParticulaBioma:
         self.x = random.uniform(0, self.w)
         self.fase = random.uniform(0, math.tau)
         self.fase_vel = random.uniform(1.2, 2.5)
-
         if self.tema == "camposanto":
-            self.tipo = "fatuo" if random.random() < 0.6 else "niebla"
-            if self.tipo == "fatuo":
-                self.y = random.uniform(0, self.h) if random_y else self.h + random.uniform(2, 10)
-                self.vx = random.uniform(-10, 10)
-                self.vy = random.uniform(-18, -32)
-                self.tamano = random.uniform(1.5, 3.0)
-                self.color = random.choice(((70, 235, 220), (140, 240, 255), (90, 190, 220)))
-                self.alfa = random.randint(80, 160)
-            else:
-                self.y = random.uniform(self.h - 50, self.h - 4) if random_y else self.h - random.uniform(4, 45)
-                self.vx = random.uniform(15, 35)
-                self.vy = random.uniform(-2, 2)
-                self.tamano = random.uniform(8.0, 16.0)
-                self.color = (35, 55, 75)
-                self.alfa = random.randint(30, 65)
-
+            self._reset_camposanto(random_y)
         elif self.tema == "cripta":
-            self.tipo = "polvo"
-            self.y = random.uniform(0, self.h) if random_y else (0 if random.random() < 0.5 else self.h)
-            self.vx = random.uniform(-8, 8)
-            self.vy = random.uniform(-6, 6)
-            self.tamano = random.uniform(1.2, 2.4)
-            self.color = random.choice(((210, 215, 225), (180, 185, 200), (235, 240, 250)))
-            self.alfa = random.randint(70, 150)
-
+            self._reset_cripta(random_y)
         else:
-            self.tipo = "brasa" if random.random() < 0.55 else "ceniza"
-            self.y = random.uniform(0, self.h) if random_y else self.h + random.uniform(2, 15)
-            self.vx = random.uniform(-15, 15)
-            if self.tipo == "brasa":
-                self.vy = random.uniform(-35, -65)
-                self.tamano = random.uniform(1.8, 3.2)
-                self.color = random.choice(((255, 80, 40), (255, 140, 50), (220, 50, 50), (255, 210, 80)))
-                self.alfa = random.randint(110, 210)
-            else:
-                self.vy = random.uniform(-20, -45)
-                self.tamano = random.uniform(1.4, 2.5)
-                self.color = random.choice(((190, 175, 160), (140, 130, 125), (210, 200, 190)))
-                self.alfa = random.randint(70, 140)
+            self._reset_osario(random_y)
+
+    def _reset_camposanto(self, random_y):
+        self.tipo = "fatuo" if random.random() < 0.6 else "niebla"
+        if self.tipo == "fatuo":
+            self.y = random.uniform(0, self.h) if random_y else self.h + random.uniform(2, 10)
+            self.vx = random.uniform(-10, 10)
+            self.vy = random.uniform(-18, -32)
+            self.tamano = random.uniform(1.5, 3.0)
+            colores = ((70, 235, 220), (140, 240, 255), (90, 190, 220))
+            self.color = random.choice(colores)
+            self.alfa = random.randint(80, 160)
+            return
+        self.y = (
+            random.uniform(self.h - 50, self.h - 4)
+            if random_y
+            else self.h - random.uniform(4, 45)
+        )
+        self.vx = random.uniform(15, 35)
+        self.vy = random.uniform(-2, 2)
+        self.tamano = random.uniform(8.0, 16.0)
+        self.color = (35, 55, 75)
+        self.alfa = random.randint(30, 65)
+
+    def _reset_cripta(self, random_y):
+        self.tipo = "polvo"
+        self.y = (
+            random.uniform(0, self.h)
+            if random_y
+            else (0 if random.random() < 0.5 else self.h)
+        )
+        self.vx = random.uniform(-8, 8)
+        self.vy = random.uniform(-6, 6)
+        self.tamano = random.uniform(1.2, 2.4)
+        self.color = random.choice(((210, 215, 225), (180, 185, 200), (235, 240, 250)))
+        self.alfa = random.randint(70, 150)
+
+    def _reset_osario(self, random_y):
+        self.tipo = "brasa" if random.random() < 0.55 else "ceniza"
+        self.y = random.uniform(0, self.h) if random_y else self.h + random.uniform(2, 15)
+        self.vx = random.uniform(-15, 15)
+        if self.tipo == "brasa":
+            self.vy = random.uniform(-35, -65)
+            self.tamano = random.uniform(1.8, 3.2)
+            colores = ((255, 80, 40), (255, 140, 50), (220, 50, 50), (255, 210, 80))
+            self.color = random.choice(colores)
+            self.alfa = random.randint(110, 210)
+            return
+        self.vy = random.uniform(-20, -45)
+        self.tamano = random.uniform(1.4, 2.5)
+        self.color = random.choice(((190, 175, 160), (140, 130, 125), (210, 200, 190)))
+        self.alfa = random.randint(70, 140)
 
     def actualizar(self, dt, intensificar=False):
         self.fase += self.fase_vel * dt
@@ -319,12 +335,7 @@ class FondosMixin:
 
         self.dibujar_niebla(destino, tema)
 
-    def dibujar_fondo_camposanto(self, destino=None):
-        if destino is None:
-            destino = self.pantalla
-        w, h = destino.get_width(), destino.get_height()
-        calidad = getattr(self, "config_calidad_idx", 0)
-
+    def _camposanto_cielo(self, destino, w, h, calidad):
         luna_x = int(w * 0.68) - int(self.camara.x * 0.04)
         luna_y = 72
         if calidad != 2:
@@ -363,6 +374,7 @@ class FondosMixin:
                 [(bx + 75, h), (bx + 195, int(h * 0.58) + 32), (bx + 320, h)],
             )
 
+    def _camposanto_rejas_y_siluetas(self, destino, w, h, calidad):
         if calidad in (0, 1):
             fence_w = 240
             offset_f = int(self.camara.x * 0.28) % fence_w
@@ -370,14 +382,18 @@ class FondosMixin:
             for i in range(-1, int(w / fence_w) + 2):
                 fx = i * fence_w - offset_f
                 fy_base = h - 52
-                pygame.draw.line(destino, col_hierro, (fx, fy_base - 14), (fx + fence_w, fy_base - 14), 2)
-                pygame.draw.line(destino, col_hierro, (fx, fy_base - 32), (fx + fence_w, fy_base - 32), 2)
+                pygame.draw.line(
+                    destino, col_hierro, (fx, fy_base - 14), (fx + fence_w, fy_base - 14), 2
+                )
+                pygame.draw.line(
+                    destino, col_hierro, (fx, fy_base - 32), (fx + fence_w, fy_base - 32), 2
+                )
                 for bx in range(fx + 10, fx + fence_w, 20):
                     pygame.draw.line(destino, col_hierro, (bx, fy_base), (bx, fy_base - 38), 2)
-                    pygame.draw.polygon(destino, col_hierro, [(bx - 2, fy_base - 38), (bx + 2, fy_base - 38), (bx, fy_base - 44)])
+                    punta = [(bx - 2, fy_base - 38), (bx + 2, fy_base - 38), (bx, fy_base - 44)]
+                    pygame.draw.polygon(destino, col_hierro, punta)
                 if i % 2 == 0:
-                    cx = fx + 70
-                    cy = fy_base - 22
+                    cx, cy = fx + 70, fy_base - 22
                     pygame.draw.line(destino, (24, 28, 40), (cx - 4, cy + 18), (cx + 3, cy - 24), 3)
                     pygame.draw.line(destino, (24, 28, 40), (cx - 10, cy - 8), (cx + 9, cy - 5), 3)
 
@@ -392,6 +408,14 @@ class FondosMixin:
             else:
                 escala = 0.85 + ((idx_mundo * 5) % 3) * 0.12
                 self.dibujar_tumba_lejana(destino, ex + 60, h - 44, escala)
+
+    def dibujar_fondo_camposanto(self, destino=None):
+        if destino is None:
+            destino = self.pantalla
+        w, h = destino.get_width(), destino.get_height()
+        calidad = getattr(self, "config_calidad_idx", 0)
+        self._camposanto_cielo(destino, w, h, calidad)
+        self._camposanto_rejas_y_siluetas(destino, w, h, calidad)
 
     def dibujar_arbol_muerto(self, destino, x, base_y, escala):
         alto = int(150 * escala)
@@ -440,30 +464,27 @@ class FondosMixin:
         pygame.draw.rect(destino, (8, 10, 16), (px, py, puerta_w, puerta_h))
         pygame.draw.arc(destino, (24, 32, 46), (px, py - int(6 * escala), puerta_w, int(12 * escala)), 0.0, 3.14, 1)
 
-    def dibujar_fondo_cripta(self, destino=None):
-        if destino is None:
-            destino = self.pantalla
-        w, h = destino.get_width(), destino.get_height()
-        calidad = getattr(self, "config_calidad_idx", 0)
-
+    def _cripta_ventanales(self, destino, w, h, calidad):
         win_w = 320
         offset_w = int(self.camara.x * 0.18) % win_w
         haz_lunar = _obtener_haz_lunar(h) if calidad != 2 else None
         for i in range(-1, int(w / win_w) + 2):
             wx = i * win_w - offset_w + 80
-            wy = 24
-            ww, wh = 38, 86
+            wy, ww, wh = 24, 38, 86
             pygame.draw.rect(destino, (14, 13, 20), (wx - 2, wy + 16, ww + 4, wh - 16))
             pygame.draw.arc(destino, (14, 13, 20), (wx - 2, wy, ww + 4, 36), 0.0, 3.14, 3)
             pygame.draw.rect(destino, (22, 30, 44), (wx, wy + 18, ww, wh - 18))
             pygame.draw.arc(destino, (22, 30, 44), (wx, wy + 2, ww, 34), 0.0, 3.14, 2)
-            pygame.draw.line(destino, (15, 18, 26), (wx + ww // 2, wy + 6), (wx + ww // 2, wy + wh), 1)
+            pygame.draw.line(
+                destino, (15, 18, 26), (wx + ww // 2, wy + 6), (wx + ww // 2, wy + wh), 1
+            )
             pygame.draw.line(destino, (15, 18, 26), (wx, wy + 42), (wx + ww, wy + 42), 1)
             pygame.draw.circle(destino, (14, 13, 20), (wx + ww // 2, wy + 16), 6)
             pygame.draw.circle(destino, (24, 32, 48), (wx + ww // 2, wy + 16), 6, 1)
             if haz_lunar is not None:
                 destino.blit(haz_lunar, (wx - 10, wy + 10))
 
+    def _cripta_columnas_y_cadenas(self, destino, w, h, calidad):
         col_w = 230
         offset_c = int(self.camara.x * 0.28) % col_w
         if calidad in (0, 1):
@@ -471,7 +492,8 @@ class FondosMixin:
                 x = i * col_w - offset_c
                 rect_arco = pygame.Rect(x + 27, 80, col_w, 140)
                 pygame.draw.arc(destino, (20, 18, 26), rect_arco, 0.0, 3.14, 3)
-                pygame.draw.line(destino, (17, 16, 23), (x + 27 + col_w // 2, 80), (x + 27 + col_w // 2, 150), 2)
+                cx = x + 27 + col_w // 2
+                pygame.draw.line(destino, (17, 16, 23), (cx, 80), (cx, 150), 2)
 
         for i in range(-1, int(w / col_w) + 2):
             x = i * col_w - offset_c
@@ -482,6 +504,7 @@ class FondosMixin:
             for y in range(192, h, 48):
                 pygame.draw.line(destino, (20, 19, 28), (x + 8, y), (x + 46, y), 1)
 
+    def _cripta_cadenas_y_antorchas(self, destino, w, h, calidad):
         chain_w = 280
         offset_ch = int(self.camara.x * 0.40) % chain_w
         for i in range(-1, int(w / chain_w) + 2):
@@ -502,56 +525,73 @@ class FondosMixin:
         for i in range(-1, int(w / torch_w) + 2):
             x = i * torch_w - offset_t + 110
             base_y = h - 160
-            if calidad != 2:
-                halo_vela = pygame.Surface((44, 44), pygame.SRCALPHA)
-                for r in range(20, 2, -2):
-                    norm = r / 20.0
-                    a = int(28 * (1.0 - norm * norm))
-                    pygame.draw.circle(halo_vela, (255, 180, 60, a), (22, 22), r)
-                destino.blit(halo_vela, (x - 22, base_y - 22))
-            else:
+            if calidad == 2:
                 pygame.draw.circle(destino, (255, 180, 60), (x, base_y), 3)
+                continue
+            halo_vela = pygame.Surface((44, 44), pygame.SRCALPHA)
+            for r in range(20, 2, -2):
+                norm = r / 20.0
+                a = int(28 * (1.0 - norm * norm))
+                pygame.draw.circle(halo_vela, (255, 180, 60, a), (22, 22), r)
+            destino.blit(halo_vela, (x - 22, base_y - 22))
 
-    def dibujar_fondo_osario(self, destino=None):
+    def dibujar_fondo_cripta(self, destino=None):
         if destino is None:
             destino = self.pantalla
         w, h = destino.get_width(), destino.get_height()
         calidad = getattr(self, "config_calidad_idx", 0)
-        tiempo = pygame.time.get_ticks() / 1000.0
-        cam_y = getattr(self.camara, "y", 0.0)
-        offset_y_arc = int(cam_y * 0.16)
-        offset_y_chain = int(cam_y * 0.26)
+        self._cripta_ventanales(destino, w, h, calidad)
+        self._cripta_columnas_y_cadenas(destino, w, h, calidad)
+        self._cripta_cadenas_y_antorchas(destino, w, h, calidad)
 
+    def _osario_arcos_y_pilares(self, destino, w, h, calidad, offset_y_arc):
         arc_w = 300
         offset_a = int(self.camara.x * 0.22) % arc_w
         for i in range(-1, int(w / arc_w) + 2):
             x = i * arc_w - offset_a
-            pygame.draw.arc(destino, (36, 22, 24), (x, 182 - offset_y_arc, 280, 320), 3.14, 6.28, 9)
-            pygame.draw.arc(destino, (28, 18, 20), (x + 40, 222 - offset_y_arc, 220, 280), 3.14, 6.28, 5)
+            pygame.draw.arc(
+                destino, (36, 22, 24), (x, 182 - offset_y_arc, 280, 320), 3.14, 6.28, 9
+            )
+            pygame.draw.arc(
+                destino, (28, 18, 20), (x + 40, 222 - offset_y_arc, 220, 280), 3.14, 6.28, 5
+            )
+        if calidad not in (0, 1):
+            return
+        skull_col_w = 340
+        offset_sc = int(self.camara.x * 0.30) % skull_col_w
+        for i in range(-1, int(w / skull_col_w) + 2):
+            sx = i * skull_col_w - offset_sc + 40
+            pygame.draw.rect(
+                destino,
+                (28, 18, 20),
+                (sx - 10, 120 - offset_y_arc, 20, h - 120 + offset_y_arc),
+            )
+            for sy in range(130, h - 40, 32):
+                pygame.draw.circle(destino, (48, 34, 34), (sx, sy - offset_y_arc), 9)
+                pygame.draw.circle(destino, (18, 10, 12), (sx - 3, sy - 1 - offset_y_arc), 2)
+                pygame.draw.circle(destino, (18, 10, 12), (sx + 3, sy - 1 - offset_y_arc), 2)
+                pygame.draw.line(
+                    destino,
+                    (18, 10, 12),
+                    (sx - 3, sy + 4 - offset_y_arc),
+                    (sx + 3, sy + 4 - offset_y_arc),
+                    1,
+                )
 
-        if calidad in (0, 1):
-            skull_col_w = 340
-            offset_sc = int(self.camara.x * 0.30) % skull_col_w
-            for i in range(-1, int(w / skull_col_w) + 2):
-                sx = i * skull_col_w - offset_sc + 40
-                pygame.draw.rect(destino, (28, 18, 20), (sx - 10, 120 - offset_y_arc, 20, h - 120 + offset_y_arc))
-                for sy in range(130, h - 40, 32):
-                    pygame.draw.circle(destino, (48, 34, 34), (sx, sy - offset_y_arc), 9)
-                    pygame.draw.circle(destino, (18, 10, 12), (sx - 3, sy - 1 - offset_y_arc), 2)
-                    pygame.draw.circle(destino, (18, 10, 12), (sx + 3, sy - 1 - offset_y_arc), 2)
-                    pygame.draw.line(destino, (18, 10, 12), (sx - 3, sy + 4 - offset_y_arc), (sx + 3, sy + 4 - offset_y_arc), 1)
-
+    def _osario_cadenas_brasas_y_velo(self, destino, w, h, calidad, tiempo, cam_y):
+        offset_y_chain = int(cam_y * 0.26)
         chain_w = 260
         offset_ch = int(self.camara.x * 0.38) % chain_w
         for i in range(-1, int(w / chain_w) + 2):
             x = i * chain_w - offset_ch + 50
             largo = 120 + ((i * 43) % 70)
-            pygame.draw.line(destino, (26, 18, 20), (x, -offset_y_chain), (x + 8, largo - offset_y_chain), 5)
-            pygame.draw.line(destino, (26, 18, 20), (x + 8, largo - offset_y_chain), (x - 12, largo + 24 - offset_y_chain), 3)
-
+            p_fin = (x + 8, largo - offset_y_chain)
+            pygame.draw.line(destino, (26, 18, 20), (x, -offset_y_chain), p_fin, 5)
+            pygame.draw.line(
+                destino, (26, 18, 20), p_fin, (x - 12, largo + 24 - offset_y_chain), 3
+            )
         if calidad in (0, 1):
-            ember_slots = 18
-            for idx in range(ember_slots):
+            for idx in range(18):
                 fase = (tiempo * 0.6 + idx * 0.37) % 1.0
                 em_x = int((idx * 73 + self.camara.x * 0.45) % w)
                 em_y = int(h - 30 - fase * (h * 0.65))
@@ -571,8 +611,20 @@ class FondosMixin:
                         alfa_x = int(238 * ((mundo_dx + 32) / 32.0))
                     else:
                         alfa_x = min(246, 238 + int(8 * min(1.0, mundo_dx / 96.0)))
-                    pygame.draw.line(velo, (4, 2, 6, max(0, alfa_x)), (vx, 0), (vx, h - 32))
+                    pygame.draw.line(
+                        velo, (4, 2, 6, max(0, alfa_x)), (vx, 0), (vx, h - 32)
+                    )
                 destino.blit(velo, (x_ini, 32))
+
+    def dibujar_fondo_osario(self, destino=None):
+        if destino is None:
+            destino = self.pantalla
+        w, h = destino.get_width(), destino.get_height()
+        calidad = getattr(self, "config_calidad_idx", 0)
+        tiempo = pygame.time.get_ticks() / 1000.0
+        cam_y = getattr(self.camara, "y", 0.0)
+        self._osario_arcos_y_pilares(destino, w, h, calidad, int(cam_y * 0.16))
+        self._osario_cadenas_brasas_y_velo(destino, w, h, calidad, tiempo, cam_y)
 
     def dibujar_niebla(self, destino=None, tema="camposanto"):
         if destino is None:

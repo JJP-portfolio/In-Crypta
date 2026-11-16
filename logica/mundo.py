@@ -271,61 +271,60 @@ class MundoMixin:
         else:
             self.tiempo_en_borde_fe = 0.0
 
+    def _aplicar_grado_farol(self, checkpoint, almas_tramo):
+        if almas_tramo >= ALMAS_FILO_ANIMA:
+            checkpoint.tier = 3
+            self.jugador.escudo_farol = True
+            self.jugador.filo_anima = True
+            self.destello_manto = 0.45
+            return "Grado III"
+        if almas_tramo >= ALMAS_MANTO_FAROL:
+            checkpoint.tier = 2
+            self.jugador.escudo_farol = True
+            self.destello_manto = 0.40
+            return "Grado II"
+        if almas_tramo >= 1:
+            checkpoint.tier = 1
+            return "Grado I"
+        checkpoint.tier = 0
+        return ""
+
     def actualizar_checkpoints(self):
         for checkpoint in self.nivel.checkpoints:
-            if checkpoint.actualizar(self.jugador):
-                self.punto_reintento = (checkpoint.rect.x, checkpoint.rect.y - 4)
-                self.audio.reproducir("checkpoint")
-                self.particulas.emitir(
-                    checkpoint.rect.centerx,
-                    checkpoint.rect.bottom - 20,
-                    18,
-                    ((120, 220, 255), (200, 245, 255), BLANCO),
-                    180,
-                    0.6,
-                    3,
-                    120,
+            if not checkpoint.actualizar(self.jugador):
+                continue
+            self.punto_reintento = (checkpoint.rect.x, checkpoint.rect.y - 4)
+            self.audio.reproducir("checkpoint")
+            self.particulas.emitir(
+                checkpoint.rect.centerx,
+                checkpoint.rect.bottom - 20,
+                18,
+                ((120, 220, 255), (200, 245, 255), BLANCO),
+                180,
+                0.6,
+                3,
+                120,
+            )
+
+            almas_tramo = self.jugador.almas - getattr(self, "almas_consagradas", 0)
+            grado_txt = self._aplicar_grado_farol(checkpoint, almas_tramo)
+            if checkpoint.tier > 0:
+                self.particulas.consagracion_farol(
+                    checkpoint.rect.centerx, checkpoint.rect.bottom, checkpoint.tier
                 )
+                sfx_tier = {1: "farol_tier_1", 2: "farol_tier_2"}
+                self.audio.reproducir(sfx_tier.get(checkpoint.tier, "farol_tier_3"))
 
-                # Curación y Consagración de Almas: El Pacto del Farol (3 Grados)
-                almas_tramo = self.jugador.almas - getattr(self, "almas_consagradas", 0)
-                if almas_tramo >= ALMAS_FILO_ANIMA:
-                    checkpoint.tier = 3
-                    self.jugador.escudo_farol = True
-                    self.jugador.filo_anima = True
-                    self.destello_manto = 0.45
-                    grado_txt = "Grado III"
-                elif almas_tramo >= ALMAS_MANTO_FAROL:
-                    checkpoint.tier = 2
-                    self.jugador.escudo_farol = True
-                    self.destello_manto = 0.40
-                    grado_txt = "Grado II"
-                elif almas_tramo >= 1:
-                    checkpoint.tier = 1
-                    grado_txt = "Grado I"
-                else:
-                    checkpoint.tier = 0
-                    grado_txt = ""
+            vida_txt = ""
+            if self.jugador.vidas < VIDAS_INICIALES:
+                self.jugador.vidas += 1
+                vida_txt = " (+1 Vida)"
 
-                if checkpoint.tier > 0:
-                    self.particulas.consagracion_farol(checkpoint.rect.centerx, checkpoint.rect.bottom, checkpoint.tier)
-                    if checkpoint.tier == 1:
-                        self.audio.reproducir("farol_tier_1")
-                    elif checkpoint.tier == 2:
-                        self.audio.reproducir("farol_tier_2")
-                    elif checkpoint.tier >= 3:
-                        self.audio.reproducir("farol_tier_3")
-
-                vida_txt = ""
-                if self.jugador.vidas < VIDAS_INICIALES:
-                    self.jugador.vidas += 1
-                    vida_txt = " (+1 Vida)"
-
-                inscripcion = self._inscripcion_farol(checkpoint)
-                encabezado = f"FARO{' · ' + grado_txt if grado_txt else ''}{vida_txt}"
-                self.almas_consagradas = self.jugador.almas
-                self.almas_vida_consagradas = self.jugador.almas_para_vida
-                self.hud.mostrar_mensaje(f"{encabezado} · {inscripcion}", 2, 4.8)
+            inscripcion = self._inscripcion_farol(checkpoint)
+            encabezado = f"FARO{' · ' + grado_txt if grado_txt else ''}{vida_txt}"
+            self.almas_consagradas = self.jugador.almas
+            self.almas_vida_consagradas = self.jugador.almas_para_vida
+            self.hud.mostrar_mensaje(f"{encabezado} · {inscripcion}", 2, 4.8)
 
     def actualizar_tutorial_contextual(self):
         """Muestra solo indicaciones breves al primer contacto real sin saturar de texto."""
@@ -384,28 +383,45 @@ class MundoMixin:
                     4.0,
                 )
 
+    def _consumir_manto_farol(self):
+        self.jugador.escudo_farol = False
+        self.jugador.invulnerable = INVULNERABILIDAD
+        self.audio.reproducir("rebote_pala")
+        self.particulas.emitir(
+            self.jugador.rect.centerx,
+            self.jugador.rect.centery,
+            24,
+            ((120, 220, 255), (200, 245, 255), BLANCO),
+            220,
+            0.7,
+            4,
+        )
+        self.flash = 0.15
+        self.flash_color = (120, 220, 255)
+        self.destello_manto = 0.38
+        self.hud.mostrar_mensaje("¡MANTO DEL FAROL CONSUMIDO! · Daño absorbido", 2, 2.5)
+
+    def _reaparecer_desde_inicio_nivel(self):
+        self.jugador.almas = 0
+        self.jugador.almas_para_vida = 0
+        for alma in self.nivel.almas:
+            alma.reiniciar()
+        tenia_pala = self.jugador.tiene_pala
+        tenia_dash = self.jugador.tiene_dash
+        self.jugador.respawn(*self.nivel.spawn)
+        self.jugador.tiene_pala = tenia_pala
+        self.jugador.tiene_dash = tenia_dash
+        for pup in self.nivel.power_ups_rango:
+            pup.reiniciar()
+        for pup in self.nivel.power_ups_dash:
+            pup.reiniciar()
+        self._reiniciar_arena_y_mecanismos()
+
     def perder_vida(self, ignorar_invulnerabilidad=False, causa="Peligros de la cripta"):
         if self.jugador.invulnerable > 0 and not ignorar_invulnerabilidad:
             return
-
-        # Si el jugador posee el Manto del Farol, absorbe el golpe letal
         if getattr(self.jugador, "escudo_farol", False):
-            self.jugador.escudo_farol = False
-            self.jugador.invulnerable = INVULNERABILIDAD
-            self.audio.reproducir("rebote_pala")
-            self.particulas.emitir(
-                self.jugador.rect.centerx,
-                self.jugador.rect.centery,
-                24,
-                ((120, 220, 255), (200, 245, 255), BLANCO),
-                220,
-                0.7,
-                4,
-            )
-            self.flash = 0.15
-            self.flash_color = (120, 220, 255)
-            self.destello_manto = 0.38
-            self.hud.mostrar_mensaje("¡MANTO DEL FAROL CONSUMIDO! · Daño absorbido", 2, 2.5)
+            self._consumir_manto_farol()
             return
 
         self.jugador.vidas -= 1
@@ -429,25 +445,10 @@ class MundoMixin:
             return
 
         self.hitstop = 0.08
-
         if self.punto_reintento is not None:
             self._reaparecer_en_checkpoint(reiniciar_enemigos=False)
         else:
-            self.jugador.almas = 0
-            self.jugador.almas_para_vida = 0
-            for alma in self.nivel.almas:
-                alma.reiniciar()
-            tenia_pala = self.jugador.tiene_pala
-            tenia_dash = self.jugador.tiene_dash
-            self.jugador.respawn(*self.nivel.spawn)
-            self.jugador.tiene_pala = tenia_pala
-            self.jugador.tiene_dash = tenia_dash
-            for pup in self.nivel.power_ups_rango:
-                pup.reiniciar()
-            for pup in self.nivel.power_ups_dash:
-                pup.reiniciar()
-            self._reiniciar_arena_y_mecanismos()
-
+            self._reaparecer_desde_inicio_nivel()
         self.camara.actualizar(self.jugador, self.nivel, 1.0)
 
     def _reiniciar_arena_y_mecanismos(self):

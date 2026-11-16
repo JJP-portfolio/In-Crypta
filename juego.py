@@ -101,6 +101,13 @@ class Juego(
     """Orquestador principal de escenas, bucle y estado de IN CRYPTA."""
 
     def __init__(self, sala_inicial=None):
+        """Inicializa Pygame, recursos graficos, estado inicial y escena."""
+        self._iniciar_pygame()
+        self._iniciar_estado_partida()
+        self._iniciar_configuracion()
+        self._cargar_escena_inicial(sala_inicial)
+
+    def _iniciar_pygame(self):
         warnings.filterwarnings("ignore", category=UserWarning)
         try:
             if pygame.mixer.get_init() is None:
@@ -114,20 +121,24 @@ class Juego(
         self.corriendo = True
         self.fuentes = {}
         self._cache_texto = OrderedDict()
-        p_font = Path(__file__).resolve().parent / getattr(config, "RUTA_FUENTE_GOTICA", "assets/NotoSerif-Bold.ttf")
+        ruta_cfg = getattr(config, "RUTA_FUENTE_GOTICA", "assets/NotoSerif-Bold.ttf")
+        p_font = Path(__file__).resolve().parent / ruta_cfg
         self._ruta_fuente_gotica = str(p_font) if p_font.exists() else None
         self.fondos = {}
         self.vineta = self.crear_vineta(90)
         self.vineta_carmesi = self.crear_vineta_carmesi()
         self.mascara_penumbra = pygame.Surface((VIRTUAL_ANCHO, VIRTUAL_ALTO), pygame.SRCALPHA)
         self.superficie_flash = pygame.Surface((ANCHO, ALTO), pygame.SRCALPHA)
+        self.superficie_mundo = pygame.Surface((VIRTUAL_ANCHO, VIRTUAL_ALTO))
+        self._superficie_scanlines = self._crear_scanlines_goticas(ANCHO, ALTO)
+        self._superficie_destello_manto = None
+
+    def _iniciar_estado_partida(self):
         self.hitstop = 0.0
         self.timer_corazon = 0.0
-
         self.particulas = SistemaParticulas()
         self.hud = HudOrquestador()
         self.audio = Audio()
-
         self.nivel_indice = 0
         self.nivel = None
         self.jugador = None
@@ -142,6 +153,7 @@ class Juego(
         self.dt = 0.0
         self.flash = 0.0
         self.flash_color = (255, 255, 255)
+        self.destello_manto = 0.0
         self.jefe = None
         self.ondas_jefe = []
         self.punto_reintento = None
@@ -157,25 +169,26 @@ class Juego(
         self.causa_muerte = ""
         self.almas_combo_count = 0
         self.almas_combo_timer = 0.0
+        self.campanas_combo_count = 0
+        self.campanas_combo_timer = 0.0
+        self.continues = getattr(config, "CONTINUES_INICIALES", 2)
+
+    def _iniciar_configuracion(self):
         self.test_opcion = 0
         self.menu_opcion = 0
         self.pausa_opcion = 0
+        self.derrota_opcion = 0
         self.en_campaña = False
         self.nivel_seleccionado = 0
         self.tiempo_menu = 0.0
-        self.superficie_mundo = pygame.Surface((VIRTUAL_ANCHO, VIRTUAL_ALTO))
-
-        # Configuración del santuario: controles, post-procesado, calidad y modo de HUD.
         self.preset_teclado_idx = 0
         self.config_opcion = 0
-        self.config_shader_idx = 0   # 0: Gótico (Bloom + CRT), 1: Suave, 2: Puro
-        self.config_calidad_idx = 0  # 0: Alta, 1: Media, 2: Baja
-        self.particulas.factor_calidad = {0: 1.0, 1: 0.5, 2: 0.25}[self.config_calidad_idx]
-        self.config_hud_idx = 0      # 0: Completo, 1: Compacto, 2: Inmersivo
+        self.config_shader_idx = 0
+        self.config_calidad_idx = 0
+        factores_calidad = {0: 1.0, 1: 0.5, 2: 0.25}
+        self.particulas.factor_calidad = factores_calidad[self.config_calidad_idx]
+        self.config_hud_idx = 0
         self.origen_configuracion = "menu"
-        self._superficie_scanlines = self._crear_scanlines_goticas(ANCHO, ALTO)
-        self.destello_manto = 0.0
-        self._superficie_destello_manto = None
         self.teclas_salto = PRESETS_TECLADO[0]["teclas_salto"]
         self.teclas_dash = PRESETS_TECLADO[0]["teclas_dash"]
         self.teclas_ataque = PRESETS_TECLADO[0]["teclas_ataque"]
@@ -186,11 +199,8 @@ class Juego(
         self.estilo_visual_idx = 0
         self.escala_fuente_idx = 0
         self._escala_fuente_cache = getattr(config, "ESCALA_FUENTES_ACTIVA", 1.15)
-        self.campanas_combo_count = 0
-        self.campanas_combo_timer = 0.0
-        self.continues = getattr(config, "CONTINUES_INICIALES", 2)
-        self.derrota_opcion = 0
 
+    def _cargar_escena_inicial(self, sala_inicial):
         if sala_inicial is not None:
             self.cargar_sala_prueba(sala_inicial)
         else:
@@ -200,9 +210,14 @@ class Juego(
             self.audio.detener_dron()
             self.audio.reproducir_musica("titulo", bucle=True, fade_ms=600)
 
+        calidad = OPCIONES_CALIDAD[self.config_calidad_idx]
+        shader = OPCIONES_SHADER[self.config_shader_idx]
         print("[IN CRYPTA] Motor de juego inicializado.")
-        print(f"[IN CRYPTA] Pygame: {pygame.__version__} | Canvas virtual: {VIRTUAL_ANCHO}x{VIRTUAL_ALTO} (Zoom {CAMARA_ZOOM}x)")
-        print(f"[IN CRYPTA] Calidad inicial: {OPCIONES_CALIDAD[self.config_calidad_idx]} | Shader: {OPCIONES_SHADER[self.config_shader_idx]}")
+        print(
+            f"[IN CRYPTA] Pygame: {pygame.__version__} | "
+            f"Canvas virtual: {VIRTUAL_ANCHO}x{VIRTUAL_ALTO} (Zoom {CAMARA_ZOOM}x)"
+        )
+        print(f"[IN CRYPTA] Calidad inicial: {calidad} | Shader: {shader}")
         print("[IN CRYPTA] Audio: Procedural + Banco SFX/Musica cargado.")
 
     def _renderizar_texto_cache(self, fuente, tamano, texto, color):
@@ -382,34 +397,15 @@ class Juego(
                 if evento.button == 1 and self.estado == "jugando":
                     self.intentar_ataque()
 
-    def actualizar(self, dt):
+    def _descontar_temporizadores_globales(self, dt):
         if hasattr(self, "hud") and self.hud is not None:
             self.hud.actualizar(dt)
-        if self.flash > 0:
-            self.flash = max(0.0, self.flash - dt)
-        if getattr(self, "destello_manto", 0.0) > 0:
-            self.destello_manto = max(0.0, self.destello_manto - dt)
-        if self.aviso_jefe > 0:
-            self.aviso_jefe = max(0.0, self.aviso_jefe - dt)
-        if self.hud_aviso_altar > 0:
-            self.hud_aviso_altar = max(0.0, self.hud_aviso_altar - dt)
+        for campo in ("flash", "destello_manto", "aviso_jefe", "hud_aviso_altar"):
+            valor = getattr(self, campo, 0.0)
+            if valor > 0:
+                setattr(self, campo, max(0.0, valor - dt))
 
-        if self.estado in ("titulo", "menu", "seleccion_nivel", "creditos"):
-            self.tiempo_titulo += dt
-            self.tiempo_menu += dt
-            return
-
-        if self.mostrar_ayuda > 0:
-            self.mostrar_ayuda = max(0.0, self.mostrar_ayuda - dt)
-
-        if self.estado != "jugando":
-            self.particulas.actualizar(dt)
-            for p in getattr(self, "particulas_bioma", []):
-                p.actualizar(dt)
-            self.camara.actualizar_sacudida(dt)
-            return
-
-        # Sfx del corazón delator a 1 HP
+    def _actualizar_latido_y_combos(self, dt):
         if self.jugador and self.jugador.vidas == 1:
             self.timer_corazon += dt
             if self.timer_corazon >= (1.0 / 1.2):
@@ -434,38 +430,51 @@ class Juego(
             if self.campanas_combo_timer <= 0:
                 self.campanas_combo_count = 0
 
-        self.actualizar_plataformas(dt)
-        self.actualizar_losas(dt)
-        teclas = pygame.key.get_pressed()
-        self.jugador.actualizar(dt, teclas, self.nivel.solidos_actuales())
-        self.limitar_jugador()
-        self.procesar_feedback_jugador()
-        self.actualizar_ataque()
-        self.actualizar_incensarios(dt)
-
-        # Partículas ambientales de bioma (fuegos fatuos, polvo de cripta, cenizas/brasas de osario)
-        intensificar_bioma = False
+    def _actualizar_particulas_bioma_juego(self, dt):
+        intensificar = False
         if getattr(self.nivel, "tema", "") == "osario" and self.jugador:
-            en_arena_jefe = (
+            en_arena = (
                 abs(self.jugador.rect.centerx - self.jefe.rect.centerx) <= 22 * TILE
-                if (OSARIO_VERTICAL and getattr(self, "nivel_indice", 0) == 2 and self.jefe is not None)
+                if (
+                    OSARIO_VERTICAL
+                    and getattr(self, "nivel_indice", 0) == 2
+                    and self.jefe is not None
+                )
                 else (self.jugador.rect.x >= 268 * TILE)
             )
-            if self.jefe is not None and (self.jefe.vida < JEFE_VIDA or en_arena_jefe):
-                intensificar_bioma = True
-        for p in getattr(self, "particulas_bioma", []):
-            p.actualizar(dt, intensificar=intensificar_bioma)
+            if self.jefe is not None and (self.jefe.vida < JEFE_VIDA or en_arena):
+                intensificar = True
+        for particula in getattr(self, "particulas_bioma", []):
+            particula.actualizar(dt, intensificar=intensificar)
 
-        if self.actualizar_jefe(dt):
+    def _resolver_meta_nivel(self):
+        if self.jefe is not None and self.jefe.vivo:
+            if self.aviso_jefe <= 0:
+                self.aviso_jefe = 2.2
+                self.audio.reproducir("ui")
             return
 
-        if self.jugador.rect.top > self.nivel.alto + 120:
-            self.perder_vida(ignorar_invulnerabilidad=True, causa="Caída al abismo de la cripta")
-            return
+        self.audio.reproducir("meta")
+        self.particulas.meta(self.nivel.meta.centerx, self.nivel.meta.centery)
+        if self.es_tutorial:
+            if getattr(self, "en_campaña", False):
+                self.almas_totales += self.jugador.almas
+                self.cargar_nivel(0, vidas=self.jugador.vidas)
+                self.hud.mostrar_mensaje(
+                    "¡UMBRAL SUPERADO! · Adentrándose en El Camposanto", 2, 4.0
+                )
+            else:
+                self.estado = "tutorial_completado"
+        elif self.sala_prueba:
+            self.estado = "sala_completada"
+        elif self.nivel_indice + 1 >= len(NIVELES):
+            self.almas_totales += self.jugador.almas
+            self.estado = "victoria"
+            self.audio.reproducir_musica("victoria", bucle=False, fade_ms=500)
+        else:
+            self.estado = "nivel_completado"
 
-        if self.actualizar_peligros():
-            return
-
+    def _actualizar_objetos_y_progreso(self, dt):
         self.actualizar_enemigos(dt)
         self.actualizar_minijefes(dt)
         self.actualizar_almas()
@@ -476,33 +485,49 @@ class Juego(
         self._actualizar_duda_salto_de_fe(dt)
         if self.es_tutorial:
             self.actualizar_tutorial_contextual()
+
+    def actualizar(self, dt):
+        """Actualiza la escena actual o delega la simulacion del nivel."""
+        self._descontar_temporizadores_globales(dt)
+        if self.estado in ("titulo", "menu", "seleccion_nivel", "creditos"):
+            self.tiempo_titulo += dt
+            self.tiempo_menu += dt
+            return
+        if self.mostrar_ayuda > 0:
+            self.mostrar_ayuda = max(0.0, self.mostrar_ayuda - dt)
+        if self.estado != "jugando":
+            self.particulas.actualizar(dt)
+            for particula in getattr(self, "particulas_bioma", []):
+                particula.actualizar(dt)
+            self.camara.actualizar_sacudida(dt)
+            return
+
+        self._actualizar_latido_y_combos(dt)
+        self.actualizar_plataformas(dt)
+        self.actualizar_losas(dt)
+        teclas = pygame.key.get_pressed()
+        self.jugador.actualizar(dt, teclas, self.nivel.solidos_actuales())
+        self.limitar_jugador()
+        self.procesar_feedback_jugador()
+        self.actualizar_ataque()
+        self.actualizar_incensarios(dt)
+        self._actualizar_particulas_bioma_juego(dt)
+
+        if self.actualizar_jefe(dt):
+            return
+        if self.jugador.rect.top > self.nivel.alto + 120:
+            self.perder_vida(
+                ignorar_invulnerabilidad=True, causa="Caída al abismo de la cripta"
+            )
+            return
+        if self.actualizar_peligros():
+            return
+
+        self._actualizar_objetos_y_progreso(dt)
         self.particulas.actualizar(dt)
         self.camara.actualizar(self.jugador, self.nivel, dt)
-
         if self.jugador.rect.colliderect(self.nivel.meta):
-            if self.jefe is not None and self.jefe.vivo:
-                if self.aviso_jefe <= 0:
-                    self.aviso_jefe = 2.2
-                    self.audio.reproducir("ui")
-                return
-
-            self.audio.reproducir("meta")
-            self.particulas.meta(self.nivel.meta.centerx, self.nivel.meta.centery)
-            if self.es_tutorial:
-                if getattr(self, "en_campaña", False):
-                    self.almas_totales += self.jugador.almas
-                    self.cargar_nivel(0, vidas=self.jugador.vidas)
-                    self.hud.mostrar_mensaje("¡UMBRAL SUPERADO! · Adentrándose en El Camposanto", 2, 4.0)
-                else:
-                    self.estado = "tutorial_completado"
-            elif self.sala_prueba:
-                self.estado = "sala_completada"
-            elif self.nivel_indice + 1 >= len(NIVELES):
-                self.almas_totales += self.jugador.almas
-                self.estado = "victoria"
-                self.audio.reproducir_musica("victoria", bucle=False, fade_ms=500)
-            else:
-                self.estado = "nivel_completado"
+            self._resolver_meta_nivel()
 
     def dibujar(self):
         pantallas_menu = {
