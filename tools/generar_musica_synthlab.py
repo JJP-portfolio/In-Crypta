@@ -213,6 +213,76 @@ class PistaEstereo:
         return (np.clip(est, -1.0, 1.0) * 32767.0).astype(np.int16)
 
 
+def _mezclar_armonia(
+    pista: PistaEstereo,
+    acordes: list[list[int]],
+    tiempo_paso,
+    pasos_por_acorde: int,
+    corchea16: float,
+    campana_en_1: bool,
+    arp_clavecin: bool,
+) -> None:
+    for i_ac, voces in enumerate(acordes):
+        t_ac = tiempo_paso(i_ac * pasos_por_acorde)
+        dur_ac = pasos_por_acorde * corchea16 * 0.96
+        for idx_v, m_nota in enumerate(voces):
+            pan_v = -0.35 + 0.70 * (idx_v / max(1, len(voces) - 1))
+            muestra = inst_organo_barroco(midi_a_hz(m_nota), dur_ac, 0.52)
+            pista.mezclar(t_ac, muestra, pan=pan_v)
+        if campana_en_1 and i_ac % 2 == 0:
+            camp = inst_campana_osario(midi_a_hz(voces[0] + 12), 1.4, 0.48)
+            pista.mezclar(t_ac, camp, pan=0.12)
+        if not arp_clavecin:
+            continue
+        patron_arp = (0, 2, 1, 3 % len(voces), 2, 1, 3 % len(voces), 0)
+        for s in range(0, pasos_por_acorde, 2):
+            octava = 12 if (s % 4 == 2) else 0
+            nota_arp = voces[patron_arp[(s // 2) % len(patron_arp)]] + octava
+            pan_arp = -0.22 if (s % 4 == 0) else 0.26
+            arp = inst_clavecin_moderno(midi_a_hz(nota_arp), corchea16 * 2.4, 0.62)
+            pista.mezclar(tiempo_paso(i_ac * pasos_por_acorde + s), arp, pan=pan_arp)
+
+
+def _mezclar_ritmo_y_bajo(
+    pista: PistaEstereo,
+    pasos_totales: int,
+    acordes: list[list[int]],
+    pasos_por_acorde: int,
+    bajo_patron: list[int],
+    ritmos: tuple[str, str, str],
+    bateria: tuple[np.ndarray, ...],
+    tiempo_paso,
+    corchea16: float,
+    overdrive_bajo: float,
+) -> None:
+    ritmo_kick, ritmo_snare, ritmo_hat = ritmos
+    bombo, caja, caja_ghost, hat_c, hat_a = bateria
+    for p in range(pasos_totales):
+        t_p = tiempo_paso(p)
+        ch_k = ritmo_kick[p % len(ritmo_kick)]
+        ch_s = ritmo_snare[p % len(ritmo_snare)]
+        ch_h = ritmo_hat[p % len(ritmo_hat)]
+        if ch_k == "x":
+            pista.mezclar(t_p, bombo, pan=0.0)
+        if ch_s == "X":
+            pista.mezclar(t_p, caja, pan=0.05)
+        elif ch_s == "g":
+            pista.mezclar(t_p, caja_ghost, pan=-0.08)
+        if ch_h == "x":
+            pista.mezclar(t_p, hat_c, pan=0.28)
+        elif ch_h == "o":
+            pista.mezclar(t_p, hat_a, pan=0.32)
+
+        semi = bajo_patron[p % len(bajo_patron)]
+        if semi is not None:
+            ac_actual = acordes[(p // pasos_por_acorde) % len(acordes)]
+            nota_bajo = ac_actual[0] - 12 + semi
+            muestra_bajo = inst_bajo_rock_rnb(
+                midi_a_hz(nota_bajo), corchea16 * 1.85, 0.88, overdrive=overdrive_bajo
+            )
+            pista.mezclar(t_p, muestra_bajo, pan=-0.04)
+
+
 def secuenciar_tema(
     nombre: str,
     bpm: float,
@@ -235,71 +305,38 @@ def secuenciar_tema(
     dur_total = pasos_totales * corchea16
     pista = PistaEstereo(dur_total, en_bucle=en_bucle)
     rng = np.random.default_rng(abs(hash(nombre)) % (2**31))
-
-    bombo = percusion_bombo(0.95)
-    caja = percusion_caja(0.88, rng)
-    caja_ghost = percusion_caja(0.34, rng)
-    hat_c = percusion_charleston(False, 0.52, rng)
-    hat_a = percusion_charleston(True, 0.45, rng)
+    bateria = (
+        percusion_bombo(0.95),
+        percusion_caja(0.88, rng),
+        percusion_caja(0.34, rng),
+        percusion_charleston(False, 0.52, rng),
+        percusion_charleston(True, 0.45, rng),
+    )
 
     def tiempo_paso(p: int) -> float:
         offset = (swing - 0.5) * 2.0 * corchea16 if (p % 2 == 1) else 0.0
         return max(0.0, (p * corchea16 + offset) % dur_total)
 
-    # 1. Armonía: colchón de órgano + arpegio barroco sincopado en clavecín
     pasos_por_acorde = max(8, pasos_totales // len(acordes))
-    for i_ac, voces in enumerate(acordes):
-        t_ac = tiempo_paso(i_ac * pasos_por_acorde)
-        dur_ac = pasos_por_acorde * corchea16 * 0.96
-        for idx_v, m_nota in enumerate(voces):
-            pan_v = -0.35 + 0.70 * (idx_v / max(1, len(voces) - 1))
-            pista.mezclar(t_ac, inst_organo_barroco(midi_a_hz(m_nota), dur_ac, 0.52), pan=pan_v)
-        if campana_en_1 and i_ac % 2 == 0:
-            pista.mezclar(t_ac, inst_campana_osario(midi_a_hz(voces[0] + 12), 1.4, 0.48), pan=0.12)
-        if arp_clavecin:
-            patron_arp = (0, 2, 1, 3 % len(voces), 2, 1, 3 % len(voces), 0)
-            for s in range(0, pasos_por_acorde, 2):
-                nota_arp = voces[patron_arp[(s // 2) % len(patron_arp)]] + (12 if (s % 4 == 2) else 0)
-                t_arp = tiempo_paso(i_ac * pasos_por_acorde + s)
-                pan_arp = -0.22 if (s % 4 == 0) else 0.26
-                pista.mezclar(t_arp, inst_clavecin_moderno(midi_a_hz(nota_arp), corchea16 * 2.4, 0.62), pan=pan_arp)
-
-    # 2. Ritmo: batería Rock/R&B + línea de bajo sincopada
-    for p in range(pasos_totales):
-        t_p = tiempo_paso(p)
-        ch_k = ritmo_kick[p % len(ritmo_kick)]
-        ch_s = ritmo_snare[p % len(ritmo_snare)]
-        ch_h = ritmo_hat[p % len(ritmo_hat)]
-        if ch_k == "x":
-            pista.mezclar(t_p, bombo, pan=0.0)
-        if ch_s == "X":
-            pista.mezclar(t_p, caja, pan=0.05)
-        elif ch_s == "g":
-            pista.mezclar(t_p, caja_ghost, pan=-0.08)
-        if ch_h == "x":
-            pista.mezclar(t_p, hat_c, pan=0.28)
-        elif ch_h == "o":
-            pista.mezclar(t_p, hat_a, pan=0.32)
-
-        paso_local = p % len(bajo_patron)
-        semi = bajo_patron[paso_local]
-        if semi is not None:
-            ac_actual = acordes[(p // pasos_por_acorde) % len(acordes)]
-            nota_bajo = ac_actual[0] - 12 + semi
-            pista.mezclar(
-                t_p,
-                inst_bajo_rock_rnb(midi_a_hz(nota_bajo), corchea16 * 1.85, 0.88, overdrive=overdrive_bajo),
-                pan=-0.04,
-            )
-
-    # 3. Melodía principal con fraseo barroco-moderno
+    _mezclar_armonia(
+        pista, acordes, tiempo_paso, pasos_por_acorde, corchea16, campana_en_1, arp_clavecin
+    )
+    _mezclar_ritmo_y_bajo(
+        pista,
+        pasos_totales,
+        acordes,
+        pasos_por_acorde,
+        bajo_patron,
+        (ritmo_kick, ritmo_snare, ritmo_hat),
+        bateria,
+        tiempo_paso,
+        corchea16,
+        overdrive_bajo,
+    )
     for paso_ini, nota_m, dur_pasos in melodia_pasos:
         if 0 <= paso_ini < pasos_totales:
-            pista.mezclar(
-                tiempo_paso(paso_ini),
-                inst_lead_expresivo(midi_a_hz(nota_m), dur_pasos * corchea16, 0.86),
-                pan=-0.08,
-            )
+            lead = inst_lead_expresivo(midi_a_hz(nota_m), dur_pasos * corchea16, 0.86)
+            pista.mezclar(tiempo_paso(paso_ini), lead, pan=-0.08)
 
     audio_i16 = pista.aplicar_espacio_y_master(retardo_s=corchea16 * 3.0, feedback_echo=0.22)
     return _exportar_ogg(audio_i16, DIR_MUSICA / f"{nombre}.ogg")
@@ -326,266 +363,255 @@ def _exportar_ogg(audio_i16: np.ndarray, destino: Path) -> Path:
     return destino
 
 
+#---- Tabla declarativa de especificaciones musicales ----#
+_BAJO_RNB = [0, None, None, 0, None, None, 7, None, 12, None, 10, None, 7, None, 5, None]
+_BAJO_ROCK = [0, None, 0, None, 0, None, 7, 10, 12, None, 0, None, 7, None, 10, 7]
+_BAJO_FURIA = [0, 0, None, 0, 12, None, 0, 10, 0, 0, None, 0, 7, None, 10, 11]
+
+_KICK_RNB, _SNARE_RNB, _HAT_RNB = "x..x..x...x.....", "....X..g.g..X..g", "x.x.x.o.x.x.x.o."
+_KICK_ROCK, _SNARE_ROCK, _HAT_ROCK = "x...x.x.x..x..x.", "....X.......X..g", "x.x.x.x.x.o.x.x."
+_KICK_JEFE, _SNARE_JEFE, _HAT_JEFE = "x.x...x.x.x...x.", "....X..g....X.g.", "xxxxxxxxxxxxxxxx"
+
+ESPECIFICACIONES_PISTAS = (
+    dict(
+        nombre="titulo", bpm=94, compases=8, swing=0.56, campana_en_1=True,
+        acordes=[
+            [50, 53, 57, 60, 64],
+            [48, 52, 55, 59, 62],
+            [46, 50, 53, 57, 60],
+            [45, 49, 52, 55, 61],
+        ],
+        bajo_patron=_BAJO_RNB,
+        ritmo_kick=_KICK_RNB, ritmo_snare=_SNARE_RNB, ritmo_hat=_HAT_RNB,
+        melodia_pasos=[
+            (0, 69, 4), (4, 72, 2), (6, 74, 4), (10, 72, 2), (12, 69, 4),
+            (16, 67, 4), (20, 71, 4), (24, 72, 6), (30, 69, 2),
+            (34, 74, 4), (38, 77, 4), (42, 76, 4), (48, 74, 4),
+            (52, 73, 4), (56, 69, 6), (62, 64, 2),
+            (64, 69, 4), (68, 72, 4), (72, 76, 4), (76, 74, 4),
+            (82, 72, 4), (86, 71, 4), (92, 69, 4),
+            (96, 70, 4), (102, 69, 4), (108, 67, 4), (112, 69, 6), (120, 64, 6),
+        ],
+    ),
+    dict(
+        nombre="camposanto", bpm=114, compases=8, swing=0.52,
+        acordes=[
+            [52, 55, 59, 62, 66],
+            [48, 52, 55, 59, 62],
+            [45, 48, 52, 55, 59],
+            [47, 51, 54, 57, 60],
+        ],
+        bajo_patron=_BAJO_ROCK,
+        ritmo_kick=_KICK_ROCK, ritmo_snare=_SNARE_ROCK, ritmo_hat=_HAT_ROCK,
+        melodia_pasos=[
+            (0, 64, 3), (3, 67, 3), (6, 71, 4), (10, 69, 3), (13, 67, 3),
+            (16, 67, 4), (20, 71, 4), (24, 72, 4), (28, 71, 4),
+            (32, 69, 4), (36, 67, 3), (39, 66, 3), (42, 64, 4), (46, 66, 2),
+            (48, 67, 4), (52, 66, 4), (56, 63, 4), (60, 59, 4),
+            (64, 76, 3), (67, 74, 3), (70, 71, 4), (74, 74, 3), (77, 72, 3),
+            (80, 71, 4), (84, 72, 4), (88, 74, 4), (92, 76, 4),
+            (96, 72, 4), (100, 71, 4), (104, 69, 4), (108, 67, 4),
+            (112, 66, 4), (116, 67, 3), (119, 69, 3), (122, 71, 6),
+        ],
+    ),
+    dict(
+        nombre="cripta", bpm=100, compases=8, swing=0.55, campana_en_1=True,
+        acordes=[
+            [54, 57, 61, 64, 68],
+            [55, 59, 62, 66, 69],
+            [52, 55, 59, 62, 66],
+            [49, 53, 56, 59, 62],
+        ],
+        bajo_patron=_BAJO_RNB,
+        ritmo_kick=_KICK_RNB, ritmo_snare=_SNARE_RNB, ritmo_hat=_HAT_RNB,
+        melodia_pasos=[
+            (2, 73, 4), (6, 74, 2), (8, 73, 4), (12, 71, 4),
+            (16, 71, 4), (20, 74, 4), (24, 78, 4), (28, 74, 4),
+            (34, 71, 4), (38, 73, 2), (40, 71, 4), (44, 69, 4),
+            (48, 68, 4), (52, 69, 4), (56, 73, 4), (60, 68, 4),
+            (64, 78, 4), (68, 79, 2), (70, 78, 4), (74, 74, 6),
+            (82, 79, 4), (86, 78, 4), (90, 74, 6),
+            (96, 76, 4), (100, 74, 4), (104, 73, 4), (108, 71, 4),
+            (112, 73, 4), (116, 71, 2), (118, 69, 4), (122, 68, 6),
+        ],
+    ),
+    dict(
+        nombre="osario", bpm=128, compases=8, swing=0.50, campana_en_1=True, overdrive_bajo=1.45,
+        acordes=[
+            [48, 51, 55, 58, 62],
+            [46, 50, 53, 56, 60],
+            [44, 48, 51, 55, 58],
+            [43, 47, 50, 53, 56],
+        ],
+        bajo_patron=_BAJO_ROCK,
+        ritmo_kick=_KICK_ROCK, ritmo_snare=_SNARE_ROCK, ritmo_hat=_HAT_ROCK,
+        melodia_pasos=[
+            (0, 72, 2), (2, 75, 2), (4, 74, 2), (6, 72, 2), (8, 79, 4), (12, 75, 4),
+            (16, 74, 3), (19, 77, 3), (22, 75, 4), (26, 74, 6),
+            (32, 72, 2), (34, 74, 2), (36, 75, 4), (40, 79, 4), (44, 80, 4),
+            (48, 79, 4), (52, 77, 4), (56, 75, 4), (60, 74, 4),
+            (64, 72, 2), (66, 75, 2), (68, 79, 4), (72, 83, 4), (76, 80, 4),
+            (80, 79, 4), (84, 77, 4), (88, 74, 4), (92, 75, 4),
+            (96, 80, 4), (100, 79, 4), (104, 75, 4), (108, 74, 4),
+            (112, 72, 4), (116, 74, 2), (118, 75, 2), (120, 74, 4), (124, 71, 4),
+        ],
+    ),
+    dict(
+        nombre="carcelero",
+        bpm=138, compases=8, swing=0.50, campana_en_1=True, overdrive_bajo=1.70,
+        acordes=[
+            [47, 50, 54, 57, 61],
+            [48, 52, 55, 59, 62],
+            [45, 48, 52, 55, 59],
+            [42, 46, 49, 52, 55],
+        ],
+        bajo_patron=_BAJO_FURIA,
+        ritmo_kick=_KICK_JEFE, ritmo_snare=_SNARE_JEFE, ritmo_hat=_HAT_ROCK,
+        melodia_pasos=[
+            (0, 71, 2), (2, 74, 2), (4, 78, 4), (8, 76, 4), (12, 74, 4),
+            (16, 72, 4), (20, 76, 4), (24, 79, 4), (28, 76, 4),
+            (32, 74, 4), (36, 72, 4), (40, 71, 4), (44, 69, 4),
+            (48, 70, 4), (52, 73, 4), (56, 78, 4), (60, 76, 4),
+            (64, 71, 2), (66, 78, 2), (68, 83, 4), (72, 81, 4), (76, 78, 4),
+            (80, 79, 4), (84, 76, 4), (88, 74, 4), (92, 72, 4),
+            (96, 74, 3), (99, 76, 3), (102, 78, 4), (106, 74, 6),
+            (112, 73, 4), (116, 76, 4), (120, 78, 4), (124, 70, 4),
+        ],
+    ),
+    dict(
+        nombre="custodio_f1",
+        bpm=134, compases=8, swing=0.50, campana_en_1=True, overdrive_bajo=1.55,
+        acordes=[
+            [45, 48, 52, 55, 59],
+            [43, 48, 52, 55, 59],
+            [41, 45, 48, 52, 57],
+            [40, 44, 47, 50, 56],
+        ],
+        bajo_patron=_BAJO_ROCK,
+        ritmo_kick=_KICK_JEFE, ritmo_snare=_SNARE_JEFE, ritmo_hat=_HAT_JEFE,
+        melodia_pasos=[
+            (0, 69, 4), (4, 72, 2), (6, 76, 4), (10, 74, 2), (12, 72, 4),
+            (16, 71, 4), (20, 74, 4), (24, 79, 4), (28, 76, 4),
+            (32, 77, 4), (36, 76, 2), (38, 74, 2), (40, 72, 4), (44, 69, 4),
+            (48, 68, 4), (52, 71, 4), (56, 76, 4), (60, 74, 4),
+            (64, 81, 4), (68, 79, 2), (70, 77, 2), (72, 76, 4), (76, 72, 4),
+            (80, 74, 4), (84, 76, 4), (88, 79, 4), (92, 76, 4),
+            (96, 77, 4), (100, 76, 4), (104, 74, 4), (108, 72, 4),
+            (112, 71, 4), (116, 74, 4), (120, 76, 4), (124, 68, 4),
+        ],
+    ),
+    dict(
+        nombre="custodio_f2",
+        bpm=146, compases=8, swing=0.50, campana_en_1=True, overdrive_bajo=1.80,
+        acordes=[
+            [45, 48, 52, 56, 59],
+            [46, 50, 53, 57, 60],
+            [42, 45, 48, 51, 57],
+            [40, 44, 47, 50, 56],
+        ],
+        bajo_patron=_BAJO_FURIA,
+        ritmo_kick=_KICK_JEFE, ritmo_snare=_SNARE_JEFE, ritmo_hat=_HAT_JEFE,
+        melodia_pasos=[
+            (0, 81, 2), (2, 83, 2), (4, 84, 2), (6, 83, 2), (8, 81, 4), (12, 76, 4),
+            (16, 77, 2), (18, 81, 2), (20, 82, 4), (24, 81, 4), (28, 77, 4),
+            (32, 75, 4), (36, 78, 4), (40, 81, 4), (44, 78, 4),
+            (48, 76, 4), (52, 80, 4), (56, 83, 4), (60, 80, 4),
+            (64, 81, 2), (66, 76, 2), (68, 84, 4), (72, 83, 4), (76, 81, 4),
+            (80, 82, 4), (84, 81, 4), (88, 77, 4), (92, 74, 4),
+            (96, 75, 2), (98, 78, 2), (100, 81, 4), (104, 84, 4), (108, 81, 4),
+            (112, 83, 4), (116, 80, 4), (120, 76, 4), (124, 74, 4),
+        ],
+    ),
+    dict(
+        nombre="custodio_f3",
+        bpm=154, compases=8, swing=0.50, campana_en_1=True, overdrive_bajo=1.95,
+        acordes=[
+            [50, 53, 57, 61, 64],
+            [49, 52, 55, 58, 64],
+            [46, 50, 53, 57, 60],
+            [45, 49, 52, 55, 58],
+        ],
+        bajo_patron=_BAJO_FURIA,
+        ritmo_kick="x.x.x.x.x.x.x.x.",
+        ritmo_snare="....X..g....X.XX",
+        ritmo_hat=_HAT_JEFE,
+        melodia_pasos=[
+            (0, 74, 2), (2, 77, 2), (4, 81, 2), (6, 86, 4), (10, 85, 2), (12, 81, 4),
+            (16, 79, 2), (18, 82, 2), (20, 85, 4), (24, 82, 4), (28, 79, 4),
+            (32, 77, 4), (36, 81, 4), (40, 82, 4), (44, 86, 4),
+            (48, 85, 4), (52, 81, 4), (56, 79, 4), (60, 76, 4),
+            (64, 86, 2), (66, 85, 2), (68, 86, 4), (72, 89, 4), (76, 86, 4),
+            (80, 85, 4), (84, 82, 4), (88, 79, 4), (92, 76, 4),
+            (96, 77, 2), (98, 79, 2), (100, 81, 4), (104, 82, 4), (108, 84, 4),
+            (112, 85, 4), (116, 81, 4), (120, 76, 4), (124, 73, 4),
+        ],
+    ),
+    dict(
+        nombre="creditos", bpm=92, compases=8, swing=0.56, campana_en_1=True,
+        acordes=[
+            [43, 46, 50, 53, 57],
+            [51, 55, 58, 62, 65],
+            [48, 51, 55, 58, 62],
+            [50, 54, 57, 60, 66],
+        ],
+        bajo_patron=_BAJO_RNB,
+        ritmo_kick=_KICK_RNB, ritmo_snare=_SNARE_RNB, ritmo_hat=_HAT_RNB,
+        melodia_pasos=[
+            (0, 67, 4), (4, 70, 4), (8, 74, 4), (12, 72, 4),
+            (16, 70, 4), (20, 74, 4), (24, 75, 6), (30, 74, 2),
+            (32, 72, 4), (36, 74, 4), (40, 75, 4), (44, 79, 4),
+            (48, 78, 4), (52, 75, 4), (56, 74, 6), (62, 70, 2),
+            (64, 74, 4), (68, 77, 4), (72, 79, 4), (76, 74, 4),
+            (80, 75, 4), (84, 74, 4), (88, 72, 6), (94, 70, 2),
+            (96, 68, 4), (100, 70, 4), (104, 72, 4), (108, 74, 4),
+            (112, 75, 4), (116, 74, 4), (120, 71, 8),
+        ],
+    ),
+    dict(
+        nombre="victoria", bpm=112, compases=4, swing=0.50, en_bucle=False, campana_en_1=True,
+        acordes=[
+            [50, 54, 57, 61, 64],
+            [47, 50, 54, 57, 61],
+            [43, 47, 50, 54, 59],
+            [50, 54, 57, 61, 66],
+        ],
+        bajo_patron=_BAJO_ROCK,
+        ritmo_kick=_KICK_ROCK, ritmo_snare=_SNARE_ROCK, ritmo_hat=_HAT_ROCK,
+        melodia_pasos=[
+            (0, 69, 2), (2, 74, 4), (6, 78, 4), (10, 81, 6),
+            (16, 79, 4), (20, 78, 4), (24, 76, 4), (28, 74, 4),
+            (32, 71, 4), (36, 74, 4), (40, 78, 4), (44, 81, 4),
+            (48, 86, 12),
+        ],
+    ),
+    dict(
+        nombre="derrota", bpm=82, compases=4, swing=0.52, en_bucle=False, campana_en_1=True,
+        acordes=[
+            [50, 53, 57, 60],
+            [46, 50, 53, 57],
+            [43, 46, 50, 53],
+            [45, 49, 52, 57],
+        ],
+        bajo_patron=[
+            0, None, None, None, None, None, None, None,
+            7, None, None, None, 0, None, None, None,
+        ],
+        ritmo_kick="x.......x.......",
+        ritmo_snare="........g.......",
+        ritmo_hat="x...x...x...x...",
+        melodia_pasos=[
+            (0, 74, 6), (6, 72, 4), (10, 69, 6),
+            (16, 70, 6), (22, 69, 4), (26, 67, 6),
+            (32, 69, 6), (38, 67, 4), (42, 65, 6),
+            (48, 64, 14),
+        ],
+    ),
+)
+
+
 def generar_todas_las_pistas():
     """Genera toda la banda sonora adaptada de IN CRYPTA."""
-    # Dóricos/menores con extensiones R&B (m9, maj7, sus4) + lamento barroco
-    bajo_rnb = [0, None, None, 0, None, None, 7, None, 12, None, 10, None, 7, None, 5, None]
-    bajo_rock = [0, None, 0, None, 0, None, 7, 10, 12, None, 0, None, 7, None, 10, 7]
-    bajo_furia = [0, 0, None, 0, 12, None, 0, 10, 0, 0, None, 0, 7, None, 10, 11]
-
-    kick_rnb = "x..x..x...x....."
-    snare_rnb = "....X..g.g..X..g"
-    hat_rnb = "x.x.x.o.x.x.x.o."
-
-    kick_rock = "x...x.x.x..x..x."
-    snare_rock = "....X.......X..g"
-    hat_rock = "x.x.x.x.x.o.x.x."
-
-    kick_jefe = "x.x...x.x.x...x."
-    snare_jefe = "....X..g....X.g."
-    hat_jefe = "xxxxxxxxxxxxxxxx"
-
-    especificaciones = [
-        # 1. Título — Neo-Baroque R&B atmosférico (Dm9)
-        dict(
-            nombre="titulo", bpm=94, compases=8, swing=0.56, campana_en_1=True,
-            acordes=[
-                [50, 53, 57, 60, 64],  # Dm9
-                [48, 52, 55, 59, 62],  # Cmaj9
-                [46, 50, 53, 57, 60],  # Bbmaj9
-                [45, 49, 52, 55, 61],  # A7alt
-            ],
-            bajo_patron=bajo_rnb,
-            ritmo_kick=kick_rnb, ritmo_snare=snare_rnb, ritmo_hat=hat_rnb,
-            melodia_pasos=[
-                (0, 69, 4), (4, 72, 2), (6, 74, 4), (10, 72, 2), (12, 69, 4),
-                (16, 67, 4), (20, 71, 4), (24, 72, 6), (30, 69, 2),
-                (34, 74, 4), (38, 77, 4), (42, 76, 4), (48, 74, 4),
-                (52, 73, 4), (56, 69, 6), (62, 64, 2),
-                (64, 69, 4), (68, 72, 4), (72, 76, 4), (76, 74, 4),
-                (82, 72, 4), (86, 71, 4), (92, 69, 4),
-                (96, 70, 4), (102, 69, 4), (108, 67, 4), (112, 69, 6), (120, 64, 6),
-            ],
-        ),
-        # 2. Camposanto — Groove Indie-Rock gótico (E dórico/menor)
-        dict(
-            nombre="camposanto", bpm=114, compases=8, swing=0.52,
-            acordes=[
-                [52, 55, 59, 62, 66],  # Em9
-                [48, 52, 55, 59, 62],  # Cmaj9
-                [45, 48, 52, 55, 59],  # Am9
-                [47, 51, 54, 57, 60],  # B7b9
-            ],
-            bajo_patron=bajo_rock,
-            ritmo_kick=kick_rock, ritmo_snare=snare_rock, ritmo_hat=hat_rock,
-            melodia_pasos=[
-                (0, 64, 3), (3, 67, 3), (6, 71, 4), (10, 69, 3), (13, 67, 3),
-                (16, 67, 4), (20, 71, 4), (24, 72, 4), (28, 71, 4),
-                (32, 69, 4), (36, 67, 3), (39, 66, 3), (42, 64, 4), (46, 66, 2),
-                (48, 67, 4), (52, 66, 4), (56, 63, 4), (60, 59, 4),
-                (64, 76, 3), (67, 74, 3), (70, 71, 4), (74, 74, 3), (77, 72, 3),
-                (80, 71, 4), (84, 72, 4), (88, 74, 4), (92, 76, 4),
-                (96, 72, 4), (100, 71, 4), (104, 69, 4), (108, 67, 4),
-                (112, 66, 4), (116, 67, 3), (119, 69, 3), (122, 71, 6),
-            ],
-        ),
-        # 3. Cripta — Neo-Soul oscuro con contrapunto (F# menor/frigio)
-        dict(
-            nombre="cripta", bpm=100, compases=8, swing=0.55, campana_en_1=True,
-            acordes=[
-                [54, 57, 61, 64, 68],  # F#m9
-                [55, 59, 62, 66, 69],  # Gmaj9 (frigio bII)
-                [52, 55, 59, 62, 66],  # Em9
-                [49, 53, 56, 59, 62],  # C#7b9
-            ],
-            bajo_patron=bajo_rnb,
-            ritmo_kick=kick_rnb, ritmo_snare=snare_rnb, ritmo_hat=hat_rnb,
-            melodia_pasos=[
-                (2, 73, 4), (6, 74, 2), (8, 73, 4), (12, 71, 4),
-                (16, 71, 4), (20, 74, 4), (24, 78, 4), (28, 74, 4),
-                (34, 71, 4), (38, 73, 2), (40, 71, 4), (44, 69, 4),
-                (48, 68, 4), (52, 69, 4), (56, 73, 4), (60, 68, 4),
-                (64, 78, 4), (68, 79, 2), (70, 78, 4), (74, 74, 6),
-                (82, 79, 4), (86, 78, 4), (90, 74, 6),
-                (96, 76, 4), (100, 74, 4), (104, 73, 4), (108, 71, 4),
-                (112, 73, 4), (116, 71, 2), (118, 69, 4), (122, 68, 6),
-            ],
-        ),
-        # 4. Osario — Rock Progresivo Barroco en Cm armónico
-        dict(
-            nombre="osario", bpm=128, compases=8, swing=0.50, campana_en_1=True, overdrive_bajo=1.45,
-            acordes=[
-                [48, 51, 55, 58, 62],  # Cm9
-                [46, 50, 53, 56, 60],  # Bb9/13
-                [44, 48, 51, 55, 58],  # Abmaj9
-                [43, 47, 50, 53, 56],  # G7b9
-            ],
-            bajo_patron=bajo_rock,
-            ritmo_kick=kick_rock, ritmo_snare=snare_rock, ritmo_hat=hat_rock,
-            melodia_pasos=[
-                (0, 72, 2), (2, 75, 2), (4, 74, 2), (6, 72, 2), (8, 79, 4), (12, 75, 4),
-                (16, 74, 3), (19, 77, 3), (22, 75, 4), (26, 74, 6),
-                (32, 72, 2), (34, 74, 2), (36, 75, 4), (40, 79, 4), (44, 80, 4),
-                (48, 79, 4), (52, 77, 4), (56, 75, 4), (60, 74, 4),
-                (64, 72, 2), (66, 75, 2), (68, 79, 4), (72, 83, 4), (76, 80, 4),
-                (80, 79, 4), (84, 77, 4), (88, 74, 4), (92, 75, 4),
-                (96, 80, 4), (100, 79, 4), (104, 75, 4), (108, 74, 4),
-                (112, 72, 4), (116, 74, 2), (118, 75, 2), (120, 74, 4), (124, 71, 4),
-            ],
-        ),
-        # 5. El Carcelero (Mini-Boss) — Stomp Rock pesado (Bm)
-        dict(
-            nombre="carcelero", bpm=138, compases=8, swing=0.50, campana_en_1=True, overdrive_bajo=1.70,
-            acordes=[
-                [47, 50, 54, 57, 61],  # Bm9
-                [48, 52, 55, 59, 62],  # Cmaj9 (tensión frigia)
-                [45, 48, 52, 55, 59],  # Am9
-                [42, 46, 49, 52, 55],  # F#7b9
-            ],
-            bajo_patron=bajo_furia,
-            ritmo_kick=kick_jefe, ritmo_snare=snare_jefe, ritmo_hat=hat_rock,
-            melodia_pasos=[
-                (0, 71, 2), (2, 74, 2), (4, 78, 4), (8, 76, 4), (12, 74, 4),
-                (16, 72, 4), (20, 76, 4), (24, 79, 4), (28, 76, 4),
-                (32, 74, 4), (36, 72, 4), (40, 71, 4), (44, 69, 4),
-                (48, 70, 4), (52, 73, 4), (56, 78, 4), (60, 76, 4),
-                (64, 71, 2), (66, 78, 2), (68, 83, 4), (72, 81, 4), (76, 78, 4),
-                (80, 79, 4), (84, 76, 4), (88, 74, 4), (92, 72, 4),
-                (96, 74, 3), (99, 76, 3), (102, 78, 4), (106, 74, 6),
-                (112, 73, 4), (116, 76, 4), (120, 78, 4), (124, 70, 4),
-            ],
-        ),
-        # 6. Custodio Fase I — Rock Sinfónico Barroco (Am lamento)
-        dict(
-            nombre="custodio_f1", bpm=134, compases=8, swing=0.50, campana_en_1=True, overdrive_bajo=1.55,
-            acordes=[
-                [45, 48, 52, 55, 59],  # Am9
-                [43, 48, 52, 55, 59],  # Am7/G
-                [41, 45, 48, 52, 57],  # Fmaj7
-                [40, 44, 47, 50, 56],  # E7
-            ],
-            bajo_patron=bajo_rock,
-            ritmo_kick=kick_jefe, ritmo_snare=snare_jefe, ritmo_hat=hat_jefe,
-            melodia_pasos=[
-                (0, 69, 4), (4, 72, 2), (6, 76, 4), (10, 74, 2), (12, 72, 4),
-                (16, 71, 4), (20, 74, 4), (24, 79, 4), (28, 76, 4),
-                (32, 77, 4), (36, 76, 2), (38, 74, 2), (40, 72, 4), (44, 69, 4),
-                (48, 68, 4), (52, 71, 4), (56, 76, 4), (60, 74, 4),
-                (64, 81, 4), (68, 79, 2), (70, 77, 2), (72, 76, 4), (76, 72, 4),
-                (80, 74, 4), (84, 76, 4), (88, 79, 4), (92, 76, 4),
-                (96, 77, 4), (100, 76, 4), (104, 74, 4), (108, 72, 4),
-                (112, 71, 4), (116, 74, 4), (120, 76, 4), (124, 68, 4),
-            ],
-        ),
-        # 7. Custodio Fase II — Escalada intensa con Guadaña
-        dict(
-            nombre="custodio_f2", bpm=146, compases=8, swing=0.50, campana_en_1=True, overdrive_bajo=1.80,
-            acordes=[
-                [45, 48, 52, 56, 59],  # Am(maj7)/9
-                [46, 50, 53, 57, 60],  # Bbmaj7
-                [42, 45, 48, 51, 57],  # F#dim7
-                [40, 44, 47, 50, 56],  # E7alt
-            ],
-            bajo_patron=bajo_furia,
-            ritmo_kick=kick_jefe, ritmo_snare=snare_jefe, ritmo_hat=hat_jefe,
-            melodia_pasos=[
-                (0, 81, 2), (2, 83, 2), (4, 84, 2), (6, 83, 2), (8, 81, 4), (12, 76, 4),
-                (16, 77, 2), (18, 81, 2), (20, 82, 4), (24, 81, 4), (28, 77, 4),
-                (32, 75, 4), (36, 78, 4), (40, 81, 4), (44, 78, 4),
-                (48, 76, 4), (52, 80, 4), (56, 83, 4), (60, 80, 4),
-                (64, 81, 2), (66, 76, 2), (68, 84, 4), (72, 83, 4), (76, 81, 4),
-                (80, 82, 4), (84, 81, 4), (88, 77, 4), (92, 74, 4),
-                (96, 75, 2), (98, 78, 2), (100, 81, 4), (104, 84, 4), (108, 81, 4),
-                (112, 83, 4), (116, 80, 4), (120, 76, 4), (124, 74, 4),
-            ],
-        ),
-        # 8. Custodio Fase III — Furia del Sepulcro (SMB3 Boss Drop en Dm)
-        dict(
-            nombre="custodio_f3", bpm=154, compases=8, swing=0.50, campana_en_1=True, overdrive_bajo=1.95,
-            acordes=[
-                [50, 53, 57, 61, 64],  # Dm(maj9)
-                [49, 52, 55, 58, 64],  # C#dim7
-                [46, 50, 53, 57, 60],  # Bbmaj7
-                [45, 49, 52, 55, 58],  # A7b9
-            ],
-            bajo_patron=bajo_furia,
-            ritmo_kick="x.x.x.x.x.x.x.x.",
-            ritmo_snare="....X..g....X.XX",
-            ritmo_hat=hat_jefe,
-            melodia_pasos=[
-                (0, 74, 2), (2, 77, 2), (4, 81, 2), (6, 86, 4), (10, 85, 2), (12, 81, 4),
-                (16, 79, 2), (18, 82, 2), (20, 85, 4), (24, 82, 4), (28, 79, 4),
-                (32, 77, 4), (36, 81, 4), (40, 82, 4), (44, 86, 4),
-                (48, 85, 4), (52, 81, 4), (56, 79, 4), (60, 76, 4),
-                (64, 86, 2), (66, 85, 2), (68, 86, 4), (72, 89, 4), (76, 86, 4),
-                (80, 85, 4), (84, 82, 4), (88, 79, 4), (92, 76, 4),
-                (96, 77, 2), (98, 79, 2), (100, 81, 4), (104, 82, 4), (108, 84, 4),
-                (112, 85, 4), (116, 81, 4), (120, 76, 4), (124, 73, 4),
-            ],
-        ),
-        # 9. Créditos — Balada Neo-Soul / Barroca cálida (Gm9 -> Tercera Picarda Gmaj7)
-        dict(
-            nombre="creditos", bpm=92, compases=8, swing=0.56, campana_en_1=True,
-            acordes=[
-                [43, 46, 50, 53, 57],  # Gm9
-                [51, 55, 58, 62, 65],  # Ebmaj9
-                [48, 51, 55, 58, 62],  # Cm9
-                [50, 54, 57, 60, 66],  # D7#9
-            ],
-            bajo_patron=bajo_rnb,
-            ritmo_kick=kick_rnb, ritmo_snare=snare_rnb, ritmo_hat=hat_rnb,
-            melodia_pasos=[
-                (0, 67, 4), (4, 70, 4), (8, 74, 4), (12, 72, 4),
-                (16, 70, 4), (20, 74, 4), (24, 75, 6), (30, 74, 2),
-                (32, 72, 4), (36, 74, 4), (40, 75, 4), (44, 79, 4),
-                (48, 78, 4), (52, 75, 4), (56, 74, 6), (62, 70, 2),
-                (64, 74, 4), (68, 77, 4), (72, 79, 4), (76, 74, 4),
-                (80, 75, 4), (84, 74, 4), (88, 72, 6), (94, 70, 2),
-                (96, 68, 4), (100, 70, 4), (104, 72, 4), (108, 74, 4),
-                (112, 75, 4), (116, 74, 4), (120, 71, 8),
-            ],
-        ),
-        # 10. Victoria — Cadencia triunfal Rock/Barroca en Ré Mayor (Sin bucle)
-        dict(
-            nombre="victoria", bpm=112, compases=4, swing=0.50, en_bucle=False, campana_en_1=True,
-            acordes=[
-                [50, 54, 57, 61, 64],  # Dmaj9
-                [47, 50, 54, 57, 61],  # Bm9
-                [43, 47, 50, 54, 59],  # Gmaj7
-                [50, 54, 57, 61, 66],  # Dmaj7 alto
-            ],
-            bajo_patron=bajo_rock,
-            ritmo_kick=kick_rock, ritmo_snare=snare_rock, ritmo_hat=hat_rock,
-            melodia_pasos=[
-                (0, 69, 2), (2, 74, 4), (6, 78, 4), (10, 81, 6),
-                (16, 79, 4), (20, 78, 4), (24, 76, 4), (28, 74, 4),
-                (32, 71, 4), (36, 74, 4), (40, 78, 4), (44, 81, 4),
-                (48, 86, 12),
-            ],
-        ),
-        # 11. Derrota — Elegía lenta (Sin bucle)
-        dict(
-            nombre="derrota", bpm=82, compases=4, swing=0.52, en_bucle=False, campana_en_1=True,
-            acordes=[
-                [50, 53, 57, 60],  # Dm7
-                [46, 50, 53, 57],  # Bbmaj7
-                [43, 46, 50, 53],  # Gm7
-                [45, 49, 52, 57],  # A7sus4->3
-            ],
-            bajo_patron=[0, None, None, None, None, None, None, None, 7, None, None, None, 0, None, None, None],
-            ritmo_kick="x.......x.......",
-            ritmo_snare="........g.......",
-            ritmo_hat="x...x...x...x...",
-            melodia_pasos=[
-                (0, 74, 6), (6, 72, 4), (10, 69, 6),
-                (16, 70, 6), (22, 69, 4), (26, 67, 6),
-                (32, 69, 6), (38, 67, 4), (42, 65, 6),
-                (48, 64, 14),
-            ],
-        ),
-    ]
-
-    for spec in especificaciones:
+    for spec in ESPECIFICACIONES_PISTAS:
         ruta = secuenciar_tema(**spec)
         print(f"[SynthLab] Generada pista: {ruta.name} ({ruta.stat().st_size // 1024} KB)")
 
