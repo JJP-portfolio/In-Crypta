@@ -1,176 +1,110 @@
-# 🕯️ IN CRYPTA — Guía de Instalación y Juego (Windows y Linux)
+# IN CRYPTA — Guia de Instalacion y Ejecucion
 
-Bienvenido a la guía oficial de **IN CRYPTA** para versiones de escritorio (**Windows** y **Linux**).  
-Aquí encontrarás las instrucciones paso a paso para ejecutar el juego con un solo doble clic, resolver problemas comunes y configurar la experiencia visual y de controles a tu gusto.
-
----
-
-## 📋 Requisitos del Sistema
-
-* **Sistema Operativo:**
-  * **Windows:** Windows 10 o Windows 11 (64-bit).
-  * **Linux:** Cualquier distribución moderna (Ubuntu 20.04+, Debian 11+, Linux Mint, Fedora, Arch, etc.).
-* **Python:** Versión **3.10 o superior** (3.11, 3.12, 3.13 o 3.14 compatibles).
-* **Tarjeta Gráfica:** Cualquier GPU integrada o dedicada con soporte OpenGL / SDL2 estándar.
-* **Espacio en Disco:** ~80 MB libres.
-* **FPS:** Diseñado para correr a **60 FPS** estables.
+Guia paso a paso para ejecutar **IN CRYPTA** en Windows o Linux desde el paquete de entrega, configurar video/controles y resolver los problemas mas habituales al iniciar.
 
 ---
 
-## 🪟 Guía para Windows
+## Requisitos
 
-### 1. Preparación previa (Solo una vez)
-Asegúrate de tener **Python** instalado en tu computadora:
-1. Si no tienes Python instalado, descárgalo gratis desde [python.org/downloads](https://www.python.org/downloads/).
-2. ⚠️ **MUY IMPORTANTE durante la instalación:** En la primera pantalla del instalador de Python, marca la casilla que dice **«Add python.exe to PATH»** (o *Agregar Python al PATH*) antes de pulsar *Install Now*.
-
-### 2. Ejecutar con Doble Clic
-1. Si descargaste el archivo comprimido (`.zip`), haz clic derecho y selecciona **Extraer todo...** en una carpeta de tu preferencia *(no lo ejecutes dentro del archivo comprimido)*.
-2. Abre la carpeta descomprimida y haz **doble clic** sobre el archivo:
-   ```text
-   jugar_windows.bat
-   ```
-
-### ¿Qué hace el script automáticamente?
-* Detecta tu instalación de Python.
-* Crea un entorno virtual aislado (`.venv`) en la carpeta del juego para no alterar tu sistema.
-* Instala o actualiza automáticamente el motor gráfico (`pygame-ce`).
-* Lanza el juego de inmediato.
-* Si ocurriera algún error imprevisto, la consola permanecerá abierta mostrándote el mensaje de diagnóstico en lugar de cerrarse abruptamente.
-
-### ⚠️ Advertencia de Windows SmartScreen
-Si Windows muestra la pantalla azul de aviso *"Windows protegió su PC"* al ejecutar el archivo `.bat` por primera vez:
-1. Haz clic en **«Más información»**.
-2. Presiona el botón **«Ejecutar de todas formas»**.
+* **Sistema operativo:** Windows 10/11 (64-bit) o cualquier distribucion Linux actual (Ubuntu, Debian, Mint, Fedora, Arch).
+* **Python:** 3.10 o superior (probado en 3.10 a 3.14).
+* **Graficos:** soporte estandar SDL2 / OpenGL (GPU integrada o dedicada).
+* **Espacio en disco:** ~80 MB libres incluyendo el entorno virtual local.
 
 ---
 
-## 🐧 Guía para Linux
+## Ejecucion en Windows
 
-### 1. Preparación previa (Solo si tu distribución no tiene venv)
-En distribuciones basadas en Debian o Ubuntu, asegúrate de tener el módulo de entornos virtuales:
+1. Si todavia no tenes Python instalado, descargalo desde [python.org/downloads](https://www.python.org/downloads/).
+   En la primera pantalla del instalador, marca **"Add python.exe to PATH"** antes de instalar.
+2. Descomprime el archivo `.zip` en una carpeta propia (no lo ejecutes desde adentro del ZIP).
+3. Hace doble clic en **`jugar_windows.bat`**.
+
+El lanzador detecta Python, crea un entorno virtual `.venv` aislado dentro de la carpeta del juego, instala `pygame-ce` desde `requirements.txt` y abre el juego. Si ocurre algun error, deja la consola abierta para que puedas leer el mensaje.
+
+**Nota sobre Windows SmartScreen:** si Windows muestra el cartel *"Windows protegio su PC"* la primera vez que abris el `.bat`, entra en **"Mas informacion"** y elegi **"Ejecutar de todas formas"**.
+
+---
+
+## Ejecucion en Linux
+
+En distribuciones basadas en Debian o Ubuntu, asegurate de tener instalado el soporte para entornos virtuales:
+
 ```bash
 sudo apt update
 sudo apt install python3 python3-venv python3-pip
 ```
 
-### 2. Ejecutar por Doble Clic (Modo Gráfico)
-1. Extrae el archivo `.zip` en tu carpeta deseada.
-2. Haz **doble clic** sobre:
-   ```text
-   jugar_pygame.sh
-   ```
-   * Si tu explorador de archivos te pregunta qué acción tomar, elige **«Ejecutar en terminal»** o **«Ejecutar»**.
-   * Si el sistema no tiene activado el permiso de ejecución, abre una terminal en la carpeta y escribe:
-     ```bash
-     chmod +x jugar_pygame.sh IN_CRYPTA.desktop
-     ```
-3. También dispones del archivo de escritorio **`IN_CRYPTA.desktop`**, que puedes copiar a tu Escritorio o a `~/.local/share/applications/` para integrarlo con tu lanzador de aplicaciones.
+Luego podes iniciar el juego de dos maneras:
 
-### 3. Ejecutar desde Terminal
-Abre tu terminal en el directorio del proyecto y escribe:
-```bash
-./jugar_pygame.sh
-```
+* **Desde el explorador de archivos:** descomprime el `.zip` y ejecuta `jugar_pygame.sh` (o copia `IN_CRYPTA.desktop` a tu escritorio o `~/.local/share/applications/`). Si no tiene permiso de ejecucion, dale permisos una sola vez:
+  ```bash
+  chmod +x jugar_pygame.sh IN_CRYPTA.desktop
+  ```
+* **Desde terminal:**
+  ```bash
+  ./jugar_pygame.sh
+  ```
 
-#### Parámetros adicionales útiles:
-* `./jugar_pygame.sh --check` : Realiza un autodiagnóstico del entorno y dependencias.
-* `./jugar_pygame.sh --headless` : Ejecuta una prueba de renderizado sin abrir ventana gráfica.
-* `./jugar_pygame.sh --nivel 1` : Salta el prólogo e inicia directo en el Camposanto (niveles 1 a 3 disponibles).
+Parametros utiles del lanzador y de `main.py`:
+
+* `./jugar_pygame.sh --check` : verifica imports, carga de `Juego`, un tick de actualizacion y renderizado en modo headless.
+* `./jugar_pygame.sh --nivel 1` : salta la introduccion y arranca directo en el nivel elegido (`0` para Tutorial, `1` a `3` para los actos principales).
 
 ---
 
-## 🛠️ Instalación y Ejecución Manual (Cualquier Sistema)
-
-Si eres desarrollador o prefieres iniciar el juego manualmente sin usar los scripts automáticos:
+## Instalacion manual (cualquier sistema)
 
 ```bash
-# 1. Crear entorno virtual
 python3 -m venv .venv
 
-# 2. Activar entorno virtual
-# En Linux / macOS:
+# Linux / macOS:
 source .venv/bin/activate
-# En Windows (cmd):
+# Windows (cmd):
 .venv\Scripts\activate
-# En Windows (PowerShell):
-.venv\Scripts\Activate.ps1
 
-# 3. Instalar librerías requeridas
 pip install -r requirements.txt
-
-# 4. Iniciar el juego
 python main.py
 ```
 
 ---
 
-## 🎨 Opciones de Video y Gráficos
+## Opciones graficas y rendimiento
 
-El juego incluye opciones visuales para ajustar los efectos y el rendimiento según tu equipo:
+Desde **Configuracion** (en el menu principal o pausando con `Esc`) se pueden ajustar tres apartados:
 
-Accede a **Configuración** desde el Menú Principal o pausando el juego (`Esc`):
-* **Efectos / Shaders:**
-  * **Gótico (Bloom + CRT) [Recomendado]:** Efecto de resplandor (bloom) en luces y partículas, con líneas de barrido estilo CRT retro.
-  * **Suave (Solo Bloom):** Mantiene el resplandor de luces y partículas sin líneas CRT.
-  * **Puro (Pixel Art Clásico):** Renderizado directo en pixel art sin filtros.
-* **Calidad Gráfica:**
-  * **Alta:** Partículas ambientales completas e iluminación completa.
-  * **Media:** Partículas intermedias e iluminación optimizada.
-  * **Baja:** Pensado para computadoras de muy bajos recursos (elimina penumbra pesada para asegurar 60 FPS).
-* **Reducción de Movimiento:**
-  * Desactiva el temblor de cámara (screenshake) y suaviza los flashes si prefieres una experiencia visual más estable.
+* **Shaders:**
+  * *Gotico (Bloom + CRT):* resplandor en luces/particulas y scanlines sobre el lienzo.
+  * *Suave (Solo Bloom):* conserva el halo luminoso sin scanlines.
+  * *Puro (Pixel Art Clasico):* imagen directa sin filtros de pantalla.
+* **Calidad grafica:**
+  * *Alta:* iluminacion completa, mascara de penumbra y 100% de particulas ambientales.
+  * *Media:* reduce a la mitad las particulas de bioma y achica radios de luz.
+  * *Baja:* desactiva penumbra, bloom y scanlines para asegurar 60 FPS estables en equipos modestos.
+* **Reduccion de movimiento:** desactiva el temblor de camara y atenua destellos en pantalla.
 
 ---
 
-## 🎮 Controles y Guía de Supervivencia
+## Controles y mecanicas basicas
 
-### Tabla de Controles
-
-| Acción | Preset Estándar (Recomendado) | Preset Retro |
+| Accion | Preset Estandar | Preset Retro |
 |---|---|---|
-| **Moverse a los lados** | `A` / `D` o `Flechas` | `Flechas` o `A` / `D` |
-| **Salto Variable** | `Espacio` o `W` | `Z` o `Espacio` |
-| **Dash de Sombras** | `Shift` o `X` | `X` o `Shift` |
-| **Golpe de Pala** | `J` o `Z` o `Click Izquierdo` | `C` o `J` |
-| **Pisotón Aéreo (Pogo/Stomp)** | `Abajo + Ataque` en el aire | `Abajo + Ataque` en el aire |
-| **Pausa / Menú** | `Escape` o `P` | `Escape` o `P` |
+| Moverse | `A` / `D` o `Flechas` | `Flechas` o `A` / `D` |
+| Salto variable | `Espacio` o `W` | `Z` o `Espacio` |
+| Dash | `Shift` o `X` | `X` o `Shift` |
+| Ataque | `J`, `Z` o `Click izquierdo` | `C` o `J` |
+| Pisoton aereo (Pogo) | `Abajo + Ataque` en el aire | `Abajo + Ataque` en el aire |
+| Pausa / Menu | `Esc` o `P` | `Esc` o `P` |
 
-### Mecánicas Esenciales de Supervivencia:
-1. **Salto Variable:**
-   - Un toque corto realiza un salto bajo para esquivar techos con pinchos.
-   - Mantener presionado alcanza la máxima elevación.
-2. **Pisotón de Pala (Pogo):**
-   - En el aire, pulsa `Abajo + Ataque` sobre un enemigo, una campana, un incensario o una losa quebradiza para rebotar alto.
-   - ¡El rebote en el aire recarga tu **Dash** inmediatamente!
-3. **El Farol de Reposo y el Manto Protector:**
-   - Recoge **Almas celestes** de los enemigos caídos.
-   - Al alcanzar un **Farol de Reposo**, el contacto consagra automáticamente las almas cosechadas y registra el punto de control.
-   - Con suficientes almas consagradas en un tramo, desbloqueas el **Manto del Farol** (un aura defensiva celeste que absorbe un golpe mortal completo sin perder vida) y el **Filo de Ánima**.
+* **Salto variable:** soltar rapido realiza un salto bajo; mantener sostenido alcanza la altura maxima.
+* **Pisoton y recarga de Dash:** golpear desde arriba a un enemigo, una campana o un incensario hace rebotar al personaje y recarga el Dash al instante en el aire.
+* **Farol de reposo:** guarda el avance como punto de control y consagra las almas acumuladas para habilitar mejoras del tramo (hasta el Manto protector que absorbe un golpe y el Filo de Anima).
 
 ---
 
-## ❓ Preguntas Frecuentes y Solución de Problemas (FAQ)
+## Problemas frecuentes
 
-### 1. Hago doble clic en `jugar_windows.bat` y se cierra al instante
-* **Causa:** No tienes Python instalado o no marcaste la casilla *"Add python.exe to PATH"*.
-* **Solución:** Descarga Python desde [python.org](https://www.python.org/downloads/), ejecuta el instalador, selecciona **Modify** o reinstala marcando la casilla de PATH.
-
-### 2. En Linux me dice `Permiso denegado` al correr `jugar_pygame.sh`
-* **Solución:** Abre la terminal en la carpeta del juego y dale permisos de ejecución:
-  ```bash
-  chmod +x jugar_pygame.sh
-  ```
-
-### 3. El juego no emite sonido
-* **Solución:** Comprueba que tu dispositivo de audio predeterminado esté activo en el sistema antes de abrir el juego. Pygame inicializa el mezclador de audio al arranque.
-
-### 4. El juego funciona con tirones o bajadas de FPS
-* **Solución:**
-  1. Entra a **Configuración** (`Esc` durante la partida o en el menú).
-  2. Ajusta **Calidad Gráfica** a `Media` o `Baja`.
-  3. Ajusta **Efectos / Shaders** a `Suave` o `Puro`.
-
----
-
-> *Que la luz de tu farol guíe tus pasos en las profundidades de la cripta.*
+* **`jugar_windows.bat` se cierra enseguida o dice que falta Python:** asegurate de haber marcado *"Add python.exe to PATH"* al instalar Python.
+* **`Permiso denegado` en Linux:** ejecuta `chmod +x jugar_pygame.sh` dentro de la carpeta del proyecto.
+* **Sin audio:** verifica que el dispositivo de salida este activo antes de abrir el juego.
+* **Tirones en equipos antiguos:** desde Configuracion baja **Calidad** a `Media` o `Baja` y deja **Shaders** en `Puro`.

@@ -75,10 +75,9 @@ def _obtener_halo_meta():
 
 
 #---- Mixin de renderizado de nivel y decoraciones ----#
-class RenderNivelMixin:
+class RenderNivelMixin(DecoracionesNivelMixin):
     """Metodos de renderizado procedural de solidos, plataformas, trampas y decoracion."""
 
-class RenderNivelMixin(DecoracionesNivelMixin):
     def dibujar(self, surface, camara):
         """Dibuja la geometria del nivel, objetos interactivos y enemigos secundarios."""
         self.dibujar_solidos(surface, camara)

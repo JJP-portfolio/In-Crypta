@@ -10,7 +10,7 @@ cd /d "%SCRIPT_DIR%"
 set "PYTHONPATH=%SCRIPT_DIR%;%PYTHONPATH%"
 
 echo ========================================================
-echo   IN CRYPTA 1.0.3 - Version Desktop (Windows)
+echo   IN CRYPTA 1.1.1 - Version Desktop (Windows)
 echo ========================================================
 echo   Directorio : %SCRIPT_DIR%
 

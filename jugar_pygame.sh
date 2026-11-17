@@ -26,7 +26,7 @@ export PYTHONPATH="$SCRIPT_DIR${PYTHONPATH:+:$PYTHONPATH}"
 LOG_FILE="$SCRIPT_DIR/in_crypta_launcher.log"
 
 echo "========================================================"
-echo "  IN CRYPTA 1.0.3 - Versión Desktop (Linux)"
+echo "  IN CRYPTA 1.1.1 - Version Desktop (Linux)"
 echo "========================================================"
 echo "  Directorio : $SCRIPT_DIR"
 
@@ -66,8 +66,8 @@ elif command -v python >/dev/null 2>&1; then
 fi
 
 if [[ -z "$PYTHON_SYS" && ! -x "$SCRIPT_DIR/.venv/bin/python" ]]; then
-    echo "✘ [ERROR] No se encontró Python 3 instalado en el sistema." | tee -a "$LOG_FILE"
-    echo "Por favor instala Python 3 (ej: sudo apt install python3 python3-venv python3-pip)"
+    echo "[ERROR] No se encontro Python 3 instalado en el sistema." | tee -a "$LOG_FILE"
+    echo "Instala Python 3 (ej: sudo apt install python3 python3-venv python3-pip)"
     if [ -t 0 ]; then read -p "Presiona ENTER para salir..." -r _; fi
     exit 1
 fi
@@ -77,22 +77,22 @@ VENV_DIR="$SCRIPT_DIR/.venv"
 VENV_PYTHON="$VENV_DIR/bin/python"
 
 if [[ ! -x "$VENV_PYTHON" ]]; then
-    echo "▶ Creando entorno virtual local en $VENV_DIR..."
+    echo "[IN CRYPTA] Creando entorno virtual local en $VENV_DIR..."
     "$PYTHON_SYS" -m venv "$VENV_DIR" || {
-        echo "✘ [ERROR] Falló la creación de .venv. Si estás en Debian/Ubuntu, instala: sudo apt install python3-venv" | tee -a "$LOG_FILE"
+        echo "[ERROR] Fallo la creacion de .venv. En Debian/Ubuntu instala: sudo apt install python3-venv" | tee -a "$LOG_FILE"
         if [ -t 0 ]; then read -p "Presiona ENTER para salir..." -r _; fi
         exit 1
     }
 fi
 
 # 4. Verificación obligatoria de motor gráfico (pygame-ce)
-echo "▶ Verificando motor gráfico (pygame-ce)..."
+echo "[IN CRYPTA] Verificando motor grafico (pygame-ce)..."
 if ! "$VENV_PYTHON" -c "import pygame; assert getattr(pygame, 'IS_CE', False)" >/dev/null 2>&1; then
-    echo "▶ Instalando / configurando pygame-ce (Community Edition)..."
+    echo "[IN CRYPTA] Instalando / configurando pygame-ce..."
     "$VENV_PYTHON" -m pip uninstall -y pygame >/dev/null 2>&1 || true
     if [[ -f "$SCRIPT_DIR/requirements.txt" ]]; then
         "$VENV_PYTHON" -m pip install -r "$SCRIPT_DIR/requirements.txt" --upgrade || {
-            echo "⚠ Aviso: pip install -r requirements.txt tuvo advertencias, asegurando pygame-ce..."
+            echo "[AVISO] pip install tuvo advertencias, asegurando pygame-ce..."
             "$VENV_PYTHON" -m pip install "pygame-ce>=2.5,<3" --upgrade
         }
     else
@@ -100,12 +100,12 @@ if ! "$VENV_PYTHON" -c "import pygame; assert getattr(pygame, 'IS_CE', False)" >
     fi
 fi
 
-echo "  Intérprete : $VENV_PYTHON"
+echo "  Interprete : $VENV_PYTHON"
 echo "========================================================"
 
 # Modo headless / check
 if [[ "$MODO" == "check" || "$MODO" == "headless" ]]; then
-    echo "▶ Ejecutando verificación en modo ${MODO} (SDL dummy)..."
+    echo "[IN CRYPTA] Ejecutando verificacion en modo ${MODO} (SDL dummy)..."
     export SDL_VIDEODRIVER=dummy
     export SDL_AUDIODRIVER=dummy
     "$VENV_PYTHON" -c "
@@ -119,19 +119,19 @@ juego.seleccionar_nivel(0)
 juego.actualizar(1.0 / 60.0)
 juego.dibujar()
 pygame.quit()
-print('✔ Verificación Pygame (${MODO}): imports, inicialización de Juego, update y draw OK.')
+print('[OK] Verificacion Pygame (${MODO}): imports, Juego, update y draw correctos.')
 "
     exit 0
 fi
 
 # 5. Ejecución del juego
-echo "▶ Iniciando IN CRYPTA..."
+echo "[IN CRYPTA] Iniciando juego..."
 "$VENV_PYTHON" "$SCRIPT_DIR/main.py" "${ARGS[@]}"
 RET=$?
 
 if [[ $RET -ne 0 ]]; then
     echo "" | tee -a "$LOG_FILE"
-    echo "✘ [ERROR] El juego finalizó inesperadamente con código de salida $RET." | tee -a "$LOG_FILE"
+    echo "[ERROR] El juego finalizo inesperadamente con codigo de salida $RET." | tee -a "$LOG_FILE"
     if [ -t 0 ]; then
         echo "Presiona [ENTER] para cerrar esta ventana..."
         read -r _
