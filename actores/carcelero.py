@@ -321,8 +321,8 @@ class MiniJefe:
             pygame.draw.rect(surface, seg_color, (bx + i * 12 + 1, by + 1, 10, 4), border_radius=1)
 
         if self.tiempo_flash > 0:
-            flash_overlay = obtener_aura_custodio(rect.width, rect.height, (180, 180, 180), 160)
-            surface.blit(flash_overlay, rect.topleft, special_flags=pygame.BLEND_RGB_ADD)
+            flash_overlay = obtener_aura_custodio(rect.width, rect.height, (235, 235, 240), 140)
+            surface.blit(flash_overlay, rect.topleft)
 
     def dibujar(self, surface, camara, tiempo):
         """Renderiza al Carcelero con sus auras, armadura y barra de vida."""

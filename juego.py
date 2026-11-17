@@ -1,5 +1,6 @@
 #---- Importamos librerias y modulos ----#
 from collections import OrderedDict
+import os
 from pathlib import Path
 import sys
 import warnings
@@ -109,6 +110,8 @@ class Juego(
 
     def _iniciar_pygame(self):
         warnings.filterwarnings("ignore", category=UserWarning)
+        os.environ.setdefault("SDL_VIDEO_WAYLAND_WMCLASS", "in-crypta")
+        os.environ.setdefault("SDL_VIDEO_X11_WMCLASS", "in-crypta")
         try:
             if pygame.mixer.get_init() is None:
                 pygame.mixer.pre_init(44100, -16, 2, 2048)
@@ -116,7 +119,14 @@ class Juego(
             # En entornos sin dispositivo de audio seguimos sin preinicializar el mezclador.
             pass
         pygame.init()
-        self.pantalla = pygame.display.set_mode((ANCHO, ALTO))
+        es_dummy = os.environ.get("SDL_VIDEODRIVER") == "dummy"
+        self._display_flags = 0 if es_dummy else (pygame.SCALED | pygame.RESIZABLE)
+        self._pantalla_completa = False
+        try:
+            self.pantalla = pygame.display.set_mode((ANCHO, ALTO), self._display_flags)
+        except pygame.error:
+            self._display_flags = 0
+            self.pantalla = pygame.display.set_mode((ANCHO, ALTO))
         pygame.display.set_caption(TITULO)
         self.reloj = pygame.time.Clock()
         self.corriendo = True
@@ -382,6 +392,9 @@ class Juego(
             if evento.type == pygame.QUIT:
                 self.corriendo = False
             elif evento.type == pygame.KEYDOWN:
+                if evento.key == pygame.K_F11:
+                    self.alternar_pantalla_completa()
+                    continue
                 if self.estado == "creditos":
                     if evento.key in (pygame.K_ESCAPE, pygame.K_RETURN, pygame.K_SPACE):
                         self.abrir_menu()

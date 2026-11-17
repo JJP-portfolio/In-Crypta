@@ -124,7 +124,14 @@ print('[OK] Verificacion Pygame (${MODO}): imports, Juego, update y draw correct
     exit 0
 fi
 
-# 5. Ejecución del juego
+# 5. Ejecución del juego (priorizar Wayland nativo cuando esté activo)
+export SDL_VIDEO_WAYLAND_WMCLASS="${SDL_VIDEO_WAYLAND_WMCLASS:-in-crypta}"
+export SDL_VIDEO_X11_WMCLASS="${SDL_VIDEO_X11_WMCLASS:-in-crypta}"
+if [[ -z "${SDL_VIDEODRIVER:-}" && -n "${WAYLAND_DISPLAY:-}" ]]; then
+    if SDL_VIDEODRIVER=wayland "$VENV_PYTHON" -c "import pygame; pygame.display.init(); pygame.display.quit()" >/dev/null 2>&1; then
+        export SDL_VIDEODRIVER=wayland
+    fi
+fi
 echo "[IN CRYPTA] Iniciando juego..."
 "$VENV_PYTHON" "$SCRIPT_DIR/main.py" "${ARGS[@]}"
 RET=$?

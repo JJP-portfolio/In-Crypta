@@ -661,5 +661,5 @@ class Custodio:
             pygame.draw.polygon(surface, BLANCO, rombo, 1)
 
         if self.tiempo_flash > 0:
-            flash_overlay = obtener_aura_custodio(rect.width, rect.height, (140, 140, 140), 140)
-            surface.blit(flash_overlay, rect.topleft, special_flags=pygame.BLEND_RGB_ADD)
+            flash_overlay = obtener_aura_custodio(rect.width, rect.height, (235, 235, 240), 130)
+            surface.blit(flash_overlay, rect.topleft)

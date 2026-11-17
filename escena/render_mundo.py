@@ -10,13 +10,30 @@ from escena.fondos import _obtener_luz_calida, _obtener_luz_perforacion
 class RenderMundoMixin:
     """Metodos de renderizado del mundo, iluminacion, shaders y debug visual."""
 
-    def _aplicar_bloom(self, origen, destino, intensidad=0.12):
+    def _obtener_superficies_bloom(self, pw, ph):
+        clave = (pw, ph)
+        cache = getattr(self, "_cache_bloom_surfs", None)
+        if cache is not None and cache[0] == clave:
+            return cache[1:]
+        hl = pygame.Surface((pw, ph))
+        s1 = pygame.Surface((max(1, pw // 2), max(1, ph // 2)))
+        s2 = pygame.Surface((max(1, pw // 4), max(1, ph // 4)))
+        self._cache_bloom_surfs = (clave, hl, s1, s2)
+        return hl, s1, s2
+
+    def _aplicar_bloom(self, origen, destino, intensidad=0.42):
         pw, ph = destino.get_size()
-        sw, sh = max(1, pw // 4), max(1, ph // 4)
-        mini = pygame.transform.smoothscale(origen, (sw, sh))
-        bloom = pygame.transform.smoothscale(mini, (pw, ph))
-        bloom.set_alpha(int(255 * intensidad))
-        destino.blit(bloom, (0, 0), special_flags=pygame.BLEND_RGB_ADD)
+        hl, s1, s2 = self._obtener_superficies_bloom(pw, ph)
+        hl.blit(origen, (0, 0))
+        # Recorte de fondo oscuro para que solo brillen luces, llamas y particulas.
+        hl.fill((36, 32, 44), special_flags=pygame.BLEND_RGB_SUB)
+        pygame.transform.smoothscale(hl, s1.get_size(), s1)
+        pygame.transform.smoothscale(s1, s2.get_size(), s2)
+        pygame.transform.smoothscale(s2, s1.get_size(), s1)
+        pygame.transform.smoothscale(s1, (pw, ph), hl)
+        escala = max(0, min(255, int(255 * intensidad)))
+        hl.fill((escala, escala, escala), special_flags=pygame.BLEND_RGB_MULT)
+        destino.blit(hl, (0, 0), special_flags=pygame.BLEND_RGB_ADD)
 
     def _dibujar_penumbra_mundo(self, destino):
         self.mascara_penumbra.fill((8, 7, 12, 38))
@@ -115,18 +132,19 @@ class RenderMundoMixin:
             alfa_manto = min(40, int(alfa_manto * 0.3))
         destello = getattr(self, "_superficie_destello_manto", None)
         if destello is None or destello.get_size() != (pw, ph):
-            self._superficie_destello_manto = pygame.Surface((pw, ph), pygame.SRCALPHA)
-        self._superficie_destello_manto.fill((0, 0, 0, 0))
+            self._superficie_destello_manto = pygame.Surface((pw, ph))
+        self._superficie_destello_manto.fill((0, 0, 0))
         for step in range(12):
-            a_step = int(alfa_manto * (1.0 - step / 12.0))
+            frac = (alfa_manto * (1.0 - step / 12.0)) / 255.0
+            col_ring = (int(110 * frac), int(215 * frac), int(255 * frac))
             pygame.draw.rect(
                 self._superficie_destello_manto,
-                (110, 215, 255, a_step),
+                col_ring,
                 (step * 2, step * 2, pw - step * 4, ph - step * 4),
                 2,
             )
         self.pantalla.blit(
-            self._superficie_destello_manto, (0, 0), special_flags=pygame.BLEND_RGBA_ADD
+            self._superficie_destello_manto, (0, 0), special_flags=pygame.BLEND_RGB_ADD
         )
 
     def _aplicar_postprocesado_pantalla(self, pw, ph):
@@ -135,7 +153,7 @@ class RenderMundoMixin:
         calidad_modo = getattr(self, "config_calidad_idx", 0)
 
         if shader_modo in (0, 1) and calidad_modo != 2:
-            self._aplicar_bloom(self.pantalla, self.pantalla, intensidad=0.12)
+            self._aplicar_bloom(self.pantalla, self.pantalla, intensidad=0.42)
 
         if shader_modo == 0 and calidad_modo != 2:
             if (

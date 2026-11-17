@@ -133,6 +133,20 @@ class MenusMixin:
         self.hud.mostrar_mensaje(f"TAMAÑO DE TEXTO (F2): {etiqueta}", 1, 2.5)
         self.audio.reproducir("ui")
 
+    def alternar_pantalla_completa(self):
+        """Alterna entre ventana escalada y pantalla completa (F11)."""
+        self._pantalla_completa = not getattr(self, "_pantalla_completa", False)
+        base_flags = getattr(self, "_display_flags", 0)
+        flags = (base_flags | pygame.FULLSCREEN) if self._pantalla_completa else base_flags
+        try:
+            self.pantalla = pygame.display.set_mode((ANCHO, ALTO), flags)
+        except pygame.error:
+            self._pantalla_completa = False
+            self.pantalla = pygame.display.set_mode((ANCHO, ALTO))
+        self.audio.reproducir("ui")
+        modo = "PANTALLA COMPLETA" if self._pantalla_completa else "VENTANA"
+        self.hud.mostrar_mensaje(f"MODO DE VIDEO (F11): {modo}", 1, 2.5)
+
     def ejecutar_seleccion_nivel(self, indice):
         if indice == 0:
             self.iniciar_tutorial()

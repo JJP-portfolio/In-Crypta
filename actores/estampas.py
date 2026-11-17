@@ -39,6 +39,17 @@ def obtener_aura_custodio(w, h, color, alfa):
     return surf
 
 
+def _dibujar_disco_radial_suave(surf, centro, radio, color_rgb, alpha_max, pasos=10):
+    cr, cg, cb = color_rgb[:3]
+    for i in range(pasos, 0, -1):
+        frac = i / float(pasos)
+        r = max(1, int(round(radio * frac)))
+        norm = (i - 1) / float(pasos)
+        alfa = int(alpha_max * ((1.0 - norm * norm) ** 1.8))
+        if alfa > 0:
+            pygame.draw.circle(surf, (cr, cg, cb, alfa), centro, r)
+
+
 def obtener_estampa_luz(radio, color, max_alfa):
     """Genera y cachea un halo radial con caida cuadratica para blend aditivo."""
     clave = (int(radio), tuple(color[:3]), int(max_alfa))
@@ -49,10 +60,9 @@ def obtener_estampa_luz(radio, color, max_alfa):
         surf.fill((0, 0, 0, 0))
         cx, cy = radio, radio
         r_int = int(radio)
-        paso = max(1, r_int // 24)
         cr, cg, cb = color[:3]
         intensidad = max_alfa / 255.0
-        for r in range(r_int, 0, -paso):
+        for r in range(r_int, 0, -1):
             norm = r / radio
             factor = max(0.0, (1.0 - norm * norm) ** 2.0)
             rgb = (
@@ -109,9 +119,7 @@ def obtener_halo_alma(step):
         surf = pygame.Surface((44, 44), pygame.SRCALPHA)
         pulso = step / 7.0
         factor = 0.8 + 0.2 * pulso
-        pygame.draw.circle(surf, (160, 90, 245, int(14 * factor)), (22, 22), 18)
-        pygame.draw.circle(surf, (180, 120, 255, int(28 * factor)), (22, 22), 12)
-        pygame.draw.circle(surf, (210, 180, 255, int(48 * factor)), (22, 22), 6)
+        _dibujar_disco_radial_suave(surf, (22, 22), 18, (175, 110, 250), int(42 * factor), pasos=8)
         surf = surf.convert_alpha()
         _CACHE_HALOS[clave] = surf
     return surf
@@ -127,8 +135,7 @@ def obtener_aura_pickup(color_base, step):
         surf = pygame.Surface((64, 64), pygame.SRCALPHA)
         pulso = step / 7.0
         factor = 0.75 + pulso * 0.25
-        for radio, alfa in ((27, 24), (20, 42), (13, 72)):
-            pygame.draw.circle(surf, (cr, cg, cb, int(alfa * factor)), (32, 32), radio)
+        _dibujar_disco_radial_suave(surf, (32, 32), 27, (cr, cg, cb), int(68 * factor), pasos=10)
         surf = surf.convert_alpha()
         _CACHE_HALOS[clave] = surf
     return surf
@@ -209,10 +216,8 @@ def obtener_halo_campana(repicando, step):
         pulso = step / 7.0
         radio = 24 if repicando else 16
         surf = pygame.Surface((radio * 2, radio * 2), pygame.SRCALPHA)
-        alfa_halo = int(60 + pulso * 40) if repicando else int(16 + pulso * 10)
-        pygame.draw.circle(surf, (92, 190, 174, alfa_halo), (radio, radio), radio)
-        color_centro = (180, 240, 230, int(alfa_halo * 0.7))
-        pygame.draw.circle(surf, color_centro, (radio, radio), radio // 2)
+        alfa_halo = int(85 + pulso * 45) if repicando else int(24 + pulso * 12)
+        _dibujar_disco_radial_suave(surf, (radio, radio), radio, (110, 215, 200), alfa_halo, pasos=8)
         surf = surf.convert_alpha()
         _CACHE_HALOS[clave] = surf
     return surf
