@@ -95,6 +95,7 @@ Desde **Configuracion** (en el menu principal o pausando con `Esc`) se pueden aj
 | Ataque | `J`, `Z` o `Click izquierdo` | `C` o `J` |
 | Pisoton aereo (Pogo) | `Abajo + Ataque` en el aire | `Abajo + Ataque` en el aire |
 | Pausa / Menu | `Esc` o `P` | `Esc` o `P` |
+| Pantalla completa | `F11` | `F11` |
 
 * **Salto variable:** soltar rapido realiza un salto bajo; mantener sostenido alcanza la altura maxima.
 * **Pisoton y recarga de Dash:** golpear desde arriba a un enemigo, una campana o un incensario hace rebotar al personaje y recarga el Dash al instante en el aire.

@@ -81,6 +81,7 @@ Desde **Configuracion** (`Esc` o `P` en partida, o desde el menu) se puede alter
 | Ataque (Pala / Guadana) | `J`, `Z` o `Click izquierdo` | `C` o `J` |
 | Pisoton aereo (Pogo) | `Abajo + Ataque` en el aire | `Abajo + Ataque` en el aire |
 | Pausa / Menu | `Escape` o `P` | `Escape` o `P` |
+| Pantalla completa | `F11` | `F11` |
 
 ### Conceptos centrales
 
