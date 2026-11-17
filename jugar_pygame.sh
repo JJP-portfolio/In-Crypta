@@ -26,7 +26,7 @@ export PYTHONPATH="$SCRIPT_DIR${PYTHONPATH:+:$PYTHONPATH}"
 LOG_FILE="$SCRIPT_DIR/in_crypta_launcher.log"
 
 echo "========================================================"
-echo "  IN CRYPTA 1.1.1 - Version Desktop (Linux)"
+echo "  IN CRYPTA 1.1.2 - Version Desktop (Linux)"
 echo "========================================================"
 echo "  Directorio : $SCRIPT_DIR"
 

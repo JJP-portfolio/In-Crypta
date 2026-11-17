@@ -1,4 +1,4 @@
-# IN CRYPTA (v1.1.1)
+# IN CRYPTA (v1.1.2)
 
 ### Trabajo Practico Integrador
 * **Equipo:** Equipo 6
@@ -48,7 +48,7 @@ El jugador encarna al Sepulturero y atraviesa cuatro zonas —**El Umbral**, **E
 Requisitos minimos: **Python 3.10 o superior** y `pygame-ce>=2.5.0`. Para instrucciones detalladas de instalacion y solucion de problemas en ambos sistemas, ver [GUIA_JUEGO.md](GUIA_JUEGO.md).
 
 * **Windows:** doble clic en `jugar_windows.bat` (crea `.venv`, instala `pygame-ce` y arranca).
-* **Linux:** ejecutar `./jugar_pygame.sh` (o usar el acceso directo `IN_CRYPTA.desktop`).
+* **Linux:** ejecutar `./jugar_pygame.sh` (o `./jugar_pygame.sh --fullscreen`, o usar el acceso directo `IN_CRYPTA.desktop`).
 
 Ejecucion manual desde terminal:
 
@@ -160,7 +160,7 @@ Al caer por las columnas `308..331`, la camara cambia limpiamente a la banda inf
 
 ## Como se dibujan las cosas (Codigo y resultado)
 
-Todo el apartado visual corre sobre un lienzo virtual de `1024x576` escalado a `1280x720` (`pygame-ce`) mediante primitivas poligonales y superficies `SRCALPHA` cacheadas por tamano y color en `actores/estampas.py` y `escena/fondos.py` para no asignar memoria en cada fotograma.
+Todo el apartado visual corre sobre un lienzo virtual de `1024x576` escalado a `1280x720` (`pygame.SCALED | pygame.RESIZABLE`, con soporte nativo Wayland/X11 y pantalla completa desde Configuracion o `Alt + Enter`) mediante primitivas poligonales y superficies `SRCALPHA` cacheadas por tamano y color en `actores/estampas.py` y `escena/fondos.py` para no asignar memoria en cada fotograma.
 
 ### 1. El Sepulturero, la Guadana Consagrada y el Dash
 
@@ -257,14 +257,14 @@ Misma matriz de `11x18` dibujada con `Nivel.dibujar_solidos()` cambiando unicame
 
 ### 3. Penumbra sustractiva, luces calidas y Shaders (Bloom + CRT)
 
-La atmosfera oscura no oculta el escenario con un gris plano: primero se llena una mascara `SRCALPHA` azul oscuro (`RGBA = (8, 7, 12, 38)`) y se perforan circulos con caida cuadratica `(1 - r²)²` usando `BLEND_RGBA_SUB` alrededor del farol del jugador y de cada punto de control; luego se suman luces aditivas (`BLEND_RGB_ADD`), un resplandor *bloom* escalando el lienzo a `1/4` de resolucion con `smoothscale` y, en modo Gotico, lineas de barrido CRT.
+La atmosfera oscura no oculta el escenario con un gris plano: primero se llena una mascara `SRCALPHA` azul oscuro (`RGBA = (8, 7, 12, 38)`) y se perforan circulos con caida cuadratica `(1 - r²)²` usando `BLEND_RGBA_SUB` alrededor del farol del jugador y de cada punto de control; luego se suman luces aditivas (`BLEND_RGB_ADD`), un resplandor *bloom* con recorte oscuro (`BLEND_RGB_SUB`) y desenfoque en cascada (`1/2 -> 1/4 -> 1/2 -> 1/1`) atenuado por `BLEND_RGB_MULT` sin lavado del fondo, y en modo Gotico lineas de barrido CRT.
 
 <table>
 <tr>
 <td width="56%" valign="top">
 
 ```python
-# escena/render_mundo.py — mascara sustractiva y bloom 1/4
+# escena/render_mundo.py — mascara sustractiva y bloom en cascada con umbral
 def _dibujar_penumbra_mundo(self, destino):
     self.mascara_penumbra.fill((8, 7, 12, 38))
     if self.jugador:
@@ -277,12 +277,18 @@ def _dibujar_penumbra_mundo(self, destino):
         )
     destino.blit(self.mascara_penumbra, (0, 0))
 
-def _aplicar_bloom(self, origen, destino, intensidad=0.12):
+def _aplicar_bloom(self, origen, destino, intensidad=0.42):
     pw, ph = destino.get_size()
-    mini = pygame.transform.smoothscale(origen, (max(1, pw // 4), max(1, ph // 4)))
-    bloom = pygame.transform.smoothscale(mini, (pw, ph))
-    bloom.set_alpha(int(255 * intensidad))
-    destino.blit(bloom, (0, 0), special_flags=pygame.BLEND_RGB_ADD)
+    hl, s1, s2 = self._obtener_superficies_bloom(pw, ph)
+    hl.blit(origen, (0, 0))
+    hl.fill((36, 32, 44), special_flags=pygame.BLEND_RGB_SUB)
+    pygame.transform.smoothscale(hl, s1.get_size(), s1)
+    pygame.transform.smoothscale(s1, s2.get_size(), s2)
+    pygame.transform.smoothscale(s2, s1.get_size(), s1)
+    pygame.transform.smoothscale(s1, (pw, ph), hl)
+    escala = max(0, min(255, int(255 * intensidad)))
+    hl.fill((escala, escala, escala), special_flags=pygame.BLEND_RGB_MULT)
+    destino.blit(hl, (0, 0), special_flags=pygame.BLEND_RGB_ADD)
 ```
 
 </td>
@@ -559,7 +565,7 @@ Cuando no quedan bloques intactos en esa columna bajo sus pies, pasa a `"cayendo
 
 ## Estructura del proyecto y pruebas
 
-* `main.py` — Punto de entrada y argumentos CLI (`--tutorial`, `--nivel`).
+* `main.py` — Punto de entrada y argumentos CLI (`--tutorial`, `--nivel`, `--fullscreen`).
 * `juego.py` — Clase principal `Juego`, gestion de escena y cache tipografica LRU.
 * `config.py` — Constantes fisicas, paletas, parametros de combate y configuracion grafica.
 * `niveles.py` / `niveles_redisenados.py` — Matrices ASCII de la campana, variante vertical multipiso y salas de practica.
