@@ -1586,10 +1586,19 @@ def probar_menu_configuracion_y_presets_teclado():
     juego.alternar_modo_hud(1)
     assert juego.config_hud_idx == (hud_inicial + 1) % len(OPCIONES_HUD)
 
-    # Accesibilidad
+    # Accesibilidad y pantalla completa (menu y Alt+Enter)
     acc_inicial = juego.reducir_movimiento
     juego.alternar_accesibilidad()
     assert juego.reducir_movimiento != acc_inicial
+    opciones = juego._opciones_configuracion_visibles({"etiqueta": "WASD"})
+    assert any(etq == "PANTALLA COMPLETA" for etq, _ in opciones)
+    juego.config_opcion = 4
+    juego._manejar_tecla_configuracion(pygame.K_RIGHT)
+    assert juego._pantalla_completa is True
+    pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_RETURN, mod=pygame.KMOD_ALT))
+    juego.procesar_eventos()
+    assert juego._pantalla_completa is False
+    assert juego.estado == "configuracion"
 
     # Dibujar pantalla de configuración sin fallos
     juego.dibujar()

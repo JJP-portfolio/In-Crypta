@@ -71,7 +71,7 @@ make validate   # Ejecuta validar_niveles.py y jugar_pygame.sh --check
 
 ## Controles y mecanicas del juego
 
-Desde **Configuracion** (`Esc` o `P` en partida, o desde el menu) se puede alternar entre dos esquemas de teclado, ademas de ajustar **Shaders**, **Calidad grafica**, **Escala del HUD**, **Volumen** y **Reduccion de movimiento**.
+Desde **Configuracion** (`Esc` o `P` en partida, o desde el menu) se puede alternar entre dos esquemas de teclado, ademas de ajustar **Shaders**, **Calidad grafica**, **Escala del HUD**, **Pantalla completa**, **Volumen** y **Reduccion de movimiento**.
 
 | Accion | Preset Estandar | Preset Retro |
 |---|---|---|
@@ -81,7 +81,7 @@ Desde **Configuracion** (`Esc` o `P` en partida, o desde el menu) se puede alter
 | Ataque (Pala / Guadana) | `J`, `Z` o `Click izquierdo` | `C` o `J` |
 | Pisoton aereo (Pogo) | `Abajo + Ataque` en el aire | `Abajo + Ataque` en el aire |
 | Pausa / Menu | `Escape` o `P` | `Escape` o `P` |
-| Pantalla completa | `F11` | `F11` |
+| Pantalla completa | `Alt + Enter` o `F11` | `Alt + Enter` o `F11` |
 
 ### Conceptos centrales
 

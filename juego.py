@@ -392,7 +392,12 @@ class Juego(
             if evento.type == pygame.QUIT:
                 self.corriendo = False
             elif evento.type == pygame.KEYDOWN:
-                if evento.key == pygame.K_F11:
+                mod = getattr(evento, "mod", 0)
+                es_alt_enter = bool(mod & pygame.KMOD_ALT) and evento.key in (
+                    pygame.K_RETURN,
+                    pygame.K_KP_ENTER,
+                )
+                if evento.key == pygame.K_F11 or es_alt_enter:
                     self.alternar_pantalla_completa()
                     continue
                 if self.estado == "creditos":

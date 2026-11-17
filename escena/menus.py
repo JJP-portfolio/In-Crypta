@@ -134,18 +134,22 @@ class MenusMixin:
         self.audio.reproducir("ui")
 
     def alternar_pantalla_completa(self):
-        """Alterna entre ventana escalada y pantalla completa (F11)."""
+        """Alterna entre ventana escalada y pantalla completa (Alt+Enter / F11)."""
         self._pantalla_completa = not getattr(self, "_pantalla_completa", False)
         base_flags = getattr(self, "_display_flags", 0)
-        flags = (base_flags | pygame.FULLSCREEN) if self._pantalla_completa else base_flags
+        if self._pantalla_completa:
+            flags = (base_flags & ~pygame.RESIZABLE) | pygame.FULLSCREEN
+        else:
+            flags = base_flags
         try:
             self.pantalla = pygame.display.set_mode((ANCHO, ALTO), flags)
         except pygame.error:
             self._pantalla_completa = False
             self.pantalla = pygame.display.set_mode((ANCHO, ALTO))
+        pygame.display.set_caption(TITULO)
         self.audio.reproducir("ui")
         modo = "PANTALLA COMPLETA" if self._pantalla_completa else "VENTANA"
-        self.hud.mostrar_mensaje(f"MODO DE VIDEO (F11): {modo}", 1, 2.5)
+        self.hud.mostrar_mensaje(f"MODO DE VIDEO: {modo}", 1, 2.5)
 
     def ejecutar_seleccion_nivel(self, indice):
         if indice == 0:
@@ -180,8 +184,9 @@ class MenusMixin:
             1: lambda: self.alternar_shader(delta),
             2: lambda: self.alternar_calidad_grafica(delta),
             3: lambda: self.alternar_modo_hud(delta),
-            4: self.alternar_accesibilidad,
-            5: self.audio.alternar,
+            4: self.alternar_pantalla_completa,
+            5: self.alternar_accesibilidad,
+            6: self.audio.alternar,
         }
         accion = acciones.get(self.config_opcion)
         if accion is not None:
@@ -210,7 +215,8 @@ class MenusMixin:
             self.audio.reproducir("ui")
 
     def _manejar_tecla_configuracion(self, key):
-        total_config = 7
+        opciones = self._opciones_configuracion_visibles(PRESETS_TECLADO[self.preset_teclado_idx])
+        total_config = len(opciones)
         if key in (pygame.K_UP, pygame.K_w):
             self.config_opcion = (self.config_opcion - 1) % total_config
             self.audio.reproducir("ui")
@@ -222,7 +228,7 @@ class MenusMixin:
         elif key in (pygame.K_RIGHT, pygame.K_d):
             self._aplicar_ajuste_config(1)
         elif key in (pygame.K_RETURN, pygame.K_SPACE):
-            if self.config_opcion == 6:
+            if self.config_opcion == total_config - 1:
                 self._cerrar_configuracion()
             else:
                 self._aplicar_ajuste_config(1)
@@ -569,20 +575,22 @@ class MenusMixin:
         self.dibujar_texto("[ENTER o ESC] Volver al Menú", 0, py + ph - 30, 14, TURQUESA, centrado=True)
 
     def _opciones_configuracion_visibles(self, preset_activo):
+        modo_video = "Completa" if getattr(self, "_pantalla_completa", False) else "Ventana"
         return (
             ("CONTROLES", preset_activo["etiqueta"]),
             ("POST-PROCESADO", OPCIONES_SHADER[self.config_shader_idx]),
             ("CALIDAD GRÁFICA", OPCIONES_CALIDAD[self.config_calidad_idx]),
             ("INTERFAZ (HUD)", OPCIONES_HUD[self.config_hud_idx]),
+            ("PANTALLA COMPLETA", modo_video),
             ("REDUCIR MOVIMIENTO", "Sí" if self.reducir_movimiento else "No"),
             ("SONIDO Y MÚSICA", "Activo" if getattr(self.audio, "activo", False) else "Silenciado"),
             ("VOLVER", ""),
         )
 
     def _dibujar_fila_configuracion(self, indice, etiqueta, valor, y_base):
-        ancho_c, alto_c = 580, 44
+        ancho_c, alto_c = 580, 40
         x_c = (ANCHO - ancho_c) // 2
-        y_c = y_base + indice * 50
+        y_c = y_base + indice * 46
         sel = indice == self.config_opcion
         rect_c = pygame.Rect(x_c, y_c, ancho_c, alto_c)
         fondo = (32, 24, 44) if sel else (16, 13, 22)
@@ -594,7 +602,7 @@ class MenusMixin:
         self.dibujar_texto(
             prefijo + etiqueta,
             x_c + 16,
-            y_c + 11,
+            y_c + 9,
             16,
             HUD_ORO if sel else HUD_TEXTO,
             sombra=sel,
@@ -604,7 +612,7 @@ class MenusMixin:
             self.dibujar_texto(
                 val_fmt,
                 x_c + ancho_c - 18,
-                y_c + 11,
+                y_c + 9,
                 15,
                 TURQUESA if sel else CREMA,
                 derecha=True,
@@ -612,28 +620,28 @@ class MenusMixin:
             )
 
     def dibujar_configuracion(self):
-        pw, ph = 680, 510
+        pw, ph = 680, 540
         _, py = self._dibujar_fondo_panel_menu(pw, ph, alfa=238)
-        self.dibujar_texto("CONFIGURACIÓN", 0, py + 30, 32, HUD_ORO, centrado=True, sombra=True)
+        self.dibujar_texto("CONFIGURACIÓN", 0, py + 28, 32, HUD_ORO, centrado=True, sombra=True)
         pygame.draw.line(
             self.pantalla,
             (*HUD_ORO, 120),
-            (ANCHO // 2 - 140, py + 64),
-            (ANCHO // 2 + 140, py + 64),
+            (ANCHO // 2 - 140, py + 62),
+            (ANCHO // 2 + 140, py + 62),
             1,
         )
 
         preset_activo = PRESETS_TECLADO[self.preset_teclado_idx]
         opciones = self._opciones_configuracion_visibles(preset_activo)
         for i, (etiqueta, valor) in enumerate(opciones):
-            self._dibujar_fila_configuracion(i, etiqueta, valor, py + 82)
+            self._dibujar_fila_configuracion(i, etiqueta, valor, py + 78)
 
         opciones_escala = getattr(config, "OPCIONES_ESCALA_FUENTE", ((1.15, "+15%"),))
         _, etiq_fuente = opciones_escala[self.escala_fuente_idx % len(opciones_escala)]
         self.dibujar_texto(preset_activo["resumen"], 0, py + ph - 54, 13, CREMA, centrado=True)
         self.dibujar_texto(
-            f"[W/S] Elegir | [A/D] Cambiar | [F2] Texto ({etiq_fuente}) | "
-            "[F4] Estilo | [ESC] Volver",
+            f"[W/S] Elegir | [A/D] Cambiar | [Alt+Enter] Pant. Completa | "
+            f"[F2] Texto ({etiq_fuente}) | [ESC] Volver",
             0,
             py + ph - 24,
             12,

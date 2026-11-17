@@ -47,6 +47,7 @@ while [[ $# -gt 0 ]]; do
             echo "Uso: ./jugar_pygame.sh [opciones] [-- argumentos_main.py]"
             echo "  --check       Verifica imports y entorno"
             echo "  --headless    Ejecuta prueba en modo SDL dummy"
+            echo "  --fullscreen  Inicia en pantalla completa"
             echo "  --nivel N     Inicia directamente en el nivel N (1..3)"
             exit 0
             ;;

@@ -27,13 +27,15 @@ def main():
     """Inicializa el entorno, procesa argumentos CLI y ejecuta el juego."""
     nivel_inicio = None
     iniciar_tut = False
+    args = [a for a in sys.argv[1:] if a not in ("--fullscreen", "-f")]
+    pantalla_completa = len(args) != len(sys.argv[1:])
 
     # Leemos argumentos si los pasaron por consola
-    if len(sys.argv) >= 2 and sys.argv[1] in ("--tutorial", "-t"):
+    if len(args) >= 1 and args[0] in ("--tutorial", "-t"):
         iniciar_tut = True
-    elif len(sys.argv) >= 3 and sys.argv[1] in ("--nivel", "-n"):
+    elif len(args) >= 2 and args[0] in ("--nivel", "-n"):
         try:
-            val = int(sys.argv[2])
+            val = int(args[1])
             if val == 0:
                 iniciar_tut = True
             elif 1 <= val <= 3:
@@ -43,6 +45,8 @@ def main():
 
     # Creamos la instancia del juego y arrancamos
     juego = Juego()
+    if pantalla_completa:
+        juego.alternar_pantalla_completa()
     if iniciar_tut:
         juego.iniciar_tutorial()
     elif nivel_inicio is not None:
